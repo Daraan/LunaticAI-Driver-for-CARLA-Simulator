@@ -1,6 +1,7 @@
 import glob
 import os
 import sys
+import time
 import pandas as pd
 
 CARLA_ROOT = os.environ.get("CARLA_ROOT", "./")
@@ -16,18 +17,16 @@ except IndexError:
     pass
 
 import carla
+from carla import Vector3D
 import utils
 
 client = carla.Client('localhost', 2000)
 
-if len(sys.argv) > 1:
-    town = sys.argv[1]
-else:
-    town = 'Town04' # maybe 'Town04_Opt'
+TOWN = 'Town04' # maybe 'Town04_Opt'
 
 # Once we have a client we can retrieve the world that is currently
 # running.
-world = client.load_world(town)
+world = client.load_world(TOWN)
 town = world.get_map()
 
 blueprint_library = world.get_blueprint_library()
@@ -61,11 +60,22 @@ def spawn_cars():
         v = world.spawn_actor(car_blueprint, sp)
         vehicles.append(v)
 
+def apply_constant_velocity(speed=5, to_ego=True):
+    cars = vehicles if to_ego else vehicles[1:]
+    for v in cars:
+        v.enable_constant_velocity(Vector3D(x=speed))
+    print("Applied velocity to", len(cars), "cars")
+
 
 def destroy():
     client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
 
 if __name__ == "__main__":
-    spawn_cars()
-    input("Press any key do destroy cars...")
-    destroy()
+    try:
+        spawn_cars()
+        time.sleep(1.5)
+        print("adding speed")
+        apply_constant_velocity(speed=5, to_ego=True)
+        input("Press any key do destroy cars...")
+    finally:
+        destroy()
