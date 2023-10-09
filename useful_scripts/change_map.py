@@ -28,7 +28,3 @@ client = carla.Client('localhost', 2000)
 # Once we have a client we can retrieve the world that is currently
 # running.
 world = client.load_world(town)
-
-
-blueprint_library = world.get_blueprint_library()
-
