@@ -26,8 +26,8 @@ class Driver:
     def spawn(self, transform):
         self.vehicle.spawn(transform)
 
-    def drive(self):
+    def drive(self, carList):
         # this will be our main logic
-        pass
+        self.vehicle.drive(carList)
     def goNuts(self):
         pass

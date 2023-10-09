@@ -36,6 +36,7 @@ class Vehicle:
                 or self.getLocation().z != other.getLocation().z
         )
 
+
     def spawn(self, transform):
         self.actor = self.world.spawn_actor(self.actorBlueprint, transform)
         self.actor.apply_control(self.control)
