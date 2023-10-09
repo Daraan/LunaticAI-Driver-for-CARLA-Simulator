@@ -25,9 +25,7 @@ def main():
     driver1 = Driver("json/driver1.json")
 
     spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
-    car1 = carlaService.createCar("model3")
-
-
+    #car1 = carlaService.createCar("model3")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)
@@ -39,16 +37,25 @@ def main():
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        v.setVelocity(3)
+        v.setVelocity(1)
 
     carlaService.assignDriver(ego, driver1)
-    #driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
+
+    from trafic_manager_daniel import TrafficManagerD
+
+    tm = TrafficManagerD(client, ego.actor)
+    #ego.setThrottle(1)
+    #time.sleep(1)
+    ego.actor.set_autopilot(True)
+
+    driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
     #driver1.vehicle.focusCamera()
-    ego.setThrottle(8)
-    time.sleep(4)
-    ego.setBrake(2)
+    #ego.setThrottle(8)
+    #time.sleep(4)
+    #ego.setBrake(2)
     input("press any key to end...")
 
+    """
     driver2 = Driver("json/driver1.json")
     car2 = carlaService.createCar("coupe")
 
@@ -77,6 +84,7 @@ def main():
     # car1.setSteering(3)
     # car1.setHandbrake(True)
     time.sleep(5)
+    """
 
 if __name__ == '__main__':
     try:
