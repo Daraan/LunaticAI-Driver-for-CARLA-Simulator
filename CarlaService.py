@@ -11,11 +11,20 @@ class CarlaService:
         # self.client.load_world(worldName)
         self.world = self.client.get_world()
 
-    def createCar(self):
-        self.vehicleList.append(Vehicle(self.world, "model3"))
+    def createCar(self, model):
+        car = Vehicle(self.world, model)
+        self.vehicleList.append(car)
+        return car
 
     def assignDriver(self, vehicle, driver):
         driver.vehicle = vehicle
 
     def getWorld(self):
         return self.world
+
+    def removeAllCars(self):
+        for car in self.vehicleList:
+            car.actor.destroy()
+
+    def __del__(self):
+        self.removeAllCars()
