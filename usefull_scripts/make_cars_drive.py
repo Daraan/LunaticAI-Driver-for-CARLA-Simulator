@@ -1,9 +1,10 @@
 # see https://carla.readthedocs.io/en/latest/core_map/#changing-the-map
-
-
+import argparse
 import glob
 import os
 import sys
+
+from numpy.random import random
 
 CARLA_ROOT = os.environ.get("CARLA_ROOT", "./")
 
@@ -32,6 +33,31 @@ def destroy():
     client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
 
 
+def get_actor_blueprints(world, filter, generation):
+    bps = world.get_blueprint_library().filter(filter)
+
+    if generation.lower() == "all":
+        return bps
+
+    # If the filter returns only one bp, we assume that this one needed
+    # and therefore, we ignore the generation
+    if len(bps) == 1:
+        return bps
+
+    try:
+        int_generation = int(generation)
+        # Check if generation is in available generations
+        if int_generation in [1, 2]:
+            bps = [x for x in bps if int(x.get_attribute('generation')) == int_generation]
+            return bps
+        else:
+            print("   Warning! Actor Generation is not valid. No actor will be spawned.")
+            return []
+    except:
+        print("   Warning! Actor Generation is not valid. No actor will be spawned.")
+        return []
+
+
 client = carla.Client('localhost', 2000)
 
 # Once we have a client we can retrieve the world that is currently
@@ -54,13 +80,28 @@ if ego_bp.has_attribute('color'):
 
 ego_bp.set_attribute('role_name', 'hero')
 
-# Spawn
+SpawnActor = carla.command.SpawnActor
+SetAutopilot = carla.command.SetAutopilot
+FutureActor = carla.command.FutureActor
 
+# Traffic Manager
+tm = client.get_trafficmanager(8000)
+
+# --------------
+# Spawn vehicles
+# --------------
 vehicles = []
 
+# --------------
+# Spawn the ego vehicle
+# --------------
 ego_spawn = spawn_points[242]
 ego = world.spawn_actor(ego_bp, ego_spawn)
 vehicles.append(ego)
+ego.set_autopilot(True, 8000)
+
+# Define a route or waypoints for the ego vehicle to follow
+ego_location = ego_spawn.location
 
 # other npcs
 for idx in [115, 243, 116]:
