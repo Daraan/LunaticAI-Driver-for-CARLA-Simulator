@@ -2,7 +2,13 @@
 import glob
 import os
 import sys
-os.chdir("../usefull_scripts")
+try:
+    os.chdir("../useful_scripts")
+except FileNotFoundError:
+    os.chdir("useful_scripts")
+
+print(os.getcwd())
+sys.path.append(os.getcwd())
 
 CARLA_ROOT = os.environ.get("CARLA_ROOT", "./")
 
@@ -17,7 +23,7 @@ except IndexError:
     pass
 
 import carla
-from usefull_scripts import utils, highway_example
+import utils, highway_example
 
 
 client = carla.Client('localhost', 2000)
