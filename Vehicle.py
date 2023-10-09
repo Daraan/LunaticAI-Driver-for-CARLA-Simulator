@@ -10,6 +10,7 @@ def calculateDistance(location1, location2):
         (location1.z ** 2 - location2.z ** 2)
     ).real
 
+from carla import Vector3D
 
 class Vehicle:
     # TODO would be nice if we could derive this from carla.Vehicle
