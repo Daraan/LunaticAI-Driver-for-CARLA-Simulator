@@ -1,7 +1,6 @@
 # see https://carla.readthedocs.io/en/latest/core_map/#changing-the-map
 
 
-
 import glob
 import os
 import sys
@@ -19,9 +18,12 @@ except IndexError:
     print("Trying to use carla installation")
     pass
 
+
 import carla
-from carla import Transform, Vector3D
 import utils
+
+def destroy():
+    client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
 
 client = carla.Client('localhost', 2000)
 
@@ -69,14 +71,9 @@ vehicles.append(ego)
 #    v = world.spawn_actor(car_blueprint, spawn_points[idx])
 #    vehicles.append(v)
 
-#for dist in [20, -40]:
-#    v = world.spawn_actor(car_blueprint, 
-#                          Transform(ego_spawn.location + #Vector3D(dist), ego_spawn.rotation))
-#    vehicles.append(v)
-
-
-for trans in spawn_points[1:]:
-    v = world.spawn_actor(car_blueprint, trans)
+for dist in [20, -40]:
+    v = world.spawn_actor(car_blueprint, 
+                          Transform(ego_spawn.location + Vector3D(dist), ego_spawn.rotation))
     vehicles.append(v)
 
 
