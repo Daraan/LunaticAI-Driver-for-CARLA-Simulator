@@ -1,6 +1,5 @@
 import json
 
-
 class Driver:
     def __init__(self, path):
         self.vehicle = None
@@ -28,9 +27,7 @@ class Driver:
         self.vehicle.spawn(transform)
 
     def drive(self):
-        self.vehicle.control.throttle = 1
-        self.vehicle.actor.apply_control(self.vehicle.control)
-
-
+        # this will be our main logic
+        pass
     def goNuts(self):
         pass

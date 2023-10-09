@@ -15,3 +15,21 @@ class Vehicle:
 
     def focusCamera(self):
         self.world.get_spectator().set_transform(self.actor.get_transform())
+
+    def setThrottle(self, value):
+        self.control.brake = 0
+        self.control.throttle = value
+        self.actor.apply_control(self.control)
+
+    def setBrake(self, value):
+        self.control.throttle = 0
+        self.control.brake = value
+        self.actor.apply_control(self.control)
+
+    def setSteering(self, value):
+        self.control.steer = value
+        self.actor.apply_control(self.control)
+
+    def setHandbrake(self, value):
+        self.control.hand_brake = value
+        self.actor.apply_control(self.control)
