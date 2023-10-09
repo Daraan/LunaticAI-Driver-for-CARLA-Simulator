@@ -11,8 +11,9 @@ import time
 
 from Vehicle import Vehicle
 
+
 def main():
-    carlaService = CarlaService("Town04", "127.0.0.1", 2000)
+    carlaService = CarlaService("Town04", "localhost", 2000)
 
     driver1 = Driver("json/driver1.json")
     car1 = Vehicle(carlaService.getWorld(), "model3")
