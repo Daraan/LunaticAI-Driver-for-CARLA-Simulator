@@ -48,5 +48,5 @@ if __name__ == '__main__':
     try:
         main()
     finally:
-        client.apply_batch([carla.command.DestroyActor(x.vehicle) for x in vehicles])
+        client.apply_batch([carla.command.DestroyActor(x.actor) for x in vehicles])
 
