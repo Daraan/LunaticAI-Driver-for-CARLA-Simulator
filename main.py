@@ -18,6 +18,7 @@ def main():
     global client
     carlaService = CarlaService("Town04", "127.0.0.1", 2000)
     client = carlaService.client
+
     world = carlaService.getWorld()
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
@@ -35,12 +36,13 @@ def main():
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
+        v.setVelocity(3)
 
     carlaService.assignDriver(ego, driver1)
     #driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
     #driver1.vehicle.focusCamera()
-    ego.setThrottle(3)
-    time.sleep(1)
+    ego.setThrottle(8)
+    time.sleep(4)
     ego.setBrake(2)
     input("press any key to end...")
 
