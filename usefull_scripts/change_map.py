@@ -29,3 +29,6 @@ client = carla.Client('localhost', 2000)
 # running.
 world = client.load_world(town)
 
+
+blueprint_library = world.get_blueprint_library()
+
