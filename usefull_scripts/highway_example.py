@@ -1,6 +1,3 @@
-# see https://carla.readthedocs.io/en/latest/core_map/#changing-the-map
-
-
 import glob
 import os
 import sys
@@ -18,12 +15,8 @@ except IndexError:
     print("Trying to use carla installation")
     pass
 
-
 import carla
 import utils
-
-def destroy():
-    client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
 
 client = carla.Client('localhost', 2000)
 
@@ -55,27 +48,24 @@ ego_bp.set_attribute('role_name', 'hero')
 
 #spawn_points = town.get_spawn_points()
 
-spawn_points = utils.csv_to_transformations("highway_example_car_positions.csv")
-
 vehicles = []
+def spawn_cars():
 
-def destroy():
-    client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
+    spawn_points = utils.csv_to_transformations("highway_example_car_positions.csv")
+    ego_spawn = spawn_points[0]
+    ego = world.spawn_actor(ego_bp, ego_spawn)
+    vehicles.append(ego)
 
-ego_spawn = spawn_points[0]
-ego = world.spawn_actor(ego_bp, ego_spawn)
-vehicles.append(ego)
-
-# other npcs
-#for idx in [115, 243, 116]:
-#    v = world.spawn_actor(car_blueprint, spawn_points[idx])
-#    vehicles.append(v)
-
-for dist in [20, -40]:
-    v = world.spawn_actor(car_blueprint, 
-                          Transform(ego_spawn.location + Vector3D(dist), ego_spawn.rotation))
-    vehicles.append(v)
+    # other npcs
+    for sp in spawn_points[1:]:
+        v = world.spawn_actor(car_blueprint, sp)
+        vehicles.append(v)
 
 
 def destroy():
     client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
+
+if __name__ == "__main__":
+    spawn_cars()
+    input("Press any key do destroy cars...")
+    destroy()
