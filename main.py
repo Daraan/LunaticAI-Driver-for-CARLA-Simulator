@@ -10,6 +10,7 @@ import random
 import time
 
 from useful_scripts import utils
+from trafic_manager_daniel import TrafficManagerD
 
 from Vehicle import Vehicle
 
@@ -31,24 +32,28 @@ def main():
     ego = Vehicle(world, ego_bp)
     ego.spawn(spawn_points[0])
     vehicles.append(ego)
+    carlaService.assignDriver(ego, driver1)
 
     # spawn others
     for sp in spawn_points[1:]:
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        v.setVelocity(1)
+        #v.setVelocity(1)
+        print(v.actor)
+        ap = TrafficManagerD(client, v.actor)
+        ap.init_passive_driver()
+        ap.start_drive()
 
-    carlaService.assignDriver(ego, driver1)
-
-    from trafic_manager_daniel import TrafficManagerD
-
-    tm = TrafficManagerD(client, ego.actor)
+    tm = TrafficManagerD(client, ego.actor,
+                         #config="json/driver1.json" # Not implemented yet
+                         )
+    tm.init_lunatic_driver()
     #ego.setThrottle(1)
     #time.sleep(1)
-    ego.actor.set_autopilot(True)
+    tm.start_drive()
 
-    driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
+    #driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
     #driver1.vehicle.focusCamera()
     #ego.setThrottle(8)
     #time.sleep(4)
