@@ -18,7 +18,6 @@ class TrafficManagerD:
         self.min_front_distance=min_front_distance
         self.speed_limit_scale : float = speed_limit_scale
         self.actor = actor
-        self.init_lunatic_driver()
 
     def init_lunatic_driver(self):
         self.tm.auto_lane_change(self.actor, True)
