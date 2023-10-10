@@ -18,15 +18,15 @@ class Vehicle:
 
     instances : list = [] # for easier destruction later
 
-    def __init__(self, world, make=""):
-        self.actor = None
+    def __init__(self, world : carla.World, make=""):
+        self.actor : carla.Actor = None
         self.world = world
-        self.control = carla.VehicleControl()
+        self.control : carla.VehicleControl = carla.VehicleControl()
         blueprint_library = world.get_blueprint_library()
         if isinstance(make, carla.ActorBlueprint):
-            self.actorBlueprint = make
+            self.actorBlueprint : carla.ActorBlueprint = make
         else:
-            self.actorBlueprint = blueprint_library.filter(make)[0]
+            self.actorBlueprint : carla.ActorBlueprint = blueprint_library.filter(make)[0]
         Vehicle.instances.append(self) # access all instances over the class
 
     def __eq__(self, other):
@@ -38,7 +38,7 @@ class Vehicle:
 
 
     def spawn(self, transform):
-        self.actor = self.world.spawn_actor(self.actorBlueprint, transform)
+        self.actor : carla.Actor = self.world.spawn_actor(self.actorBlueprint, transform)
         self.actor.apply_control(self.control)
 
     def focusCamera(self):
