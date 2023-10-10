@@ -3,13 +3,18 @@ import carla
 
 class TrafficManagerD:
 
+    tm = None
+
     def __init__(self, client, actor, *,
-                 speed_limit_scale=-20,
-                 min_front_distance=5,
+                 speed_limit_scale=-25,
+                 min_front_distance=3,
                  seed=0):
         # TODO use a settings file
-        self.tm : carla.TrafficManager = client.get_trafficmanager()
-        self.tm.set_random_device_seed(seed)
+        if True or TrafficManagerD.tm is None:
+            #TrafficManagerD.tm : carla.TrafficManager =\
+            self.tm = client.get_trafficmanager()
+            #TrafficManagerD.tm.set_random_device_seed(seed)
+            self.tm.set_random_device_seed(seed)
         self.min_front_distance=min_front_distance
         self.speed_limit_scale : float = speed_limit_scale
         self.actor = actor
@@ -19,9 +24,19 @@ class TrafficManagerD:
         self.tm.auto_lane_change(self.actor, True)
         self.tm.distance_to_leading_vehicle(self.actor, self.min_front_distance)
         self.tm.vehicle_percentage_speed_difference(self.actor, self.speed_limit_scale)
-        self.tm.keep_right_rule_percentage(self.actor, 10)
-        self.tm.random_right_lanechange_percentage(self.actor, 20)
-        self.tm.random_left_lanechange_percentage(self.actor, 70)
+        self.tm.keep_right_rule_percentage(self.actor, 0)
+        self.tm.random_right_lanechange_percentage(self.actor, 25)
+        self.tm.random_left_lanechange_percentage(self.actor, 50)
+        self.tm.ignore_vehicles_percentage(self.actor, 40)
+
+    def init_passive_driver(self):
+        self.tm.auto_lane_change(self.actor, False)
+        self.tm.random_right_lanechange_percentage(self.actor, 0)
+        self.tm.random_left_lanechange_percentage(self.actor, 0)
+        self.tm.vehicle_percentage_speed_difference(self.actor, 60)
+        self.tm.distance_to_leading_vehicle(self.actor, 8)
+        self.actor.set_autopilot(True)
+
 
     def force_overtake(self, speed):
         self.force_lane_change(right=False)
@@ -31,4 +46,7 @@ class TrafficManagerD:
     def force_lane_change(self, right=False):
         self.tm.force_lane_change(self.actor, right)
 
+
+    def start_drive(self):
+        self.actor.set_autopilot(True)
 
