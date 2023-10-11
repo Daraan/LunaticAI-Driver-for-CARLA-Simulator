@@ -1,5 +1,6 @@
 import json
 
+
 class Driver:
     def __init__(self, path):
         self.vehicle = None
@@ -29,5 +30,6 @@ class Driver:
     def drive(self, carList):
         # this will be our main logic
         self.vehicle.drive(carList)
+
     def goNuts(self):
         pass

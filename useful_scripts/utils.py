@@ -1,5 +1,4 @@
 import pandas as pd
-import carla
 from carla import Transform, Location, Rotation
 
 LOC_DF = pd.DataFrame(columns=["x", "y", "z", "pitch", "yaw", "roll"])
