@@ -2,6 +2,7 @@ import carla
 from carla import Vector3D
 from vehicle import VehicleBase
 
+
 # DONE: we likely can derive this from our base class and just add t
 # NOTE: This file is not used
 class Vehicle:

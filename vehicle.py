@@ -113,13 +113,27 @@ class VehicleBase:
 
         return calculateDistance(self.getLocation(), locationBehind)
 
+    def getRelativeCoordinates(self, relativeObject):
+        if not self.actor or not relativeObject.actor:
+            return None
+
+        self_transform = self.actor.get_transform()
+        self_location = self_transform.location
+
+        relative_transform = relativeObject.actor.get_transform()
+        relative_location = relative_transform.location
+
+        relative_coordinates = self_location - relative_location
+
+        return relative_coordinates
+
 
 class Vehicle(VehicleBase):
     # Wrap our own VehicleBase class and the CARLA vehicle class
 
-    #instances: list = []  # for easier destruction later
+    # instances: list = []  # for easier destruction later
 
-    #def __init__(self, world: carla.World, make=""):
+    # def __init__(self, world: carla.World, make=""):
     #    super().__init__(world=world, make=make)
     #    self.vehicle = VehicleBase(world, make)
 
