@@ -236,10 +236,10 @@ class BasicAgent(object):
         and the other 3 fine tune the maneuver
         """
         speed = self._vehicle.get_velocity().length()
-        path = self._generate_lane_change_path(
-            self._map.get_waypoint(self._vehicle.get_location()),
+        path : list = self._generate_lane_change_path(
+            self._map.get_waypoint(self._vehicle.get_location()), # get current waypoint
             direction,
-            same_lane_time * speed,
+            same_lane_time * speed, # get direction in meters t*V
             other_lane_time * speed,
             lane_change_time * speed,
             False,
@@ -434,12 +434,12 @@ class BasicAgent(object):
         # Same lane
         distance = 0
         while distance < distance_same_lane:
-            next_wps = plan[-1][0].next(step_distance)
+            next_wps = plan[-1][0].next(step_distance)  # follow a path of waypoints
             if not next_wps:
                 return []
             next_wp = next_wps[0]
             distance += next_wp.transform.location.distance(plan[-1][0].transform.location)
-            plan.append((next_wp, RoadOption.LANEFOLLOW))
+            plan.append((next_wp, RoadOption.LANEFOLLOW)) # next waypoint to the path
 
         if direction == 'left':
             option = RoadOption.CHANGELANELEFT
@@ -465,7 +465,7 @@ class BasicAgent(object):
             if direction == 'left':
                 if check and str(next_wp.lane_change) not in ['Left', 'Both']:
                     return []
-                side_wp = next_wp.get_left_lane()
+                side_wp = next_wp.get_left_lane() # get waypoint on other lane
             else:
                 if check and str(next_wp.lane_change) not in ['Right', 'Both']:
                     return []
@@ -479,6 +479,7 @@ class BasicAgent(object):
             lane_changes_done += 1
 
         # Other lane
+        # NOTE: Might force it to follow the other lane for some time
         distance = 0
         while distance < distance_other_lane:
             next_wps = plan[-1][0].next(step_distance)
