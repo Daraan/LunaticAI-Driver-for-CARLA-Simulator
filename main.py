@@ -23,6 +23,7 @@ def main():
     client = carlaService.client
 
     world = carlaService.getWorld()
+    level = world.get_map()
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
     driver1 = Driver("json/driver1.json", traffic_manager=client)
