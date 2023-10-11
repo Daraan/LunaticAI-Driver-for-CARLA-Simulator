@@ -60,6 +60,12 @@ def main():
     #ego.setThrottle(8)
     #time.sleep(4)
     #ego.setBrake(2)
+    if "-I" in sys.argv:
+        # goes into interactive mode here
+        import code
+        v = globals().copy()
+        v.update(locals())
+        code.interact(local=v)
     input("press any key to end...")
 
     """
