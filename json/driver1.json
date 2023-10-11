@@ -1,17 +1,5 @@
 {
-  "traffic_manager" : {
-    "vehicle_percentage_speed_difference" : -25,
-    "distance_to_leading_vehicle" : 2,
-    "ignore_vehicles_percentage" : 15,
-    "ignore_lights_percentage" : 0,
-    "ignore_signs_percentage" : 0,
-    "ignore_walkers_percentage" : 0,
-    "auto_lane_change" : true,
-    "keep_right_rule_percentage" : 20,
-    "random_left_lanechange_percentage" : 10,
-    "random_right_lanechange_percentage" : 10,
-    "vehicle_lane_offset" : 0
-  },
+  "use_traffic_manager" : "default_driver",
   "driver": {
     "speed": {
       "from": 0,

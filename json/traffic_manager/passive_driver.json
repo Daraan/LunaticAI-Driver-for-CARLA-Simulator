@@ -1,0 +1,13 @@
+{
+    "vehicle_percentage_speed_difference" : 60,
+    "distance_to_leading_vehicle" : 5,
+    "ignore_vehicles_percentage" : 0,
+    "ignore_lights_percentage" : 0,
+    "ignore_signs_percentage" : 0,
+    "ignore_walkers_percentage" : 0,
+    "auto_lane_change" : false,
+    "keep_right_rule_percentage" : false,
+    "random_left_lanechange_percentage" : 0,
+    "random_right_lanechange_percentage" : 0,
+    "vehicle_lane_offset" : 0
+}
