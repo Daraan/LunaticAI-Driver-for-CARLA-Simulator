@@ -2,9 +2,12 @@ import json
 import carla
 
 class Driver:
-    def __init__(self, path, client : carla.Client):
+    def __init__(self, path, client : carla.Client=None):
+        # NOTE: Set client to None as currently only the TM needs it
         self.vehicle = None
-        self.tm : carla.TrafficManager = client.get_trafficmanager()
+        self.tm = None
+        if client is not None:
+            self.tm: carla.TrafficManager = client.get_trafficmanager()
         if path is not None:
             with open(path, 'r') as file:
                 data = json.load(file)
@@ -40,6 +43,8 @@ class Driver:
         return self.vehicle.actor
 
     def configure_autopilot(self):
+        if self.tm is None:
+            raise ValueError("To use the Traffic Manager the driver needs to be initialized with the client. Or set Driver.tm manually to a manager")
         # TODO: Set values from config
         self.tm.auto_lane_change(self.actor, True)
         self.tm.distance_to_leading_vehicle(self.actor, self.min_front_distance)
