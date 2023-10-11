@@ -55,14 +55,17 @@ def main():
     # time.sleep(1)
     tm.start_drive()
 
-    # driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
-    # driver1.vehicle.focusCamera()
-    # ego.setThrottle(8)
-    # time.sleep(4)
-    # ego.setBrake(2)
-
-    time.sleep(10)
-    print(driver1.vehicle.getRelativeCoordinates(vehicles[2]))
+    #driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
+    #driver1.vehicle.focusCamera()
+    #ego.setThrottle(8)
+    #time.sleep(4)
+    #ego.setBrake(2)
+    if "-I" in sys.argv:
+        # goes into interactive mode here
+        import code
+        v = globals().copy()
+        v.update(locals())
+        code.interact(local=v)
 
     input("press any key to end...")
 
