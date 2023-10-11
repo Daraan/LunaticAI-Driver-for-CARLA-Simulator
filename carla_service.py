@@ -1,7 +1,7 @@
 
 import carla
 
-from Vehicle import Vehicle
+from vehicle import Vehicle
 
 
 class CarlaService:

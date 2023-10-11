@@ -1,6 +1,8 @@
 import carla
-from CarlaService import CarlaService
-from Driver import Driver
+from carla_service import CarlaService
+# TODO: maybe we can merge these or make them more unfied
+from driver import Driver
+from vehicle import Vehicle
 
 import numpy
 import glob
@@ -12,7 +14,7 @@ import time
 from useful_scripts import utils
 from trafic_manager_daniel import TrafficManagerD
 
-from Vehicle import Vehicle
+
 
 vehicles = []
 def main():
@@ -95,5 +97,8 @@ if __name__ == '__main__':
     try:
         main()
     finally:
-        client.apply_batch([carla.command.DestroyActor(x.actor) for x in vehicles])
-
+        try:
+            client.apply_batch([carla.command.DestroyActor(x.actor) for x in vehicles])
+        except NameError:
+            # Should be client not defined
+            pass

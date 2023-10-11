@@ -1,15 +1,16 @@
 import carla
 from carla import Vector3D
-from Vehicle.vehicle import Vehicle
+from vehicle import VehicleBase
 
-
-class VehicleWrapper:
-    # Wrap our own Vehicle class and the CARLA vehicle class
+# DONE: we likely can derive this from our base class and just add t
+# NOTE: This file is not used
+class Vehicle:
+    # Wrap our own VehicleBase class and the CARLA vehicle class
 
     instances: list = []  # for easier destruction later
 
     def __init__(self, world: carla.World, make=""):
-        self.vehicle = Vehicle(world, make)
+        self.vehicle = VehicleBase(world, make)
 
     def __getattr__(self, attr):
         # Delegate attribute access to the CARLA Vehicle class

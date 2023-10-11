@@ -1,5 +1,4 @@
 from cmath import sqrt
-
 import carla
 from carla import Vector3D
 
@@ -15,7 +14,7 @@ def calculateDistance(location1, location2):
 from carla import Vector3D
 
 
-class Vehicle:
+class VehicleBase:
     # TODO would be nice if we could derive this from carla.Vehicle
     # should be able to use some functions directly without using functions for all
 
@@ -33,6 +32,7 @@ class Vehicle:
         Vehicle.instances.append(self)  # access all instances over the class
 
     def __eq__(self, other):
+        # comment: are there by chance other ways? some (Unreal)id?
         return not (
                 self.getLocation().x != other.getLocation().x
                 or self.getLocation().y != other.getLocation().y
@@ -112,3 +112,22 @@ class Vehicle:
         locationBehind = vehicleBehind.actor.get_transform().location
 
         return calculateDistance(self.getLocation(), locationBehind)
+
+
+class Vehicle(VehicleBase):
+    # Wrap our own VehicleBase class and the CARLA vehicle class
+
+    #instances: list = []  # for easier destruction later
+
+    #def __init__(self, world: carla.World, make=""):
+    #    super().__init__(world=world, make=make)
+    #    self.vehicle = VehicleBase(world, make)
+
+    def __getattr__(self, attr):
+        # Delegate attribute access to the CARLA Vehicle class
+        if hasattr(self.vehicle.actor, attr):
+            return getattr(self.vehicle.actor, attr)
+        raise AttributeError(f"'Invalid attribute {attr}'{attr}'")
+
+    def getCarlaVehicle(self):
+        return self.carlaVehicle
