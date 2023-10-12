@@ -26,7 +26,7 @@ def main():
     level = world.get_map()
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
-    driver1 = Driver("json/driver1.json")
+    driver1 = Driver("json/driver1.json", traffic_manager=client)
 
     spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
     # car1 = carlaService.createCar("model3")
@@ -36,6 +36,8 @@ def main():
     ego.spawn(spawn_points[0])
     vehicles.append(ego)
     carlaService.assignDriver(ego, driver1)
+
+    # TODO: let Driver class manage autopilot and not the TrafficMangerD class
 
     # spawn others
     for sp in spawn_points[1:]:

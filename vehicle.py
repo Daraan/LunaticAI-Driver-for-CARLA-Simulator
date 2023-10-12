@@ -22,7 +22,7 @@ class VehicleBase:
 
     def __init__(self, world: carla.World, make=""):
         self.actor: carla.Actor = None
-        self.world = world
+        self.world = world if isinstance(world, carla.World) else world.world  # if using classes.world.World
         self.control: carla.VehicleControl = carla.VehicleControl()
         blueprint_library = world.get_blueprint_library()
         if isinstance(make, carla.ActorBlueprint):
