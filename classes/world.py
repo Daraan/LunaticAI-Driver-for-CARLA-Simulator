@@ -17,7 +17,10 @@ from classes.sensors import CollisionSensor, GnssSensor, LaneInvasionSensor
 class World(object):
     """ Class representing the surrounding environment """
 
-    def __init__(self, carla_world, hud, args):
+    def get_blueprint_library(self):
+        return self.world.get_blueprint_library()
+
+    def __init__(self, carla_world, hud, args, player=None):
         """Constructor method"""
         self._args = args
         self.world = carla_world
@@ -29,7 +32,7 @@ class World(object):
             print('  Make sure it exists, has the same name of your town, and is correct.')
             sys.exit(1)
         self.hud = hud
-        self.player = None
+        self.player = player or None
         self.collision_sensor = None
         self.lane_invasion_sensor = None
         self.gnss_sensor = None
@@ -42,6 +45,11 @@ class World(object):
         self.world.on_tick(hud.on_world_tick)
         self.recording_enabled = False
         self.recording_start = 0
+
+    def set_actor(self, actor):
+        self.player = actor
+        self.restart(self._args)
+
 
     def restart(self, args):
         """Restart the world"""
@@ -62,8 +70,9 @@ class World(object):
             spawn_point.location.z += 2.0
             spawn_point.rotation.roll = 0.0
             spawn_point.rotation.pitch = 0.0
-            self.destroy()
-            self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+            if self.camera_manager is not None:
+                self.destroy()
+                self.player = self.world.try_spawn_actor(blueprint, spawn_point)
             self.modify_vehicle_physics(self.player)
         while self.player is None:
             if not self.map.get_spawn_points():
