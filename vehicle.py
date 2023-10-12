@@ -3,6 +3,7 @@ import carla
 from carla import Vector3D
 
 
+
 def calculateDistance(location1, location2):
     return sqrt(
         (location1.x ** 2 - location2.x ** 2) +
@@ -10,8 +11,6 @@ def calculateDistance(location1, location2):
         (location1.z ** 2 - location2.z ** 2)
     ).real
 
-
-from carla import Vector3D
 
 
 class VehicleBase:
@@ -139,8 +138,8 @@ class Vehicle(VehicleBase):
 
     def __getattr__(self, attr):
         # Delegate attribute access to the CARLA Vehicle class
-        if hasattr(self.vehicle.actor, attr):
-            return getattr(self.vehicle.actor, attr)
+        if hasattr(self.actor, attr):
+            return getattr(self.actor, attr)
         raise AttributeError(f"'Invalid attribute {attr}'{attr}'")
 
     def getCarlaVehicle(self):
