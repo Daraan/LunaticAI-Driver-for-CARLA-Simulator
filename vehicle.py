@@ -30,6 +30,13 @@ class VehicleBase:
             self.actorBlueprint: carla.ActorBlueprint = blueprint_library.filter(make)[0]
         Vehicle.instances.append(self)  # access all instances over the class
 
+    @classmethod
+    def destroy_all(cls, client):
+        while len(cls.instances) > 0: # instances might contain actors if still not empty.
+            client.apply_batch([carla.command.DestroyActor(cls.instances.pop().actor)])
+
+
+
     def __eq__(self, other):
         # comment: are there by chance other ways? some (Unreal)id?
         return not (
