@@ -169,9 +169,11 @@ def game_loop(args):
             raise ValueError(args.agent)
 
 
-        next_wps: list = wp_start.next(250)
+        next_wps: list = wp_start.next(50)
+        last = next_wps[-1]
+        left = last.get_left_lane()
 
-        destination = next_wps[-1].transform.location
+        destination = left.transform.location
 
         agent.set_destination(destination)
         agent.ignore_vehicles(agent._behavior.ignore_vehicles)
