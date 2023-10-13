@@ -179,6 +179,14 @@ def game_loop(args):
             agent = BehaviorAgent(world.player, behavior=args.behavior)
         else:
             raise ValueError(args.agent)
+
+
+        next_wps: list = wp_start.next(50)
+        last = next_wps[-1]
+        left = last.get_left_lane()
+
+        destination = left.transform.location
+
         agent.set_destination(destination)
 
         clock = pygame.time.Clock()
