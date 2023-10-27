@@ -11,36 +11,19 @@
 from __future__ import print_function
 
 import argparse
-import collections
-import datetime
-import glob
 import logging
-import math
-import os
 import numpy.random as random
-import re
-import sys
-import weakref
 
-
-
-import numpy
 import glob
 import os
 import sys
 import random
 import time
 
-from useful_scripts import utils
-# To import a basic agent
-from agents.navigation.basic_agent import BasicAgent
-
 from trafic_manager_daniel import TrafficManagerD
+from useful_scripts import utils
 
-# To import a behavior agent
-from agents.navigation.behavior_agent import BehaviorAgent
-
-vehicles = []
+import threading
 
 try:
     import pygame
@@ -77,10 +60,9 @@ except IndexError:
 
 import carla
 
-from carla_service import CarlaService
-from driver import Driver
+from carla_service import CarlaService # TODO integrate or scrap
+from driver import Driver # TODO integrate or scrap
 from vehicle import Vehicle
-
 
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
@@ -102,9 +84,6 @@ from utils import get_actor_display_name, get_actor_blueprints
 from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 
 
-
-
-
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
 # ==============================================================================
@@ -121,6 +100,7 @@ def game_loop(args):
     world = None
 
     try:
+        vehicle = []
         if args.seed:
             random.seed(args.seed)
 
@@ -131,12 +111,16 @@ def game_loop(args):
         sim_world = client.get_world()
 
         if args.sync:
+            logging.log(logging.DEBUG, "Using synchronous mode.")
+            # apply synchronous mode if wanted
             settings = sim_world.get_settings()
             settings.synchronous_mode = True
             settings.fixed_delta_seconds = 0.05
             sim_world.apply_settings(settings)
 
             traffic_manager.set_synchronous_mode(True)
+        else:
+            logging.log(logging.DEBUG, "Might be using asynchronous mode if not changed.")
 
         display = pygame.display.set_mode(
             (args.width, args.height),
@@ -144,24 +128,26 @@ def game_loop(args):
 
         hud = HUD(args.width, args.height)
 
-
         #carlaService = CarlaService("Town04", "127.0.0.1", 2000)
 
         # Set the agent destination
-
-
-        spawn_points = utils.csv_to_transformations("../useful_scripts/highway_example_car_positions.csv")
+        try:
+            spawn_points = utils.csv_to_transformations("../useful_scripts/highway_example_car_positions.csv")
+        except FileNotFoundError:
+            spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
         # car1 = carlaService.createCar("model3")
 
         # Spawn Ego
         ego_bp, car_bp = utils.prepare_blueprints(sim_world)
         ego = Vehicle(sim_world, ego_bp)
-        ego.spawn(spawn_points[0])
-        vehicles.append(ego)
+        start : carla.Transform = spawn_points[0]
+        ego.spawn(start)
 
         world = World(client.get_world(), hud, args, player=ego.actor)
+        wp_start = world.map.get_waypoint(start.location)
         all_spawn_points = world.map.get_spawn_points()
-        destination = random.choice(all_spawn_points).location
+        #destination = random.choice(all_spawn_points).location
+
         controller = KeyboardControl(world)
         #world.set_actor(ego.actor)
 
@@ -177,6 +163,8 @@ def game_loop(args):
             agent.follow_speed_limits(True)
         elif args.agent == "Behavior":
             agent = BehaviorAgent(world.player, behavior=args.behavior)
+            from pprint import pprint
+            pprint(vars(agent._behavior))
         else:
             raise ValueError(args.agent)
 
@@ -188,6 +176,7 @@ def game_loop(args):
         destination = left.transform.location
 
         agent.set_destination(destination)
+        agent.ignore_vehicles(agent._behavior.ignore_vehicles)
 
         clock = pygame.time.Clock()
 
@@ -195,38 +184,59 @@ def game_loop(args):
         for sp in spawn_points[1:]:
             v = Vehicle(world, car_bp)
             v.spawn(sp)
-            vehicles.append(v)
+            world.actors.append(v)
             # v.setVelocity(1)
             print(v.actor)
             ap = TrafficManagerD(client, v.actor)
             ap.init_passive_driver()
             ap.start_drive()
 
-        while True:
-            clock.tick()
-            if args.sync:
-                world.world.tick()
-            else:
-                world.world.wait_for_tick()
-            if controller.parse_events():
-                return
+        ego.set_target_velocity(carla.Vector3D(-7.5, 0, 0))
 
-            world.tick(clock)
-            world.render(display)
-            pygame.display.flip()
+        def loop():
 
-            if agent.done():
-                if args.loop:
-                    agent.set_destination(random.choice(spawn_points).location)
-                    world.hud.notification("Target reached", seconds=4.0)
-                    print("The target has been reached, searching for another target")
-                else:
-                    print("The target has been reached, stopping the simulation")
-                    break
+            i = 0
+            while True:
+                    clock.tick()
+                    if args.sync:
+                        world.world.tick()
+                    else:
+                        world.world.wait_for_tick()
+                    if controller.parse_events():
+                        return
 
-            control = agent.run_step()
-            control.manual_gear_shift = False
-            world.player.apply_control(control)
+                    world.tick(clock)
+                    world.render(display)
+                    pygame.display.flip()
+
+                    if agent.done():
+                        if args.loop:
+                            agent.set_destination(random.choice(spawn_points).location)
+                            world.hud.notification("Target reached", seconds=4.0)
+                            print("The target has been reached, searching for another target")
+                        else:
+                            print("The target has been reached, stopping the simulation")
+                            break
+
+                    control = agent.run_step()
+                    control.manual_gear_shift = False
+                    world.player.apply_control(control)
+                    #if i % 50 == 0:
+                    #    print("Tailgate Counter", agent._behavior.tailgate_counter)
+                    i += 1
+
+        if "-I" in sys.argv:
+            thread = threading.Thread(target=loop)
+            thread.start()
+            # goes into interactive mode here
+            import code
+            v = globals().copy()
+            v.update(locals())
+            code.interact(local=v)
+            thread.join()
+        else:
+            loop()
+
 
     finally:
 
@@ -299,7 +309,7 @@ def main():
         default="Behavior")
     argparser.add_argument(
         '-b', '--behavior', type=str,
-        choices=["cautious", "normal", "aggressive"],
+        #choices=["cautious", "normal", "aggressive"],
         help='Choose one of the possible agent behaviors (default: normal) ',
         default='normal')
     argparser.add_argument(
@@ -307,6 +317,10 @@ def main():
         help='Set seed for repeating executions (default: None)',
         default=None,
         type=int)
+    argparser.add_argument(
+        '-I', '--interactive',
+        help='Enter interactive mode after initialization',
+        action="store_true")
 
     args = argparser.parse_args()
 

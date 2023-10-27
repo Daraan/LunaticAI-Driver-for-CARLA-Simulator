@@ -45,10 +45,9 @@ class World(object):
         self.world.on_tick(hud.on_world_tick)
         self.recording_enabled = False
         self.recording_start = 0
-
-    def set_actor(self, actor):
-        self.player = actor
-        self.restart(self._args)
+        self.actors = []
+        if self.player is not None:
+            self.actors.append(self.player)
 
 
     def restart(self, args):
@@ -138,7 +137,9 @@ class World(object):
             self.collision_sensor.sensor,
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
-            self.player]
+            # self.player
+        ]
+        actors.extend(self.actors)
         for actor in actors:
             if actor is not None:
                 actor.destroy()
