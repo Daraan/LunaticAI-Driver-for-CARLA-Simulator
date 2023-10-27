@@ -83,7 +83,7 @@ class BasicAgent(object):
         if 'detection_speed_ratio' in opt_dict:
             self._speed_ratio = opt_dict['detection_speed_ratio']
         if 'max_brake' in opt_dict:
-                self._max_brake = opt_dict['max_brake']
+            self._max_brake = opt_dict['max_brake']
         if 'offset' in opt_dict:
             self._offset = opt_dict['offset']
 
