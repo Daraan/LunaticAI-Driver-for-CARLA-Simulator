@@ -7,9 +7,10 @@ from vehicle import Vehicle
 class CarlaService:
     def __init__(self, worldName, ip, port):
         self.client = carla.Client(ip, port)
-        self.client.set_timeout(2.0)
+        self.client.set_timeout(10.0)
         self.vehicleList = []
         # self.client.load_world(worldName)
+        # self.client.world.unload_map_layer(carla.MapLayer.Buildings)
         self.world = self.client.get_world()
 
     def createCar(self, model):
