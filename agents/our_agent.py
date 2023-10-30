@@ -16,18 +16,17 @@ from agents.navigation.behavior_agent import BehaviorAgent
 
 from agents.navigation.local_planner import LocalPlanner, RoadOption
 from agents.navigation.global_route_planner import GlobalRoutePlanner
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BuiltInBehavior
-import agents.navigation.behavior_types as _behavior_types
-
-behavior_types = vars(_behavior_types)
-
-from agents.tools.misc import get_speed, positive, is_within_distance, compute_distance
-
 from shapely.geometry import Polygon
-
 from agents.tools.misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
+
+from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BasicBehavior
+import agents.navigation.behavior_types as _behavior_types #
+
+
+behavior_types = vars(_behavior_types)
+
 
 
 
@@ -59,7 +58,7 @@ class BasicAgent(object):
 
         # OURS: Fusing behavior
         print("Behavior of Agent", behavior)
-        if isinstance(behavior, BuiltInBehavior):
+        if isinstance(behavior, BasicBehavior):
             self._behavior = behavior
         else:
             self._behavior = behavior_types[behavior]

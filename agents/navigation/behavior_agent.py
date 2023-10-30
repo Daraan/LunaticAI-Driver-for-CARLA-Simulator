@@ -13,7 +13,7 @@ import numpy as np
 import carla
 from agents.navigation.basic_agent import BasicAgent
 from agents.navigation.local_planner import RoadOption
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BuiltInBehavior
+from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BasicBehavior
 import agents.navigation.behavior_types as _behavior_types
 
 behavior_types = vars(_behavior_types)
@@ -54,7 +54,7 @@ class BehaviorAgent(BasicAgent):
         self._sampling_resolution = 4.5  # NOTE also set in default behaviours
 
         print("Behavior of Agent", behavior)
-        if isinstance(behavior, BuiltInBehavior):
+        if isinstance(behavior, BasicBehavior):
             self._behavior = behavior
 
         # Parameters for agent behavior
@@ -219,7 +219,9 @@ class BehaviorAgent(BasicAgent):
 
         vehicle_speed = get_speed(vehicle)
         delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
-        ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
+        ttc = ( distance / delta_v if delta_v != 0   # TimeTillCollision
+                else distance / np.nextafter(0., 1.)  # do not divide by 0,
+                )
 
         # Under safety time distance, slow down.
         if self._behavior.safety_time > ttc > 0.0:
