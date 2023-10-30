@@ -89,6 +89,7 @@ class LocalPlanner(object):
         self._follow_speed_limits = False
 
         # Overload parameters
+        # TODO: instead of storing variables, updating the dict could influence the planner dynamically
         if opt_dict:
             if 'dt' in opt_dict:
                 self._dt = opt_dict['dt']

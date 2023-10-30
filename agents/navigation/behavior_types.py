@@ -4,12 +4,14 @@
 """ This module contains the different parameters sets for each behavior. """
 
 
+# helperclass, similar to @property but which works on classes directly
 class classproperty(object):
     def __init__(self, f):
         self.f = f
     def __get__(self, obj, owner):
         return self.f(owner)
 
+#TODO: Using a a json/yaml file in the future
 class BuiltInBehavior:
     """
     Default values and parameters 
@@ -74,6 +76,8 @@ class BuiltInBehavior:
     # values of the longitudinal PID controller
     _longitudinal_control_dict = {'K_P': 1.0, 'K_I': 0.05, 'K_D': 0, 'dt' : None}
 
+    # ---------------------
+    # End of settings
     # ---------------------
 
     # aliases for better understanding or because differently used by the agents
@@ -143,12 +147,11 @@ class BuiltInBehavior:
     @classmethod
     def get_options(cls) -> dict:
         """
-        Returns the all options as a dictionary. 
+        Returns the all options as a dictionary.
         NOTE: Attribute access is cheaper, however dict can be created once and reused.
-        TODO: Getting this every time-step is not efficient, cache this but think about how updates could be possible.
         """
-        all : dict = vars(cls)
-        remapped = dict(map(cls._filter_options, all.keys(), all.values()))
+        variables: dict = vars(cls)
+        remapped = dict(map(cls._filter_options, variables.keys(), variables.values()))
         remapped.pop(None, None) # remove filtered out values
         return remapped
         

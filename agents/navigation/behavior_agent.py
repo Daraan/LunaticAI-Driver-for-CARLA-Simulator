@@ -41,7 +41,6 @@ class BehaviorAgent(BasicAgent):
             :param behavior: type of agent to apply
         """
 
-
         self._look_ahead_steps = 0
 
         # Vehicle information
@@ -52,7 +51,7 @@ class BehaviorAgent(BasicAgent):
         self._incoming_waypoint = None
         self._min_speed = 5
         self._behavior = None
-        self._sampling_resolution = 4.5  # NOTE also et in behaviours
+        self._sampling_resolution = 4.5  # NOTE also set in default behaviours
 
         print("Behavior of Agent", behavior)
         if isinstance(behavior, BuiltInBehavior):
@@ -70,8 +69,8 @@ class BehaviorAgent(BasicAgent):
         else:
             self._behavior = behavior_types[behavior]
 
-        opts = self._behavior.options.copy() # base options from templates
-        opts.update(opt_dict)
+        opts = self._behavior.get_options().copy() # base options from templates
+        opts.update(opt_dict) # update by custom options
         super().__init__(vehicle, opt_dict=opts, map_inst=map_inst, grp_inst=grp_inst)
 
     def _update_information(self):
