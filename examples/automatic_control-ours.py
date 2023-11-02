@@ -5,6 +5,7 @@ Based on German Ros (german.ros@intel.com) example of automatic_control shipped 
 """
 from __future__ import print_function # for python 2.7 compatibility
 
+import _fix_imports
 from utils.blueprint_helpers import get_actor_blueprints
 import utils.general 
 
@@ -22,7 +23,6 @@ import random
 import time
 
 from classes.traffic_manager_daniel import TrafficManagerD
-from useful_scripts import utils
 
 import threading
 
@@ -69,9 +69,8 @@ from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=im
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
 
-from classes.world import World
-from classes.HUD import HUD
-
+from classes.carla_originals.world import World
+from classes.carla_originals.HUD import HUD
 from classes.carla_originals.camera_manager import CameraManager
 
 # ==============================================================================
@@ -133,13 +132,13 @@ def game_loop(args):
 
         # Set the agent destination
         try:
-            spawn_points = utils.general.csv_to_transformations("../useful_scripts/highway_example_car_positions.csv")
+            spawn_points = utils.general.csv_to_transformations("../examples/highway_example_car_positions.csv")
         except FileNotFoundError:
-            spawn_points = utils.general.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
+            spawn_points = utils.general.csv_to_transformations("examples/highway_example_car_positions.csv")
         # car1 = carlaService.createCar("model3")
 
         # Spawn Ego
-        ego_bp, car_bp = utils.get_contrasting_blueprints(sim_world)
+        ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(sim_world)
         ego = Vehicle(sim_world, ego_bp)
         start : carla.Transform = spawn_points[0]
         ego.spawn(start)
