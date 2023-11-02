@@ -1,9 +1,11 @@
 import carla
+
 from classes.carla_service import CarlaService
-# TODO: maybe we can merge these or make them more unfied
+# TODO: maybe we can merge these or make them more unified & marge with agent
 from classes.driver import Driver
 from classes.vehicle import Vehicle
 
+import argparse
 import glob
 import os
 import sys
@@ -15,9 +17,9 @@ import utils
 
 vehicles = []
 
-def main():
+def main(args={}):
     global client
-    carlaService = CarlaService("Town04", "10.1.0.41", 2000)
+    carlaService = CarlaService("Town04", args.host, args.port)
     client = carlaService.client
 
     world = carlaService.getWorld()
@@ -49,7 +51,7 @@ def main():
         ap.start_drive()
 
     tm = TrafficManagerD(client, ego.actor,
-                         # config="json/driver1.json" # Not implemented yet
+                         # config="config/driver1.json" # Not implemented yet
                          )
     tm.init_lunatic_driver()
     # ego.setThrottle(1)
@@ -61,12 +63,6 @@ def main():
     #ego.setThrottle(8)
     #time.sleep(4)
     #ego.setBrake(2)
-    if "-I" in sys.argv:
-        # goes into interactive mode here
-        import code
-        v = globals().copy()
-        v.update(locals())
-        code.interact(local=v)
 
     """
     driver2 = Driver("json/driver1.json")
@@ -98,12 +94,28 @@ def main():
     # car1.setHandbrake(True)
     time.sleep(5)
     """
+    if args.interactive: 
+        # goes into interactive mode here
+        import code
+        v = globals().copy()
+        v.update(locals())
+        code.interact(local=v)
     input("press any key to end...")
+
+def parse():
+    parser = argparse.ArgumentParser(description='Carla Highway Example')
+    parser.add_argument('-I', '--interactive', action='store_true', help='Interactive mode', default=False)
+    parser.add_argument('-p', '--port', help='TCP Port', default="2000", type=int)
+    parser.add_argument('-i', '--host', help='Host', default="localhost", type=str)
+    return parser.parse_args()  
 
 
 if __name__ == '__main__':
+    args = parse()
+    from pprint import pprint
+    pprint(args)
     try:
-        main()
+        main(args)
     finally:
         try:
             client.apply_batch([carla.command.DestroyActor(x.actor) for x in vehicles])
