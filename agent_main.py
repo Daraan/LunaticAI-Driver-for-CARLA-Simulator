@@ -15,7 +15,7 @@ from useful_scripts import utils
 # To import a basic agent
 from agents.navigation.basic_agent import BasicAgent
 
-from trafic_manager_daniel import TrafficManagerD
+from classes.traffic_manager_daniel import TrafficManagerD
 
 # To import a behavior agent
 from agents.navigation.behavior_agent import BehaviorAgent

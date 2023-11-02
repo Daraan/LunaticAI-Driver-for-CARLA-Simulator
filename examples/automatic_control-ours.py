@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""This file tests the agent"""
 
 # Copyright (c) 2018 Intel Labs.
 # authors: German Ros (german.ros@intel.com)
@@ -20,7 +21,7 @@ import sys
 import random
 import time
 
-from trafic_manager_daniel import TrafficManagerD
+from classes.traffic_manager_daniel import TrafficManagerD
 from useful_scripts import utils
 
 import threading

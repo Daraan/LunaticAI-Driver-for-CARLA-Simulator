@@ -12,7 +12,7 @@ import random
 import time
 
 from useful_scripts import utils
-from trafic_manager_daniel import TrafficManagerD
+from classes.traffic_manager_daniel import TrafficManagerD
 
 vehicles = []
 
