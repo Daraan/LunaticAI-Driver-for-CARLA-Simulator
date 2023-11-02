@@ -1,10 +1,29 @@
+"""Contains snipplets that can can import/export vehicle positions from/to csv files."""
 import pandas as pd
 import carla
 from carla import Transform, Location, Rotation
 
+# A dataframe template to store the locations of vehicles
 LOC_DF = pd.DataFrame(columns=["x", "y", "z", "pitch", "yaw", "roll"])
 
-def prepare_blueprints(world):
+# -----------------------------------
+# 
+def get_contrasting_blueprints(world, ego_vehicle="vehicle.lincoln.mkz_2020", ego_color="255,0,0"):
+    """
+    Sets the color of NPC vehicles and marks the ego vehicle red.
+
+    Parameters:
+    world : carla.World
+        The world object.
+    ego_vehicle : str, optional
+        The name of the ego vehicle, by default "vehicle.lincoln.mkz_2020"
+    ego_color : str, optional
+        The color of the ego vehicle in RGB format, by default "255,0,0"
+
+    Returns:
+    tuple
+        A tuple containing the ego vehicle blueprint and the NPC vehicle blueprint.
+    """
     blueprint_library = world.get_blueprint_library()
     car_blueprint = blueprint_library.filter('vehicle')[0]
 
@@ -12,13 +31,15 @@ def prepare_blueprints(world):
         color = car_blueprint.get_attribute('color').recommended_values[-1]
         car_blueprint.set_attribute('color', color)
 
-    ego_bp = world.get_blueprint_library().find('vehicle.lincoln.mkz_2020')
+    ego_bp = world.get_blueprint_library().find(ego_vehicle)
     if ego_bp.has_attribute('color'):
         color = ego_bp.get_attribute('color').recommended_values[0]
-        ego_bp.set_attribute('color', "255,0,0")
+        ego_bp.set_attribute('color', ego_color)
 
     ego_bp.set_attribute('role_name', 'hero')
     return ego_bp, car_blueprint
+
+# -----------------------------------
 
 def transform_to_pandas(transform):
    loc = transform.location
@@ -42,6 +63,9 @@ def csv_to_transformations(path):
         t = Transform(loc, rot)
         transformations.append(t)
     return transformations
+
+
+# -----------------------------------
 
 def enable_synchronous_mode(world, timedelta=0.05):
     """

@@ -30,7 +30,7 @@ def main():
 
     world = carlaService.getWorld()
     level = world.get_map()
-    ego_bp, car_bp = utils.prepare_blueprints(world)
+    ego_bp, car_bp = utils.get_contrasting_blueprints(world)
 
     driver1 = Driver("json/driver1.json", traffic_manager=client)
 

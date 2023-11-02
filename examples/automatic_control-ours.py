@@ -1,15 +1,12 @@
 #!/usr/bin/env python
-"""This file tests the agent"""
+"""
+This file tests the agent.
+Based on German Ros (german.ros@intel.com) example of automatic_control shipped with carla.
+"""
+from __future__ import print_function # for python 2.7 compatibility
 
-# Copyright (c) 2018 Intel Labs.
-# authors: German Ros (german.ros@intel.com)
-#
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
 
 """Example of automatic vehicle control from client side."""
-
-from __future__ import print_function
 
 import argparse
 import logging
@@ -139,7 +136,7 @@ def game_loop(args):
         # car1 = carlaService.createCar("model3")
 
         # Spawn Ego
-        ego_bp, car_bp = utils.prepare_blueprints(sim_world)
+        ego_bp, car_bp = utils.get_contrasting_blueprints(sim_world)
         ego = Vehicle(sim_world, ego_bp)
         start : carla.Transform = spawn_points[0]
         ego.spawn(start)

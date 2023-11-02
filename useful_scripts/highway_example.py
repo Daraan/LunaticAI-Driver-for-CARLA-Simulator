@@ -39,7 +39,7 @@ def spawn_cars(client=None):
         client = make_client()
     world = client.get_world()
     level = world.get_map()
-    ego_bp, car_blueprint = utils.prepare_blueprints(world)
+    ego_bp, car_blueprint = utils.get_contrasting_blueprints(world)
     if ego_bp.has_attribute('color'):
         color = ego_bp.get_attribute('color').recommended_values[0]
         ego_bp.set_attribute('color', "255,0,0")
