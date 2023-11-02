@@ -5,7 +5,7 @@ from classes.vehicle import Vehicle
 
 
 class CarlaService:
-    def __init__(self, worldName=None, ip="localhost", port="2000"):
+    def __init__(self, worldName=None, ip="localhost", port=2000):
         self.client = carla.Client(ip, port)
         self.client.set_timeout(2.0)
         self.vehicleList = []
@@ -25,8 +25,10 @@ class CarlaService:
         return self.world
 
     def removeAllCars(self):
-        for car in self.vehicleList:
-            car.actor.destroy()
+        for i in range(len(self.vehicleList)):
+            car = self.vehicleList.pop() # remove element from list. Keeps list up-to-data
+            if car.actor is not None: # actor is None if car was not spawned 
+                car.actor.destroy()
 
     def __del__(self):
         self.removeAllCars()
