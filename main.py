@@ -1,6 +1,6 @@
 import carla
-from CarlaService import CarlaService
-from Driver import Driver
+from classes.carla_service import CarlaService
+from classes.driver import Driver
 
 import numpy
 import glob
@@ -11,7 +11,7 @@ import time
 
 from useful_scripts import utils
 
-from Vehicle import Vehicle
+from classes.vehicle import Vehicle
 
 vehicles = []
 
