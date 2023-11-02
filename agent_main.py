@@ -1,20 +1,17 @@
 import carla
 from carla_service import CarlaService
-# TODO: maybe we can merge these or make them more unfied
+# TODO: maybe we can merge these or make them more unified
 from driver import Driver
 from classes.vehicle import Vehicle
 
-import numpy
-import glob
-import os
 import sys
 import random
-import time
 
 from useful_scripts import utils
 # To import a basic agent
 from agents.navigation.basic_agent import BasicAgent
 
+# Import Autopilot, # TODO: remove this
 from classes.traffic_manager_daniel import TrafficManagerD
 
 # To import a behavior agent

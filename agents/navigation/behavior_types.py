@@ -3,7 +3,7 @@
 
 """ This module contains the different parameters sets for each behavior. """
 
-from behavior_default import BasicBehavior
+from .behavior_default import BasicBehavior
 
 
 class Cautious(BasicBehavior):
