@@ -2,7 +2,7 @@ import carla
 from carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unfied
 from driver import Driver
-from vehicle import Vehicle
+from classes.vehicle import Vehicle
 
 import numpy
 import glob
