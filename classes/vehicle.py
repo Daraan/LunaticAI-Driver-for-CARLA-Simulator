@@ -85,6 +85,10 @@ class VehicleBase:
 
     def getRotation(self):
         return self.actor.get_transform().rotation
+        
+    def getLocation(self):
+        return self.actor.get_transform().location
+        
 
     def calculateRelativeCoordinates(self, other_car_location):
         currentLocation = self.getLocation()
@@ -219,6 +223,3 @@ class Vehicle(VehicleBase):
 
     def getCarlaVehicle(self):
         return self.carlaVehicle
-
-    def getLocation(self):
-        return self.actor.get_transform().location
