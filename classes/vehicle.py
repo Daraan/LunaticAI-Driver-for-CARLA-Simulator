@@ -1,7 +1,15 @@
 from cmath import sqrt
 import carla
 from carla import Vector3D
+import math
 
+# COMMENT: do we need this?
+import random
+import time
+import plotly.graph_objs as go
+import plotly.subplots
+import matplotlib
+matplotlib.use('TkAgg')
 
 
 def calculateDistance(location1, location2):
@@ -34,8 +42,6 @@ class VehicleBase:
     def destroy_all(cls, client):
         while len(cls.instances) > 0: # instances might contain actors if still not empty.
             client.apply_batch([carla.command.DestroyActor(cls.instances.pop().actor)])
-
-
 
     def __eq__(self, other):
         # comment: are there by chance other ways? some (Unreal)id?
@@ -76,62 +82,124 @@ class VehicleBase:
         self.control.hand_brake = value
         self.actor.apply_control(self.control)
 
-    def getLocation(self):
-        return self.actor.get_transform().location
 
-    def findCarBehind(self, vehicles: []):
-        closestCar = None
-        for car in vehicles:
-            if (
-                    car != self
-                    and self.getLocation().y < car.getLocation().y
-                    and (closestCar is None or car.getLocation().y < closestCar.getLocation().y)
-            ):
-                closestCar = car
+    def getRotation(self):
+        return self.actor.get_transform().rotation
 
-        return closestCar
+    def calculateRelativeCoordinates(self, other_car_location):
+        currentLocation = self.getLocation()
+        currentRotation = self.getRotation()
 
-    def findCarAhead(self, vehicles: []):
-        closestCar = None
-        for car in vehicles:
-            if (
-                    car != self
-                    and car.getLocation().y > self.getLocation().y
-                    and (closestCar is None or car.getLocation().y < closestCar.getLocation().y)
-            ):
-                closestCar = car
+        relative_x = other_car_location.x - currentLocation.x
+        relative_y = other_car_location.y - currentLocation.y
 
-        return closestCar
+        # Convert relative position to ego car's coordinate system based on its rotation
+        relative_x_rotated = (
+                relative_x * math.cos(math.radians(-currentRotation.yaw)) -
+                relative_y * math.sin(math.radians(-currentRotation.yaw))
+        )
+        relative_y_rotated = (
+                relative_x * math.sin(math.radians(-currentRotation.yaw)) +
+                relative_y * math.cos(math.radians(-currentRotation.yaw))
+        )
+
+        return relative_x_rotated, relative_y_rotated
 
     def distanceToCarAhead(self, vehicles: []):
-        vehicleAhead = self.findCarAhead(vehicles)
-        if vehicleAhead is None:
-            return None
-        locationAhead = vehicleAhead.actor.get_transform().location
+        closestCar = None
+        closestDistance = float('inf')  # Initialize with a very large value
 
-        return calculateDistance(self.getLocation(), locationAhead)
+        for car in vehicles:
+            if car != self:
+                car_location = car.getLocation()
+
+                # Calculate relative coordinates using the separate function
+                relative_x_rotated, relative_y_rotated = self.calculateRelativeCoordinates(car_location)
+
+                # Check if the car is ahead based on relative y-coordinate
+                if relative_y_rotated > 0:
+                    distance = calculateDistance(self.getLocation(), car_location)
+                    if distance < closestDistance:
+                        closestDistance = distance
+                        closestCar = car  # Store the closest car object
+
+        # Return the distance to the closest car ahead
+        if closestCar is not None:
+            return closestDistance
+        else:
+            return None
 
     def distanceToCarBehind(self, vehicles: []):
-        vehicleBehind = self.findCarBehind(vehicles)
-        if vehicleBehind is None:
+        closestCar = None
+        closestDistance = float('inf')  # Initialize with a very large value
+
+        for car in vehicles:
+            if car != self:
+                car_location = car.getLocation()
+
+                # Calculate relative coordinates using the separate function
+                relative_x_rotated, relative_y_rotated = self.calculateRelativeCoordinates(car_location)
+
+                # Check if the car is behind based on relative y-coordinate
+                if relative_y_rotated < 0:
+                    distance = calculateDistance(self.getLocation(), car_location)
+                    if distance < closestDistance:
+                        closestDistance = distance
+                        closestCar = car  # Store the closest car object
+
+        # Return the distance to the closest car behind
+        if closestCar is not None:
+            return closestDistance
+        else:
             return None
-        locationBehind = vehicleBehind.actor.get_transform().location
 
-        return calculateDistance(self.getLocation(), locationBehind)
+    def drive(self, carList):
+        # Define the desired safe distance between cars
+        safe_distance = 5.0  # You can adjust this value as needed
 
-    def getRelativeCoordinates(self, relativeObject):
-        if not self.actor or not relativeObject.actor:
-            return None
+        # Set the loop rate (e.g., 10 times per second)
+        loop_rate = 5  # Hz
+        loop_interval = 1.0 / loop_rate
 
-        self_transform = self.actor.get_transform()
-        self_location = self_transform.location
+        fig = plotly.subplots.make_subplots()
+        trace = go.Scatter(x=[], y=[], mode='lines+markers')
+        fig.add_trace(trace)
+        fig.update_layout(
+            xaxis=dict(range=[0, 10]),  # Adjust the x-axis limits as needed
+            yaxis=dict(range=[0, 100])  # Adjust the y-axis limits as needed
+        )
 
-        relative_transform = relativeObject.actor.get_transform()
-        relative_location = relative_transform.location
+        while True:
 
-        relative_coordinates = self_location - relative_location
+            # Check the distance to the car ahead
+            # vehicles_in_world = self.world.get_actors().filter('vehicle.*')
+            distance_to_car_ahead = self.distanceToCarAhead(carList)
+            if distance_to_car_ahead is not None:
 
-        return relative_coordinates
+                if distance_to_car_ahead < 54:
+                    self.setBrake(1)
+                else:
+                    # Calculate the speed difference between the two cars
+                    # speed_difference = self.actor.get_velocity().x - vehicles_in_world[0].get_velocity().x
+                    print(distance_to_car_ahead)
+
+                    # Calculate the desired speed to maintain the safe distance
+                    desired_speed = -(1/(math.e**distance_to_car_ahead))+1
+                    # print("Desired speed:", desired_speed)
+
+                    # Calculate the desired acceleration
+                    desired_acceleration = (desired_speed - self.actor.get_velocity().y) / (safe_distance)
+
+                    # Adjust throttle and brake based on the desired acceleration
+                    if desired_acceleration > 0:
+                        self.setThrottle(min(1.0, desired_acceleration))
+                    else:
+                        self.setBrake(min(1.0, -desired_acceleration))
+
+                    # print("Desired acc:", desired_acceleration)
+
+            # Sleep for the specified interval
+            time.sleep(loop_interval)
 
 
 class Vehicle(VehicleBase):
@@ -151,3 +219,6 @@ class Vehicle(VehicleBase):
 
     def getCarlaVehicle(self):
         return self.carlaVehicle
+
+    def getLocation(self):
+        return self.actor.get_transform().location
