@@ -3,7 +3,7 @@ import json
 import carla
 from typing import Union, Optional
 
-TRAFFIC_MANAGER_SUBDIR = "traffic_manager"
+TRAFFIC_MANAGER_CONFIG_SUBDIR = "traffic_manager"
 
 class Driver:
     def __init__(self, path,
@@ -50,7 +50,7 @@ class Driver:
             self.config.update(config_update) # TODO add some sanity check for correct format
         if self.config["use_traffic_manager"] :
             dir = os.path.split(path)[0]
-            path_tm = os.path.join(dir, TRAFFIC_MANAGER_SUBDIR, self.config["use_traffic_manager"]+".json",)
+            path_tm = os.path.join(dir, TRAFFIC_MANAGER_CONFIG_SUBDIR, self.config["use_traffic_manager"]+".json",)
             with open(path_tm, 'r') as file:
                 self.tm_config = json.load(file)
             #self.tm: carla.TrafficManager = client.get_trafficmanager()

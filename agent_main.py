@@ -1,21 +1,21 @@
 import carla
-from carla_service import CarlaService
+from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unified
-from driver import Driver
+from classes.driver import Driver
 from classes.vehicle import Vehicle
 
 import sys
 import random
 
-from useful_scripts import utils
+import utils
 # To import a basic agent
 from agents.navigation.basic_agent import BasicAgent
 
 # Import Autopilot, # TODO: remove this
 from classes.traffic_manager_daniel import TrafficManagerD
 
+
 # To import a behavior agent
-from agents.navigation.behavior_agent import BehaviorAgent
 
 vehicles = []
 
@@ -27,11 +27,11 @@ def main():
 
     world = carlaService.getWorld()
     level = world.get_map()
-    ego_bp, car_bp = utils.get_contrasting_blueprints(world)
+    ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world)
 
-    driver1 = Driver("json/driver1.json", traffic_manager=client)
+    driver1 = Driver("config/driver1.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
+    spawn_points = utils.general.csv_to_transformations("examples/highway_example_car_positions.csv")
     # car1 = carlaService.createCar("model3")
 
     # Spawn Ego
@@ -60,14 +60,14 @@ def main():
         ap.init_passive_driver()
         ap.start_drive()
 
-
+    # ------------- Planning loop ----------------
     i = 0
     while True:
         if agent.done():
             agent.set_destination(random.choice(spawn_points).location)
             print("The target has been reached, searching for another target")
         controls = agent.run_step()
-        if (i % 1000) == 0:
+        if (i % 10000) == 0:
             print(controls)
         ego.actor.apply_control(controls)
 

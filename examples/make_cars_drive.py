@@ -76,7 +76,7 @@ if car_blueprint.has_attribute('color'):
 ego_bp = world.get_blueprint_library().find('vehicle.lincoln.mkz_2020')
 if ego_bp.has_attribute('color'):
     color = ego_bp.get_attribute('color').recommended_values[0]
-    ego_bp.set_attribute('color', "255,0,0")
+    ego_bp.set_attribute('color', "191,62,255")
 
 ego_bp.set_attribute('role_name', 'hero')
 
@@ -113,6 +113,5 @@ for dist in [20, -40]:
                           Transform(ego_spawn.location + Vector3D(dist), ego_spawn.rotation))
     vehicles.append(v)
 
-
-def destroy():
-    client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
+input("press any key to end...")
+destroy()

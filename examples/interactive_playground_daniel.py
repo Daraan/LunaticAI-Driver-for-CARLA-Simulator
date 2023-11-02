@@ -2,10 +2,6 @@
 import glob
 import os
 import sys
-try:
-    os.chdir("../useful_scripts")
-except FileNotFoundError:
-    os.chdir("useful_scripts")
 
 print(os.getcwd())
 sys.path.append(os.getcwd())
@@ -40,4 +36,8 @@ blueprint_library = world.get_blueprint_library()
 car_blueprint = blueprint_library.filter('vehicle')[0]
 
 highway_example.spawn_cars()
-
+# interactive mode, if not given by IDE
+import code
+v = globals().copy()
+v.update(locals())
+code.interact(local=v)

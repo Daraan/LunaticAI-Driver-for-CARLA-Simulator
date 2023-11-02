@@ -25,3 +25,5 @@ class PassiveKeyboardControl(object):
     def _is_quit_shortcut(key):
         """Shortcut for quitting"""
         return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
+
+# todo: copy&paste interactive keyboard controls

@@ -5,6 +5,9 @@ Based on German Ros (german.ros@intel.com) example of automatic_control shipped 
 """
 from __future__ import print_function # for python 2.7 compatibility
 
+from utils.blueprint_helpers import get_actor_blueprints
+import utils.general 
+
 
 """Example of automatic vehicle control from client side."""
 
@@ -58,8 +61,8 @@ except IndexError:
 
 import carla
 
-from carla_service import CarlaService # TODO integrate or scrap
-from driver import Driver # TODO integrate or scrap
+from classes.carla_service import CarlaService # TODO integrate or scrap
+from classes.driver import Driver # TODO integrate or scrap
 from classes.vehicle import Vehicle
 
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
@@ -69,7 +72,7 @@ from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # p
 from classes.world import World
 from classes.HUD import HUD
 
-from utils.camera_manager import CameraManager
+from classes.carla_originals.camera_manager import CameraManager
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -77,7 +80,7 @@ from utils.camera_manager import CameraManager
 
 
 
-from utils import get_actor_display_name, get_actor_blueprints
+from utils import get_actor_display_name
 
 from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 
@@ -130,9 +133,9 @@ def game_loop(args):
 
         # Set the agent destination
         try:
-            spawn_points = utils.csv_to_transformations("../useful_scripts/highway_example_car_positions.csv")
+            spawn_points = utils.general.csv_to_transformations("../useful_scripts/highway_example_car_positions.csv")
         except FileNotFoundError:
-            spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
+            spawn_points = utils.general.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
         # car1 = carlaService.createCar("model3")
 
         # Spawn Ego

@@ -28,8 +28,6 @@ import agents.navigation.behavior_types as _behavior_types #
 behavior_types = vars(_behavior_types)
 
 
-
-
 class BasicAgent(object):
     # NOTE: This is mostly a copy of carla's navigation.basic_agent.BasicAgent
     """
@@ -43,7 +41,7 @@ class BasicAgent(object):
 
     def __init__(self, vehicle, behavior="basic", map_inst=None, grp_inst=None, overwrite_options: dict = {}):
         """
-        Initialization the agent paramters, the local and the global planner.
+        Initialization the agent parameters, the local and the global planner.
 
             :param vehicle: actor to apply to agent logic onto
             :param target_speed: speed (in Km/h) at which the vehicle will move
@@ -538,8 +536,12 @@ class BasicAgent(object):
         return plan
 
 
+
     def emergency_stop(self):
         """
+        TODO: Not used yet (copied from BehaviorAgent) -> merge with add_emergency_stop 
+                or rewrite the step to be more like the behavior agent.
+
         Overwrites the throttle a brake values of a control to perform an emergency stop.
         The steering is kept the same to avoid going out of the lane when stopping during turns
 
@@ -547,7 +549,7 @@ class BasicAgent(object):
         """
         control = carla.VehicleControl()
         control.throttle = 0.0
-        control.steer = np.random.random() - 1 # TODO move to another class
+        # control.steer = np.random.random() - 1 # TODO make this optianal and dynamically
         control.brake = self._max_brake
         control.hand_brake = False
         return control

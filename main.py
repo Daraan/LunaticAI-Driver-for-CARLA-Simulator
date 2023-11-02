@@ -1,7 +1,7 @@
 import carla
-from carla_service import CarlaService
+from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unfied
-from driver import Driver
+from classes.driver import Driver
 from classes.vehicle import Vehicle
 
 import glob
@@ -10,8 +10,8 @@ import sys
 import random
 import time
 
-from useful_scripts import utils
 from classes.traffic_manager_daniel import TrafficManagerD
+import utils
 
 vehicles = []
 
@@ -23,11 +23,11 @@ def main():
 
     world = carlaService.getWorld()
     level = world.get_map()
-    ego_bp, car_bp = utils.get_contrasting_blueprints(world)
+    ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world)
 
-    driver1 = Driver("json/driver1.json", traffic_manager=client)
+    driver1 = Driver("config/driver1.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
+    spawn_points = utils.general.csv_to_transformations("examples/highway_example_car_positions.csv")
     # car1 = carlaService.createCar("model3")
 
     # Spawn Ego
@@ -110,5 +110,5 @@ if __name__ == '__main__':
         try:
             client.apply_batch([carla.command.DestroyActor(x.actor) for x in vehicles])
         except NameError:
-            # Should be client not defined
+            # client not defined yet to earlier errors
             pass
