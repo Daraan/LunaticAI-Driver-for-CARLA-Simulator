@@ -3,6 +3,9 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
+# NOTE: This file currently contains code from the three agents that were implemented in the original CARLA repo.
+# so no added customization yet, also not yet all useful code.
+# TODO: This still needs some heavy cleaning and maybe organizing into different files/subclasses to better focus the functions we want to customize.
 
 """ This module implements an agent that roams around a track following random
 waypoints and avoiding other vehicles. The agent also responds to traffic lights,
@@ -11,8 +14,6 @@ traffic signs, and has different possible configurations. """
 import random
 import numpy as np
 import carla
-from agents.navigation.basic_agent import BasicAgent
-from agents.navigation.behavior_agent import BehaviorAgent
 
 from agents.navigation.local_planner import LocalPlanner, RoadOption
 from agents.navigation.global_route_planner import GlobalRoutePlanner
@@ -21,15 +22,21 @@ from agents.tools.misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
 
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BasicBehavior
-import agents.navigation.behavior_types as _behavior_types #
+# OLD original: Style
+from agents.navigation.basic_agent import BasicAgent
+from agents.navigation.behavior_agent import BehaviorAgent
 
+from agents.navigation.behavior_types import Cautious, Aggressive, Normal
+import agents.navigation.behavior_types as _behavior_types #
 
 behavior_types = vars(_behavior_types)
 
+# NEW: Style
+from  config.original_behavior import BasicBehavior
 
-class BasicAgent(object):
+class BasicAgent:
     # NOTE: This is mostly a copy of carla's navigation.basic_agent.BasicAgent
+    #
     """
     BasicAgent implements an agent that navigates the scene.
     This agent respects traffic lights and other vehicles, but ignores stop signs.
@@ -39,7 +46,7 @@ class BasicAgent(object):
 
     # todo: rename in the future
 
-    def __init__(self, vehicle, behavior="basic", map_inst=None, grp_inst=None, overwrite_options: dict = {}):
+    def __init__(self, vehicle, behavior, map_inst=None, grp_inst=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -52,18 +59,20 @@ class BasicAgent(object):
 
         """
         # TODO s: Always expect a behavior.opt_dict
-        # todo update description.
+        # low prio todo: update description.
 
         # OURS: Fusing behavior
         print("Behavior of Agent", behavior)
         if isinstance(behavior, BasicBehavior):
             self._behavior = behavior
         else:
+            raise ValueError("Behavior must be a BasicBehavior")
             self._behavior = behavior_types[behavior]
 
         opt_dict = self._behavior.get_options()  # base options from templates
         opt_dict.update(overwrite_options)  # update by custom options
 
+        # Original Setup ---------------------------------------------------------
         self._vehicle = vehicle
         self._world = self._vehicle.get_world()
         if map_inst:
@@ -74,9 +83,11 @@ class BasicAgent(object):
                 self._map = self._world.get_map()
         else:
             self._map = self._world.get_map()
-        self._last_traffic_light = None
+        self._last_traffic_light = None  # Current red traffic light
 
-        # Base parameters
+        # TODO: No more hardcoded defaults / set them from opt_dict which must have all parameters; check which are parameters and which are set by other functions (e.g. _look_ahead_steps)
+
+        # parameters from BasicAgent ---------------------------------------------
         self._ignore_traffic_lights = False
         self._ignore_stop_signs = False
         self._ignore_vehicles = False
@@ -88,9 +99,9 @@ class BasicAgent(object):
         self._max_brake = 0.5
         self._offset = 0
 
-        # From Behavior agent
+        # Parameters from BehaviorAgent ------------------------------------------
         # todo: check redefinitions
-        self._look_ahead_steps = 0
+        self._look_ahead_steps = 0 # updated in _update_information used for local_planner.get_incoming_waypoint_and_direction
 
         # Vehicle information
         self._speed = 0
@@ -99,7 +110,7 @@ class BasicAgent(object):
         self._incoming_direction = None
         self._incoming_waypoint = None
         self._min_speed = 5
-        self._sampling_resolution = 4.5  # NOTE also set in behaviours
+        self._sampling_resolution = 4.5  # NOTE also set in behaviors
 
         # Change parameters according to the dictionary
         #opt_dict['target_speed'] = target_speed
@@ -142,21 +153,27 @@ class BasicAgent(object):
 
         # Get the static elements of the scene
         self._lights_list = self._world.get_actors().filter("*traffic_light*")
-        self._lights_map = {}  # Dictionary mapping a traffic light to a wp corrspoing to its trigger volume location
+        self._lights_map = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
 
+        # From ConstantVelocityAgent ----------------------------------------------
+        self._collision_sensor = None
+        self._set_collision_sensor()
 
+    def _set_collision_sensor(self):
+        blueprint = self._world.get_blueprint_library().find('sensor.other.collision')
+        self._collision_sensor = self._world.spawn_actor(blueprint, carla.Transform(), attach_to=self._vehicle)
+        self._collision_sensor.listen(lambda event: self.collision_detected())
 
-    def add_emergency_stop(self, control):
-        """
-        Overwrites the throttle a brake values of a control to perform an emergency stop.
-        The steering is kept the same to avoid going out of the lane when stopping during turns
+    def destroy_sensor(self):
+        if self._collision_sensor:
+            self._collision_sensor.destroy()
+            self._collision_sensor = None
 
-            :param speed (carl.VehicleControl): control to be modified
-        """
-        control.throttle = 0.0
-        control.brake = self._max_brake
-        control.hand_brake = False
-        return control
+    self _collision_detected(self):
+        # TODO: Brainstorm and implement
+        # e.g. setting ignore_vehicles to False, if it was True before.
+        # do an emergency stop (in certain situations)
+        raise NotImplemented
 
     def set_target_speed(self, speed):
         """
@@ -230,8 +247,28 @@ class BasicAgent(object):
         end_location = end_waypoint.transform.location
         return self._global_planner.trace_route(start_location, end_location)
 
-    def run_step(self):
+    def _update_information(self):
+        """
+        This method updates the information regarding the ego
+        vehicle based on the surrounding world.
+        """
+        self._speed = get_speed(self._vehicle)
+        self._speed_limit = self._vehicle.get_speed_limit()
+        self._local_planner.set_speed(self._speed_limit)            # <-- Adjusts Planner
+        self._direction = self._local_planner.target_road_option
+        if self._direction is None:
+            self._direction = RoadOption.LANEFOLLOW
+
+        self._look_ahead_steps = int((self._speed_limit) / 10)
+
+        self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
+            steps=self._look_ahead_steps)
+        if self._incoming_direction is None:
+            self._incoming_direction = RoadOption.LANEFOLLOW
+
+    def run_step(self):  # From basic_agent.py
         """Execute one step of navigation."""
+        self._update_information() # From behavior_agent.py
         hazard_detected = False
 
         # Retrieve all relevant actors
@@ -256,6 +293,12 @@ class BasicAgent(object):
             control = self.add_emergency_stop(control)
 
         return control
+
+    # NEW
+    def get_current_waypoint(self):
+        ego_vehicle_loc = self._vehicle.get_location()
+        ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
+        return ego_vehicle_wp
 
     def done(self):
         """Check whether the agent has reached its destination."""
@@ -286,14 +329,103 @@ class BasicAgent(object):
             same_lane_time * speed, # get direction in meters t*V
             other_lane_time * speed,
             lane_change_time * speed,
-            False,
-            1,
-            self._sampling_resolution
+            check=False,        # TODO: Explanation of this parameter? Make use of it and & how? Could mean that it is checked if there is a left lane
+            lane_changes=1,     # changes only one lane
+            step_distance=self._sampling_resolution
         )
         if not path:
             print("WARNING: Ignoring the lane change as no path was found")
 
         self.set_global_plan(path)
+
+    def _generate_lane_change_path(self, waypoint, direction='left', distance_same_lane=10,
+                                distance_other_lane=25, lane_change_distance=25,
+                                check=True, lane_changes=1, step_distance=2):
+        """
+        This methods generates a path that results in a lane change.
+        Use the different distances to fine-tune the maneuver.
+        If the lane change is impossible, the returned path will be empty.
+        """
+        distance_same_lane = max(distance_same_lane, 0.1)
+        distance_other_lane = max(distance_other_lane, 0.1)
+        lane_change_distance = max(lane_change_distance, 0.1)
+
+        plan = []
+        plan.append((waypoint, RoadOption.LANEFOLLOW))  # start position
+
+        option = RoadOption.LANEFOLLOW
+
+        # Same lane
+        distance = 0
+        while distance < distance_same_lane:
+            next_wps = plan[-1][0].next(step_distance)  # follow a path of waypoints
+            if not next_wps:
+                return []
+            next_wp = next_wps[0]
+            distance += next_wp.transform.location.distance(plan[-1][0].transform.location)
+            plan.append((next_wp, RoadOption.LANEFOLLOW)) # next waypoint to the path
+
+        if direction == 'left':
+            option = RoadOption.CHANGELANELEFT
+        elif direction == 'right':
+            option = RoadOption.CHANGELANERIGHT
+        else:
+            # ERROR, input value for change must be 'left' or 'right'
+            return []
+
+        lane_changes_done = 0
+        lane_change_distance = lane_change_distance / lane_changes
+
+        # Lane change
+        while lane_changes_done < lane_changes:
+
+            # Move forward
+            next_wps = plan[-1][0].next(lane_change_distance)
+            if not next_wps:
+                return []
+            next_wp = next_wps[0]
+
+            # Get the side lane
+            if direction == 'left':
+                if check and str(next_wp.lane_change) not in ['Left', 'Both']:
+                    return []
+                side_wp = next_wp.get_left_lane() # get waypoint on other lane
+            else:
+                if check and str(next_wp.lane_change) not in ['Right', 'Both']:
+                    return []
+                side_wp = next_wp.get_right_lane()
+
+            if not side_wp or side_wp.lane_type != carla.LaneType.Driving:
+                return []
+
+            # Update the plan
+            plan.append((side_wp, option))
+            lane_changes_done += 1
+
+        # Other lane
+        # NOTE: Might force it to follow the other lane for some time
+        distance = 0
+        while distance < distance_other_lane:
+            next_wps = plan[-1][0].next(step_distance)
+            if not next_wps:
+                return []
+            next_wp = next_wps[0]
+            distance += next_wp.transform.location.distance(plan[-1][0].transform.location)
+            plan.append((next_wp, RoadOption.LANEFOLLOW))
+
+        return plan
+
+    def traffic_light_manager(self): # From behavior_agent.py
+        """
+        This method is in charge of behaviors for red lights.
+        """
+        # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
+        affected, traffic_light = self._affected_by_traffic_light(self.lights_list, max_distance=self._base_tlight_threshold)
+
+        # TODO: add some random ignore chance
+        # other behaviors? Take wrong turn?
+
+        return affected
 
     def _affected_by_traffic_light(self, lights_list=None, max_distance=None):
         """
@@ -314,7 +446,7 @@ class BasicAgent(object):
             max_distance = self._base_tlight_threshold
 
         if self._last_traffic_light:
-            if self._last_traffic_light.state != carla.TrafficLightState.Red:
+            if self._last_traffic_light.state != carla.TrafficLightState.Red:  
                 self._last_traffic_light = None
             else:
                 return (True, self._last_traffic_light)
@@ -356,12 +488,13 @@ class BasicAgent(object):
         """
         Method to check if there is a vehicle in front of the agent blocking its path.
 
-            :param vehicle_list (list of carla.Vehicle): list contatining vehicle objects.
+            :param vehicle_list (list of carla.Vehicle): list containing vehicle objects.
                 If None, all vehicle in the scene are used
-            :param max_distance: max freespace to check for obstacles.
+            :param max_distance: max free-space to check for obstacles.
                 If None, the base threshold value is used
         """
         def get_route_polygon():
+            # Note nested functions can access variables from the outer scope
             route_bb = []
             extent_y = self._vehicle.bounding_box.extent.y
             r_ext = extent_y + self._offset
@@ -458,86 +591,21 @@ class BasicAgent(object):
 
         return (False, None, -1)
 
-    def _generate_lane_change_path(self, waypoint, direction='left', distance_same_lane=10,
-                                distance_other_lane=25, lane_change_distance=25,
-                                check=True, lane_changes=1, step_distance=2):
+
+    # TODO: the emergency_stop is likely better and we can remove this one
+    def add_emergency_stop(self, control):
         """
-        This methods generates a path that results in a lane change.
-        Use the different distances to fine-tune the maneuver.
-        If the lane change is impossible, the returned path will be empty.
+        Overwrites the throttle a brake values of a control to perform an emergency stop.
+        The steering is kept the same to avoid going out of the lane when stopping during turns
+
+            :param speed (carl.VehicleControl): control to be modified
         """
-        distance_same_lane = max(distance_same_lane, 0.1)
-        distance_other_lane = max(distance_other_lane, 0.1)
-        lane_change_distance = max(lane_change_distance, 0.1)
+        control.throttle = 0.0
+        control.brake = self._max_brake
+        control.hand_brake = False
+        return control
 
-        plan = []
-        plan.append((waypoint, RoadOption.LANEFOLLOW))  # start position
-
-        option = RoadOption.LANEFOLLOW
-
-        # Same lane
-        distance = 0
-        while distance < distance_same_lane:
-            next_wps = plan[-1][0].next(step_distance)  # follow a path of waypoints
-            if not next_wps:
-                return []
-            next_wp = next_wps[0]
-            distance += next_wp.transform.location.distance(plan[-1][0].transform.location)
-            plan.append((next_wp, RoadOption.LANEFOLLOW)) # next waypoint to the path
-
-        if direction == 'left':
-            option = RoadOption.CHANGELANELEFT
-        elif direction == 'right':
-            option = RoadOption.CHANGELANERIGHT
-        else:
-            # ERROR, input value for change must be 'left' or 'right'
-            return []
-
-        lane_changes_done = 0
-        lane_change_distance = lane_change_distance / lane_changes
-
-        # Lane change
-        while lane_changes_done < lane_changes:
-
-            # Move forward
-            next_wps = plan[-1][0].next(lane_change_distance)
-            if not next_wps:
-                return []
-            next_wp = next_wps[0]
-
-            # Get the side lane
-            if direction == 'left':
-                if check and str(next_wp.lane_change) not in ['Left', 'Both']:
-                    return []
-                side_wp = next_wp.get_left_lane() # get waypoint on other lane
-            else:
-                if check and str(next_wp.lane_change) not in ['Right', 'Both']:
-                    return []
-                side_wp = next_wp.get_right_lane()
-
-            if not side_wp or side_wp.lane_type != carla.LaneType.Driving:
-                return []
-
-            # Update the plan
-            plan.append((side_wp, option))
-            lane_changes_done += 1
-
-        # Other lane
-        # NOTE: Might force it to follow the other lane for some time
-        distance = 0
-        while distance < distance_other_lane:
-            next_wps = plan[-1][0].next(step_distance)
-            if not next_wps:
-                return []
-            next_wp = next_wps[0]
-            distance += next_wp.transform.location.distance(plan[-1][0].transform.location)
-            plan.append((next_wp, RoadOption.LANEFOLLOW))
-
-        return plan
-
-
-
-    def emergency_stop(self):
+    def emergency_stop(self, reason=None):
         """
         TODO: Not used yet (copied from BehaviorAgent) -> merge with add_emergency_stop 
                 or rewrite the step to be more like the behavior agent.
@@ -549,7 +617,86 @@ class BasicAgent(object):
         """
         control = carla.VehicleControl()
         control.throttle = 0.0
-        # control.steer = np.random.random() - 1 # TODO make this optianal and dynamically
+        # TODO adjust/add other behavior
+        # control.steer = np.random.random() - 1 # TODO make this optional and dynamically
+
+        # TODO: different emergency behavior in for different reasons.
+
         control.brake = self._max_brake
         control.hand_brake = False
+        return control
+
+
+    # ----------------------------------------------------------------------------------------------
+    # Behavior Agent functions
+    # ----------------------------------------------------------------------------------------------
+
+    # NOTE: This overwrites the basic_agent run_step function from above 
+    # TODO: merge the two functions to be useful for us
+    def run_step(self, debug=False): # From behavior_agent.py
+        """
+        Execute one step of navigation.
+
+            :param debug: boolean for debugging
+            :return control: carla.VehicleControl
+        """
+        self._update_information()
+
+        control = None
+        if self._behavior.tailgate_counter > 0:
+            self._behavior.tailgate_counter -= 1
+
+        ego_vehicle_loc = self._vehicle.get_location()
+        ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
+
+        # 1: Red lights and stops behavior
+        if self.traffic_light_manager():
+            return self.emergency_stop()
+
+        # 2.1: Pedestrian avoidance behaviors
+        walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
+
+        if walker_state:
+            # Distance is computed from the center of the two cars,
+            # we use bounding boxes to calculate the actual distance
+            distance = w_distance - max(
+                walker.bounding_box.extent.y, walker.bounding_box.extent.x) - max(
+                    self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
+
+            # Emergency brake if the car is very close.
+            if distance < self._behavior.braking_distance:
+                return self.emergency_stop()
+
+        # 2.2: Car following behaviors
+        vehicle_state, vehicle, distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
+
+        if vehicle_state:
+            # Distance is computed from the center of the two cars,
+            # we use bounding boxes to calculate the actual distance
+            distance = distance - max(
+                vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
+                    self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
+
+            # Emergency brake if the car is very close.
+            if distance < self._behavior.braking_distance:
+                return self.emergency_stop()
+            else:
+                control = self.car_following_manager(vehicle, distance)
+
+        # 3: Intersection behavior
+        elif self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
+            target_speed = min([
+                self._behavior.max_speed,
+                self._speed_limit - 5])
+            self._local_planner.set_speed(target_speed)
+            control = self._local_planner.run_step(debug=debug)
+
+        # 4: Normal behavior
+        else:
+            target_speed = min([
+                self._behavior.max_speed,
+                self._speed_limit - self._behavior.speed_lim_dist])
+            self._local_planner.set_speed(target_speed)
+            control = self._local_planner.run_step(debug=debug)
+
         return control
