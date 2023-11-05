@@ -51,7 +51,7 @@ class BehaviorAgent(BasicAgent):
         self._incoming_waypoint = None
         self._min_speed = 5
         self._behavior = None
-        self._sampling_resolution = 4.5  # NOTE also set in default behaviours
+        self._sampling_resolution = 4.5  # NOTE also set in default behaviors
 
         print("Behavior of Agent", behavior)
         if isinstance(behavior, BasicBehavior):
@@ -156,7 +156,7 @@ class BehaviorAgent(BasicAgent):
         def dist(v): return v.get_location().distance(waypoint.transform.location)
         vehicle_list = [v for v in vehicle_list if dist(v) < 45 and v.id != self._vehicle.id]
 
-        # Tripple (<is there an obstacle> , )
+        # Triple (<is there an obstacle> , )
         if self._direction == RoadOption.CHANGELANELEFT:
             vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
                 vehicle_list, max(
@@ -328,7 +328,6 @@ class BehaviorAgent(BasicAgent):
         """
         control = carla.VehicleControl()
         control.throttle = 0.0
-        control.steer = np.random.random() - 1 # TODO move to another class
         control.brake = self._max_brake
         control.hand_brake = False
         return control

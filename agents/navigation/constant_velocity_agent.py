@@ -6,7 +6,7 @@
 """
 This module implements an agent that roams around a track following random
 waypoints and avoiding other vehicles. The agent also responds to traffic lights.
-It can also make use of the global route planner to follow a specifed route
+It can also make use of the global route planner to follow a specified route
 """
 
 import carla
@@ -16,7 +16,7 @@ from agents.navigation.basic_agent import BasicAgent
 class ConstantVelocityAgent(BasicAgent):
     """
     ConstantVelocityAgent implements an agent that navigates the scene at a fixed velocity.
-    This agent will fail if asked to perform turns that are impossible are the desired speed.
+    This agent will fail if asked to perform turns that are impossible at the desired speed.
     This includes lane changes. When a collision is detected, the constant velocity will stop,
     wait for a bit, and then start again.
     """
