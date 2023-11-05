@@ -25,9 +25,7 @@ else:
 
 
 import carla
-
-from carla.libcarla import Transform, Vector3D
-
+from carla import Transform, Vector3D
 
 def destroy():
     client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])

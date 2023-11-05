@@ -11,8 +11,8 @@ Example of automatic vehicle control from client side.
 NOTE: Stripped from helper classes (moved to other files) compared to original version.
 """
 
-from __future__ import print_function
-import _fix_imports # add project root folder to path
+from __future__ import print_function # For Python2 compatibility
+import __allow_imports_from_root  # add project root folder to path
 
 import argparse
 import collections

@@ -1,3 +1,4 @@
+import __allow_imports_from_root # add project root folder to path
 import glob
 import os
 import sys
@@ -5,7 +6,6 @@ import time
 import pandas as pd
 
 import carla
-import _fix_imports # add project root folder to path
 import utils
 
 from carla import Vector3D

@@ -1,17 +1,12 @@
+import __allow_imports_from_root
 import carla
 
 from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unified & marge with agent
 from classes.driver import Driver
-from classes.vehicle import Vehicle
 
-import glob
-import os
-import sys
-import random
 import time
 
-from classes.traffic_manager_daniel import TrafficManagerD
 import utils
 
 
@@ -26,13 +21,13 @@ def main(args):
     level = world.get_map()
     ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world) # ego is red the others default colors
 
-    driver1 = Driver("config/driver1.json")
+    driver1 = Driver("config/default_driver.json")
     car1 = carlaService.createCar("model3")
 
-    driver2 = Driver("json/driver1.json")
+    driver2 = Driver("config/default_driver.json")
     car2 = carlaService.createCar("coupe")
 
-    driver3 = Driver("json/driver1.json")
+    driver3 = Driver("config/default_driver.json")
     car3 = carlaService.createCar("mustang")
 
     carlaService.assignDriver(car1, driver1)
