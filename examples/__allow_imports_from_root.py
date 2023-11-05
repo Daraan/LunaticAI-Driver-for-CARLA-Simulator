@@ -16,6 +16,7 @@ p = os.environ.get("LUNATIC_AI_ROOT", None)
 
 if p is None:
     print("Warning: CARLA_ROOT not set. Trying to use parent folder of this file.") 
-    p = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) # todo: could be more elegant and more fail safe
+    # TODO: add support for example/<subfolders>
+    p = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) # todo: could be more elegant and more fail safe. 
 sys.path.append(p)
 print('Added to sys.path: %s' % p)
