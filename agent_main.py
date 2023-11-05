@@ -20,9 +20,9 @@ from classes.traffic_manager_daniel import TrafficManagerD
 vehicles = []
 
 
-def main():
+def main(args):
     global client
-    carlaService = CarlaService("Town04", "127.0.0.1", 2000)
+    carlaService = CarlaService("Town04", args.host, args.port)
     client = carlaService.client
 
     world = carlaService.getWorld()
@@ -92,11 +92,16 @@ def main():
 
 
 if __name__ == '__main__':
+    import utils.argument_parsing as parse
+    from pprint import pprint
+    args = parse.client_settings.add(parse.interactive_mode).parse_args()
+    pprint(args)
     try:
-        main()
+        main(args)
     finally:
         try:
             client.apply_batch([carla.command.DestroyActor(x.actor) for x in vehicles])
-        except NameError:
-            # Should be client not defined
-            pass
+        except NameError as e:
+            print(e)
+            # likely client not defined yet due to earlier errors, or not globally defined.
+
