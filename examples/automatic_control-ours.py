@@ -172,7 +172,7 @@ def game_loop(args):
                             print("The target has been reached, stopping the simulation")
                             break
 
-                    control = agent.run_step()
+                    control = agent.run_step(debug=True) # debug=True draws waypoints
                     control.manual_gear_shift = False
                     world.player.apply_control(control)
                     #if i % 50 == 0:

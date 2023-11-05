@@ -18,6 +18,13 @@ LOC_DF = pd.DataFrame(columns=["x", "y", "z", "pitch", "yaw", "roll"])
 # -----------------------------------
 # 
 
+# helper class, similar to @ property but which works on classes directly
+class _classproperty(object):
+    def __init__(self, f):
+        self.f = f
+
+    def __get__(self, obj, owner):
+        return self.f(owner)
 
 # -----------------------------------
 

@@ -3,7 +3,7 @@
 
 """ This module contains the different parameters sets for each behavior. """
 
-from .behavior_default import BasicBehavior
+from  config.original_behavior import BasicBehavior
 
 
 class Cautious(BasicBehavior):
@@ -41,6 +41,8 @@ class Aggressive(BasicBehavior):
     braking_distance = 4
     tailgate_counter = -1
 
+# Experiments (not really successful)
+
 class Tailgating2(BasicBehavior):
     """Class for Aggressive agent."""
     max_speed = 60
@@ -58,6 +60,6 @@ class BadAndRisky(Aggressive):
     safety_time = 0.5
 
 
-# Gather all
+# Gather all classes in this file
 
 behavior_types = dict(filter(lambda kv: not kv[0].startswith("_"), vars().items()))

@@ -1,4 +1,5 @@
-# helperclass, similarto @ property but which works on classes directly
+"""Contains the base settings of CARLA's BasicAgent and LocalPlanner."""
+# helper class, similar to @ property but which works on classes directly
 class _classproperty(object):
     def __init__(self, f):
         self.f = f
@@ -15,6 +16,7 @@ class BasicBehavior:
     # TODO: Explain unclear parameters
     use_bbs_detection = False  # Bounding BoxeS # Likely more sophisticated detection of obstacles. # TODO understand better
     sampling_resolution = 2.0  # TODO: What is this? # BasicAgent uses 2.0 Behavior ones 4.5 Sampling of waypoints related
+                                # Used as step_distance in basic_agent's lane change: next_wps = plan[-1][0].next(step_distance)
     sampling_radius = 2.0  # TODO: What is this? Used by local_planner.py
 
     # --------------------------
@@ -111,6 +113,10 @@ class BasicBehavior:
         return cls.max_steering
 
     @_classproperty
+    def step_distance(cls):
+        return cls.sampling_resolution
+
+    @_classproperty
     def _deprecated_options(cls):  # TODO remove this
         """Returns the dictionary used by the basic agents & local planner"""
         # DONE: Make this automatic -> get_options() -> dict
@@ -153,12 +159,12 @@ class BasicBehavior:
 
 class Behavior(BasicBehavior):
     """
-    Class to be used BehaviorAgents
+    Class to be used with BehaviorAgents
     """
 
     # Speed -------
     """The maximum speed in km/h your vehicle will be able to reach."""
-    # deprecated max_speed = 40    # NOTE: Behavior agents are more flexible in their speed.
+    # deprecated max_speed = 40 use target_speed instead   # NOTE: Behavior agents are more flexible in their speed. 
 
     # The three situations they adjust their speed; # SEE: behavior_agent.car_following_manager
     #
@@ -191,8 +197,8 @@ class Behavior(BasicBehavior):
     # Collision Avoidance -----
 
     # Distance in which for vehicles are checked
-    # max(min_proximity_threshold, self._speed_limit / (2 if LANGE CHANGE else 3 ) )
-    # TODO: The secondary speed limit is hardcoded, make adjustable and optionel
+    # max(min_proximity_threshold, self._speed_limit / (2 if LANG CHANGE else 3 ) )
+    # TODO: The secondary speed limit is hardcoded, make adjustable and optional
     # automatic_proximity_threshold = {RoadOption.CHANGELANELEFT: 2, "same_lane" : 3, "right_lane" : 2}
     min_proximity_threshold = 12 # range in which cars are detected. # NOTE: Speed limit overwrites
 
