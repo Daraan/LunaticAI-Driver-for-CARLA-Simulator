@@ -3,6 +3,7 @@ from carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unfied
 from driver import Driver
 from vehicle import Vehicle
+from DataGathering.run_matrix import DataMatrix
 
 import numpy
 import glob
@@ -39,6 +40,8 @@ def main():
 
     # TODO: let Driver class manage autopilot and not the TrafficMangerD class
 
+    matrix = DataMatrix(ego, world)
+
     # spawn others
     for sp in spawn_points[1:]:
         v = Vehicle(world, car_bp)
@@ -71,6 +74,11 @@ def main():
         code.interact(local=v)
 
     input("press any key to end...")
+
+    m = matrix.getMatrix()
+
+    for i in m:
+        print(i)
 
     """
     driver2 = Driver("json/driver1.json")

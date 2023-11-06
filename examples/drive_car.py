@@ -1,19 +1,9 @@
-import pygame
-import carla
-import random
 import time
-import math
-import collections
-from collections import Counter
-import pandas as pd
-import itertools
 from copy import deepcopy
 import warnings
-import numpy as np
-import random
 
 warnings.filterwarnings("ignore")
-from informationUtils import *
+from DataGathering.informationUtils import *
 
 import sys
 import os

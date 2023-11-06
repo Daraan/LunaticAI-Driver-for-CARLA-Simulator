@@ -1,4 +1,3 @@
-
 import carla
 
 from vehicle import Vehicle
@@ -9,8 +8,7 @@ class CarlaService:
         self.client = carla.Client(ip, port)
         self.client.set_timeout(10.0)
         self.vehicleList = []
-        # self.client.load_world(worldName)
-        # self.client.world.unload_map_layer(carla.MapLayer.Buildings)
+        self.client.load_world(worldName)
         self.world = self.client.get_world()
 
     def createCar(self, model):
@@ -18,7 +16,8 @@ class CarlaService:
         self.vehicleList.append(car)
         return car
 
-    def assignDriver(self, vehicle, driver):
+    @classmethod
+    def assignDriver(cls, vehicle, driver):
         driver.vehicle = vehicle
 
     def getWorld(self):

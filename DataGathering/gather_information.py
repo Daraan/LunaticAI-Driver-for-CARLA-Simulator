@@ -1,14 +1,7 @@
-import carla
 from carla_service import CarlaService
-# TODO: maybe we can merge these or make them more unfied
 from driver import Driver
 from vehicle import Vehicle
 
-import numpy
-import glob
-import os
-import sys
-import random
 import time
 
 from useful_scripts import utils
@@ -17,6 +10,7 @@ from trafic_manager_daniel import TrafficManagerD
 from informationUtils import *
 
 vehicles = []
+
 
 def main():
     global client
@@ -27,30 +21,26 @@ def main():
     world_map = world.get_map()
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
-    driver1 = Driver("json/driver1.json", traffic_manager=client)
+    driver1 = Driver("../json/driver1.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
+    spawn_points = utils.csv_to_transformations("../useful_scripts/highway_example_car_positions.csv")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)
     try:
         ego.spawn(spawn_points[0])
-    except:
+    except Exception as e:
         pass
 
     vehicles.append(ego)
     carlaService.assignDriver(ego, driver1)
-
     ego_vehicle = ego.actor
-    vehicle_type = ego_vehicle.type_id
 
     # spawn others
     for sp in spawn_points[1:]:
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        # v.setVelocity(1)
-        # print(v.actor)
         ap = TrafficManagerD(client, v.actor)
         ap.init_passive_driver()
         ap.start_drive()
@@ -93,15 +83,11 @@ def main():
                 )
 
             for i in matrix:
-                if matrix[i] == [3, 3, 3, 3, 3, 3, 3, 3]:
-                    continue
                 print(i, matrix[i])
             print(street_type)
 
-
             df = safe_data(ego_vehicle, matrix, street_type, df)
 
-            # clock.tick_busy_loop(60)
             time.sleep(0.5)
             world.tick()
 
