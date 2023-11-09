@@ -18,7 +18,8 @@ class CarlaService:
         self.vehicleList.append(car)
         return car
 
-    def assignDriver(self, vehicle, driver):
+    @staticmethod 
+    def assignDriver(vehicle, driver):
         driver.vehicle = vehicle
 
     def getWorld(self):

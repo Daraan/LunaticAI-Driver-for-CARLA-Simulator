@@ -11,14 +11,12 @@ import plotly.subplots
 import matplotlib
 matplotlib.use('TkAgg')
 
-
 def calculateDistance(location1, location2):
     return sqrt(
         (location1.x ** 2 - location2.x ** 2) +
         (location1.y ** 2 - location2.y ** 2) +
         (location1.z ** 2 - location2.z ** 2)
     ).real
-
 
 
 class VehicleBase:
@@ -40,7 +38,7 @@ class VehicleBase:
 
     @classmethod
     def destroy_all(cls, client):
-        while len(cls.instances) > 0: # instances might contain actors if still not empty.
+        while len(cls.instances) > 0:  # instances might contain actors if still not empty.
             client.apply_batch([carla.command.DestroyActor(cls.instances.pop().actor)])
 
     def __eq__(self, other):
