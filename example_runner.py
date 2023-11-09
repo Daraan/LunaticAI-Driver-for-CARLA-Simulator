@@ -1,7 +1,7 @@
 
 import os
 import sys
-import __allow_imports_from_root
+import examples.__allow_imports_from_root
 
 # List files
 
@@ -16,9 +16,11 @@ def list_py_files(directory):
                 py_files.append(os.path.join(root, file))
     return py_files
 
-os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) # run from main folder
-py_files = sorted(list_py_files("./examples"))
-
+if os.path.basename(os.getcwd()) == "examples":
+    os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) # run from main folder
+    print("Changed to directory", os.getcwd(), "from", os.path.basename(os.getcwd()))
+py_files = sorted(list_py_files("examples"))
+sys.path.append("./examples") # for import __allow_imports_from_root to work
 # Choose file
 
 for i, file in enumerate(py_files):
@@ -32,7 +34,10 @@ try:
     else:
         idx = int(sys.argv[-1]) -1 # use last argument as index
 except ValueError:
-    idx = int(input("Enter number of file to run: ")) -1
+    try:
+        idx = int(input("Enter number of file to run: "))
+    except KeyboardInterrupt:
+        exit()
 if idx is not None:
     file_path = py_files[idx]
 
