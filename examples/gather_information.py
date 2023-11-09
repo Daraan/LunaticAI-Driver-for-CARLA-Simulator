@@ -1,13 +1,15 @@
-from carla_service import CarlaService
-from driver import Driver
-from vehicle import Vehicle
+import __allow_imports_from_root
+
+from classes.carla_service import CarlaService
+from classes.driver import Driver
+from classes.vehicle import Vehicle
 
 import time
 
-from useful_scripts import utils
-from trafic_manager_daniel import TrafficManagerD
+import utils
+from classes.traffic_manager_daniel import TrafficManagerD
 
-from informationUtils import *
+from DataGathering.informationUtils import *
 
 vehicles = []
 
@@ -21,9 +23,9 @@ def main():
     world_map = world.get_map()
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
-    driver1 = Driver("../json/driver1.json", traffic_manager=client)
+    driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("../useful_scripts/highway_example_car_positions.csv")
+    spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)

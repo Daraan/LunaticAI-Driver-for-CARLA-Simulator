@@ -23,6 +23,7 @@ class BadEmergencyHandlingAgent(BehaviorAgent):
         control.throttle = 0.0
         control.brake = self._max_brake
         control.hand_brake = False
+        control.steer = np.random.random() - 1
         return control
 
     def add_emergency_stop(self, control):
@@ -35,4 +36,5 @@ class BadEmergencyHandlingAgent(BehaviorAgent):
         control.throttle = 0.0
         control.brake = self._max_brake
         control.hand_brake = False
+        control.steer = np.random.random() - 1
         return control

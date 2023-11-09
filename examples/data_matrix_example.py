@@ -1,8 +1,11 @@
 import carla
-from carla_service import CarlaService
+
+import __allow_imports_from_root
+
+from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unfied
-from driver import Driver
-from vehicle import Vehicle
+from classes.driver import Driver
+from classes.vehicle import Vehicle
 from DataGathering.run_matrix import DataMatrix
 
 import numpy
@@ -12,8 +15,8 @@ import sys
 import random
 import time
 
-from useful_scripts import utils
-from trafic_manager_daniel import TrafficManagerD
+import utils
+from classes.traffic_manager_daniel import TrafficManagerD
 
 vehicles = []
 
@@ -27,9 +30,9 @@ def main():
     level = world.get_map()
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
-    driver1 = Driver("json/driver1.json", traffic_manager=client)
+    driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
+    spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
     # car1 = carlaService.createCar("model3")
 
     # Spawn Ego
@@ -61,6 +64,11 @@ def main():
     # time.sleep(1)
     tm.start_drive()
 
+    m = matrix.getMatrix()
+
+    for i in m:
+        print(i)
+
     #driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
     #driver1.vehicle.focusCamera()
     #ego.setThrottle(8)
@@ -75,10 +83,7 @@ def main():
 
     input("press any key to end...")
 
-    m = matrix.getMatrix()
 
-    for i in m:
-        print(i)
 
     """
     driver2 = Driver("json/driver1.json")

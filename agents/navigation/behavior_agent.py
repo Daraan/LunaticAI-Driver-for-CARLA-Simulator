@@ -13,7 +13,7 @@ import numpy as np
 import carla
 from agents.navigation.basic_agent import BasicAgent
 from agents.navigation.local_planner import RoadOption
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BuiltInBehavior
+from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BasicBehavior
 import agents.navigation.behavior_types as _behavior_types
 
 behavior_types = vars(_behavior_types)
@@ -41,7 +41,6 @@ class BehaviorAgent(BasicAgent):
             :param behavior: type of agent to apply
         """
 
-
         self._look_ahead_steps = 0
 
         # Vehicle information
@@ -52,10 +51,10 @@ class BehaviorAgent(BasicAgent):
         self._incoming_waypoint = None
         self._min_speed = 5
         self._behavior = None
-        self._sampling_resolution = 4.5  # NOTE also et in behaviours
+        self._sampling_resolution = 4.5  # NOTE also set in default behaviors
 
         print("Behavior of Agent", behavior)
-        if isinstance(behavior, BuiltInBehavior):
+        if isinstance(behavior, BasicBehavior):
             self._behavior = behavior
 
         # Parameters for agent behavior
@@ -70,8 +69,8 @@ class BehaviorAgent(BasicAgent):
         else:
             self._behavior = behavior_types[behavior]
 
-        opts = self._behavior.options.copy() # base options from templates
-        opts.update(opt_dict)
+        opts = self._behavior.get_options().copy() # base options from templates
+        opts.update(opt_dict) # update by custom options
         super().__init__(vehicle, opt_dict=opts, map_inst=map_inst, grp_inst=grp_inst)
 
     def _update_information(self):
@@ -157,7 +156,7 @@ class BehaviorAgent(BasicAgent):
         def dist(v): return v.get_location().distance(waypoint.transform.location)
         vehicle_list = [v for v in vehicle_list if dist(v) < 45 and v.id != self._vehicle.id]
 
-        # Tripple (<is there an obstacle> , )
+        # Triple (<is there an obstacle> , )
         if self._direction == RoadOption.CHANGELANELEFT:
             vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
                 vehicle_list, max(
@@ -220,7 +219,9 @@ class BehaviorAgent(BasicAgent):
 
         vehicle_speed = get_speed(vehicle)
         delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
-        ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
+        ttc = ( distance / delta_v if delta_v != 0   # TimeTillCollision
+                else distance / np.nextafter(0., 1.)  # do not divide by 0,
+                )
 
         # Under safety time distance, slow down.
         if self._behavior.safety_time > ttc > 0.0:
@@ -327,7 +328,6 @@ class BehaviorAgent(BasicAgent):
         """
         control = carla.VehicleControl()
         control.throttle = 0.0
-        control.steer = np.random.random() - 1 # TODO move to another class
         control.brake = self._max_brake
         control.hand_brake = False
         return control

@@ -1,14 +1,15 @@
 #!/usr/bin/env python
+"""
 
-# Copyright (c) 2018 Intel Labs.
-# authors: German Ros (german.ros@intel.com)
-#
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
+Example of the agent system
 
-"""Example of automatic vehicle control from client side."""
+Based on German Ros's (german.ros@intel.com) example of automatic_control shipped with carla.
+"""
+from __future__ import print_function # for python 2.7 compatibility
+import __allow_imports_from_root
 
-from __future__ import print_function
+
+import pygame
 
 import argparse
 import logging
@@ -18,71 +19,24 @@ import glob
 import os
 import sys
 import random
-import time
-
-from trafic_manager_daniel import TrafficManagerD
-from useful_scripts import utils
 
 import threading
 
-try:
-    import pygame
-    from pygame.locals import KMOD_CTRL
-    from pygame.locals import K_ESCAPE
-    from pygame.locals import K_q
-except ImportError:
-    raise RuntimeError('cannot import pygame, make sure pygame package is installed')
-
-try:
-    import numpy as np
-except ImportError:
-    raise RuntimeError(
-        'cannot import numpy, make sure numpy package is installed')
-
-# ==============================================================================
-# -- Find CARLA module ---------------------------------------------------------
-# ==============================================================================
-try:
-    sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
-        sys.version_info.major,
-        sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
-except IndexError:
-    pass
-
-# ==============================================================================
-# -- Add PythonAPI for release mode --------------------------------------------
-# ==============================================================================
-try:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/carla')
-except IndexError:
-    pass
-
 import carla
 
-from carla_service import CarlaService # TODO integrate or scrap
-from driver import Driver # TODO integrate or scrap
-from vehicle import Vehicle
+from classes.vehicle import Vehicle
 
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
 
-from classes.world import World
-from classes.HUD import HUD
-
-from utils.camera_manager import CameraManager
-
-# ==============================================================================
-# -- Global functions ----------------------------------------------------------
-# ==============================================================================
-
-
-
-from utils import get_actor_display_name, get_actor_blueprints
+from classes.carla_originals.world import World
+from classes.carla_originals.HUD import HUD
 
 from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 
+from classes.traffic_manager_daniel import TrafficManagerD
+import utils
 
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
@@ -132,13 +86,13 @@ def game_loop(args):
 
         # Set the agent destination
         try:
-            spawn_points = utils.csv_to_transformations("../useful_scripts/highway_example_car_positions.csv")
+            spawn_points = utils.general.csv_to_transformations("../examples/highway_example_car_positions.csv")
         except FileNotFoundError:
-            spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
+            spawn_points = utils.general.csv_to_transformations("examples/highway_example_car_positions.csv")
         # car1 = carlaService.createCar("model3")
 
         # Spawn Ego
-        ego_bp, car_bp = utils.prepare_blueprints(sim_world)
+        ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(sim_world)
         ego = Vehicle(sim_world, ego_bp)
         start : carla.Transform = spawn_points[0]
         ego.spawn(start)
@@ -218,7 +172,7 @@ def game_loop(args):
                             print("The target has been reached, stopping the simulation")
                             break
 
-                    control = agent.run_step()
+                    control = agent.run_step(debug=True) # debug=True draws waypoints
                     control.manual_gear_shift = False
                     world.player.apply_control(control)
                     #if i % 50 == 0:
@@ -260,69 +214,7 @@ def game_loop(args):
 def main():
     """Main method"""
 
-    argparser = argparse.ArgumentParser(
-        description='CARLA Automatic Control Client')
-    argparser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        dest='debug',
-        help='Print debug information')
-    argparser.add_argument(
-        '--host',
-        metavar='H',
-        default='127.0.0.1',
-        help='IP of the host server (default: 127.0.0.1)')
-    argparser.add_argument(
-        '-p', '--port',
-        metavar='P',
-        default=2000,
-        type=int,
-        help='TCP port to listen to (default: 2000)')
-    argparser.add_argument(
-        '--res',
-        metavar='WIDTHxHEIGHT',
-        default='1280x720',
-        help='Window resolution (default: 1280x720)')
-    argparser.add_argument(
-        '--sync',
-        action='store_true',
-        help='Synchronous mode execution')
-    argparser.add_argument(
-        '--filter',
-        metavar='PATTERN',
-        default='vehicle.*',
-        help='Actor filter (default: "vehicle.*")')
-    argparser.add_argument(
-        '--generation',
-        metavar='G',
-        default='2',
-        help='restrict to certain actor generation (values: "1","2","All" - default: "2")')
-    argparser.add_argument(
-        '-l', '--loop',
-        action='store_true',
-        dest='loop',
-        help='Sets a new random destination upon reaching the previous one (default: False)')
-    argparser.add_argument(
-        "-a", "--agent", type=str,
-        choices=["Behavior", "Basic", "Constant"],
-        help="select which agent to run",
-        default="Behavior")
-    argparser.add_argument(
-        '-b', '--behavior', type=str,
-        #choices=["cautious", "normal", "aggressive"],
-        help='Choose one of the possible agent behaviors (default: normal) ',
-        default='normal')
-    argparser.add_argument(
-        '-s', '--seed',
-        help='Set seed for repeating executions (default: None)',
-        default=None,
-        type=int)
-    argparser.add_argument(
-        '-I', '--interactive',
-        help='Enter interactive mode after initialization',
-        action="store_true")
-
-    args = argparser.parse_args()
+    args = utils.argument_parsing.automatic_control_example.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
 

@@ -1,40 +1,38 @@
+import __allow_imports_from_root
 import carla
-from carla_service import CarlaService
-# TODO: maybe we can merge these or make them more unfied
-from driver import Driver
-from vehicle import Vehicle
+from classes.carla_service import CarlaService
+# TODO: maybe we can merge these or make them more unified
+from classes.driver import Driver
+from classes.vehicle import Vehicle
 
-import numpy
-import glob
-import os
 import sys
 import random
-import time
 
-from useful_scripts import utils
+import utils
 # To import a basic agent
 from agents.navigation.basic_agent import BasicAgent
 
-from trafic_manager_daniel import TrafficManagerD
+# Import Autopilot, # TODO: remove this
+from classes.traffic_manager_daniel import TrafficManagerD
+
 
 # To import a behavior agent
-from agents.navigation.behavior_agent import BehaviorAgent
 
 vehicles = []
 
 
-def main():
+def main(args):
     global client
-    carlaService = CarlaService("Town04", "127.0.0.1", 2000)
+    carlaService = CarlaService("Town04", args.host, args.port)
     client = carlaService.client
 
     world = carlaService.getWorld()
     level = world.get_map()
-    ego_bp, car_bp = utils.prepare_blueprints(world)
+    ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world)
 
-    driver1 = Driver("json/driver1.json", traffic_manager=client)
+    driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("useful_scripts/highway_example_car_positions.csv")
+    spawn_points = utils.general.csv_to_transformations("examples/highway_example_car_positions.csv")
     # car1 = carlaService.createCar("model3")
 
     # Spawn Ego
@@ -63,14 +61,14 @@ def main():
         ap.init_passive_driver()
         ap.start_drive()
 
-
+    # ------------- Planning loop ----------------
     i = 0
     while True:
         if agent.done():
             agent.set_destination(random.choice(spawn_points).location)
             print("The target has been reached, searching for another target")
         controls = agent.run_step()
-        if (i % 1000) == 0:
+        if (i % 10000) == 0:
             print(controls)
         ego.actor.apply_control(controls)
 
@@ -95,11 +93,16 @@ def main():
 
 
 if __name__ == '__main__':
+    import utils.argument_parsing as parse
+    from pprint import pprint
+    args = parse.client_settings.add(parse.interactive_mode).parse_args()
+    pprint(args)
     try:
-        main()
+        main(args)
     finally:
         try:
             client.apply_batch([carla.command.DestroyActor(x.actor) for x in vehicles])
-        except NameError:
-            # Should be client not defined
-            pass
+        except NameError as e:
+            print(e)
+            # likely client not defined yet due to earlier errors, or not globally defined.
+
