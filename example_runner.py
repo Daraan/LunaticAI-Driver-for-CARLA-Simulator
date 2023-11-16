@@ -29,7 +29,7 @@ for i, file in enumerate(py_files):
 try:
     # Pass file pathor index directly
     if sys.argv[-1] in py_files:
-        file_path = py_files.index(sys.argv[-1])
+        file_path = sys.argv[-1] 
         idx = None
     else:
         idx = int(sys.argv[-1]) -1 # use last argument as index
@@ -46,7 +46,8 @@ if idx is not None:
 import importlib.util
 
 module_name = os.path.basename(file_path).split(".")[0]
-print(f"Running {module_name}...")
+print(f"Example Running {module_name}...")
+print("\n\n")
 
 spec = importlib.util.spec_from_file_location("__main__", file_path)
 module = importlib.util.module_from_spec(spec)
