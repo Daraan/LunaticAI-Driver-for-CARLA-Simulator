@@ -10,6 +10,7 @@ class DataMatrix:
         self.world = world
         self.agent = agent
         self.matrix = None  # Initialize an empty matrix
+        self.streetType = None
         self.worker_thread = threading.Thread(target=self._worker)
         self.worker_thread.start()
 
@@ -26,7 +27,6 @@ class DataMatrix:
         t_end = time.time() + 10
         while time.time() < t_end:
             try:
-                follow_car(self.agent, self.world)
                 ego_location = ego_vehicle.get_location()
                 ego_waypoint = world_map.get_waypoint(ego_location)
                 ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)
@@ -50,6 +50,8 @@ class DataMatrix:
 
                 df = safe_data(ego_vehicle, matrix, street_type, df)
 
+                self.streetType = street_type
+                self.matrix = matrix
                 time.sleep(0.5)
                 self.world.tick()
 
@@ -57,7 +59,10 @@ class DataMatrix:
                 continue
 
     def getMatrix(self):
-        pass
+        return self.matrix
+
+    def getStreetType(self):
+        return self.streetType
 
     def __del__(self):
         self.worker_thread.join()
