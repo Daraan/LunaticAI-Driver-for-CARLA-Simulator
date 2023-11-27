@@ -35,7 +35,7 @@ try:
         idx = int(sys.argv[-1]) -1 # use last argument as index
 except ValueError:
     try:
-        idx = int(input("Enter number of file to run: "))
+        idx = int(input("Enter number of file to run: ")) - 1
     except KeyboardInterrupt:
         exit()
 if idx is not None:
@@ -46,7 +46,7 @@ if idx is not None:
 import importlib.util
 
 module_name = os.path.basename(file_path).split(".")[0]
-print(f"Example Running {module_name}...")
+print("\n----------------------------", f"Example Running {module_name}...", "\n----------------------------")
 print("\n\n")
 
 spec = importlib.util.spec_from_file_location("__main__", file_path)
