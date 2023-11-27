@@ -66,3 +66,4 @@ class ActionFunction(EvaluationFunction):
 
     def __call__(self, agent: LunaticAgent, *args, **kwargs) -> Any:
         return self.action_function(agent, *args, **kwargs)
+
