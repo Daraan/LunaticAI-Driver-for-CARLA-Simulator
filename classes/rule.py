@@ -2,23 +2,26 @@ from typing import Any, Callable, Optional, Dict
 from agents.lunatic_agent import LunaticAgent
 from utils.evaluation_function import EvaluationFunction
 
+
 class Rule:
-    ...
-    # TODO:
-
-    def __init__(self, rule : Callable[[LunaticAgent], bool], action, description:str="What does this rule do?", overwrite_settings:Optional[Dict[str]]=None) -> None:
+    def __init__(self, rule: Callable[[LunaticAgent], bool], action: Callable,
+                 description: str = "What does this rule do?",
+                 overwrite_settings: Optional[Dict[str, Any]] = None) -> None:
         self.rule = rule
-        pass
+        self.action = action
+        self.description = description
+        self.overwrite_settings = overwrite_settings or {}
 
-    def evaluate(self, agent:LunaticAgent, overwrite:dict=None) -> bool:
+    def evaluate(self, agent: LunaticAgent, overwrite: Optional[Dict[str, Any]] = None) -> bool:
+        settings = self.overwrite_settings.copy()
         if overwrite is not None:
-            overwrite = {**self.overwrite_settings, **overwrite}
-        else:
-            overwrite = self.overwrite_settings
-        result = self.rule(agent, overwrite)
+            settings.update(overwrite)
+        result = self.rule(agent, settings)
         return result
 
-    def __call__(self, agent, overwrite=None) -> Any:
-        self.evaluate(agent, overwrite)
+    def __call__(self, agent: LunaticAgent, overwrite: Optional[Dict[str, Any]] = None) -> Any:
+        if self.evaluate(agent, overwrite):
+            return self.action(agent)
+        return None
 
-    function = EvaluationFunction # This is allows to use "@Rule.function" as well as "@EvaluationFunction"   # TODO: Discuss if this is a good idea or the contrary.
+    function = EvaluationFunction
