@@ -12,6 +12,10 @@ from omegaconf import OmegaConf, DictConfig
 
 # Create other categories if you see it fit
 # Add them to the BaseCategories class below
+
+# Contains settings that change over time through other means
+live_info : DictConfig = OmegaConf.create()
+
 speed : DictConfig=  OmegaConf.create()
 distance : DictConfig = OmegaConf.create()
 lane_change : DictConfig = OmegaConf.create()
@@ -56,13 +60,40 @@ class BaseCategories:
             default_options.planner = planner
             default_options.other = other
             default_options.unknown = unknown
+            default_options.live_info = live_info
+
+            # Flat interface to be compatible with original settings.
+
         return default_options
+
+    @staticmethod 
+    def _flatten_dict(source, target):
+        for k, v in source.items():
+            if isinstance(v, dict):
+                BaseCategories._flatten_dict(v, target)
+            else:
+                target[k] = v
+
+    def get_flat_options(self) -> dict:
+        """
+        Note these return a copy of the data but in a flat hierarchy.
+        Also note interpolations do not exist anymore.
+        E.g. target_speed and max_speed are two different references.
+        """
+        options ={}
+        resolved = OmegaConf.to_container(self._options, resolve=True)
+        self._flatten_dict(resolved, options)
+        return options
+    
+    #def __setattr__(self, key, value):
+    #    raise ValueError("Set attributes via. self.options.<category>.<key> = <value>")
 
     def __init__(self):
         # Insert every dict from above XXX
         
         # XXX
         self._options = self.init_default_options().copy()
+        self.live_info = self._options.live_info
 
         self.speed = self._options.speed
         self.distance = self._options.distance

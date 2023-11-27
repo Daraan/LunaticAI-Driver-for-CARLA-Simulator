@@ -33,6 +33,7 @@ behavior_types = vars(_behavior_types)
 
 # NEW: Style
 from  config.default_options.original_behavior import BasicAgentSettings
+from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
 class BasicAgent:
     # NOTE: This is mostly a copy of carla's navigation.basic_agent.BasicAgent
@@ -46,7 +47,7 @@ class BasicAgent:
 
     # todo: rename in the future
 
-    def __init__(self, vehicle, behavior, map_inst=None, grp_inst=None, overwrite_options: dict = {}):
+    def __init__(self, vehicle, behavior : LunaticBehaviorSettings, map_inst=None, grp_inst=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -66,13 +67,13 @@ class BasicAgent:
         if isinstance(behavior, BasicAgentSettings):
             self._behavior = behavior
         else:
-            raise ValueError("Behavior must be a BasicBehavior")
-            self._behavior = behavior_types[behavior]
+            raise ValueError("Behavior must be a " + str(BasicAgentSettings))
 
         opt_dict = self._behavior.get_options()  # base options from templates
         opt_dict.update(overwrite_options)  # update by custom options
 
         self.config = opt_dict # NOTE: This is the attribute we should use to access all information. 
+        self.live_info = self.config.live_info
 
         # Original Setup ---------------------------------------------------------
         self._vehicle = vehicle
@@ -106,9 +107,9 @@ class BasicAgent:
         self._look_ahead_steps = 0 # updated in _update_information used for local_planner.get_incoming_waypoint_and_direction
 
         # Vehicle information
-        self._speed = 0
-        self._speed_limit = 0
-        self._direction = None
+        self.live_info.speed = 0
+        self.live_info.speed_limit = 0
+        self.live_info.direction = None
         self._incoming_direction = None
         self._incoming_waypoint = None
         self._min_speed = 5
@@ -262,14 +263,16 @@ class BasicAgent:
         This method updates the information regarding the ego
         vehicle based on the surrounding world.
         """
-        self._speed = get_speed(self._vehicle)
-        self._speed_limit = self._vehicle.get_speed_limit()
-        self._local_planner.set_speed(self._speed_limit)            # <-- Adjusts Planner
-        self._direction = self._local_planner.target_road_option
-        if self._direction is None:
-            self._direction = RoadOption.LANEFOLLOW
+        self.live_info.speed = get_speed(self._vehicle)
+        self.live_info.speed_limit = self._vehicle.get_speed_limit()
+        # planner has access to config
+        #self._local_planner.set_speed(self.live_info.speed_limit)            # <-- Adjusts Planner
+        
+        self.live_info.direction = self._local_planner.target_road_option
+        if self.live_info.direction is None:
+            self.live_info.direction = RoadOption.LANEFOLLOW
 
-        self._look_ahead_steps = int((self._speed_limit) / 10)
+        self._look_ahead_steps = int((self.live_info.speed_limit) / 10)
 
         self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
             steps=self._look_ahead_steps)
@@ -697,7 +700,7 @@ class BasicAgent:
         elif self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
             target_speed = min([
                 self._behavior.max_speed,
-                self._speed_limit - 5])
+                self.live_info.speed_limit - 5])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
@@ -705,7 +708,7 @@ class BasicAgent:
         else:
             target_speed = min([
                 self._behavior.max_speed,
-                self._speed_limit - self._behavior.speed_lim_dist])
+                self.live_info.speed_limit - self._behavior.speed_lim_dist])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
