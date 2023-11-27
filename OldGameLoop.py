@@ -1,21 +1,14 @@
-import carla
-
-from DataGathering.informationUtils import follow_car
-from classes.carla_service import CarlaService
-# TODO: maybe we can merge these or make them more unfied
-from classes.driver import Driver
-from classes.vehicle import Vehicle
-from DataGathering.run_matrix import DataMatrix
-
-import numpy
-import glob
-import os
-import sys
-import random
 import time
 
+import carla
 import utils
+
+from DataGathering.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car
+from DataGathering.run_matrix import DataMatrix
+from classes.carla_service import CarlaService
+from classes.driver import Driver
 from classes.traffic_manager_daniel import TrafficManagerD
+from classes.vehicle import Vehicle
 
 vehicles = []
 
@@ -26,54 +19,58 @@ def main():
     client = carlaService.client
 
     world = carlaService.getWorld()
-    level = world.get_map()
-    ego_bp, car_bp = utils.prepare_blueprints(world)
+    world_map = world.get_map()
+    ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world)
 
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
+
     spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)
-    ego.spawn(spawn_points[0])
+    try:
+        ego.spawn(spawn_points[0])
+    except Exception as e:
+        pass
+
     vehicles.append(ego)
     carlaService.assignDriver(ego, driver1)
-
-    matrix = DataMatrix(ego, world)
+    ego_vehicle = ego.actor
 
     # spawn others
     for sp in spawn_points[1:]:
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        print(v.actor)
         ap = TrafficManagerD(client, v.actor)
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManagerD(client, ego.actor,
-                         # config="json/driver1.json" # Not implemented yet
-                         )
+    tm = TrafficManagerD(client, ego.actor)
     tm.init_lunatic_driver()
     tm.start_drive()
+
+    # Define the radius to search for other vehicles
+    radius = 100
+
+    # Initialize speed of ego_vehicle to use as global variable
+    world.tick()
+    highway_shape = None
+    road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
+    df = initialize_dataframe()
     t_end = time.time() + 10
 
-    m = matrix.getMatrix()
-
-    for i in m:
-        print(i)
-
-    if "-I" in sys.argv:
-        # goes into interactive mode here
-        import code
-        v = globals().copy()
-        v.update(locals())
-        code.interact(local=v)
+    # Create matrix
+    dataMatrix = DataMatrix(ego_vehicle, world)
 
     while time.time() < t_end:
         try:
             follow_car(ego_vehicle, world)
-
-            
+            matrix = dataMatrix.getMatrix()
+            street_type = dataMatrix.getStreetType()
+            for i in matrix:
+                print(i, matrix[i])
+            print(street_type)
 
             time.sleep(0.5)
             world.tick()

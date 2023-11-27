@@ -69,11 +69,11 @@ def main():
     for i in m:
         print(i)
 
-    #driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
-    #driver1.vehicle.focusCamera()
-    #ego.setThrottle(8)
-    #time.sleep(4)
-    #ego.setBrake(2)
+    # driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
+    # driver1.vehicle.focusCamera()
+    # ego.setThrottle(8)
+    # time.sleep(4)
+    # ego.setBrake(2)
     if "-I" in sys.argv:
         # goes into interactive mode here
         import code
@@ -82,8 +82,6 @@ def main():
         code.interact(local=v)
 
     input("press any key to end...")
-
-
 
     """
     driver2 = Driver("json/driver1.json")

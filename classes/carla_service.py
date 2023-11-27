@@ -7,7 +7,7 @@ from classes.vehicle import Vehicle
 class CarlaService:
     def __init__(self, worldName=None, ip="localhost", port=2000):
         self.client = carla.Client(ip, port)
-        self.client.set_timeout(2.0)
+        self.client.set_timeout(10.0)
         self.vehicleList = []
         if worldName:
             self.client.load_world(worldName)
