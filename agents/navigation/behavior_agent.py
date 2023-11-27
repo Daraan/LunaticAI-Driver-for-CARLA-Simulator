@@ -13,7 +13,7 @@ import numpy as np
 import carla
 from agents.navigation.basic_agent import BasicAgent
 from agents.navigation.local_planner import RoadOption
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BasicBehavior
+from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BasicAgentSettings
 import agents.navigation.behavior_types as _behavior_types
 
 behavior_types = vars(_behavior_types)
@@ -54,7 +54,7 @@ class BehaviorAgent(BasicAgent):
         self._sampling_resolution = 4.5  # NOTE also set in default behaviors
 
         print("Behavior of Agent", behavior)
-        if isinstance(behavior, BasicBehavior):
+        if isinstance(behavior, BasicAgentSettings):
             self._behavior = behavior
 
         # Parameters for agent behavior

@@ -3,10 +3,12 @@
 
 """ This module contains the different parameters sets for each behavior. """
 
-from  config.original_behavior import BasicBehavior
+from  config.default_options.original_behavior import BasicAgentSettings
+BasicAgentSettings = object
 
+#￿TODO: does not work currently
 
-class Cautious(BasicBehavior):
+class Cautious(BasicAgentSettings):
     """Class for Cautious agent."""
 
     """The maximum speed in km/h your vehicle will be able to reach."""
@@ -20,7 +22,7 @@ class Cautious(BasicBehavior):
     tailgate_counter = 0
 
 
-class Normal(BasicBehavior):
+class Normal(BasicAgentSettings):
     """Class for Normal agent."""
     max_speed = 50
     speed_lim_dist = 3
@@ -31,7 +33,7 @@ class Normal(BasicBehavior):
     tailgate_counter = 0
 
 
-class Aggressive(BasicBehavior):
+class Aggressive(BasicAgentSettings):
     """Class for Aggressive agent."""
     max_speed = 70
     speed_lim_dist = 1
@@ -43,7 +45,7 @@ class Aggressive(BasicBehavior):
 
 # Experiments (not really successful)
 
-class Tailgating2(BasicBehavior):
+class Tailgating2(BasicAgentSettings):
     """Class for Aggressive agent."""
     max_speed = 60
     speed_lim_dist = 1

@@ -32,7 +32,7 @@ import agents.navigation.behavior_types as _behavior_types #
 behavior_types = vars(_behavior_types)
 
 # NEW: Style
-from  config.original_behavior import BasicBehavior
+from  config.default_options.original_behavior import BasicAgentSettings
 
 class BasicAgent:
     # NOTE: This is mostly a copy of carla's navigation.basic_agent.BasicAgent
@@ -63,7 +63,7 @@ class BasicAgent:
 
         # OURS: Fusing behavior
         print("Behavior of Agent", behavior)
-        if isinstance(behavior, BasicBehavior):
+        if isinstance(behavior, BasicAgentSettings):
             self._behavior = behavior
         else:
             raise ValueError("Behavior must be a BasicBehavior")
@@ -71,6 +71,8 @@ class BasicAgent:
 
         opt_dict = self._behavior.get_options()  # base options from templates
         opt_dict.update(overwrite_options)  # update by custom options
+
+        self.config = opt_dict # NOTE: This is the attribute we should use to access all information. 
 
         # Original Setup ---------------------------------------------------------
         self._vehicle = vehicle
@@ -169,11 +171,19 @@ class BasicAgent:
             self._collision_sensor.destroy()
             self._collision_sensor = None
 
-    self _collision_detected(self):
+    def _collision_detected(self):
         # TODO: Brainstorm and implement
         # e.g. setting ignore_vehicles to False, if it was True before.
         # do an emergency stop (in certain situations)
         raise NotImplemented
+    
+    def temporary_settings(self, temp_settings: dict) -> dict:
+        """
+        Returns a new dictionary with the agent's settings overwritten by the given temporary settings.
+        NOTE: This does not change the agent's settings only returns a new dictionary to be used.
+        """
+        # TODO: Maybe make a temp_settings attribute, problem what if multiple temporary settings are needed that live longer.
+        return { **self.settings, **temp_settings} 
 
     def set_target_speed(self, speed):
         """
@@ -700,3 +710,6 @@ class BasicAgent:
             control = self._local_planner.run_step(debug=debug)
 
         return control
+    
+
+LunaticAgent = BasicAgent
