@@ -9,8 +9,8 @@ class CarlaService:
         self.client = carla.Client(ip, port)
         self.client.set_timeout(10.0)
         self.vehicleList = []
-        if worldName:
-            self.client.load_world(worldName)
+        # if worldName:
+            # self.client.load_world(worldName)
         self.world = self.client.get_world()
 
     def createCar(self, model):

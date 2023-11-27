@@ -12,7 +12,10 @@ from classes.vehicle import Vehicle
 
 vehicles = []
 
-
+"""
+This does not work, we have some problems with the multithreading, but I do not get why
+If someone tries to repair this the problem is in the loop found in the DataMatrix file
+"""
 def main():
     global client
     carlaService = CarlaService("Town04", "127.0.0.1", 2000)
