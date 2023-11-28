@@ -3,10 +3,23 @@ speed:
   current_speed_limit: ${..live_info.speed_limit}
   target_speed: 20
   follow_speed_limit: false
+  speed_decrease: 12
+  safety_time: 3
+  min_speed: 5
+  speed_lim_dist: 6
+  max_speed: ${target_speed}
+  vehicle_percentage_speed_difference: 30
 distance:
   base_min_distance: 3.0
   distance_ratio: 0.5
-lane_change: {}
+  min_proximity_threshold: 12
+  braking_distance: 6
+  distance_to_leading_vehicle: 5.0
+lane_change:
+  auto_lange_change: true
+  random_left_lanechange_percentage: 0.1
+  random_right_lanechange_percentage: 0.1
+  keep_right_rule_percentage: 0.7
 obstacles:
   ignore_vehicles: false
   ignore_traffic_lights: false
@@ -14,6 +27,9 @@ obstacles:
   base_tlight_threshold: 5.0
   base_vehicle_threshold: 5.0
   detection_speed_ratio: 1.0
+  ignore_lights_percentage: 0.0
+  ignore_signs_percentage: 0.0
+  ignore_walkers_percentage: 0.0
 controls:
   max_brake: 0.5
   max_throttle: 0.75
@@ -34,7 +50,10 @@ planner:
     K_D: 0
     dt: ${..dt}
   args_longitudinal_dict: ${longitudinal_control_dict}
-other: {}
+other:
+  tailgate_counter: 0
+  vehicle_lane_offset: ${..planer.offset}
+  update_vehicle_lights: false
 unknown:
   use_bbs_detection: false
   sampling_resolution: 2.0
