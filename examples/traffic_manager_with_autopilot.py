@@ -1,11 +1,10 @@
-import __allow_imports_from_root # add project root folder to path
+import __allow_imports_from_root  # add project root folder to path
 import carla
 
 from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unified & marge with agent
 from classes.driver import Driver
 from classes.vehicle import Vehicle
-
 
 import argparse
 import glob
@@ -18,6 +17,7 @@ from classes.traffic_manager_daniel import TrafficManagerD
 import utils
 
 vehicles = []
+
 
 def main(args={}):
     global client
@@ -61,11 +61,11 @@ def main(args={}):
     # time.sleep(1)
     tm.start_drive()
 
-    #driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
-    #driver1.vehicle.focusCamera()
-    #ego.setThrottle(8)
-    #time.sleep(4)
-    #ego.setBrake(2)
+    # driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
+    # driver1.vehicle.focusCamera()
+    # ego.setThrottle(8)
+    # time.sleep(4)
+    # ego.setBrake(2)
 
     """
     driver2 = Driver("json/driver1.json")
@@ -97,7 +97,7 @@ def main(args={}):
     # car1.setHandbrake(True)
     time.sleep(5)
     """
-    if args.interactive: 
+    if args.interactive:
         # goes into interactive mode here
         import code
         v = globals().copy()
@@ -105,9 +105,11 @@ def main(args={}):
         code.interact(local=v)
     input("press any key to end...")
 
+
 if __name__ == '__main__':
     import utils.argument_parsing as parse
     from pprint import pprint
+
     args = parse.client_settings.add(parse.interactive_mode).parse_args()
     pprint(args)
     try:
