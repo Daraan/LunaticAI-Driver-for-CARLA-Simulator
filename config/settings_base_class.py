@@ -34,6 +34,7 @@ unknown : DictConfig = OmegaConf.create()
 # -----------------
 
 # Do not set this now, else it will create copies of empty dicts
+# This should be initialized when all dicts are set-up.
 default_options = None
 
 # -----------------
@@ -47,12 +48,15 @@ class BaseCategories:
         return default_options 
 
     @staticmethod 
-    def init_default_options():
+    def _init_default_options(*,reinit=False):
+        # Use reinit only if you know what you are doing. 
         # XXX
         global default_options
-        if default_options is None:
+        if default_options is None or reinit:
             default_options = OmegaConf.create()
+            # NOTE: This creates copies of the dicts and NOT references.
             default_options.speed = speed
+            assert default_options.speed is not speed
             default_options.distance = distance
             default_options.lane_change = lane_change
             default_options.obstacles = obstacles
@@ -92,7 +96,7 @@ class BaseCategories:
         # Insert every dict from above XXX
         
         # XXX
-        self._options = self.init_default_options().copy()
+        self._options = self._init_default_options().copy()
         self.live_info = self._options.live_info
 
         self.speed = self._options.speed

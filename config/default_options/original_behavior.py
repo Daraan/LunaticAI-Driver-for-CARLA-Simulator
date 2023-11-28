@@ -140,6 +140,7 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     
 
 basic_options = BasicAgentSettings()
+basic_options._options = basic_options._init_default_options(reinit=True).copy()
 basic_options.export_options("config/default_options/basic_agent_settings.yaml")    
 
 
@@ -200,4 +201,6 @@ class BehaviorAgentSettings(BasicAgentSettings):
         return self.speed.target_speed
 
 behavior_agent_options = BehaviorAgentSettings()
-behavior_agent_options.export_options("config/default_options/behavior_agent_settings.yaml")  
+behavior_agent_options._options = behavior_agent_options._init_default_options(reinit=True).copy()
+behavior_agent_options.export_options("config/default_options/behavior_agent_settings.yaml")
+config.settings_base_class.default_options = None

@@ -7,7 +7,6 @@ behavior = LunaticBehaviorSettings()
 options = behavior.get_options()
 print(behavior.get_options(yaml=True))
 
-print(options.speed.target_speed, options.speed.speed, options.speed.speed_limit)
+print(options.speed.target_speed, options.speed.current_speed, options.live_info.speed_limit)
 
-
-assert behavior.speed.target_speed is behavior.target_speed
+assert behavior.speed.current_speed is behavior.live_info.speed

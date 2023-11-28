@@ -2,7 +2,7 @@
 
 from config.default_options.original_behavior import BehaviorAgentSettings
 from config.default_options.original_behavior import speed, distance, lane_change, planner, obstacles, other, unknown
-
+import config.settings_base_class
 
 class AutopilotBehavior(BehaviorAgentSettings):
     """
@@ -44,5 +44,7 @@ class AutopilotBehavior(BehaviorAgentSettings):
 
 
 carla_default_options = AutopilotBehavior()
+carla_default_options._options = carla_default_options._init_default_options(reinit=True).copy()
 carla_default_options.export_options("config/default_options/carla_default_options.yaml")
+config.settings_base_class.default_options = None
 
