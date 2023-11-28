@@ -13,6 +13,7 @@ speed:
 
   # AUTOPILOT: Not yet implemented
   vehicle_percentage_speed_difference: 30
+  speed_lim_dist: 6
 
   speed_decrease: 12
   safety_time: 3

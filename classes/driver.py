@@ -5,6 +5,7 @@ from typing import Union, Optional
 
 TRAFFIC_MANAGER_CONFIG_SUBDIR = "traffic_manager"
 
+
 class Driver:
     def __init__(self, path,
                  traffic_manager: Optional[Union[carla.Client, carla.TrafficManager]] =None,
@@ -19,15 +20,15 @@ class Driver:
         self.vehicle = None
         self.config = None
         if isinstance(traffic_manager, carla.TrafficManager):
-            self.tm = traffic_manager # Traffic manager short alias
+            self.tm = traffic_manager  # Traffic manager short alias
         elif isinstance(traffic_manager, carla.Client):
-            self.tm : carla.TrafficManager = traffic_manager.get_trafficmanager()  # todo find out if there is a different to useing
+            self.tm: carla.TrafficManager = traffic_manager.get_trafficmanager()  # todo find out if there is a different to useing
         elif traffic_manager is not None:
             raise TypeError("manager wrong type", type(traffic_manager))
         if path is not None:
             with open(path, 'r') as file:
                 data = json.load(file)
-            self.config : dict = data
+            self.config: dict = data
             driver_data = data.get("driver", {})
             speed_range = driver_data.get("speed", {})
             distance_range = driver_data.get("distance", {})
@@ -47,13 +48,13 @@ class Driver:
         if self.config is None:
             self.config = config_update
         elif config_update is not None:
-            self.config.update(config_update) # TODO add some sanity check for correct format
-        if self.config["use_traffic_manager"] :
+            self.config.update(config_update)  # TODO add some sanity check for correct format
+        if self.config["use_traffic_manager"]:
             dir = os.path.split(path)[0]
-            path_tm = os.path.join(dir, TRAFFIC_MANAGER_CONFIG_SUBDIR, self.config["use_traffic_manager"]+".json",)
+            path_tm = os.path.join(dir, TRAFFIC_MANAGER_CONFIG_SUBDIR, self.config["use_traffic_manager"] + ".json", )
             with open(path_tm, 'r') as file:
                 self.tm_config = json.load(file)
-            #self.tm: carla.TrafficManager = client.get_trafficmanager()
+            # self.tm: carla.TrafficManager = client.get_trafficmanager()
 
     def spawn(self, transform):
         self.vehicle.spawn(transform)
@@ -77,7 +78,8 @@ class Driver:
 
     def configure_autopilot(self):
         if self.tm is None:
-            raise ValueError("To use the Traffic Manager the driver needs to be initialized with the client. Or set Driver.tm manually to a manager")
+            raise ValueError(
+                "To use the Traffic Manager the driver needs to be initialized with the client. Or set Driver.tm manually to a manager")
         # TODO Test lazy notation
         tm_config = self.tm_config["traffic_manager"]
         for k, v in tm_config.items():
@@ -85,7 +87,7 @@ class Driver:
             if setter is None:
                 raise ValueError(f"{k} invalid function for carla.TrafficManager")
             setter(self.actor, v)
-        #manual way:
+        # manual way:
         """
         self.tm.auto_lane_change(self.actor, tmc["auto_lane_change"])
         self.tm.distance_to_leading_vehicle(self.actor, tmc["distance_to_leading_vehicle"])
