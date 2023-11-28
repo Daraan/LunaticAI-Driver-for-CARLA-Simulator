@@ -1,0 +1,44 @@
+speed:
+  current_speed: ${..live_info.speed}
+  current_speed_limit: ${..live_info.speed_limit}
+  target_speed: 20
+  follow_speed_limit: false
+distance:
+  base_min_distance: 3.0
+  distance_ratio: 0.5
+lane_change: {}
+obstacles:
+  ignore_vehicles: false
+  ignore_traffic_lights: false
+  ignore_stop_signs: false
+  base_tlight_threshold: 5.0
+  base_vehicle_threshold: 5.0
+  detection_speed_ratio: 1.0
+controls:
+  max_brake: 0.5
+  max_throttle: 0.75
+  max_steering: 0.8
+  offset: 0
+planner:
+  sampling_radius: 2.0
+  dt: 0.05
+  lateral_control_dict:
+    K_P: 1.95
+    K_I: 0.05
+    K_D: 0.2
+    dt: ${..dt}
+  args_lateral_dict: ${lateral_control_dict}
+  longitudinal_control_dict:
+    K_P: 1.0
+    K_I: 0.05
+    K_D: 0
+    dt: ${..dt}
+  args_longitudinal_dict: ${longitudinal_control_dict}
+other: {}
+unknown:
+  use_bbs_detection: false
+  sampling_resolution: 2.0
+live_info:
+  speed: null
+  speed_limit: null
+  direction: null
