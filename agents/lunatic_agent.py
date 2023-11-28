@@ -63,6 +63,8 @@ class BasicAgent:
         # low prio todo: update description.
 
         # OURS: Fusing behavior
+
+        # Settings ---------------------------------------------------------------
         print("Behavior of Agent", behavior)
         if isinstance(behavior, BasicAgentSettings):
             self._behavior = behavior
@@ -202,13 +204,8 @@ class BasicAgent:
         """
         self._local_planner.follow_speed_limits(value)
 
-    def get_local_planner(self):
-        """Get method for protected member local planner"""
-        return self._local_planner
-
-    def get_global_planner(self):
-        """Get method for protected member local planner"""
-        return self._global_planner
+    #def get_local_planner(self):
+    #def get_global_planner(self):
 
     def set_destination(self, end_location, start_location=None):
         """
@@ -268,7 +265,7 @@ class BasicAgent:
         # planner has access to config
         #self._local_planner.set_speed(self.live_info.speed_limit)            # <-- Adjusts Planner
         
-        self.live_info.direction = self._local_planner.target_road_option
+        self.live_info.direction : RoadOption = self._local_planner.target_road_option
         if self.live_info.direction is None:
             self.live_info.direction = RoadOption.LANEFOLLOW
 
