@@ -8,7 +8,7 @@ class TrafficManagerD:
     def __init__(self, client, actor, *,
                  speed_limit_scale=-25,
                  min_front_distance=3,
-                 seed=0):
+                 seed=1):
         # TODO use a settings file
         if True or TrafficManagerD.tm is None:
             #TrafficManagerD.tm : carla.TrafficManager =\
@@ -27,6 +27,7 @@ class TrafficManagerD:
         self.tm.random_right_lanechange_percentage(self.actor, 25)
         self.tm.random_left_lanechange_percentage(self.actor, 50)
         self.tm.ignore_vehicles_percentage(self.actor, 40)
+        self.tm.ignore_lights_percentage(self.actor, 100)
 
     def init_passive_driver(self):
         self.tm.auto_lane_change(self.actor, False)
@@ -34,12 +35,13 @@ class TrafficManagerD:
         self.tm.random_left_lanechange_percentage(self.actor, 0)
         self.tm.vehicle_percentage_speed_difference(self.actor, 60)
         self.tm.distance_to_leading_vehicle(self.actor, 8)
+        self.tm.ignore_lights_percentage(self.actor, 100)
         self.actor.set_autopilot(True)
 
 
     def force_overtake(self, speed):
         self.force_lane_change(right=False)
-        self.actor.setThrottle(7)
+        self.actor.setThrottle(speed)
 
 
     def force_lane_change(self, right=False):
