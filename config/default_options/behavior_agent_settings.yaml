@@ -3,9 +3,16 @@ speed:
   current_speed_limit: ${..live_info.speed_limit}
   target_speed: 20
   follow_speed_limit: false
+  speed_decrease: 12
+  safety_time: 3
+  min_speed: 5
+  speed_lim_dist: 6
+  max_speed: ${target_speed}
 distance:
   base_min_distance: 3.0
   distance_ratio: 0.5
+  min_proximity_threshold: 12
+  braking_distance: 6
 lane_change: {}
 obstacles:
   ignore_vehicles: false
@@ -34,7 +41,8 @@ planner:
     K_D: 0
     dt: ${..dt}
   args_longitudinal_dict: ${longitudinal_control_dict}
-other: {}
+other:
+  tailgate_counter: 0
 unknown:
   use_bbs_detection: false
   sampling_resolution: 2.0
