@@ -35,7 +35,7 @@ behavior_types = vars(_behavior_types)
 from config.original_behavior import BasicBehavior
 
 
-class BasicAgent:
+class LunaticAgent:
     # NOTE: This is mostly a copy of carla's navigation.basic_agent.BasicAgent
     #
     """
@@ -187,8 +187,7 @@ class BasicAgent:
     def follow_speed_limits(self, value=True):
         """
         If active, the agent will dynamically change the target speed according to the speed limits
-
-            :param value (bool): whether or not to activate this behavior
+            :param value: (bool) whether to activate this behavior
         """
         self._local_planner.follow_speed_limits(value)
 
@@ -267,168 +266,81 @@ class BasicAgent:
         if self._incoming_direction is None:
             self._incoming_direction = RoadOption.LANEFOLLOW
 
-        # def run_step(self, debug=False):
-        #     self._update_information()
-        #     hazard_detected = False
-        #
-        #     # Retrieve all relevant actors
-        #     vehicle_list = self._world.get_actors().filter("*vehicle*")
-        #
-        #     vehicle_speed = get_speed(self._vehicle) / 3.6
-        #
-        #     # Check for possible vehicle obstacles
-        #     max_vehicle_distance = self._base_vehicle_threshold + self._speed_ratio * vehicle_speed
-        #     affected_by_vehicle, _, _ = self._vehicle_obstacle_detected(vehicle_list, max_vehicle_distance)
-        #     if affected_by_vehicle:
-        #         hazard_detected = True
-        #
-        #     # Check if the vehicle is affected by a red traffic light
-        #     max_tlight_distance = self._base_tlight_threshold + self._speed_ratio * vehicle_speed
-        #     affected_by_tlight, _ = self._affected_by_traffic_light(self._lights_list, max_tlight_distance)
-        #     if affected_by_tlight:
-        #         hazard_detected = True
-        #
-        #     control = self._local_planner.run_step()
-        #     if hazard_detected:
-        #         control = self.add_emergency_stop(control)
-        #
-        #     if self._behavior.tailgate_counter > 0:
-        #         self._behavior.tailgate_counter -= 1
-        #
-        #     ego_vehicle_loc = self._vehicle.get_location()
-        #     ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
-        #
-        #     # 1: Red lights and stops behavior
-        #     if self.traffic_light_manager():
-        #         return self.emergency_stop()
-        #
-        #     # 2.1: Pedestrian avoidance behaviors
-        #     walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
-        #
-        #     if walker_state:
-        #         # Distance is computed from the center of the two cars,
-        #         # we use bounding boxes to calculate the actual distance
-        #         distance = w_distance - max(
-        #             walker.bounding_box.extent.y, walker.bounding_box.extent.x) - max(
-        #             self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
-        #
-        #         # Emergency brake if the car is very close.
-        #         if distance < self._behavior.braking_distance:
-        #             return self.emergency_stop()
-        #
-        #     # 2.2: Car following behaviors
-        #     vehicle_state, vehicle, distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
-        #
-        #     if vehicle_state:
-        #         # Distance is computed from the center of the two cars,
-        #         # we use bounding boxes to calculate the actual distance
-        #         distance = distance - max(
-        #             vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
-        #             self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
-        #
-        #         # Emergency brake if the car is very close.
-        #         if distance < self._behavior.braking_distance:
-        #             return self.emergency_stop()
-        #         else:
-        #             control = self.car_following_manager(vehicle, distance)
-        #
-        #     # 3: Intersection behavior
-        #     elif self._incoming_waypoint.is_junction and (
-        #             self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
-        #         target_speed = min([
-        #             self._behavior.max_speed,
-        #             self._speed_limit - 5])
-        #         self._local_planner.set_speed(target_speed)
-        #         control = self._local_planner.run_step(debug=debug)
-        #
-        #     # 4: Normal behavior
-        #     else:
-        #         target_speed = min([
-        #             self._behavior.max_speed,
-        #             self._speed_limit - self._behavior.speed_lim_dist])
-        #         self._local_planner.set_speed(target_speed)
-        #         control = self._local_planner.run_step(debug=debug)
-        #
-        #     return control
+    def run_step(self, debug=False):
+        self._update_information()
+        # Detect hazards
+        hazard_detected = self.detect_hazard()
+        # React based on detected hazards and behaviors
+        control = self.react_to_hazard(hazard_detected, debug)
+        return control
 
-        def run_step(self, debug=False):
-            self._update_information()
+    def detect_hazard(self):
+        vehicle_list = self._world.get_actors().filter("*vehicle*")
+        vehicle_speed = get_speed(self._vehicle) / 3.6
 
-            # Detect hazards
-            hazard_detected = self.detect_hazard()
+        # Check for possible vehicle obstacles
+        max_vehicle_distance = self._base_vehicle_threshold + self._speed_ratio * vehicle_speed
+        affected_by_vehicle, _, _ = self._vehicle_obstacle_detected(vehicle_list, max_vehicle_distance)
 
-            # React based on detected hazards and behaviors
-            control = self.react_to_hazard(hazard_detected, debug)
+        # Check if affected by a red traffic light
+        max_tlight_distance = self._base_tlight_threshold + self._speed_ratio * vehicle_speed
+        affected_by_tlight, _ = self._affected_by_traffic_light(self._lights_list, max_tlight_distance)
 
-            return control
+        # Combine hazard detection results
+        return affected_by_vehicle or affected_by_tlight
 
-        def detect_hazard(self):
-            vehicle_list = self._world.get_actors().filter("*vehicle*")
-            vehicle_speed = get_speed(self._vehicle) / 3.6
+    def react_to_hazard(self, hazard_detected, debug):
+        control = None
 
-            # Check for possible vehicle obstacles
-            max_vehicle_distance = self._base_vehicle_threshold + self._speed_ratio * vehicle_speed
-            affected_by_vehicle, _, _ = self._vehicle_obstacle_detected(vehicle_list, max_vehicle_distance)
+        if hazard_detected:
+            control = self.add_emergency_stop(self._local_planner.run_step())
 
-            # Check if affected by a red traffic light
-            max_tlight_distance = self._base_tlight_threshold + self._speed_ratio * vehicle_speed
-            affected_by_tlight, _ = self._affected_by_traffic_light(self._lights_list, max_tlight_distance)
+        # Other behaviors based on hazard detection
+        else:
+            self._behavior.tailgate_counter = max(0, self._behavior.tailgate_counter - 1)
+            ego_vehicle_loc = self._vehicle.get_location()
+            ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
 
-            # Combine hazard detection results
-            return affected_by_vehicle or affected_by_tlight
+            # Red lights and stops behavior
+            if self.traffic_light_manager():
+                return self.emergency_stop()
 
-        def react_to_hazard(self, hazard_detected, debug):
-            control = None
+            # Pedestrian avoidance behaviors
+            walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
+            if walker_state and (w_distance - max(walker.bounding_box.extent.y, walker.bounding_box.extent.x)
+                                 - max(self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
+                                 < self._behavior.braking_distance):
+                return self.emergency_stop()
 
-            if hazard_detected:
-                control = self.add_emergency_stop(self._local_planner.run_step())
+            # Car following behaviors
+            vehicle_state, vehicle, distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
+            if vehicle_state:
+                distance = distance - max(vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
+                    self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
 
-            # Other behaviors based on hazard detection
-            else:
-                self._behavior.tailgate_counter = max(0, self._behavior.tailgate_counter - 1)
-                ego_vehicle_loc = self._vehicle.get_location()
-                ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
-
-                # Red lights and stops behavior
-                if self.traffic_light_manager():
+                if distance < self._behavior.braking_distance:
                     return self.emergency_stop()
-
-                # Pedestrian avoidance behaviors
-                walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
-                if walker_state and (w_distance - max(walker.bounding_box.extent.y, walker.bounding_box.extent.x)
-                                     - max(self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
-                                     < self._behavior.braking_distance):
-                    return self.emergency_stop()
-
-                # Car following behaviors
-                vehicle_state, vehicle, distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
-                if vehicle_state:
-                    distance = distance - max(vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
-                        self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
-
-                    if distance < self._behavior.braking_distance:
-                        return self.emergency_stop()
-                    else:
-                        control = self.car_following_manager(vehicle, distance)
-
-                # Intersection behavior
-                elif self._incoming_waypoint.is_junction and (
-                        self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
-                    target_speed = min([
-                        self._behavior.max_speed,
-                        self._speed_limit - 5])
-                    self._local_planner.set_speed(target_speed)
-                    control = self._local_planner.run_step(debug=debug)
-
-                # Normal behavior
                 else:
-                    target_speed = min([
-                        self._behavior.max_speed,
-                        self._speed_limit - self._behavior.speed_lim_dist])
-                    self._local_planner.set_speed(target_speed)
-                    control = self._local_planner.run_step(debug=debug)
+                    control = self.car_following_manager(vehicle, distance)
 
-            return control
+            # Intersection behavior
+            elif self._incoming_waypoint.is_junction and (
+                    self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
+                target_speed = min([
+                    self._behavior.max_speed,
+                    self._speed_limit - 5])
+                self._local_planner.set_speed(target_speed)
+                control = self._local_planner.run_step(debug=debug)
+
+            # Normal behavior
+            else:
+                target_speed = min([
+                    self._behavior.max_speed,
+                    self._speed_limit - self._behavior.speed_lim_dist])
+                self._local_planner.set_speed(target_speed)
+                control = self._local_planner.run_step(debug=debug)
+
+        return control
 
     # NEW
     def get_current_waypoint(self):
@@ -475,11 +387,12 @@ class BasicAgent:
 
         self.set_global_plan(path)
 
-    def _generate_lane_change_path(self, waypoint, direction='left', distance_same_lane=10,
+    @staticmethod
+    def _generate_lane_change_path(waypoint, direction='left', distance_same_lane=10,
                                    distance_other_lane=25, lane_change_distance=25,
                                    check=True, lane_changes=1, step_distance=2):
         """
-        This methods generates a path that results in a lane change.
+        This method generates a path that results in a lane change.
         Use the different distances to fine-tune the maneuver.
         If the lane change is impossible, the returned path will be empty.
         """
@@ -487,9 +400,7 @@ class BasicAgent:
         distance_other_lane = max(distance_other_lane, 0.1)
         lane_change_distance = max(lane_change_distance, 0.1)
 
-        plan = []
-        plan.append((waypoint, RoadOption.LANEFOLLOW))  # start position
-
+        plan = [(waypoint, RoadOption.LANEFOLLOW)]
         option = RoadOption.LANEFOLLOW
 
         # Same lane
@@ -552,16 +463,19 @@ class BasicAgent:
 
         return plan
 
-    def traffic_light_manager(self):  # From behavior_agent.py
+    def traffic_light_manager(self, random_ignore_chance=0.1):
         """
         This method is in charge of behaviors for red lights.
         """
-        # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
+        # Determine if affected by a traffic light
         affected, traffic_light = self._affected_by_traffic_light(self.lights_list,
                                                                   max_distance=self._base_tlight_threshold)
 
-        # TODO: add some random ignore chance
-        # other behaviors? Take wrong turn?
+        # Introduce a random chance to ignore the traffic light
+        if affected and random.random() < random_ignore_chance:
+            return False
+
+        # TODO: Implement other behaviors if needed, like taking a wrong turn or additional actions
 
         return affected
 
@@ -575,7 +489,7 @@ class BasicAgent:
                 If None, the base threshold value is used
         """
         if self._ignore_traffic_lights:
-            return (False, None)
+            return False, None
 
         if not lights_list:
             lights_list = self._world.get_actors().filter("*traffic_light*")
@@ -587,7 +501,7 @@ class BasicAgent:
             if self._last_traffic_light.state != carla.TrafficLightState.Red:
                 self._last_traffic_light = None
             else:
-                return (True, self._last_traffic_light)
+                return True, self._last_traffic_light
 
         ego_vehicle_location = self._vehicle.get_location()
         ego_vehicle_waypoint = self._map.get_waypoint(ego_vehicle_location)
@@ -618,9 +532,9 @@ class BasicAgent:
 
             if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]):
                 self._last_traffic_light = traffic_light
-                return (True, traffic_light)
+                return True, traffic_light
 
-        return (False, None)
+        return False, None
 
     def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
                                    lane_offset=0):
@@ -660,7 +574,7 @@ class BasicAgent:
             return Polygon(route_bb)
 
         if self._ignore_vehicles:
-            return (False, None, -1)
+            return False, None, -1
 
         if not vehicle_list:
             vehicle_list = self._world.get_actors().filter("*vehicle*")
@@ -706,7 +620,7 @@ class BasicAgent:
                 target_polygon = Polygon(target_list)
 
                 if route_polygon.intersects(target_polygon):
-                    return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
+                    return True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location)
 
             # Simplified approach, using only the plan waypoints (similar to TM)
             else:
@@ -728,44 +642,32 @@ class BasicAgent:
 
                 if is_within_distance(target_rear_transform, ego_front_transform, max_distance,
                                       [low_angle_th, up_angle_th]):
-                    return (True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
+                    return True, target_vehicle, compute_distance(target_transform.location, ego_transform.location)
 
-        return (False, None, -1)
+        return False, None, -1
 
-    # TODO: the emergency_stop is likely better and we can remove this one
-    def add_emergency_stop(self, control):
+    def add_emergency_stop(self, control, enable_random_steer=False):
         """
-        Overwrites the throttle a brake values of a control to perform an emergency stop.
-        The steering is kept the same to avoid going out of the lane when stopping during turns
+        Modifies the control values to perform an emergency stop.
+        The steering remains unchanged to avoid going out of the lane during turns.
 
-            :param speed (carl.VehicleControl): control to be modified
+        :param control: (carla.VehicleControl) control to be modified
+        :param enable_random_steer: (bool, optional) Flag to enable random steering
         """
         control.throttle = 0.0
-        control.brake = self._max_brake
         control.hand_brake = False
-        return control
 
-    def emergency_stop(self, reason=None):
-        """
-        TODO: Not used yet (copied from BehaviorAgent) -> merge with add_emergency_stop 
-                or rewrite the step to be more like the behavior agent.
+        # Set a default behavior for emergency braking
+        control.brake = self._max_brake
 
-        Overwrites the throttle a brake values of a control to perform an emergency stop.
-        The steering is kept the same to avoid going out of the lane when stopping during turns
-
-            :param speed (carl.VehicleControl): control to be modified
-        """
-        control = carla.VehicleControl()
-        control.throttle = 0.0
         # TODO adjust/add other behavior
-        # control.steer = np.random.random() - 1 # TODO make this optional and dynamically
 
-        # TODO: different emergency behavior in for different reasons.
-
+        # Additional behavior based on reason (placeholder)
         control.brake = self._max_brake
         control.hand_brake = False
-        return control
 
-    # ----------------------------------------------------------------------------------------------
-    # Behavior Agent functions
-    # ----------------------------------------------------------------------------------------------
+        # Enable random steering if flagged
+        if enable_random_steer:
+            control.steer = np.random.random() - 1  # Randomly adjust steering
+
+        return control
