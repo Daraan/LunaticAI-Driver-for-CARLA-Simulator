@@ -14,22 +14,33 @@ from omegaconf import OmegaConf, DictConfig
 # Add them to the BaseCategories class below
 
 # Contains settings that change over time through other means
-live_info : DictConfig = OmegaConf.create()
 
-speed : DictConfig=  OmegaConf.create()
-distance : DictConfig = OmegaConf.create()
-lane_change : DictConfig = OmegaConf.create()
-obstacles : DictConfig = OmegaConf.create()
-controls : DictConfig = OmegaConf.create()
+_config_dicts = {}
 
-planner : DictConfig = OmegaConf.create()
+def new_config(name, parent=None):
+    config = OmegaConf.create()
+    _config_dicts[name] = config
+
+    # Setting this to None will reinitialize it when a instance is created
+    global default_options
+    default_options = None
+    return config
+
+live_info : DictConfig = new_config("live_info")
+
+speed : DictConfig=  new_config("speed")
+distance : DictConfig = new_config("distance")
+lane_change : DictConfig = new_config("lane_change")
+obstacles : DictConfig = new_config("obstacles")
+controls : DictConfig = new_config("controls")
+
+planner : DictConfig = new_config("planner")
 
 # Try to group these into meaningful categories
-other : DictConfig = OmegaConf.create()
+other : DictConfig = new_config("other")
 
 # Use this if the reason is not yet clear
-unknown : DictConfig = OmegaConf.create()
-
+unknown : DictConfig = new_config("unknown")
 
 # -----------------
 
@@ -54,17 +65,11 @@ class BaseCategories:
         global default_options
         if default_options is None or reinit:
             default_options = OmegaConf.create()
+            for name, config in _config_dicts.items():
+                default_options[name] = config
             # NOTE: This creates copies of the dicts and NOT references.
             default_options.speed = speed
             assert default_options.speed is not speed
-            default_options.distance = distance
-            default_options.lane_change = lane_change
-            default_options.obstacles = obstacles
-            default_options.controls = controls
-            default_options.planner = planner
-            default_options.other = other
-            default_options.unknown = unknown
-            default_options.live_info = live_info
 
             # Flat interface to be compatible with original settings.
 
