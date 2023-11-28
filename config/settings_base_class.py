@@ -112,7 +112,7 @@ class BaseCategories:
     def options(self): # we do not want to overwrite this
         return self._options
     
-    def get_options(self, category=None, *, yaml=False):
+    def get_options(self, category=None, *, yaml=False) -> DictConfig:
         """Returns a dictionary of all options."""
         if category is None:
             options = self._options
@@ -121,7 +121,17 @@ class BaseCategories:
         if yaml:
             return OmegaConf.to_yaml(options)
         return options
+    
+    def export_options(self, path, category=None, resolve=False) -> None:
+        """Exports the options to a yaml file."""
+        if category is None:
+            options = self._options
+        else:
+            options = self._options[category]
+        OmegaConf.save(options, path, resolve=resolve)
 
+
+    
 
 # TODO: Using a a json/yaml file in the future
 

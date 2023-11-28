@@ -7,8 +7,10 @@ from dataclasses import dataclass, field
 from typing import Dict
 
 from config.settings_base_class import BaseCategories, _AnnotationChecker
-from config.settings_base_class import speed, distance, lane_change, obstacles, controls, planner, other, unknown
+from config.settings_base_class import live_info, speed, distance, lane_change, obstacles, controls, planner, other, unknown
 import config.settings_base_class
+
+from agents.navigation.local_planner import RoadOption
 
 assert speed is config.settings_base_class.speed
 
@@ -24,7 +26,14 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     unknown.use_bbs_detection : bool = False  # Bounding BoxeS # Likely more sophisticated detection of obstacles. # TODO understand better
     unknown.sampling_resolution : int = 2.0  # TODO: What is this? # BasicAgent uses 2.0 Behavior ones 4.5 Sampling of waypoints related
                                 # Used as step_distance in basic_agent's lane change: next_wps = plan[-1][0].next(step_distance)
-    unknown.sampling_radius : float = 2.0  # TODO: What is this? Used by local_planner.py¨
+    planner.sampling_radius : float = 2.0  # TODO: What is this? Used by local_planner.py¨
+
+    # --------------------------
+    # Live Information, updated from different sources
+    
+    live_info.speed : float = None
+    live_info.speed_limit : float = None
+    live_info.direction : RoadOption = None 
 
     # --------------------------
     # Agent Level
@@ -47,6 +56,9 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     # --------------------------
     # Planer Level
     # --------------------------
+    speed.current_speed = "${..live_info.speed}" # This is a reference to live_info.speed, which is updated by the agent
+    speed.current_speed_limit = "${..live_info.speed_limit}" # This is a reference to live_info.speed_limit, which is updated by the agent
+    
     speed.target_speed : float = 20  # desired cruise speed in Km/h; overwritten by SpeedLimit if follow_speed_limit is True
     speed.follow_speed_limit : bool = False  # NOTE: SpeedLimit overwrites target_speed if True (local_planner.py)
 
@@ -78,6 +90,7 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     """
     # values of the lateral PID controller
     planner.lateral_control_dict = {'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2, 'dt': "${..dt}"} # original values
+    planner.args_lateral_dict = "${lateral_control_dict}"
 
     # values of the longitudinal PID controller
     planner.longitudinal_control_dict = {'K_P': 1.0, 'K_I': 0.05, 'K_D': 0, 'dt': "${..dt}"} # Note: ${..dt} points to planner.dt, similar to a directory
@@ -124,6 +137,10 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     @property
     def step_distance(self):
         return self.unknown.sampling_resolution # TODO:update
+    
+
+basic_options = BasicAgentSettings()
+basic_options.export_options("config/default_options/basic_agent_settings.yaml")    
 
 
 class BehaviorAgentSettings(BasicAgentSettings):
@@ -181,3 +198,6 @@ class BehaviorAgentSettings(BasicAgentSettings):
     @property
     def max_speed(self):
         return self.speed.target_speed
+
+behavior_agent_options = BehaviorAgentSettings()
+behavior_agent_options.export_options("config/default_options/behavior_agent_settings.yaml")  

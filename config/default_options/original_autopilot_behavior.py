@@ -14,7 +14,7 @@ class AutopilotBehavior(BehaviorAgentSettings):
     
     # "Sets a lane offset displacement from the center line. Positive values imply a right offset while negative ones mean a left one. 
     # Default is 0. Numbers high enough to cause the vehicle to drive through other lanes might break the controller."
-    other.vehicle_lane_offset : float = 0
+    other.vehicle_lane_offset : str = "${..planer.offset}"
 
     #Adjust probability that in each timestep the actor will perform a left/right lane change, 
     # dependent on lane change availability. 
@@ -41,7 +41,8 @@ class AutopilotBehavior(BehaviorAgentSettings):
 
     # "Sets if the Traffic Manager is responsible of updating the vehicle lights, or not."
     other.update_vehicle_lights : bool = False
-    
-#class LunaticBehavior(BasicBehavior):
-#    pass
-    
+
+
+carla_default_options = AutopilotBehavior()
+carla_default_options.export_options("config/default_options/carla_default_options.yaml")
+
