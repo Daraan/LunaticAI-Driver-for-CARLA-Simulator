@@ -1,8 +1,6 @@
 import time
-from copy import deepcopy
 import warnings
-
-import __allow_imports_from_root
+from copy import deepcopy
 
 warnings.filterwarnings("ignore")
 from DataGathering.informationUtils import *

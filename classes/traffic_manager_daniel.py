@@ -1,8 +1,4 @@
-import carla
-
-
 class TrafficManagerD:
-
     tm = None
 
     def __init__(self, client, actor, *,
@@ -11,12 +7,12 @@ class TrafficManagerD:
                  seed=0):
         # TODO use a settings file
         if True or TrafficManagerD.tm is None:
-            #TrafficManagerD.tm : carla.TrafficManager =\
+            # TrafficManagerD.tm : carla.TrafficManager =\
             self.tm = client.get_trafficmanager()
-            #TrafficManagerD.tm.set_random_device_seed(seed)
+            # TrafficManagerD.tm.set_random_device_seed(seed)
             self.tm.set_random_device_seed(seed)
-        self.min_front_distance=min_front_distance
-        self.speed_limit_scale : float = speed_limit_scale
+        self.min_front_distance = min_front_distance
+        self.speed_limit_scale: float = speed_limit_scale
         self.actor = actor
 
     def init_lunatic_driver(self):
@@ -36,16 +32,12 @@ class TrafficManagerD:
         self.tm.distance_to_leading_vehicle(self.actor, 8)
         self.actor.set_autopilot(True)
 
-
     def force_overtake(self, speed):
         self.force_lane_change(right=False)
         self.actor.setThrottle(7)
 
-
     def force_lane_change(self, right=False):
         self.tm.force_lane_change(self.actor, right)
 
-
     def start_drive(self):
         self.actor.set_autopilot(True)
-

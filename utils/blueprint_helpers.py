@@ -1,6 +1,7 @@
 from typing import List, Tuple
+
 try:
-    from typing import Literal # python 3.8+
+    from typing import Literal  # python 3.8+
 except ImportError:
     try:
         from typing_extensions import Literal
@@ -9,7 +10,9 @@ except ImportError:
 
 import carla
 
-def get_contrasting_blueprints(world, ego_vehicle="vehicle.lincoln.mkz_2020", ego_color="255,0,0") -> Tuple[carla.ActorBlueprint, carla.ActorBlueprint]:
+
+def get_contrasting_blueprints(world, ego_vehicle="vehicle.lincoln.mkz_2020", ego_color="255,0,0") -> Tuple[
+    carla.ActorBlueprint, carla.ActorBlueprint]:
     """
     Sets the color of NPC vehicles and marks the ego vehicle red.
 
@@ -41,7 +44,9 @@ def get_contrasting_blueprints(world, ego_vehicle="vehicle.lincoln.mkz_2020", eg
     return ego_bp, car_blueprint
 
 
-def get_actor_blueprints(world:carla.World, filter:str, generation:Literal[1, 2, "all"] if "Literal" in locals() else str  ) -> List[carla.ActorBlueprint]:
+def get_actor_blueprints(world: carla.World, filter: str,
+                         generation: Literal[1, 2, "all"] if "Literal" in locals() else str) -> List[
+    carla.ActorBlueprint]:
     """
     Returns a list of actor blueprints filtered by the given filter and generation.
 
@@ -75,5 +80,3 @@ def get_actor_blueprints(world:carla.World, filter:str, generation:Literal[1, 2,
     except:
         print("   Warning! Actor Generation is not valid. No actor will be spawned.")
         return []
-    
-

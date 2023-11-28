@@ -1,7 +1,8 @@
-import os
 import json
-import carla
+import os
 from typing import Union, Optional
+
+import carla
 
 TRAFFIC_MANAGER_CONFIG_SUBDIR = "traffic_manager"
 

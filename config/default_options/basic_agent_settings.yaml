@@ -6,7 +6,7 @@ speed:
 distance:
   base_min_distance: 3.0
   distance_ratio: 0.5
-lane_change: {}
+lane_change: { }
 obstacles:
   ignore_vehicles: false
   ignore_traffic_lights: false
@@ -34,7 +34,7 @@ planner:
     K_D: 0
     dt: ${..dt}
   args_longitudinal_dict: ${longitudinal_control_dict}
-other: {}
+other: { }
 unknown:
   use_bbs_detection: false
   sampling_resolution: 2.0

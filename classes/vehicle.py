@@ -1,15 +1,16 @@
-from cmath import sqrt
-import carla
-from carla import Vector3D
 import math
-
 # COMMENT: do we need this?
-import random
 import time
+from cmath import sqrt
+
+import carla
+import matplotlib
 import plotly.graph_objs as go
 import plotly.subplots
-import matplotlib
+from carla import Vector3D
+
 matplotlib.use('TkAgg')
+
 
 def calculateDistance(location1, location2):
     return sqrt(
@@ -20,9 +21,6 @@ def calculateDistance(location1, location2):
 
 
 class VehicleBase:
-    # TODO would be nice if we could derive this from carla.Vehicle
-    # should be able to use some functions directly without using functions for all
-
     instances: list = []  # for easier destruction later
 
     def __init__(self, world: carla.World, make=""):
@@ -80,13 +78,11 @@ class VehicleBase:
         self.control.hand_brake = value
         self.actor.apply_control(self.control)
 
-
     def getRotation(self):
         return self.actor.get_transform().rotation
-        
+
     def getLocation(self):
         return self.actor.get_transform().location
-        
 
     def calculateRelativeCoordinates(self, other_car_location):
         currentLocation = self.getLocation()
@@ -172,7 +168,6 @@ class VehicleBase:
         )
 
         while True:
-
             # Check the distance to the car ahead
             # vehicles_in_world = self.world.get_actors().filter('vehicle.*')
             distance_to_car_ahead = self.distanceToCarAhead(carList)
@@ -186,7 +181,7 @@ class VehicleBase:
                     print(distance_to_car_ahead)
 
                     # Calculate the desired speed to maintain the safe distance
-                    desired_speed = -(1/(math.e**distance_to_car_ahead))+1
+                    desired_speed = -(1 / (math.e ** distance_to_car_ahead)) + 1
                     # print("Desired speed:", desired_speed)
 
                     # Calculate the desired acceleration
@@ -206,12 +201,10 @@ class VehicleBase:
 
 class Vehicle(VehicleBase):
     # Wrap our own VehicleBase class and the CARLA vehicle class
-
     # instances: list = []  # for easier destruction later
-
-    # def __init__(self, world: carla.World, make=""):
-    #    super().__init__(world=world, make=make)
-    #    self.vehicle = VehicleBase(world, make)
+    def __init__(self, world: carla.World, make=""):
+        super().__init__(world=world, make=make)
+        self.vehicle = VehicleBase(world, make)
 
     def __getattr__(self, attr):
         # Delegate attribute access to the CARLA Vehicle class

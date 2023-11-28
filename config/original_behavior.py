@@ -1,4 +1,6 @@
 """Contains the base settings of CARLA's BasicAgent and LocalPlanner."""
+
+
 # helper class, similar to @ property but which works on classes directly
 class _classproperty(object):
     def __init__(self, f):
@@ -6,6 +8,7 @@ class _classproperty(object):
 
     def __get__(self, obj, owner):
         return self.f(owner)
+
 
 # TODO: Using a a json/yaml file in the future
 class BasicBehavior:
@@ -16,7 +19,7 @@ class BasicBehavior:
     # TODO: Explain unclear parameters
     use_bbs_detection = False  # Bounding BoxeS # Likely more sophisticated detection of obstacles. # TODO understand better
     sampling_resolution = 2.0  # TODO: What is this? # BasicAgent uses 2.0 Behavior ones 4.5 Sampling of waypoints related
-                                # Used as step_distance in basic_agent's lane change: next_wps = plan[-1][0].next(step_distance)
+    # Used as step_distance in basic_agent's lane change: next_wps = plan[-1][0].next(step_distance)
     sampling_radius = 2.0  # TODO: What is this? Used by local_planner.py
 
     # --------------------------
@@ -186,13 +189,13 @@ class Behavior(BasicBehavior):
     # CASE A
     """How quickly in km/h your vehicle will slow down when approaching a slower vehicle ahead."""
     speed_decrease = 12  # other_vehicle_speed - self._behavior.speed_decrease
-    safety_time = 3      # Time in s before a collision at the same speed -> apply speed_decrease
+    safety_time = 3  # Time in s before a collision at the same speed -> apply speed_decrease
 
     # CASE B
-    min_speed = 5        # TODO: Implement als variable, currently hard_coded
+    min_speed = 5  # TODO: Implement als variable, currently hard_coded
 
     # All Cases
-    speed_lim_dist = 6   # NOTE: negative values => car drives above speed limit
+    speed_lim_dist = 6  # NOTE: negative values => car drives above speed limit
 
     # Collision Avoidance -----
 
@@ -200,7 +203,7 @@ class Behavior(BasicBehavior):
     # max(min_proximity_threshold, self._speed_limit / (2 if LANG CHANGE else 3 ) )
     # TODO: The secondary speed limit is hardcoded, make adjustable and optional
     # automatic_proximity_threshold = {RoadOption.CHANGELANELEFT: 2, "same_lane" : 3, "right_lane" : 2}
-    min_proximity_threshold = 12 # range in which cars are detected. # NOTE: Speed limit overwrites
+    min_proximity_threshold = 12  # range in which cars are detected. # NOTE: Speed limit overwrites
 
     braking_distance = 6  # Emergency Stop Distance Trigger
 

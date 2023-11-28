@@ -1,5 +1,6 @@
 import carla
 
+
 def main():
     try:
         # Connect to the Carla server
@@ -48,6 +49,7 @@ def main():
             camera.destroy()
         if 'ego_vehicle' in locals():
             ego_vehicle.destroy()
+
 
 if __name__ == '__main__':
     main()

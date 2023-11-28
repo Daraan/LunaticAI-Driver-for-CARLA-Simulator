@@ -5,38 +5,27 @@ Example of the agent system
 
 Based on German Ros's (german.ros@intel.com) example of automatic_control shipped with carla.
 """
-from __future__ import print_function # for python 2.7 compatibility
-import __allow_imports_from_root
+from __future__ import print_function  # for python 2.7 compatibility
 
-
-import pygame
-
-import argparse
 import logging
-import numpy.random as random
-
-import glob
-import os
-import sys
 import random
-
+import sys
 import threading
 
 import carla
+import numpy.random as random
+import pygame
 
-from classes.vehicle import Vehicle
-
-from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
+import utils
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
+from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
-
-from classes.carla_originals.world import World
 from classes.carla_originals.HUD import HUD
-
+from classes.carla_originals.world import World
+from classes.traffic_manager_daniel import TrafficManagerD
+from classes.vehicle import Vehicle
 from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 
-from classes.traffic_manager_daniel import TrafficManagerD
-import utils
 
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
@@ -82,7 +71,7 @@ def game_loop(args):
 
         hud = HUD(args.width, args.height)
 
-        #carlaService = CarlaService("Town04", "127.0.0.1", 2000)
+        # carlaService = CarlaService("Town04", "127.0.0.1", 2000)
 
         # Set the agent destination
         try:
@@ -94,18 +83,18 @@ def game_loop(args):
         # Spawn Ego
         ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(sim_world)
         ego = Vehicle(sim_world, ego_bp)
-        start : carla.Transform = spawn_points[0]
+        start: carla.Transform = spawn_points[0]
         ego.spawn(start)
 
         world = World(client.get_world(), hud, args, player=ego.actor)
         wp_start = world.map.get_waypoint(start.location)
         all_spawn_points = world.map.get_spawn_points()
-        #destination = random.choice(all_spawn_points).location
+        # destination = random.choice(all_spawn_points).location
 
         controller = KeyboardControl(world)
-        #world.set_actor(ego.actor)
+        # world.set_actor(ego.actor)
 
-        #carlaService.assignDriver(ego, driver1)
+        # carlaService.assignDriver(ego, driver1)
         if args.agent == "Basic":
             agent = BasicAgent(world.player, 30)
             agent.follow_speed_limits(True)
@@ -121,7 +110,6 @@ def game_loop(args):
             pprint(vars(agent._behavior))
         else:
             raise ValueError(args.agent)
-
 
         next_wps: list = wp_start.next(50)
         last = next_wps[-1]
@@ -151,33 +139,33 @@ def game_loop(args):
 
             i = 0
             while True:
-                    clock.tick()
-                    if args.sync:
-                        world.world.tick()
+                clock.tick()
+                if args.sync:
+                    world.world.tick()
+                else:
+                    world.world.wait_for_tick()
+                if controller.parse_events():
+                    return
+
+                world.tick(clock)
+                world.render(display)
+                pygame.display.flip()
+
+                if agent.done():
+                    if args.loop:
+                        agent.set_destination(random.choice(spawn_points).location)
+                        world.hud.notification("Target reached", seconds=4.0)
+                        print("The target has been reached, searching for another target")
                     else:
-                        world.world.wait_for_tick()
-                    if controller.parse_events():
-                        return
+                        print("The target has been reached, stopping the simulation")
+                        break
 
-                    world.tick(clock)
-                    world.render(display)
-                    pygame.display.flip()
-
-                    if agent.done():
-                        if args.loop:
-                            agent.set_destination(random.choice(spawn_points).location)
-                            world.hud.notification("Target reached", seconds=4.0)
-                            print("The target has been reached, searching for another target")
-                        else:
-                            print("The target has been reached, stopping the simulation")
-                            break
-
-                    control = agent.run_step(debug=True) # debug=True draws waypoints
-                    control.manual_gear_shift = False
-                    world.player.apply_control(control)
-                    #if i % 50 == 0:
-                    #    print("Tailgate Counter", agent._behavior.tailgate_counter)
-                    i += 1
+                control = agent.run_step(debug=True)  # debug=True draws waypoints
+                control.manual_gear_shift = False
+                world.player.apply_control(control)
+                # if i % 50 == 0:
+                #    print("Tailgate Counter", agent._behavior.tailgate_counter)
+                i += 1
 
         if "-I" in sys.argv:
             thread = threading.Thread(target=loop)

@@ -3,31 +3,27 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-# NOTE: This file currently contains code from the three agents that were implemented in the original CARLA repo.
-# so no added customization yet, also not yet all useful code.
-# TODO: This still needs some heavy cleaning and maybe organizing into different files/subclasses to better focus the functions we want to customize.
+# NOTE: This file currently contains code from the three agents that were implemented in the original CARLA repo. so
+# no added customization yet, also not yet all useful code.
 
 """ This module implements an agent that roams around a track following random
 waypoints and avoiding other vehicles. The agent also responds to traffic lights,
 traffic signs, and has different possible configurations. """
 
 import random
-import numpy as np
-import carla
 
-from agents.navigation.local_planner import LocalPlanner, RoadOption
-from agents.navigation.global_route_planner import GlobalRoutePlanner
+import carla
+import numpy as np
 from shapely.geometry import Polygon
+
+import agents.navigation.behavior_types as _behavior_types  #
+from agents.navigation.global_route_planner import GlobalRoutePlanner
+from agents.navigation.local_planner import LocalPlanner, RoadOption
 from agents.tools.misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
 
 # OLD original: Style
-from agents.navigation.basic_agent import BasicAgent
-from agents.navigation.behavior_agent import BehaviorAgent
-
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal
-import agents.navigation.behavior_types as _behavior_types  #
 
 behavior_types = vars(_behavior_types)
 

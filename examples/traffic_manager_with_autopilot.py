@@ -1,20 +1,13 @@
-import __allow_imports_from_root  # add project root folder to path
+import os
+
 import carla
 
+import utils
 from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unified & marge with agent
 from classes.driver import Driver
-from classes.vehicle import Vehicle
-
-import argparse
-import glob
-import os
-import sys
-import random
-import time
-
 from classes.traffic_manager_daniel import TrafficManagerD
-import utils
+from classes.vehicle import Vehicle
 
 vehicles = []
 

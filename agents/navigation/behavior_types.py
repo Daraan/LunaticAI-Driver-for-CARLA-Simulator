@@ -3,7 +3,7 @@
 
 """ This module contains the different parameters sets for each behavior. """
 
-from  config.original_behavior import BasicBehavior
+from config.original_behavior import BasicBehavior
 
 
 class Cautious(BasicBehavior):
@@ -41,6 +41,7 @@ class Aggressive(BasicBehavior):
     braking_distance = 4
     tailgate_counter = -1
 
+
 # Experiments (not really successful)
 
 class Tailgating2(BasicBehavior):
@@ -52,6 +53,7 @@ class Tailgating2(BasicBehavior):
     min_proximity_threshold = 1
     braking_distance = 0.5
     tailgate_counter = -1
+
 
 class BadAndRisky(Aggressive):
     max_brake = 0.1
