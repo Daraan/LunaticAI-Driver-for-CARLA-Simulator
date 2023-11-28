@@ -11,22 +11,15 @@ Example of automatic vehicle control from client side.
 NOTE: Stripped from helper classes (moved to other files) compared to original version.
 """
 
-from __future__ import print_function # For Python2 compatibility
-import __allow_imports_from_root  # add project root folder to path
+from __future__ import print_function  # For Python2 compatibility
 
 import argparse
-import collections
-import datetime
 import glob
 import logging
-import math
 import os
-import numpy.random as random
-import re
 import sys
-import weakref
 
-from utils.blueprint_helpers import get_actor_blueprints
+import numpy.random as random
 
 try:
     import pygame
@@ -63,27 +56,19 @@ except IndexError:
 
 import carla
 
-
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
 
 from classes.carla_originals.world import World
 from classes.carla_originals.HUD import HUD
-from classes.carla_originals.camera_manager import CameraManager
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
 # ==============================================================================
 
 
-
-from utils import get_actor_display_name
-
 from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
-
-
-
 
 
 # ==============================================================================

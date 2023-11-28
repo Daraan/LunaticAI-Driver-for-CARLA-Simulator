@@ -1,8 +1,8 @@
 import time
 
 import carla
-import utils
 
+import utils
 from DataGathering.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car
 from DataGathering.run_matrix import DataMatrix
 from classes.carla_service import CarlaService
@@ -16,6 +16,8 @@ vehicles = []
 This does not work, we have some problems with the multithreading, but I do not get why
 If someone tries to repair this the problem is in the loop found in the DataMatrix file
 """
+
+
 def main():
     global client
     carlaService = CarlaService("Town04", "127.0.0.1", 2000)
@@ -25,9 +27,9 @@ def main():
     world_map = world.get_map()
     ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world)
 
-    driver1 = Driver("config/default_driver.json", traffic_manager=client)
+    driver1 = Driver("../config/default_driver.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
+    spawn_points = utils.csv_to_transformations("highway_example_car_positions.csv")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)

@@ -1,10 +1,6 @@
 # see https://carla.readthedocs.io/en/latest/core_map/#changing-the-map
-import argparse
-import glob
 import os
 import sys
-
-from numpy.random import random
 
 CARLA_ROOT = os.environ.get("CARLA_ROOT", "./")
 
@@ -26,6 +22,7 @@ else:
 
 import carla
 from carla import Transform, Vector3D
+
 
 def destroy():
     client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])

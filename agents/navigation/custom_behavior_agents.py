@@ -1,14 +1,10 @@
-import numpy as np
 import carla
-from agents.navigation.basic_agent import BasicAgent
-from agents.navigation.local_planner import RoadOption
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal
+import numpy as np
+
 import agents.navigation.behavior_types as _behavior_types
 from agents.navigation.behavior_agent import BehaviorAgent
 
 behavior_types = vars(_behavior_types)
-
-from agents.tools.misc import get_speed, positive, is_within_distance, compute_distance
 
 
 class BadEmergencyHandlingAgent(BehaviorAgent):

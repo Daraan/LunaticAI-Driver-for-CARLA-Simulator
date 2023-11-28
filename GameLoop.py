@@ -1,8 +1,8 @@
 import time
 
 import carla
-import utils
 
+import utils
 from DataGathering.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car, \
     check_ego_on_highway, create_city_matrix, detect_surronding_cars
 from classes.carla_service import CarlaService
@@ -11,6 +11,7 @@ from classes.traffic_manager_daniel import TrafficManagerD
 from classes.vehicle import Vehicle
 
 vehicles = []
+
 
 def main():
     global client

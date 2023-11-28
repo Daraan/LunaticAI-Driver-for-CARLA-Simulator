@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def compute_distance(location_1, location_2):
     """
     Euclidean distance between 3D points
@@ -12,4 +13,3 @@ def compute_distance(location_1, location_2):
     z = location_2.z - location_1.z
     norm = np.linalg.norm([x, y, z]) + np.finfo(float).eps
     return norm
-

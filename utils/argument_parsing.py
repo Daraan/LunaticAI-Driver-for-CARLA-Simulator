@@ -1,21 +1,23 @@
 import argparse
 from functools import wraps
 
+
 # todo later: add some more flexible way to construct a parser. i.e. combine certain subparsers, e.g. one for port& host another one for settings
 
 def subparser(func):
     """This decorator allows to join multiple subparsers in a flexible way."""
+
     @wraps(func)
     def wrapper(parser=None, *args, **kwargs):
-        if parser is None: # create a parser if none is given
+        if parser is None:  # create a parser if none is given
             parser = argparse.ArgumentParser()
         # else: TODO: are subparsers useful?
         func(parser, *args, **kwargs)
-        return parser # return the parser object again
-    
+        return parser  # return the parser object again
+
     # allows to circumvent calling the function. 
     # i.e. parser_function.parse_args() instead of parser_function().parse_args()
-    wrapper.parse_args = lambda : wrapper(parser=None).parse_args() 
+    wrapper.parse_args = lambda: wrapper(parser=None).parse_args()
     # allows to adjust parsers by adding another parser or by adding a parser function
     wrapper.add = lambda parser: wrapper(parser) if isinstance(parser, argparse.ArgumentParser) else wrapper(parser())
     return wrapper
@@ -25,6 +27,7 @@ def subparser(func):
 def client_settings(parser):
     parser.add_argument('-p', '--port', help='TCP Port', default="2000", type=int)
     parser.add_argument('-i', '--host', help='Host', default="localhost", type=str)
+
 
 @subparser
 def interactive_mode(parser):
@@ -83,7 +86,7 @@ def automatic_control_example(argparser):
         default="Behavior")
     argparser.add_argument(
         '-b', '--behavior', type=str,
-        #choices=["cautious", "normal", "aggressive"],
+        # choices=["cautious", "normal", "aggressive"],
         help='Choose one of the possible agent behaviors (default: normal) ',
         default='normal')
 

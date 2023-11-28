@@ -2,7 +2,7 @@ import threading
 from datetime import time
 
 from DataGathering.informationUtils import detect_surronding_cars, safe_data, get_all_road_lane_ids, \
-    initialize_dataframe, follow_car, check_ego_on_highway, create_city_matrix
+    initialize_dataframe, check_ego_on_highway, create_city_matrix
 
 
 class DataMatrix:
@@ -45,7 +45,8 @@ class DataMatrix:
 
                 if matrix:
                     matrix, _ = detect_surronding_cars(
-                        ego_location, ego_vehicle, matrix, road_lane_ids, self.world, radius, ego_on_highway, highway_shape
+                        ego_location, ego_vehicle, matrix, road_lane_ids, self.world, radius, ego_on_highway,
+                        highway_shape
                     )
 
                 df = safe_data(ego_vehicle, matrix, street_type, df)

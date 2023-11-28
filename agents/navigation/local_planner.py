@@ -5,11 +5,12 @@
 
 """ This module contains a local planner to perform low-level waypoint following based on PID controllers. """
 
-from enum import IntEnum
-from collections import deque
 import random
+from collections import deque
+from enum import IntEnum
 
 import carla
+
 from agents.navigation.controller import VehiclePIDController
 from agents.tools.misc import draw_waypoints, get_speed
 

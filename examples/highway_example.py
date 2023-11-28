@@ -1,18 +1,14 @@
-import __allow_imports_from_root # add project root folder to path
-import glob
-import os
-import sys
 import time
-import pandas as pd
 
 import carla
-import utils
-
 from carla import Vector3D
 
-TOWN = 'Town04' # maybe 'Town04_Opt'
-def make_client():
+import utils
 
+TOWN = 'Town04'  # maybe 'Town04_Opt'
+
+
+def make_client():
     client = carla.Client('localhost', 2000)
 
     # Once we have a client we can retrieve the world that is currently
@@ -23,9 +19,11 @@ def make_client():
 
 # Spawn
 
-#spawn_points = town.get_spawn_points()
+# spawn_points = town.get_spawn_points()
 
 vehicles = []
+
+
 def spawn_cars(client=None):
     global vehicles
     if client is None:
@@ -54,6 +52,7 @@ def spawn_cars(client=None):
         vehicles.append(v)
     return vehicles
 
+
 def apply_constant_velocity(speed=5, to_ego=True):
     cars = vehicles if to_ego else vehicles[1:]
     for v in cars:
@@ -63,6 +62,7 @@ def apply_constant_velocity(speed=5, to_ego=True):
 
 def destroy():
     client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
+
 
 if __name__ == "__main__":
     try:
