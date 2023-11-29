@@ -101,16 +101,26 @@ class LunaticAgent(BehaviorAgent):
         # TODO: No more hardcoded defaults / set them from opt_dict which must have all parameters; check which are parameters and which are set by other functions (e.g. _look_ahead_steps)
 
         # parameters from BasicAgent ---------------------------------------------
-        self._ignore_traffic_lights = False
-        self._ignore_stop_signs = False
-        self._ignore_vehicles = False
-        self._use_bbs_detection = False
-        self._sampling_resolution = 2.0
-        self._base_tlight_threshold = 5.0  # meters
-        self._base_vehicle_threshold = 5.0  # meters
-        self._speed_ratio = 1
-        self._max_brake = 0.5
-        self._offset = 0
+        #config.obstacles.ignore_traffic_lights = False
+        self.config.obstacles.ignore_traffic_lights
+        #config.obstacles.ignore_stop_signs = False
+        self.config.obstacles.ignore_stop_signs
+        #config.obstacles.ignore_vehicles = False
+        self.config.obstacles.ignore_vehicles
+        #config.unknown.use_bbs_detection = False
+        self.config.unknown.use_bbs_detection
+        #config.unknown.sampling_resolution = 2.0
+        self.config.unknown.sampling_resolution
+        #config.obstacles.base_tlight_threshold = 5.0  # meters
+        self.config.obstacles.base_tlight_threshold
+        #config.obstacles.base_vehicle_threshold = 5.0  # meters
+        self.config.obstacles.base_vehicle_threshold
+        #config.obstacles.detection_speed_ratio = 1
+        self.config.obstacles.detection_speed_ratio
+        #config.controls.max_brake = 0.5
+        self.config.controls.max_brake
+        #config.controls.offset= 0
+        self.config.controls.offset
 
         # Parameters from BehaviorAgent ------------------------------------------
         # todo: check redefinitions
@@ -122,8 +132,9 @@ class LunaticAgent(BehaviorAgent):
         self.live_info.direction = None
         self._incoming_direction = None
         self._incoming_waypoint = None
-        self._min_speed = 5
-        self._sampling_resolution = 4.5  # NOTE also set in behaviors
+        #config.speed.min_speed = 5
+        self.config.speed.min_speed
+        #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
 
         # Change parameters according to the dictionary
         # opt_dict['target_speed'] = target_speed
@@ -132,26 +143,30 @@ class LunaticAgent(BehaviorAgent):
         #        Better: A update_options(dict) function
         # TODO: instead of checking now throw failures if an option is not present in opt_dict (ours contains all parameters)
         self._target_speed = opt_dict.get("target_speed", 20)  # todo: handle this differently
+
+       """
         if 'ignore_traffic_lights' in opt_dict:
-            self._ignore_traffic_lights = opt_dict['ignore_traffic_lights']
+            config.obstacles.ignore_traffic_lights = opt_dict['ignore_traffic_lights']
         if 'ignore_stop_signs' in opt_dict:
-            self._ignore_stop_signs = opt_dict['ignore_stop_signs']
+            config.obstacles.ignore_stop_signs = opt_dict['ignore_stop_signs']
         if 'ignore_vehicles' in opt_dict:
-            self._ignore_vehicles = opt_dict['ignore_vehicles']
+            config.obstacles.ignore_vehicles = opt_dict['ignore_vehicles']
         if 'use_bbs_detection' in opt_dict:
-            self._use_bbs_detection = opt_dict['use_bbs_detection']
+            config.unknown.use_bbs_detection = opt_dict['use_bbs_detection']
         if 'sampling_resolution' in opt_dict:
-            self._sampling_resolution = opt_dict['sampling_resolution']
+            config.unknown.sampling_resolution = opt_dict['sampling_resolution']
         if 'base_tlight_threshold' in opt_dict:
-            self._base_tlight_threshold = opt_dict['base_tlight_threshold']
+            config.obstacles.base_tlight_threshold = opt_dict['base_tlight_threshold']
         if 'base_vehicle_threshold' in opt_dict:
-            self._base_vehicle_threshold = opt_dict['base_vehicle_threshold']
+            config.obstacles.base_vehicle_threshold = opt_dict['base_vehicle_threshold']
         if 'detection_speed_ratio' in opt_dict:
-            self._speed_ratio = opt_dict['detection_speed_ratio']
+            config.obstacles.detection_speed_ratio = opt_dict['detection_speed_ratio']
         if 'max_brake' in opt_dict:
-            self._max_brake = opt_dict['max_brake']
+            config.controls.max_brake = opt_dict['max_brake']
         if 'offset' in opt_dict:
-            self._offset = opt_dict['offset']
+            config.controls.offset= opt_dict['offset']
+
+        """
 
         # Initialize the planners
         self._local_planner = DynamicLocalPlanner(self._vehicle, opt_dict=opt_dict, map_inst=self._map)
@@ -160,9 +175,9 @@ class LunaticAgent(BehaviorAgent):
                 self._global_planner = grp_inst
             else:
                 print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-                self._global_planner = GlobalRoutePlanner(self._map, self._sampling_resolution)
+                self._global_planner = GlobalRoutePlanner(self._map, self.config.unknown.sampling_resolution)
         else:
-            self._global_planner = GlobalRoutePlanner(self._map, self._sampling_resolution)
+            self._global_planner = GlobalRoutePlanner(self._map, self.config.unknown.sampling_resolution)
 
         # Get the static elements of the scene
         self._lights_list = self._world.get_actors().filter("*traffic_light*")
@@ -187,6 +202,14 @@ class LunaticAgent(BehaviorAgent):
         # e.g. setting ignore_vehicles to False, if it was True before.
         # do an emergency stop (in certain situations)
         raise NotImplemented
+    
+    def temporary_settings(self, temp_settings: dict) -> dict:
+        """
+        Returns a new dictionary with the agent's settings overwritten by the given temporary settings.
+        NOTE: This does not change the agent's settings only returns a new dictionary to be used.
+        """
+        # TODO: Maybe make a temp_settings attribute, problem what if multiple temporary settings are needed that live longer.
+        return { **self.config, **temp_settings} 
 
     def set_target_speed(self, speed):
         """
@@ -286,15 +309,20 @@ class LunaticAgent(BehaviorAgent):
 
     def detect_hazard(self):
         vehicle_list = self._world.get_actors().filter("*vehicle*")
+
         vehicle_speed = get_speed(self._vehicle) / 3.6
 
         # Check for possible vehicle obstacles
-        max_vehicle_distance = self._base_vehicle_threshold + self._speed_ratio * vehicle_speed
+        max_vehicle_distance = self.config.obstacles.base_vehicle_threshold + self.config.obstacles.detection_speed_ratio * vehicle_speed
         affected_by_vehicle, _, _ = self._vehicle_obstacle_detected(vehicle_list, max_vehicle_distance)
+        if affected_by_vehicle:
+            hazard_detected = True
 
-        # Check if affected by a red traffic light
-        max_tlight_distance = self._base_tlight_threshold + self._speed_ratio * vehicle_speed
+        # Check if the vehicle is affected by a red traffic light
+        max_tlight_distance = self.config.obstacles.base_tlight_threshold + self.config.obstacles.detection_speed_ratio * vehicle_speed
         affected_by_tlight, _ = self._affected_by_traffic_light(self._lights_list, max_tlight_distance)
+        if affected_by_tlight:
+            hazard_detected = True
 
         # Combine hazard detection results
         return affected_by_vehicle or affected_by_tlight
@@ -365,15 +393,15 @@ class LunaticAgent(BehaviorAgent):
 
     def ignore_traffic_lights(self, active=True):
         """(De)activates the checks for traffic lights"""
-        self._ignore_traffic_lights = active
+        self.config.obstacles.ignore_traffic_lights = active
 
     def ignore_stop_signs(self, active=True):
         """(De)activates the checks for stop signs"""
-        self._ignore_stop_signs = active
+        self.config.obstacles.ignore_stop_signs = active
 
     def ignore_vehicles(self, active=True):
         """(De)activates the checks for stop signs"""
-        self._ignore_vehicles = active
+        self.config.obstacles.ignore_vehicles = active
 
     def lane_change(self, direction, same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """
@@ -382,16 +410,15 @@ class LunaticAgent(BehaviorAgent):
         and the other 3 fine tune the maneuver
         """
         speed = self._vehicle.get_velocity().length()
-        path: list = self._generate_lane_change_path(
-            self._map.get_waypoint(self._vehicle.get_location()),  # get current waypoint
+        path : list = self._generate_lane_change_path(
+            self._map.get_waypoint(self._vehicle.get_location()), # get current waypoint
             direction,
-            same_lane_time * speed,  # get direction in meters t*V
+            same_lane_time * speed, # get direction in meters t*V
             other_lane_time * speed,
             lane_change_time * speed,
-            check=False,
-            # TODO: Explanation of this parameter? Make use of it and & how? Could mean that it is checked if there is a left lane
-            lane_changes=1,  # changes only one lane
-            step_distance=self._sampling_resolution
+            check=False,        # TODO: Explanation of this parameter? Make use of it and & how? Could mean that it is checked if there is a left lane
+            lane_changes=1,     # changes only one lane
+            step_distance= self.config.unknown.sampling_resolution
         )
         if not path:
             print("WARNING: Ignoring the lane change as no path was found")
@@ -478,9 +505,10 @@ class LunaticAgent(BehaviorAgent):
         """
         This method is in charge of behaviors for red lights.
         """
-        # Determine if affected by a traffic light
-        affected, traffic_light = self._affected_by_traffic_light(self.lights_list,
-                                                                  max_distance=self._base_tlight_threshold)
+	# TODO check if lights should be copied.
+        # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
+        affected, traffic_light = self._affected_by_traffic_light(self.lights_list, 
+						max_distance=self.config.obstacles.base_tlight_threshold)
 
         # Introduce a random chance to ignore the traffic light
         if affected and random.random() < random_ignore_chance:
@@ -499,14 +527,14 @@ class LunaticAgent(BehaviorAgent):
             :param max_distance (float): max distance for traffic lights to be considered relevant.
                 If None, the base threshold value is used
         """
-        if self._ignore_traffic_lights:
-            return False, None
+        if self.config.obstacles.ignore_traffic_lights:
+            return (False, None)
 
         if not lights_list:
             lights_list = self._world.get_actors().filter("*traffic_light*")
 
         if not max_distance:
-            max_distance = self._base_tlight_threshold
+            max_distance = self.config.obstacles.base_tlight_threshold
 
         if self._last_traffic_light:
             if self._last_traffic_light.state != carla.TrafficLightState.Red:
@@ -557,7 +585,6 @@ class LunaticAgent(BehaviorAgent):
             :param max_distance: max free-space to check for obstacles.
                 If None, the base threshold value is used
         """
-
         def get_route_polygon():
             # Note nested functions can access variables from the outer scope
             route_bb = []
@@ -584,14 +611,14 @@ class LunaticAgent(BehaviorAgent):
 
             return Polygon(route_bb)
 
-        if self._ignore_vehicles:
-            return False, None, -1
+        if self.config.obstacles.ignore_vehicles:
+            return (False, None, -1)
 
         if not vehicle_list:
             vehicle_list = self._world.get_actors().filter("*vehicle*")
 
         if not max_distance:
-            max_distance = self._base_vehicle_threshold
+            max_distance = self.config.obstacles.base_vehicle_threshold
 
         ego_transform = self._vehicle.get_transform()
         ego_location = ego_transform.location
@@ -607,7 +634,7 @@ class LunaticAgent(BehaviorAgent):
             self._vehicle.bounding_box.extent.x * ego_transform.get_forward_vector())
 
         opposite_invasion = abs(self._offset) + self._vehicle.bounding_box.extent.y > ego_wpt.lane_width / 2
-        use_bbs = self._use_bbs_detection or opposite_invasion or ego_wpt.is_junction
+        use_bbs = self.config.unknown.use_bbs_detection or opposite_invasion or ego_wpt.is_junction
 
         # Get the route bounding box
         route_polygon = get_route_polygon()
@@ -631,7 +658,7 @@ class LunaticAgent(BehaviorAgent):
                 target_polygon = Polygon(target_list)
 
                 if route_polygon.intersects(target_polygon):
-                    return True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location)
+                    return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
 
             # Simplified approach, using only the plan waypoints (similar to TM)
             else:
@@ -666,12 +693,12 @@ class LunaticAgent(BehaviorAgent):
         :param enable_random_steer: (bool, optional) Flag to enable random steering
         """
         control.throttle = 0.0
+        control.brake = self.config.controls.max_brake
         control.hand_brake = False
 
-        # Set a default behavior for emergency braking
-        control.brake = self._max_brake
 
         # TODO adjust/add other behavior
+        # control.steer = np.random.random() - 1 # TODO make this optional and dynamically
 
         # Additional behavior based on reason (placeholder)
         control.hand_brake = False
