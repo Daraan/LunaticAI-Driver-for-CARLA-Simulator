@@ -24,7 +24,7 @@ def main():
 
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
+    spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)
