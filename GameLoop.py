@@ -3,8 +3,7 @@ import time
 import carla
 
 import utils
-from DataGathering.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car, \
-    check_ego_on_highway, create_city_matrix, detect_surronding_cars
+from DataGathering.informationUtils import get_all_road_lane_ids, follow_car
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager_daniel import TrafficManagerD
@@ -64,7 +63,7 @@ def main():
     while time.time() < t_end:
         try:
             follow_car(ego_vehicle, world)
-            matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map,road_lane_ids)
+            matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
 
             (i_car, j_car) = (0, 0)
 
