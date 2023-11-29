@@ -9,7 +9,7 @@ from classes.driver import Driver
 from classes.traffic_manager_daniel import TrafficManagerD
 from classes.vehicle import Vehicle
 from utils.logging import log
-from matrix_wrap import wrap_matrix_functionalities
+from DataGathering.matrix_wrap import wrap_matrix_functionalities
 
 vehicles = []
 
