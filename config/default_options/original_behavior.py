@@ -29,7 +29,7 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     planner.sampling_radius : float = 2.0  # TODO: What is this? Used by local_planner.py¨
 
     # --------------------------
-    # Live Information, updated from different sources
+    # Live Information, updated from different sources, e.g. from vehicle current speed limit.
     
     live_info.speed : float = None
     live_info.speed_limit : float = None
@@ -170,6 +170,8 @@ class BehaviorAgentSettings(BasicAgentSettings):
     #                 self._behavior.max_speed,
     #                 self._speed_limit - self._behavior.speed_lim_dist])
 
+    speed.max_speed = 50 # from normal behavior. This superseeds the target_speed when following the BehaviorAgent logic
+
     # CASE A
     """How quickly in km/h your vehicle will slow down when approaching a slower vehicle ahead."""
     speed.speed_decrease : float = 12  # other_vehicle_speed - self._behavior.speed_decrease
@@ -184,7 +186,7 @@ class BehaviorAgentSettings(BasicAgentSettings):
     # Collision Avoidance -----
 
     # Distance in which for vehicles are checked
-    # max(min_proximity_threshold, self._speed_limit / (2 if LANG CHANGE else 3 ) )
+    # max(min_proximity_threshold, self._speed_limit / (2 if LANE CHANGE else 3 ) )
     # TODO: The secondary speed limit is hardcoded, make adjustable and optional
     # automatic_proximity_threshold = {RoadOption.CHANGELANELEFT: 2, "same_lane" : 3, "right_lane" : 2}
     distance.min_proximity_threshold : float = 12 # range in which cars are detected. # NOTE: Speed limit overwrites
@@ -193,12 +195,6 @@ class BehaviorAgentSettings(BasicAgentSettings):
 
     # Tailgate
     other.tailgate_counter : int = 0  # in world_ticks (e.g. 20p second), # todo: cannot get this to work
-
-    speed.max_speed = "${target_speed}" 
-
-    @property
-    def max_speed(self):
-        return self.speed.target_speed
 
 behavior_agent_options = BehaviorAgentSettings()
 behavior_agent_options._options = behavior_agent_options._init_default_options(reinit=True).copy()

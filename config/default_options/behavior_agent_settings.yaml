@@ -1,3 +1,7 @@
+live_info:
+  speed: null
+  speed_limit: null
+  direction: null
 speed:
   current_speed: ${..live_info.speed}
   current_speed_limit: ${..live_info.speed_limit}
@@ -46,7 +50,3 @@ other:
 unknown:
   use_bbs_detection: false
   sampling_resolution: 2.0
-live_info:
-  speed: null
-  speed_limit: null
-  direction: null
