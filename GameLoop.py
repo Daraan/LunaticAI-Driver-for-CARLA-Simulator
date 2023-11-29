@@ -3,13 +3,13 @@ import time
 import carla
 
 import utils
-from DataGathering.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car, \
-    check_ego_on_highway, create_city_matrix, detect_surronding_cars
+from DataGathering.informationUtils import get_all_road_lane_ids, follow_car
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager_daniel import TrafficManagerD
 from classes.vehicle import Vehicle
 from utils.logging import log
+from matrix_wrap import wrap_matrix_functionalities
 
 vehicles = []
 
@@ -60,35 +60,11 @@ def main():
     world.tick()
     highway_shape = None
     road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
-    df = initialize_dataframe()
     t_end = time.time() + 10000
     while time.time() < t_end:
         try:
             follow_car(ego_vehicle, world)
-            ego_location = ego_vehicle.get_location()
-            ego_waypoint = world_map.get_waypoint(ego_location)
-            ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)
-
-            current_lanes = []
-            for id in road_lane_ids:
-                if str(ego_waypoint.road_id) == id.split("_")[0]:
-                    current_lanes.append(int(id.split("_")[1]))
-
-            # Normal Road
-            if ego_on_highway:
-                street_type = "On highway"
-            else:
-                street_type = "Non highway street"
-            matrix = create_city_matrix(ego_location, road_lane_ids, world_map)
-
-            if matrix:
-                matrix, _ = detect_surronding_cars(
-                    ego_location, ego_vehicle, matrix, road_lane_ids, world, radius, ego_on_highway, highway_shape
-                )
-
-            for i in matrix:
-                if matrix[i] == [3, 3, 3, 3, 3, 3, 3, 3]:
-                    continue
+            matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
 
             (i_car, j_car) = (0, 0)
 
