@@ -8,6 +8,7 @@ from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager_daniel import TrafficManagerD
 from classes.vehicle import Vehicle
+from utils.logging import log
 from matrix_wrap import wrap_matrix_functionalities
 
 vehicles = []
@@ -73,15 +74,13 @@ def main():
                         (i_car, j_car) = (lane, i)
 
             if matrix[i_car][j_car + 1] == 2:
-                print("overtake!")
+                log("overtake!")
                 tm.force_overtake(20)
 
-            # clock.tick_busy_loop(60)
-            # time.sleep(0.5)
             world.tick()
 
         except Exception as e:
-            continue
+            log(e.__str__())
 
     input("press any key to end...")
 
