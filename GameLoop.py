@@ -9,7 +9,7 @@ from classes.driver import Driver
 from classes.traffic_manager_daniel import TrafficManagerD
 from classes.vehicle import Vehicle
 from utils.logging import log
-from matrix_wrap import wrap_matrix_functionalities
+from matrix_wrap import wrap_matrix_functionalities, get_car_coords
 
 vehicles = []
 
@@ -65,13 +65,7 @@ def main():
         try:
             follow_car(ego_vehicle, world)
             matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
-
-            (i_car, j_car) = (0, 0)
-
-            for lane in matrix:
-                for i in range(len(matrix[lane])):
-                    if matrix[lane][i] == 1:
-                        (i_car, j_car) = (lane, i)
+            (i_car, j_car) = get_car_coords(matrix)
 
             if matrix[i_car][j_car + 1] == 2:
                 log("overtake!")

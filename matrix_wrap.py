@@ -297,3 +297,13 @@ def wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids,
                 )
 
     return matrix
+
+
+def get_car_coords(matrix):
+    (i_car, j_car) = (0,0)
+    for lane in matrix:
+        for i in range(len(matrix[lane])):
+            if matrix[lane][i] == 1:
+                (i_car, j_car) = (lane, i)
+
+    return i_car, j_car
