@@ -48,7 +48,7 @@ def main():
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManagerD(client, ego.actor)
+    tm = TrafficManagerD(client, ego_vehicle)
     tm.init_lunatic_driver()
     tm.start_drive()
 
@@ -60,7 +60,7 @@ def main():
     highway_shape = None
     road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
     df = initialize_dataframe()
-    t_end = time.time() + 10
+    t_end = time.time() + 10000
     while time.time() < t_end:
         try:
             follow_car(ego_vehicle, world)
@@ -88,11 +88,23 @@ def main():
             for i in matrix:
                 if matrix[i] == [3, 3, 3, 3, 3, 3, 3, 3]:
                     continue
-                print(i, matrix[i])
-            print(street_type)
+            #     print(i, matrix[i])
+            # print(street_type)
+
+            (i_car, j_car) = (0,0)
+
+            for lane in matrix:
+                for i in range(len(matrix[lane])):
+                    if matrix[lane][i] == 1:
+                        (i_car, j_car) = (lane, i)
+
+
+            if matrix[i_car][j_car+1] == 2:
+                print("overtake!")
+                tm.force_overtake(20)
 
             # clock.tick_busy_loop(60)
-            time.sleep(0.5)
+            # time.sleep(0.5)
             world.tick()
 
         except Exception as e:
