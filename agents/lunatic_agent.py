@@ -15,24 +15,19 @@ import random
 import numpy as np
 import carla
 
-from agents.navigation.global_route_planner import GlobalRoutePlanner
 from shapely.geometry import Polygon
+from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.tools.misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
 
-# OLD original: Style; TODO: remove later on
 from agents.navigation.behavior_agent import BehaviorAgent
 
-import agents.navigation.behavior_types as _behavior_types  #
-
-behavior_types = vars(_behavior_types)
-
 # NEW: Style
+from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
 from config.default_options.original_behavior import BasicAgentSettings
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
-from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
 
 # As Reference:
 '''
@@ -331,6 +326,7 @@ class LunaticAgent(BehaviorAgent):
 
             # Pedestrian avoidance behaviors
             walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
+            # TODO: Here we should insert rules:
             if walker_state and (w_distance - max(walker.bounding_box.extent.y, walker.bounding_box.extent.x)
                                  - max(self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
                                  < self._behavior.braking_distance):
