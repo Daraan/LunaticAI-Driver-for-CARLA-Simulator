@@ -9,6 +9,7 @@ from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager_daniel import TrafficManagerD
 from classes.vehicle import Vehicle
+from utils.logging import log
 
 vehicles = []
 
@@ -88,27 +89,22 @@ def main():
             for i in matrix:
                 if matrix[i] == [3, 3, 3, 3, 3, 3, 3, 3]:
                     continue
-            #     print(i, matrix[i])
-            # print(street_type)
 
-            (i_car, j_car) = (0,0)
+            (i_car, j_car) = (0, 0)
 
             for lane in matrix:
                 for i in range(len(matrix[lane])):
                     if matrix[lane][i] == 1:
                         (i_car, j_car) = (lane, i)
 
-
-            if matrix[i_car][j_car+1] == 2:
-                print("overtake!")
+            if matrix[i_car][j_car + 1] == 2:
+                log("overtake!")
                 tm.force_overtake(20)
 
-            # clock.tick_busy_loop(60)
-            # time.sleep(0.5)
             world.tick()
 
         except Exception as e:
-            continue
+            log(e.__str__())
 
     input("press any key to end...")
 
