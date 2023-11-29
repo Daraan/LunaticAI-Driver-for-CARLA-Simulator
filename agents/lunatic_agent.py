@@ -15,30 +15,43 @@ import random
 import numpy as np
 import carla
 
-from agents.navigation.local_planner import LocalPlanner, RoadOption
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from shapely.geometry import Polygon
 from agents.tools.misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
 
-# OLD original: Style
-from agents.navigation.basic_agent import BasicAgent
+# OLD original: Style; TODO: remove later on
 from agents.navigation.behavior_agent import BehaviorAgent
 
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal
 import agents.navigation.behavior_types as _behavior_types  #
 
 behavior_types = vars(_behavior_types)
 
 # NEW: Style
-from  config.default_options.original_behavior import BasicAgentSettings
+from config.default_options.original_behavior import BasicAgentSettings
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
+from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
 
-class LunaticAgent:
-    # NOTE: This is mostly a copy of carla's navigation.basic_agent.BasicAgent
-    #
+# As Reference:
+'''
+class RoadOption(IntEnum):
+    """
+    RoadOption represents the possible topological configurations 
+    when moving from a segment of lane to other.
+    """
+    VOID = -1
+    LEFT = 1
+    RIGHT = 2
+    STRAIGHT = 3
+    LANEFOLLOW = 4
+    CHANGELANELEFT = 5
+    CHANGELANERIGHT = 6
+'''
+
+
+class LunaticAgent(BehaviorAgent):
     """
     BasicAgent implements an agent that navigates the scene.
     This agent respects traffic lights and other vehicles, but ignores stop signs.
@@ -147,7 +160,7 @@ class LunaticAgent:
             self._offset = opt_dict['offset']
 
         # Initialize the planners
-        self._local_planner = LocalPlanner(self._vehicle, opt_dict=opt_dict, map_inst=self._map)
+        self._local_planner = DynamicLocalPlanner(self._vehicle, opt_dict=opt_dict, map_inst=self._map)
         if grp_inst:
             if isinstance(grp_inst, GlobalRoutePlanner):
                 self._global_planner = grp_inst
@@ -277,6 +290,7 @@ class LunaticAgent:
             self._incoming_direction = RoadOption.LANEFOLLOW
 
     def run_step(self, debug=False):
+        # NOTE: This is our main entry point that runs every tick.
         self._update_information()
         # Detect hazards
         hazard_detected = self.detect_hazard()
