@@ -46,12 +46,14 @@ def main():
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        ap = TrafficManagerD(client, v.actor, speed_limit_scale=-25,
+        ap = TrafficManagerD(client, v.actor,
+                             speed_limit_scale=-25,
                              min_front_distance=3)
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManagerD(client, ego_vehicle, speed_limit_scale=driver1.speed_range[1],
+    tm = TrafficManagerD(client, ego_vehicle,
+                         speed_limit_scale=driver1.speed_range[1],
                          min_front_distance=driver1.distance_range[0])
     tm.init_lunatic_driver()
     tm.start_drive()

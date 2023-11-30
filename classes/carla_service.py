@@ -1,6 +1,7 @@
 import carla
 
 from classes.vehicle import Vehicle
+from utils.logging import log
 
 
 class CarlaService:
@@ -8,8 +9,10 @@ class CarlaService:
         self.client = carla.Client(ip, port)
         self.client.set_timeout(10.0)
         self.vehicleList = []
-        # if worldName:
-        # self.client.load_world(worldName)
+        if self.client.get_world().get_map().name != "Carla/Maps/" + worldName:
+            self.client.load_world(worldName)
+        else:
+            log("skipped loading world, already loaded")
         self.world = self.client.get_world()
 
     def createCar(self, model):
