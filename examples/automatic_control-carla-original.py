@@ -12,6 +12,7 @@ NOTE: Stripped from helper classes (moved to other files) compared to original v
 """
 
 from __future__ import print_function  # For Python2 compatibility
+import __allow_imports_from_root
 
 import argparse
 import glob
