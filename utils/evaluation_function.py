@@ -1,14 +1,15 @@
-from typing import Callable, Any
-from agents.lunatic_agent import LunaticAgent
+from typing import Callable, Any, TYPE_CHECKING
+if TYPE_CHECKING:
+    from agents.lunatic_agent import LunaticAgent
 import inspect
 
 
 class EvaluationFunction:
-    def __init__(self, evaluation_function: Callable[[LunaticAgent], bool], name="EvaluationFunction"):
+    def __init__(self, evaluation_function: Callable[["LunaticAgent"], bool], name="EvaluationFunction"):
         self.evaluation_function = evaluation_function
         self.name = name if name != "EvaluationFunction" else evaluation_function.__name__
 
-    def __call__(self, agent: LunaticAgent, *args, **kwargs) -> bool:
+    def __call__(self, agent: "LunaticAgent", *args, **kwargs) -> bool:
         return self.evaluation_function(agent, *args, **kwargs)
 
     @staticmethod
@@ -28,21 +29,21 @@ class EvaluationFunction:
 
     @classmethod
     def AND(cls, func1, func2):
-        def combined_func(agent: LunaticAgent, *args, **kwargs):
+        def combined_func(agent: "LunaticAgent", *args, **kwargs):
             return func1(agent, *args, **kwargs) and func2(agent, *args, **kwargs)
 
         return cls(combined_func, name=f"{func1.name}_and_{func2.name}")
 
     @classmethod
     def OR(cls, func1, func2):
-        def combined_func(agent: LunaticAgent, *args, **kwargs):
+        def combined_func(agent: "LunaticAgent", *args, **kwargs):
             return func1(agent, *args, **kwargs) or func2(agent, *args, **kwargs)
 
         return cls(combined_func, name=f"{func1.name}_or_{func2.name}")
 
     @classmethod
     def NOT(cls, func):
-        def combined_func(agent: LunaticAgent, *args, **kwargs):
+        def combined_func(agent: "LunaticAgent", *args, **kwargs):
             return not func(agent, *args, **kwargs)
 
         return cls(combined_func, name=f"not_{func.name}")
@@ -58,12 +59,12 @@ class EvaluationFunction:
 
 
 class ActionFunction(EvaluationFunction):
-    def __init__(self, action_function: Callable[[LunaticAgent], Any], name="ActionFunction"):
+    def __init__(self, action_function: Callable[["LunaticAgent"], Any], name="ActionFunction"):
         super().__init__(action_function, name)
 
     # Overriding the NOT method isn't appropriate here since this class is for actions, not evaluations.
     # If you wish to have a NOT like functionality, it should be clearly defined what "NOT" an action means.
 
-    def __call__(self, agent: LunaticAgent, *args, **kwargs) -> Any:
+    def __call__(self, agent: "LunaticAgent", *args, **kwargs) -> Any:
         return self.action_function(agent, *args, **kwargs)
 
