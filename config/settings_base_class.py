@@ -18,7 +18,7 @@ from omegaconf import OmegaConf, DictConfig
 _config_dicts = {}
 
 def new_config(name, parent=None):
-    config = OmegaConf.create()
+    config = OmegaConf.create(parent=parent)
     _config_dicts[name] = config
 
     # Setting this to None will reinitialize it when a instance is created
@@ -66,7 +66,8 @@ class BaseCategories:
         if default_options is None or reinit:
             default_options = OmegaConf.create()
             for name, config in _config_dicts.items():
-                default_options[name] = config
+                if config._parent is None:
+                    default_options[name] = config
             # NOTE: This creates copies of the dicts and NOT references.
             default_options.speed = speed
             assert default_options.speed is not speed

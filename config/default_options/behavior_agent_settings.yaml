@@ -3,8 +3,8 @@ live_info:
   current_speed_limit: null
   direction: null
 speed:
-  current_speed: ${..live_info.speed}
-  current_speed_limit: ${..live_info.speed_limit}
+  current_speed: ${..live_info.current_speed}
+  current_speed_limit: ${..live_info.current_speed_limit}
   target_speed: 20
   follow_speed_limits: false
   max_speed: 50
@@ -25,6 +25,19 @@ obstacles:
   base_tlight_threshold: 5.0
   base_vehicle_threshold: 5.0
   detection_speed_ratio: 1.0
+  detection_angles:
+    walkers_lane_change:
+    - 0.0
+    - 90.0
+    walkers_same_lane:
+    - 0.0
+    - 60.0
+    cars_lane_change:
+    - 0.0
+    - 180.0
+    cars_same_lane:
+    - 0.0
+    - 30.0
 controls:
   max_brake: 0.5
   max_throttle: 0.75

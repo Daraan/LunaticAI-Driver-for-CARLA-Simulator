@@ -74,3 +74,11 @@ other:
 unknown:
   use_bbs_detection: false
   sampling_resolution: 2.0
+emergency:
+  ignore_percentage: 0.0
+  do_random_steering: false
+  random_steering_range:
+  - -0.25
+  - 0.25
+  use_hand_brake: false
+  hand_brake_modify_chance: 0.0

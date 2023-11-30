@@ -392,7 +392,7 @@ class LunaticAgent(BehaviorAgent):
         """
 
         vehicle_speed = get_speed(vehicle)
-        delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
+        delta_v = max(1, (self.config.live_info.current_speed - vehicle_speed) / 3.6)
         ttc = (distance / delta_v if delta_v != 0  # TimeTillCollision
                else distance / np.nextafter(0., 1.)  # do not divide by 0,
                )
@@ -467,9 +467,7 @@ class LunaticAgent(BehaviorAgent):
         return vehicle_state, vehicle, distance
 
 
-    def done(self):
-        """Check whether the agent has reached its destination."""
-        return self._local_planner.done()
+    #def done(self): # from base class self._local_planner.done()
 
     def ignore_traffic_lights(self, active=True):
         """(De)activates the checks for traffic lights"""
@@ -655,6 +653,9 @@ class LunaticAgent(BehaviorAgent):
 
         return False, None
 
+    # TODO: see if max_distance is currently still necessary
+    # TODO: move angles to config
+    #@override
     def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
                                    lane_offset=0):
         """
@@ -764,7 +765,13 @@ class LunaticAgent(BehaviorAgent):
 
         return False, None, -1
 
-    def add_emergency_stop(self, control, enable_random_steer=False, reason:str=None):
+    #@override
+    def emergency_stop(self):
+        raise NotImplementedError("This function was overwritten use ´add_emergency_stop´ instead")
+
+    #@override
+    # TODO: Port this to a rule that is used during emergencies.
+    def add_emergency_stop(self, control, reason:str=None):
         """
         Modifies the control values to perform an emergency stop.
         The steering remains unchanged to avoid going out of the lane during turns.
@@ -772,24 +779,26 @@ class LunaticAgent(BehaviorAgent):
         :param control: (carla.VehicleControl) control to be modified
         :param enable_random_steer: (bool, optional) Flag to enable random steering
         """
+
+        # TODO, future: Use rules here.
+        if self.config.emergency.ignore_percentage > 0.0 and self.config.emergency.ignore_percentage / 100 > random.random():
+            return control
+        
         control.throttle = 0.0
-        control.brake = self.config.controls.max_brake
-        control.hand_brake = False
-
-
-        # TODO adjust/add other behavior
-        # control.steer = np.random.random() - 1 # TODO make this optional and dynamically
-
-        # Additional behavior based on reason (placeholder)
-        control.hand_brake = False
+        # negate the chosen default setting
+        if self.config.emergency.hand_brake_modify_chance > 0.0 and self.config.emergency.hand_brake_modify_chance / 100 > random.random():
+            control.hand_brake = not self.config.emergency.use_hand_brake
+        else:
+            control.hand_brake = self.config.emergency.use_hand_brake
 
         # Enable random steering if flagged
-        if enable_random_steer:
-            control.steer = np.random.random() - 1  # Randomly adjust steering
+        if self.config.emergency.do_random_steering:
+            control.steer = random.uniform(*self.config.emergency.random_steering_range)  # Randomly adjust steering
 
         return control
     
     # ported from behavior_agent, maybe we can make a # updated behaviorAgent class
+    #@override
     def _tailgating(self, waypoint, vehicle_list):
         """
         This method is in charge of tailgating behaviors.
