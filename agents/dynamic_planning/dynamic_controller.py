@@ -106,7 +106,7 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
     PIDLongitudinalController implements longitudinal control using a PID.
     """
 
-    def __init__(self, vehicle, K_P=1.0, K_I=0.0, K_D=0.0, dt=0.03):
+    def __init__(self, vehicle, config):
         """
         Constructor method.
 
@@ -117,6 +117,7 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
             :param dt: time differential in seconds
         """
         self._vehicle = vehicle
+        self.config = config
         self._error_buffer = deque(maxlen=10)
 
     def _pid_control(self, target_speed, current_speed):
@@ -138,13 +139,13 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
             _de = 0.0
             _ie = 0.0
 
-        return np.clip((self.config.longitudinal_control_dict.K_P * error) + (self.config.longitudinal_control_dict.K_D * _de) + (self.config.longitudinal_control_dict.K_I * _ie), -1.0, 1.0)
+        return np.clip((self.config.planner.longitudinal_control_dict.K_P * error) + (self.config.planner.longitudinal_control_dict.K_D * _de) + (self.config.planner.longitudinal_control_dict.K_I * _ie), -1.0, 1.0)
 
     def change_parameters(self, K_P, K_I, K_D, dt):
         """Changes the PID parameters"""
-        self.config.longitudinal_control_dict.K_P = K_P
-        self.config.longitudinal_control_dict.K_I = K_I
-        self.config.longitudinal_control_dict.K_D = K_D
+        self.config.planner.longitudinal_control_dict.K_P = K_P
+        self.config.planner.longitudinal_control_dict.K_I = K_I
+        self.config.planner.longitudinal_control_dict.K_D = K_D
         self.config.planner.dt = dt
 
 
@@ -183,12 +184,12 @@ class DynamicPIDLateralController(PIDLateralController):
         v_vec = np.array([v_vec.x, v_vec.y, 0.0])
 
         # Get the vector vehicle-target_wp
-        if self.config.planner.offset != 0:
+        if self.config.controls.offset != 0:
             # Displace the wp to the side
             w_tran = waypoint.transform
             r_vec = w_tran.get_right_vector()
-            w_loc = w_tran.location + carla.Location(x=self.config.planner.offset*r_vec.x,
-                                                     y=self.config.planner.offset*r_vec.y)
+            w_loc = w_tran.location + carla.Location(x=self.config.controls.offset*r_vec.x,
+                                                     y=self.config.controls.offset*r_vec.y)
         else:
             w_loc = waypoint.transform.location
 
@@ -213,11 +214,11 @@ class DynamicPIDLateralController(PIDLateralController):
             _de = 0.0
             _ie = 0.0
 
-        return np.clip((self.config.lateral_control_dict.K_P * _dot) + (self.config.lateral_control_dict.K_D * _de) + (self.config.lateral_control_dict.K_I * _ie), -1.0, 1.0)
+        return np.clip((self.config.planner.lateral_control_dict.K_P * _dot) + (self.config.planner.lateral_control_dict.K_D * _de) + (self.config.planner.lateral_control_dict.K_I * _ie), -1.0, 1.0)
 
     def change_parameters(self, K_P, K_I, K_D, dt):
         """Changes the PID parameters"""
-        self.config.lateral_control_dict.K_P = K_P
-        self.config.lateral_control_dict.K_I = K_I
-        self.config.lateral_control_dict.K_D = K_D
+        self.config.planner.lateral_control_dict.K_P = K_P
+        self.config.planner.lateral_control_dict.K_I = K_I
+        self.config.planner.lateral_control_dict.K_D = K_D
         self.config.planner.dt = dt

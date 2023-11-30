@@ -1,13 +1,17 @@
+live_info:
+  current_speed: null
+  current_speed_limit: null
+  direction: null
 speed:
   current_speed: ${..live_info.speed}
   current_speed_limit: ${..live_info.speed_limit}
   target_speed: 20
-  follow_speed_limit: false
+  follow_speed_limits: false
+  max_speed: 50
   speed_decrease: 12
   safety_time: 3
   min_speed: 5
   speed_lim_dist: 6
-  max_speed: ${target_speed}
   vehicle_percentage_speed_difference: 30
 distance:
   base_min_distance: 3.0
@@ -57,7 +61,3 @@ other:
 unknown:
   use_bbs_detection: false
   sampling_resolution: 2.0
-live_info:
-  speed: null
-  speed_limit: null
-  direction: null

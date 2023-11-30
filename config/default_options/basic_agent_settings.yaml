@@ -1,16 +1,16 @@
 live_info:
-  speed: null
-  speed_limit: null
+  current_speed: null
+  current_speed_limit: null
   direction: null
 speed:
   current_speed: ${..live_info.speed}
   current_speed_limit: ${..live_info.speed_limit}
   target_speed: 20
-  follow_speed_limit: false
+  follow_speed_limits: false
 distance:
   base_min_distance: 3.0
   distance_ratio: 0.5
-lane_change: { }
+lane_change: {}
 obstacles:
   ignore_vehicles: false
   ignore_traffic_lights: false
@@ -38,7 +38,7 @@ planner:
     K_D: 0
     dt: ${..dt}
   args_longitudinal_dict: ${longitudinal_control_dict}
-other: { }
+other: {}
 unknown:
   use_bbs_detection: false
   sampling_resolution: 2.0

@@ -12,7 +12,7 @@ speed:
   # Using ${  } looks up values from different sections.
   max_speed: ${target_speed}
 
-  follow_speed_limit: false
+  follow_speed_limits: false
 
   # TODO: This is implemented for the behavior agents
   max_speed: 50
