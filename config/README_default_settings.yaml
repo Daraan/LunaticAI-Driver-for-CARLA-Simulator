@@ -1,0 +1,80 @@
+# Currently more explanation of the parameters can be found in the config/default_options/classes
+
+speed:
+  target_speed: 20
+  # Alias; BasicAgents use target_speed; BehaviorAgents use max_speed
+  # Using ${  } looks up values from different sections.
+  max_speed: ${target_speed}
+
+  follow_speed_limit: false
+
+  # TODO: These two are kind of similar. One absolute the other a percentage.
+  vehicle_percentage_speed_difference: 30
+  speed_lim_dist: 6
+
+  speed_decrease: 12
+  safety_time: 3
+  min_speed: 5
+
+  # These are information updated by the simulator, they are grouped in the live_info section.
+  # For logical reasons these are included here as well.
+  # Originally these are referred to as '_speed' & '_speed_limit' and come from the vehicle class.
+  current_speed: ${..live_info.speed}
+  current_speed_limit: ${..live_info.speed_limit}
+distance:
+  base_min_distance: 3.0
+  distance_ratio: 0.5
+  min_proximity_threshold: 12
+  braking_distance: 6
+  distance_to_leading_vehicle: 5.0
+lane_change:
+  auto_lange_change: true
+  random_left_lanechange_percentage: 0.1
+  random_right_lanechange_percentage: 0.1
+  keep_right_rule_percentage: 0.7
+obstacles:
+  ignore_vehicles: false
+  ignore_traffic_lights: false
+  ignore_stop_signs: false
+  base_tlight_threshold: 5.0
+  base_vehicle_threshold: 5.0
+  detection_speed_ratio: 1.0
+  ignore_lights_percentage: 0.0
+  ignore_signs_percentage: 0.0
+  ignore_walkers_percentage: 0.0
+controls:
+  max_brake: 0.5
+  max_throttle: 0.75
+  max_steering: 0.8
+  offset: 0
+planner:
+  sampling_radius: 2.0
+  # NOTE: dt is the simulation speed and should be set from the game loop
+  # TODO: Set this to '???' a MISSING value that needs to be updated.
+  dt: 0.05
+  lateral_control_dict:
+    K_P: 1.95
+    K_I: 0.05
+    K_D: 0.2
+    dt: ${..dt}
+  longitudinal_control_dict:
+    K_P: 1.0
+    K_I: 0.05
+    K_D: 0
+    dt: ${..dt}
+  # Aliases that are used in the original code
+  args_longitudinal_dict: ${longitudinal_control_dict}
+  args_lateral_dict: ${lateral_control_dict}
+other:
+  tailgate_counter: 0
+  # Keyword used by autopilot / traffic manager
+  vehicle_lane_offset: "${..planer.offset}"
+  update_vehicle_lights: false
+unknown:
+  # TODO: Should group these in the correct section and update code or here accordingly.
+  use_bbs_detection: false
+  sampling_resolution: 2.0
+live_info:
+  speed: null
+  speed_limit: null
+  direction: null

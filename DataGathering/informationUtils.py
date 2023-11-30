@@ -7,8 +7,6 @@ import carla
 import numpy as np
 import pandas as pd
 
-from utils.logging import log
-
 
 def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
     """
@@ -209,7 +207,7 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
     # Get lane id for ego_vehicle
     ego_vehilce_waypoint = world_map.get_waypoint(ego_vehicle_location)
     ego_vehilce_lane_id = str(ego_vehilce_waypoint.lane_id)
-    log("ego_vehicle_lane_id: "+ ego_vehilce_lane_id)
+    print("ego_vehicle_lane_id: ", ego_vehilce_lane_id)
     ego_vehilce_road_id = str(ego_vehilce_waypoint.road_id)
 
     lanes = []
