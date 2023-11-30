@@ -3,9 +3,8 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-# NOTE: This file currently contains code from the three agents that were implemented in the original CARLA repo.
-# so no added customization yet, also not yet all useful code.
-# TODO: This still needs some heavy cleaning and maybe organizing into different files/subclasses to better focus the functions we want to customize.
+# NOTE: This file currently contains code from the three agents that were implemented in the original CARLA repo. so
+# no added customization yet, also not yet all useful code.
 
 """ This module implements an agent that roams around a track following random
 waypoints and avoiding other vehicles. The agent also responds to traffic lights,
@@ -188,14 +187,6 @@ class LunaticAgent(BehaviorAgent):
         # e.g. setting ignore_vehicles to False, if it was True before.
         # do an emergency stop (in certain situations)
         raise NotImplemented
-    
-    def temporary_settings(self, temp_settings: dict) -> dict:
-        """
-        Returns a new dictionary with the agent's settings overwritten by the given temporary settings.
-        NOTE: This does not change the agent's settings only returns a new dictionary to be used.
-        """
-        # TODO: Maybe make a temp_settings attribute, problem what if multiple temporary settings are needed that live longer.
-        return { **self.settings, **temp_settings} 
 
     def set_target_speed(self, speed):
         """
@@ -666,7 +657,7 @@ class LunaticAgent(BehaviorAgent):
 
         return False, None, -1
 
-    def add_emergency_stop(self, control, enable_random_steer=False):
+    def add_emergency_stop(self, control, enable_random_steer=False, reason:str=None):
         """
         Modifies the control values to perform an emergency stop.
         The steering remains unchanged to avoid going out of the lane during turns.
@@ -683,7 +674,6 @@ class LunaticAgent(BehaviorAgent):
         # TODO adjust/add other behavior
 
         # Additional behavior based on reason (placeholder)
-        control.brake = self._max_brake
         control.hand_brake = False
 
         # Enable random steering if flagged

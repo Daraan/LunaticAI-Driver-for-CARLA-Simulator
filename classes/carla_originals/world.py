@@ -1,14 +1,15 @@
 # Official Example from examples/automatic-control.py
 # NOTE it might has to use synchonous_mode
-import numpy.random as random
 import re
 import sys
 
 import carla
-from utils import get_actor_display_name
-from utils.blueprint_helpers import get_actor_blueprints
+import numpy.random as random
+
 from classes.carla_originals.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, LaneInvasionSensor
+from utils import get_actor_display_name
+from utils.blueprint_helpers import get_actor_blueprints
 
 
 # ==============================================================================
@@ -49,7 +50,6 @@ class World(object):
         self.actors = []
         if self.player is not None:
             self.actors.append(self.player)
-
 
     def restart(self, args):
         """Restart the world"""
@@ -108,7 +108,7 @@ class World(object):
         self.player.get_world().set_weather(preset[0])
 
     def modify_vehicle_physics(self, actor):
-        #If actor is not a vehicle, we cannot use the physics control
+        # If actor is not a vehicle, we cannot use the physics control
         try:
             physics_control = actor.get_physics_control()
             physics_control.use_sweep_wheel_collision = True
@@ -149,6 +149,8 @@ class World(object):
 def find_weather_presets():
     """Method to find weather presets"""
     rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
+
     def name(x): return ' '.join(m.group(0) for m in rgx.finditer(x))
+
     presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
     return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]

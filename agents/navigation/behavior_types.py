@@ -43,6 +43,7 @@ class Aggressive(BasicAgentSettings):
     braking_distance = 4
     tailgate_counter = -1
 
+
 # Experiments (not really successful)
 
 class Tailgating2(BasicAgentSettings):
@@ -54,6 +55,7 @@ class Tailgating2(BasicAgentSettings):
     min_proximity_threshold = 1
     braking_distance = 0.5
     tailgate_counter = -1
+
 
 class BadAndRisky(Aggressive):
     max_brake = 0.1

@@ -1,19 +1,9 @@
-import pygame
-import carla
-import random
 import time
-import math
-import collections
-from collections import Counter
-import pandas as pd
-import itertools
-from copy import deepcopy
 import warnings
-import numpy as np
+from copy import deepcopy
 
 warnings.filterwarnings("ignore")
 from utils import *
-
 
 if __name__ == "__main__":
     # config:
@@ -123,9 +113,9 @@ if __name__ == "__main__":
 
             # car is approaching junction
             elif (
-                is_junction_ahead(ego_waypoint, distance_to_junc)
-                and not highway
-                and junction.id != 459
+                    is_junction_ahead(ego_waypoint, distance_to_junc)
+                    and not highway
+                    and junction.id != 459
             ):
                 in_junction = True
                 junction = get_junction_ahead(ego_waypoint, distance_to_junc)

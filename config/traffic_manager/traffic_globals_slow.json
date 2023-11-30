@@ -1,5 +1,5 @@
 {
-    "global_lane_offset" : 0,
-    "global_percentage_speed_difference" : 60.0,
-    "set_global_distance_to_leading_vehicle" : 10
+  "global_lane_offset": 0,
+  "global_percentage_speed_difference": 60.0,
+  "set_global_distance_to_leading_vehicle": 10
 }

@@ -1,9 +1,8 @@
 # Functions which not yet have a good grouping in their own files
 """Contains snippets that can can import/export vehicle positions from/to csv files."""
 
-
-from carla import Location, Rotation, Transform
 import pandas as pd
+from carla import Location, Rotation, Transform
 
 
 def get_actor_display_name(actor, truncate=250):
@@ -14,6 +13,7 @@ def get_actor_display_name(actor, truncate=250):
 
 # A dataframe template to store the locations of vehicles
 LOC_DF = pd.DataFrame(columns=["x", "y", "z", "pitch", "yaw", "roll"])
+
 
 # -----------------------------------
 # 
@@ -26,17 +26,18 @@ class _classproperty(object):
     def __get__(self, obj, owner):
         return self.f(owner)
 
+
 # -----------------------------------
 
 def transform_to_pandas(transform):
-   loc = transform.location
-   rot = transform.rotation
-   s = pd.Series({"x":loc.x, "y":loc.y, "z":loc.z,
-                  "pitch" : rot.pitch,"yaw":rot.yaw, "roll":rot.roll})
-   return s
+    loc = transform.location
+    rot = transform.rotation
+    s = pd.Series({"x": loc.x, "y": loc.y, "z": loc.z,
+                   "pitch": rot.pitch, "yaw": rot.yaw, "roll": rot.roll})
+    return s
 
 
-def vehicle_location_to_dataframe(vehicles : list):
+def vehicle_location_to_dataframe(vehicles: list):
     df = LOC_DF.copy()
     for i, v in enumerate(vehicles):
         df.loc[i] = transform_to_pandas(v.get_transform())
@@ -78,7 +79,6 @@ def enable_synchronous_mode(world, timedelta=0.05):
     world.on_tick(lambda world_snapshot: do_something(world_snapshot))
     """
     settings = world.get_settings()
-    settings.synchronous_mode = True # Enables synchronous mode
+    settings.synchronous_mode = True  # Enables synchronous mode
     settings.fixed_delta_seconds = 0.05
     world.apply_settings(settings)
-

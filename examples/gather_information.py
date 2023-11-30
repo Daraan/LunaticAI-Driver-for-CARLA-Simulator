@@ -1,15 +1,11 @@
-import __allow_imports_from_root
-
-from classes.carla_service import CarlaService
-from classes.driver import Driver
-from classes.vehicle import Vehicle
-
 import time
 
 import utils
-from classes.traffic_manager_daniel import TrafficManagerD
-
 from DataGathering.informationUtils import *
+from classes.carla_service import CarlaService
+from classes.driver import Driver
+from classes.traffic_manager_daniel import TrafficManagerD
+from classes.vehicle import Vehicle
 
 vehicles = []
 

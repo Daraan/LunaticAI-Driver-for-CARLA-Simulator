@@ -4,8 +4,10 @@ Command line script to change the map.
 TODO: This file is not so useful, maybe we can remove it.
 """
 
+
 def change_map(client, town):
     return client.load_world(town)
+
 
 if __name__ == "__main__":
     import glob
@@ -17,10 +19,10 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         town = sys.argv[-1]
     else:
-        town = 'Town04' # maybe 'Town04_Opt'
+        town = 'Town04'  # maybe 'Town04_Opt'
 
     try:
-        sys.path.append(glob.glob(os.path.join(CARLA_ROOT, "PythonAPI", "carla", "dist",'carla-*%d.%d-%s.egg' % (
+        sys.path.append(glob.glob(os.path.join(CARLA_ROOT, "PythonAPI", "carla", "dist", 'carla-*%d.%d-%s.egg' % (
             sys.version_info.major,
             sys.version_info.minor,
             'win-amd64' if os.name == 'nt' else 'linux-x86_64')))[0])
@@ -37,5 +39,3 @@ if __name__ == "__main__":
     # Once we have a client we can retrieve the world that is currently
     # running.
     world = change_map(client, town)
-
-

@@ -1,20 +1,18 @@
 import __allow_imports_from_root
-import carla
-from classes.carla_service import CarlaService
-# TODO: maybe we can merge these or make them more unified
-from classes.driver import Driver
-from classes.vehicle import Vehicle
-
-import sys
 import random
+import sys
+
+import carla
 
 import utils
 # To import a basic agent
 from agents.navigation.basic_agent import BasicAgent
-
+from classes.carla_service import CarlaService
+# TODO: maybe we can merge these or make them more unified
+from classes.driver import Driver
 # Import Autopilot, # TODO: remove this
 from classes.traffic_manager_daniel import TrafficManagerD
-
+from classes.vehicle import Vehicle
 
 # To import a behavior agent
 
@@ -42,13 +40,12 @@ def main(args):
     carlaService.assignDriver(ego, driver1)
     agent = BasicAgent(ego.actor)
 
-    wp_start=level.get_waypoint(ego.actor.get_location())
-    next_wps : list = wp_start.next(200)
+    wp_start = level.get_waypoint(ego.actor.get_location())
+    next_wps: list = wp_start.next(200)
 
     destination = next_wps[-1].transform.location
     agent.set_destination(destination)
     agent.ignore_vehicles(active=False)
-
 
     # spawn others
     for sp in spawn_points[1:]:
@@ -91,10 +88,10 @@ def main(args):
     input("press any key to end...")
 
 
-
 if __name__ == '__main__':
     import utils.argument_parsing as parse
     from pprint import pprint
+
     args = parse.client_settings.add(parse.interactive_mode).parse_args()
     pprint(args)
     try:
@@ -105,4 +102,3 @@ if __name__ == '__main__':
         except NameError as e:
             print(e)
             # likely client not defined yet due to earlier errors, or not globally defined.
-

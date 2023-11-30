@@ -1,16 +1,15 @@
 import __allow_imports_from_root
+import time
+
 import carla
 
+import utils
 from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unified & marge with agent
 from classes.driver import Driver
 
-import time
-
-import utils
-
-
 vehicles = []
+
 
 def main(args):
     global client
@@ -19,7 +18,7 @@ def main(args):
 
     world = carlaService.getWorld()
     level = world.get_map()
-    ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world) # ego is red the others default colors
+    ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world)  # ego is red the others default colors
 
     driver1 = Driver("config/default_driver.json")
     car1 = carlaService.createCar("model3")
@@ -41,20 +40,18 @@ def main(args):
     spawnPoint.location.y -= 16
     driver3.spawn(spawnPoint)
 
-
     # driver1.vehicle.focusCamera()
     car3.setThrottle(0.2)
     driver1.drive(carlaService.vehicleList)
     # car2.setThrottle(2)
-
 
     time.sleep(1)
     # car1.setBrake(2)
     # car1.setSteering(3)
     # car1.setHandbrake(True)
     time.sleep(5)
-    
-    if args.interactive: 
+
+    if args.interactive:
         # goes into interactive mode here
         import code
         v = globals().copy()
@@ -66,6 +63,7 @@ def main(args):
 if __name__ == '__main__':
     import utils.argument_parsing as parse
     from pprint import pprint
+
     args = parse.client_settings.add(parse.interactive_mode).parse_args()
     pprint(args)
     try:
@@ -76,4 +74,3 @@ if __name__ == '__main__':
         except NameError as e:
             print(e)
             # likely client not defined yet due to earlier errors, or not globally defined.
-

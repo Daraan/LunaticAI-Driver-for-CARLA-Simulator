@@ -1,4 +1,4 @@
-    # Copyright (c) # Copyright (c) 2018-2020 CVC.
+# Copyright (c) # Copyright (c) 2018-2020 CVC.
 #
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
@@ -12,8 +12,8 @@ It can also make use of the global route planner to follow a specified route
 import carla
 from shapely.geometry import Polygon
 
-from agents.navigation.local_planner import LocalPlanner, RoadOption
 from agents.navigation.global_route_planner import GlobalRoutePlanner
+from agents.navigation.local_planner import LocalPlanner, RoadOption
 from agents.tools.misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
@@ -236,10 +236,10 @@ class BasicAgent(object):
         and the other 3 fine tune the maneuver
         """
         speed = self._vehicle.get_velocity().length()
-        path : list = self._generate_lane_change_path(
-            self._map.get_waypoint(self._vehicle.get_location()), # get current waypoint
+        path: list = self._generate_lane_change_path(
+            self._map.get_waypoint(self._vehicle.get_location()),  # get current waypoint
             direction,
-            same_lane_time * speed, # get direction in meters t*V
+            same_lane_time * speed,  # get direction in meters t*V
             other_lane_time * speed,
             lane_change_time * speed,
             False,
@@ -308,7 +308,8 @@ class BasicAgent(object):
 
         return (False, None)
 
-    def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0, lane_offset=0):
+    def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
+                                   lane_offset=0):
         """
         Method to check if there is a vehicle in front of the agent blocking its path.
 
@@ -317,6 +318,7 @@ class BasicAgent(object):
             :param max_distance: max free-space to check for obstacles.
                 If None, the base threshold value is used
         """
+
         def get_route_polygon():
             route_bb = []
             extent_y = self._vehicle.bounding_box.extent.y
@@ -394,11 +396,11 @@ class BasicAgent(object):
             # Simplified approach, using only the plan waypoints (similar to TM)
             else:
 
-                if target_wpt.road_id != ego_wpt.road_id or target_wpt.lane_id != ego_wpt.lane_id  + lane_offset:
+                if target_wpt.road_id != ego_wpt.road_id or target_wpt.lane_id != ego_wpt.lane_id + lane_offset:
                     next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
                     if not next_wpt:
                         continue
-                    if target_wpt.road_id != next_wpt.road_id or target_wpt.lane_id != next_wpt.lane_id  + lane_offset:
+                    if target_wpt.road_id != next_wpt.road_id or target_wpt.lane_id != next_wpt.lane_id + lane_offset:
                         continue
 
                 target_forward_vector = target_transform.get_forward_vector()
@@ -409,14 +411,15 @@ class BasicAgent(object):
                     y=target_extent * target_forward_vector.y,
                 )
 
-                if is_within_distance(target_rear_transform, ego_front_transform, max_distance, [low_angle_th, up_angle_th]):
+                if is_within_distance(target_rear_transform, ego_front_transform, max_distance,
+                                      [low_angle_th, up_angle_th]):
                     return (True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
 
         return (False, None, -1)
 
     def _generate_lane_change_path(self, waypoint, direction='left', distance_same_lane=10,
-                                distance_other_lane=25, lane_change_distance=25,
-                                check=True, lane_changes=1, step_distance=2):
+                                   distance_other_lane=25, lane_change_distance=25,
+                                   check=True, lane_changes=1, step_distance=2):
         """
         This methods generates a path that results in a lane change.
         Use the different distances to fine-tune the maneuver.
@@ -439,7 +442,7 @@ class BasicAgent(object):
                 return []
             next_wp = next_wps[0]
             distance += next_wp.transform.location.distance(plan[-1][0].transform.location)
-            plan.append((next_wp, RoadOption.LANEFOLLOW)) # next waypoint to the path
+            plan.append((next_wp, RoadOption.LANEFOLLOW))  # next waypoint to the path
 
         if direction == 'left':
             option = RoadOption.CHANGELANELEFT
@@ -465,7 +468,7 @@ class BasicAgent(object):
             if direction == 'left':
                 if check and str(next_wp.lane_change) not in ['Left', 'Both']:
                     return []
-                side_wp = next_wp.get_left_lane() # get waypoint on other lane
+                side_wp = next_wp.get_left_lane()  # get waypoint on other lane
             else:
                 if check and str(next_wp.lane_change) not in ['Right', 'Both']:
                     return []

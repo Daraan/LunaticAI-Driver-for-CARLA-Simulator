@@ -1,15 +1,16 @@
-import os
 import json
-import carla
+import os
 from typing import Union, Optional
+
+import carla
 
 TRAFFIC_MANAGER_CONFIG_SUBDIR = "traffic_manager"
 
 
 class Driver:
     def __init__(self, path,
-                 traffic_manager: Optional[Union[carla.Client, carla.TrafficManager]] =None,
-                 config_update: dict=None):
+                 traffic_manager: Optional[Union[carla.Client, carla.TrafficManager]] = None,
+                 config_update: dict = None):
         """
         Args:
             path:

@@ -1,17 +1,17 @@
 import glob
-import os
-import sys
-import random
-import time
-import numpy as np
-import cv2
 import math
+import os
+import random
+import sys
+import time
 from collections import deque
+from threading import Thread
+
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
-from threading import Thread
 from tqdm import tqdm
 
 try:
@@ -22,7 +22,6 @@ try:
 except IndexError:
     pass
 import carla
-
 
 SHOW_PREVIEW = False
 IM_WIDTH = 640
@@ -138,7 +137,7 @@ class CarEnv:
             self.vehicle.apply_control(carla.VehicleControl(throttle=1.0, steer=1 * self.STEER_AMT))
 
         v = self.vehicle.get_velocity()
-        kmh = int(3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
+        kmh = int(3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2))
 
         if len(self.collision_hist) != 0:
             done = True
@@ -299,7 +298,7 @@ if __name__ == '__main__':
                 action = np.argmax(agent.get_qs(current_state))
             else:
                 action = np.random.randint(0, 3)
-                time.sleep(1/FPS)
+                time.sleep(1 / FPS)
 
             new_state, reward, done, _ = env.step(action)
 
@@ -317,13 +316,15 @@ if __name__ == '__main__':
 
         ep_rewards.append(episode_reward)
         if not episode % AGGREGATE_STATS_EVERY or episode == 1:
-            average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:])/len(ep_rewards[-AGGREGATE_STATS_EVERY:])
+            average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:]) / len(ep_rewards[-AGGREGATE_STATS_EVERY:])
             min_reward = min(ep_rewards[-AGGREGATE_STATS_EVERY:])
             max_reward = max(ep_rewards[-AGGREGATE_STATS_EVERY:])
-            agent.tensorboard.update_stats(reward_avg=average_reward, reward_min=min_reward, reward_max=max_reward, epsilon=epsilon)
+            agent.tensorboard.update_stats(reward_avg=average_reward, reward_min=min_reward, reward_max=max_reward,
+                                           epsilon=epsilon)
 
             if min_reward >= MIN_REWARD:
-                torch.save(agent.model.state_dict(), f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.pth')
+                torch.save(agent.model.state_dict(),
+                           f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.pth')
 
         if epsilon > MIN_EPSILON:
             epsilon *= EPSILON_DECAY
@@ -331,4 +332,5 @@ if __name__ == '__main__':
 
     agent.terminate = True
     trainer_thread.join()
-    torch.save(agent.model.state_dict(), f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.pth')
+    torch.save(agent.model.state_dict(),
+               f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.pth')

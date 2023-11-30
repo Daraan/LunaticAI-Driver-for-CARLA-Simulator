@@ -1,22 +1,14 @@
+import sys
+
 import carla
 
-import __allow_imports_from_root
-
+import utils
+from DataGathering.run_matrix import DataMatrix
 from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unfied
 from classes.driver import Driver
-from classes.vehicle import Vehicle
-from DataGathering.run_matrix import DataMatrix
-
-import numpy
-import glob
-import os
-import sys
-import random
-import time
-
-import utils
 from classes.traffic_manager_daniel import TrafficManagerD
+from classes.vehicle import Vehicle
 
 vehicles = []
 
