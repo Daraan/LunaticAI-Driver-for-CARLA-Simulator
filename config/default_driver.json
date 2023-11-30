@@ -1,5 +1,5 @@
 {
-  "use_traffic_manager": "default_driver",
+  "use_traffic_manager": "passive_driver",
   "driver": {
     "speed": {
       "from": 0,

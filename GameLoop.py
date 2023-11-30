@@ -51,8 +51,8 @@ def main():
         ap.start_drive()
 
     tm = TrafficManager(client, ego_vehicle,
-                         speed_limit_scale=-driver1.speed_range[1],
-                         min_front_distance=driver1.distance_range[0])
+                        speed_limit_scale=-driver1.speed_range[1],
+                        min_front_distance=driver1.distance_range[0])
     tm.init_lunatic_driver()
     tm.start_drive()
 
@@ -72,8 +72,8 @@ def main():
             if crazy:
                 continue
 
-            disable_collision = random.randint(1, 100)
-            print(disable_collision, driver1.ignore_obstacle_chance)
+            disable_collision = random.randint(0, 100)
+            # print(disable_collision, driver1.ignore_obstacle_chance)
             if disable_collision <= driver1.ignore_obstacle_chance:
                 driver1.vehicle.actor.set_autopilot(False)
                 driver1.vehicle.setThrottle(200)
@@ -104,7 +104,7 @@ def main():
                     overtake_direction = random.choice([-1, 1])
                     tm.force_overtake(100, overtake_direction)
 
-                print("Risky lance change!")
+                print("Risky overtake!")
 
             if matrix[i_car - 1][j_car + 1] == 0:
                 # print("can overtake on left")
@@ -117,7 +117,6 @@ def main():
                     print("overtake!")
                 else:
                     print("overtake averted by chance")
-
 
         except Exception as e:
             print(e.__str__())
