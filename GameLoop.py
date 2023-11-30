@@ -10,6 +10,7 @@ from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
 from matrix_wrap import wrap_matrix_functionalities, get_car_coords
+from ruleset import ruleset, Ruleset
 
 vehicles = []
 
@@ -72,24 +73,18 @@ def main():
             if crazy:
                 continue
 
-            disable_collision = random.randint(0, 100)
-            # print(disable_collision, driver1.ignore_obstacle_chance)
-            if disable_collision <= driver1.ignore_obstacle_chance:
-                driver1.vehicle.actor.set_autopilot(False)
-                driver1.vehicle.setThrottle(200)
-                print("Crazy")
-                crazy = True
-
             matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
-            follow_car(ego_vehicle, world)
-            # print(matrix)
+
+            ruleset = Ruleset(driver1, matrix)
+            for rule in ruleset.ruleset:
+                rule()
+
             ego_location = ego_vehicle.get_location()
             ego_waypoint = world_map.get_waypoint(ego_location)
 
             (i_car, j_car) = get_car_coords(matrix)
             overtake_direction = 0
             if matrix[i_car + 1][j_car + 1] == 0:
-                # print("can overtake on right")
                 overtake_direction = 1
 
             overtake_choice = random.randint(1, 100)
