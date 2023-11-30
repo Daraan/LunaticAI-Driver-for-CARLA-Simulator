@@ -3,11 +3,11 @@
   "driver": {
     "speed": {
       "from": 0,
-      "to": 0.9
+      "to": 25
     },
     "distance": {
-      "from": 0.5,
-      "to": 1.5
+      "from": 3.0,
+      "to": 5.0
     },
     "overtake_mistake_chance": "60",
     "risky_overtake_chance" : "0",
