@@ -25,8 +25,8 @@ def main():
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
     driver2 = Driver("config/insane_driver.json", traffic_manager=client)
-    driver1 = Driver("config/aggressive_driver.json", traffic_manager=client)
-    driver3 = Driver("config/default_driver.json", traffic_manager=client)
+    driver3 = Driver("config/aggressive_driver.json", traffic_manager=client)
+    driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
     spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
 
@@ -66,6 +66,7 @@ def main():
     road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
     t_end = time.time() + 10000
     crazy = False
+    lane_change = False
 
     while time.time() < t_end:
         try:
@@ -81,6 +82,8 @@ def main():
                 print("Crazy")
                 crazy = True
 
+            driver1.vehicle.actor.set_autopilot(True)
+
             matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
             follow_car(ego_vehicle, world)
             # print(matrix)
@@ -88,8 +91,20 @@ def main():
             ego_waypoint = world_map.get_waypoint(ego_location)
 
             (i_car, j_car) = get_car_coords(matrix)
-            overtake_direction = 0
 
+            # random brake check
+            brake_check_choice = random.randint(1, 100)
+            if (brake_check_choice <= driver1.brake_check_chance
+                    and (matrix[i_car][j_car - 1] == 2 or matrix[i_car][j_car - 2])
+            ):
+                driver1.vehicle.setThrottle(0)
+                driver1.vehicle.setBrake(0)
+                driver1.vehicle.actor.set_autopilot(False)
+                time.sleep(1.0)
+                print("Brake check")
+
+            overtake_direction = 0
+            # Random lane change
             overtake_choice = random.randint(1, 100)
             if overtake_choice <= driver1.risky_overtake_chance:
                 if matrix[i_car + 1][j_car + 1] == 3 and matrix[i_car - 1][j_car + 1] == 3:
@@ -107,11 +122,11 @@ def main():
             if matrix[i_car + 1][j_car + 1] == 0:
                 # print("can overtake on right")
                 overtake_direction = 1
-
             if matrix[i_car - 1][j_car + 1] == 0:
                 # print("can overtake on left")
                 overtake_direction = -1
 
+            # Overtake logic
             if matrix[i_car][j_car + 1] == 2 or matrix[i_car][j_car + 2] == 2:
                 overtake_choice = random.randint(1, 100)
                 if overtake_choice >= driver1.overtake_mistake_chance:
@@ -121,8 +136,9 @@ def main():
                 else:
                     print("overtake averted by chance")
 
+            # brake logic
             if matrix[i_car][j_car + 1] == 2:
-                driver1.vehicle.setBrake(10)
+                driver1.vehicle.setBrake(4)
 
         except Exception as e:
             print(e.__str__())
