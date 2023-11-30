@@ -46,7 +46,7 @@ class DynamicLocalPlanner(LocalPlanner):
     unless a given global plan has already been specified.
     """
 
-    def __init__(self, vehicle, opt_dict : DictConfig, map_inst=None):
+    def __init__(self, vehicle, opt_dict : DictConfig, map_inst=None, world=None):
         """
         :param vehicle: actor to apply to local planner logic onto
         :param opt_dict: dictionary of arguments with different parameters:
@@ -63,15 +63,18 @@ class DynamicLocalPlanner(LocalPlanner):
         """
         self._vehicle = vehicle
         self.config = opt_dict
-        self._world = self._vehicle.get_world()
-        if map_inst:
-            if isinstance(map_inst, carla.Map):
-                self._map : carla.Map= map_inst
+        self._world = world or self._vehicle.get_world()
+        try: 
+            if map_inst:
+                if isinstance(map_inst, carla.Map):
+                    self._map : carla.Map= map_inst
+                else:
+                    print("Warning: Ignoring the given map as it is not a 'carla.Map'")
+                    self._map : carla.Map = self._world.get_map()
             else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
                 self._map : carla.Map = self._world.get_map()
-        else:
-            self._map : carla.Map = self._world.get_map()
+        except AttributeError as e:
+            print(e)
 
         self._vehicle_controller = None
         self.target_waypoint = None
@@ -129,7 +132,7 @@ class DynamicLocalPlanner(LocalPlanner):
         :param debug: boolean flag to activate waypoints debugging
         :return: control to be applied
         """
-        if self.config.distance.follow_speed_limits:
+        if self.config.speed.follow_speed_limits:
             # TODO: check this config
             self.config.speed.target_speed = self._vehicle.get_speed_limit()
 
@@ -169,7 +172,7 @@ class DynamicLocalPlanner(LocalPlanner):
             control.manual_gear_shift = False
         else:
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
-            control = self._vehicle_controller.run_step(self.config.target_speed, self.target_waypoint)
+            control = self._vehicle_controller.run_step(self.config.speed.target_speed, self.target_waypoint)
 
         if debug:
             draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)

@@ -31,8 +31,8 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     # --------------------------
     # Live Information, updated from different sources, e.g. from vehicle current speed limit.
     
-    live_info.speed : float = None
-    live_info.speed_limit : float = None
+    live_info.current_speed : float = None
+    live_info.current_speed_limit : float = None
     live_info.direction : RoadOption = None 
 
     # --------------------------
@@ -53,14 +53,23 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     # USAGE: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
     # USAGE: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
 
+    """
+    obstacles.detection_angles = {} 
+    # angles are [low_angle_th, up_angle_th]
+    obstacles.detection_angles.walkers_lane_change = [0., 90.]
+    obstacles.detection_angles.walkers_same_lane = [0., 60.]
+    obstacles.detection_angles.cars_lane_change = [0., 180.]
+    obstacles.detection_angles.cars_same_lane = [0., 30.]
+    """
+
     # --------------------------
     # Planer Level
     # --------------------------
-    speed.current_speed = "${..live_info.speed}" # This is a reference to live_info.speed, which is updated by the agent
-    speed.current_speed_limit = "${..live_info.speed_limit}" # This is a reference to live_info.speed_limit, which is updated by the agent
+    speed.current_speed = "${..live_info.current_speed}" # This is a reference to live_info.speed, which is updated by the agent
+    speed.current_speed_limit = "${..live_info.current_speed_limit}" # This is a reference to live_info.speed_limit, which is updated by the agent
     
     speed.target_speed : float = 20  # desired cruise speed in Km/h; overwritten by SpeedLimit if follow_speed_limit is True
-    speed.follow_speed_limit : bool = False  # NOTE: SpeedLimit overwrites target_speed if True (local_planner.py)
+    speed.follow_speed_limits : bool = False  # NOTE: SpeedLimit overwrites target_speed if True (local_planner.py)
 
     # TODO: Better understand these parameters, make some experiments,
     # COMMENT: I think this is the minimal distance to drive before targeting a new waypoint in the path

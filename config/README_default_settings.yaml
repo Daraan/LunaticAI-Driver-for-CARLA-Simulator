@@ -8,17 +8,15 @@ live_info:
 speed:
 # NOTE: This is the speed to reach and UPDATED by the planner when using follow speed limits is true.
   target_speed: 20
-  # Alias; BasicAgents use target_speed; BehaviorAgents use max_speed
-  # Using ${  } looks up values from different sections.
-  max_speed: ${target_speed}
-
-  follow_speed_limit: false
-
-  # TODO: This is implemented for the behavior agents
+# Speed not to exceed when using any behavior 
   max_speed: 50
 
+  follow_speed_limits: false
+
   # AUTOPILOT: Not yet implemented
+  # Relative difference below the speed limit
   vehicle_percentage_speed_difference: 30
+  # Absolute difference below the speed limit
   speed_lim_dist: 6
 
   speed_decrease: 12
@@ -28,8 +26,8 @@ speed:
   # These are information updated by the simulator, they are grouped in the live_info section.
   # For logical reasons these are included here as well.
   # Originally these are referred to as '_speed' & '_speed_limit' and come from the vehicle class.
-  current_speed: ${..live_info.speed}
-  current_speed_limit: ${..live_info.speed_limit}
+  current_speed: ${..live_info.current_speed}
+  current_speed_limit: ${..live_info.current_speed_limit}:
 distance:
   base_min_distance: 3.0
   distance_ratio: 0.5
@@ -91,3 +89,13 @@ unknown:
   # TODO: Should group these in the correct section and update code or here accordingly.
   use_bbs_detection: false
   sampling_resolution: 2.0
+
+# Customizable Lunatic behavior
+emergency:
+  ignore_percentage: 0.0
+  do_random_steering: false
+  random_steering_range:
+  - -0.25
+  - 0.25
+  use_hand_brake: false
+  use_hand_brake_chance: 0.0
