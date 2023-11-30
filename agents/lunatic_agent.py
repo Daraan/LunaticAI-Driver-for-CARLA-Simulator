@@ -579,18 +579,20 @@ class LunaticAgent(BehaviorAgent):
 
         return plan
 
-    def traffic_light_manager(self, random_ignore_chance=0.1):
+    def traffic_light_manager(self):
         """
         This method is in charge of behaviors for red lights.
         """
-	# TODO check if lights should be copied.
+        # Introduce a random chance to ignore the traffic light
+        
+        # Todo: check if drawing randomly each step is more efficient than the calculation below
+        if random.random() < self.config.obstacles.ignore_lights_percentage:
+            return False
+    	
+        # TODO check if lights should be copied.
         # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
         affected, traffic_light = self._affected_by_traffic_light(self._lights_list, 
 						max_distance=self.config.obstacles.base_tlight_threshold)
-
-        # Introduce a random chance to ignore the traffic light
-        if affected and random.random() < random_ignore_chance:
-            return False
 
         # TODO: Implement other behaviors if needed, like taking a wrong turn or additional actions
 
