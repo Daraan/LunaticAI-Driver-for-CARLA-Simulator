@@ -6,69 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="7f383ccf-065b-445a-ac14-000e25710be1" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DataGathering/informationUtils.py" beforeDir="false" afterPath="$PROJECT_DIR$/DataGathering/informationUtils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DataGathering/run_matrix.py" beforeDir="false" afterPath="$PROJECT_DIR$/DataGathering/run_matrix.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GameLoop.py" beforeDir="false" afterPath="$PROJECT_DIR$/GameLoop.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/OldGameLoop.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/OldGameLoop.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TODOS.md" beforeDir="false" afterPath="$PROJECT_DIR$/TODOS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/lunatic_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/lunatic_agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/navigation/basic_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/navigation/basic_agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/navigation/behavior_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/navigation/behavior_agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/navigation/behavior_types.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/navigation/behavior_types.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/navigation/constant_velocity_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/navigation/constant_velocity_agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/navigation/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/navigation/controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/navigation/custom_behavior_agents.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/navigation/custom_behavior_agents.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/navigation/global_route_planner.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/navigation/global_route_planner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/navigation/local_planner.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/navigation/local_planner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/tools/misc.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/tools/misc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/carla_originals/HUD.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/carla_originals/HUD.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/carla_originals/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/carla_originals/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/carla_originals/camera_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/carla_originals/camera_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/carla_originals/sensors.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/carla_originals/sensors.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/carla_originals/world.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/carla_originals/world.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/carla_originals/world_interactive.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/carla_originals/world_interactive.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/carla_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/carla_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/traffic_manager_daniel.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/traffic_manager_daniel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classes/vehicle.py" beforeDir="false" afterPath="$PROJECT_DIR$/classes/vehicle.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/README_default_settings.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/README_default_settings.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/default_driver.json" beforeDir="false" afterPath="$PROJECT_DIR$/config/default_driver.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/default_options/basic_agent_settings.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/default_options/basic_agent_settings.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/default_options/behavior_agent_settings.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/default_options/behavior_agent_settings.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/original_behavior.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/original_behavior.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/traffic_manager/crashing_driver.json" beforeDir="false" afterPath="$PROJECT_DIR$/config/traffic_manager/crashing_driver.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/traffic_manager/default_driver.json" beforeDir="false" afterPath="$PROJECT_DIR$/config/traffic_manager/default_driver.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/traffic_manager/passive_driver.json" beforeDir="false" afterPath="$PROJECT_DIR$/config/traffic_manager/passive_driver.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/traffic_manager/traffic_globals_slow.json" beforeDir="false" afterPath="$PROJECT_DIR$/config/traffic_manager/traffic_globals_slow.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/doc/readme.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/readme.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/example_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/__allow_imports_from_root.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/__allow_imports_from_root.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/automatic_control-carla-original.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/automatic_control-carla-original.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/automatic_control-ours.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/automatic_control-ours.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/camera_adapt.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/camera_adapt.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/data_matrix_example.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/data_matrix_example.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/drive_car.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/drive_car.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/examples README.md" beforeDir="false" afterPath="$PROJECT_DIR$/examples/examples README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/first_agent_example.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/first_agent_example.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/first_main_example.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/first_main_example.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/gather_information.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/gather_information.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/highway_example.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/highway_example.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/interactive_playground_daniel.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/interactive_playground_daniel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/make_cars_drive.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/make_cars_drive.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/traffic_manager_with_autopilot.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/traffic_manager_with_autopilot.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/useful_scripts/ines/detect_cars.py" beforeDir="false" afterPath="$PROJECT_DIR$/useful_scripts/ines/detect_cars.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/useful_scripts/ines/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/useful_scripts/ines/utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/useful_scripts/tutorial2.py" beforeDir="false" afterPath="$PROJECT_DIR$/useful_scripts/tutorial2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/useful_scripts/tutorial3.py" beforeDir="false" afterPath="$PROJECT_DIR$/useful_scripts/tutorial3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/argument_parsing.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/argument_parsing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/blueprint_helpers.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/blueprint_helpers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/change_map.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/change_map.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/distance_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/distance_tools.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/general.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/general.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/keyboard_controls.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/keyboard_controls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DataGathering/matrix_wrap.py" beforeDir="false" afterPath="$PROJECT_DIR$/DataGathering/matrix_wrap.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -83,7 +21,26 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="dev_andrei" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;galitianu&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">
+    <option name="selectedUrlAndAccountId">
+      <UrlAndAccount>
+        <option name="accountId" value="c95dd27d-b4f1-4577-affd-1eeb0aceca68" />
+        <option name="url" value="https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator.git" />
+      </UrlAndAccount>
+    </option>
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -97,24 +54,25 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;code__review&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Mannheim\LunaticAI-Driver-for-CARLA-Simulator\DataGathering" />
       <recent name="C:\Mannheim\LunaticAI-Driver-for-CARLA-Simulator\examples" />
     </key>
   </component>
@@ -157,6 +115,7 @@
       <updated>1699817542957</updated>
       <workItem from="1699817544175" duration="992000" />
       <workItem from="1701094399967" duration="316000" />
+      <workItem from="1701293735793" duration="435000" />
     </task>
     <servers />
   </component>
@@ -165,11 +124,15 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Driver_py$GameLoop.coverage" NAME="GameLoop Coverage Results" MODIFIED="1701162986652" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$__init__.coverage" NAME="__init__ Coverage Results" MODIFIED="1701295041502" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/classes" />
+    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$GameLoopAgent.coverage" NAME="GameLoopAgent Coverage Results" MODIFIED="1701304135349" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$carla_service.coverage" NAME="carla_service Coverage Results" MODIFIED="1701083624546" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/classes" />
     <SUITE FILE_PATH="coverage/Driver_py$main.coverage" NAME="main Coverage Results" MODIFIED="1701163191138" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$temp.coverage" NAME="temp Coverage Results" MODIFIED="1701301646853" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$data_matrix_example.coverage" NAME="data_matrix_example Coverage Results" MODIFIED="1701084473178" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/examples" />
-    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$GameLoop.coverage" NAME="GameLoop Coverage Results" MODIFIED="1701094690769" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$traffic_manager_daniel.coverage" NAME="traffic_manager_daniel Coverage Results" MODIFIED="1701180464023" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/classes" />
+    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$GameLoop.coverage" NAME="GameLoop Coverage Results" MODIFIED="1701297666450" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Driver_py$make_cars_drive.coverage" NAME="make_cars_drive Coverage Results" MODIFIED="1701163113182" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/examples" />
-    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$OldGameLoop.coverage" NAME="OldGameLoop Coverage Results" MODIFIED="1701094597031" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$OldGameLoop.coverage" NAME="OldGameLoop Coverage Results" MODIFIED="1701305001799" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
