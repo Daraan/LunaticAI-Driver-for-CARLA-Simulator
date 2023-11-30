@@ -6,7 +6,7 @@ from DataGathering.informationUtils import *
 def wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids,
                                 radius=100, highway_shape=None):
     global highway_junction, highway_forward_vector, street_type, forward_vector_set, junction_old, highway_shape_old, ego_on_bad_highway_street, left_location, wrong_shape, exit_over, highway_forward_location, matrix, junction_id_skip
-    matrix = None
+    matrix = []
     junction_shape = None
     lanes_all_junction = None
     junction_roads_junction = None
