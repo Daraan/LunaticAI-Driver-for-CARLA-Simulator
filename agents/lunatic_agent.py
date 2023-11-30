@@ -212,114 +212,113 @@ class LunaticAgent(BehaviorAgent):
         # NOTE: This is our main entry point that runs every tick.
         self._update_information()
         # Detect hazards
-        hazard_detected = self.detect_hazard()
-        control = self.react_to_hazard(hazard_detected, debug)
+        pedestrians_or_traffic_light = self.detect_hazard()
+        # controls = self._local_planner.run_step() # Car following manager and junction will modify settings before calling planner.
+        if pedestrians_or_traffic_light:
+            print("Hazard detected", pedestrians_or_traffic_light)
+            (control, stop) = self.react_to_hazard(controls=None, hazard_detected=pedestrians_or_traffic_light)
+            # Other behaviors based on hazard detection
+            if stop:
+                return control
+        
+        self.config.other.tailgate_counter = max(0, self.config.other.tailgate_counter - 1)
+
+        # Pedestrian avoidance behaviors
+        # currently doing either emergency (detect_hazard) stop or nothing 
+
+        # Car following behaviors
+        vehicle_detected, vehicle, distance = self.collision_and_car_avoid_manager(self._current_waypoint)
+        if vehicle_detected:
+            control = self.car_following_behavior(vehicle_detected, vehicle, distance)
+            return control        
+
+        # Intersection behavior
+        if self._incoming_waypoint.is_junction and self.is_taking_turn():
+            control = self.intersection_behavior() 
+            return control
+
+        # Normal behavior
+        control = self.normal_behavior()
+
         return control
     
+    # ------------------ Hazard Detection & Reaction ------------------ #
+
     def detect_hazard(self):
         hazard_detected = set()
         vehicle_list = self._world.get_actors().filter("*vehicle*")
 
-        vehicle_speed = get_speed(self._vehicle) / 3.6
+        vehicle_speed = self.live_info.current_speed
 
         # Red lights and stops behavior
         if self.traffic_light_manager():
             hazard_detected.add("traffic_light")
 
         # Pedestrian avoidance behaviors
-        walker_state, walker, w_distance = self.pedestrian_avoid_manager(self._current_waypoint)
-        # TODO: Here we should insert rules:
-        if walker_state and (w_distance - max(walker.bounding_box.extent.y, walker.bounding_box.extent.x)
-                                - max(self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
-                                < self.config.distance.braking_distance):
-            return self.emergency_stop()
+        if self.pedestrian_avoidance_behavior(self._current_waypoint):
+            hazard_detected.add("pedestrian")
         
         # Check for possible vehicle obstacles
-        max_vehicle_distance = self.config.obstacles.base_vehicle_threshold + self.config.obstacles.detection_speed_ratio * vehicle_speed
-        affected_by_vehicle, _, _ = self._vehicle_obstacle_detected(vehicle_list, max_vehicle_distance)
-        if affected_by_vehicle:
-            hazard_detected = True
+        #max_vehicle_distance = self.config.obstacles.base_vehicle_threshold + self.config.obstacles.detection_speed_ratio * vehicle_speed
+        #affected_by_vehicle, _, _ = self._vehicle_obstacle_detected(vehicle_list, max_vehicle_distance)
+        #if affected_by_vehicle:
+        #    hazard_detected = True
 
-        # Combine hazard detection results
-        return affected_by_vehicle 
+        # vehicle hazards are handles in car_avoidance_behavior
+
+        return hazard_detected
+    
+    def react_to_hazard(self, controls, hazard_detected : set):
+        print("Hazard(s) detected: ", hazard_detected)
+        
+        stop = True
+        if "pedestrian" in hazard_detected:
+            pass
+        if "traffic_light" in hazard_detected:
+            pass
+        controls = self.add_emergency_stop(controls)
+        print("Emergency controls", controls)
+        return controls, stop
+    
+    # ------------------ Normal Traffic Behaviors ------------------ #
 
     def pedestrian_avoidance_behavior(self, ego_vehicle_wp):
         walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
         if walker_state and (w_distance - max(walker.bounding_box.extent.y, walker.bounding_box.extent.x)
                              - max(self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
-                             < self._behavior.braking_distance):
-            return self.emergency_stop()
-        else:
-            return None
+                             < self.config.distance.braking_distance):
+            print("Detected walker", walker)
+            return True
+        # TODO detected but not stopping -> ADD avoidance behavior
+        return False
+        
 
-    def car_following_behavior(self, ego_vehicle_wp):
-        vehicle_state, vehicle, distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
-        if vehicle_state:
-            distance = distance - max(vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
-                self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
+    def car_following_behavior(self, vehicle_detected, vehicle, distance):
+        distance = distance - max(vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
+            self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
 
-            if distance < self._behavior.braking_distance:
-                return self.emergency_stop()
-            else:
-                return self.car_following_manager(vehicle, distance)
+        if distance < self.config.distance.braking_distance:
+            controls, stop = self.react_to_hazard(controls=None, hazard_detected={"vehicle"})
         else:
-            return None
+            controls = self.car_following_manager(vehicle, distance)
+        return controls
+
+    def is_taking_turn(self):
+        return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
 
     def intersection_behavior(self):
-        if self._incoming_waypoint.is_junction and (
-                self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
-            target_speed = min([
-                self._behavior.max_speed,
-                self._speed_limit - 5])
-            self._local_planner.set_speed(target_speed)
-            return self._local_planner.run_step()
-        else:
-            return None
-
-    def normal_behavior(self):
         target_speed = min([
-            self._behavior.max_speed,
-            self._speed_limit - self._behavior.speed_lim_dist])
+            self.config.speed.max_speed,
+            self.config.live_info.current_speed_limit - self.config.speed.intersection_speed_decrease]) # NOTE: could interpolate this in omega conf
         self._local_planner.set_speed(target_speed)
         return self._local_planner.run_step()
 
-    def react_to_hazard(self, hazard_detected):
-        if hazard_detected:
-            return self.add_emergency_stop(self._local_planner.run_step())
-
-        # Other behaviors based on hazard detection
-        else:
-            self.config.other.tailgate_counter = max(0, self.config.other.tailgate_counter - 1)
-            ego_vehicle_wp = self._current_waypoint
-
-            # Pedestrian avoidance behaviors
-            pedestrian_avoidance = self.pedestrian_avoidance_behavior(ego_vehicle_wp)
-            if pedestrian_avoidance:
-                return pedestrian_avoidance
-
-            # Car following behaviors
-            car_following = self.car_following_behavior(ego_vehicle_wp)
-            if car_following:
-                return car_following
-
-                if distance < self.config.distance.braking_distance:
-                    return self.emergency_stop()
-                else:
-                    control = self.car_following_manager(vehicle, distance)
-
-            # Intersection behavior
-                    self.config.speed.max_speed,
-            intersection = self.intersection_behavior()
-            if intersection:
-                return intersection
-
-            # Normal behavior
-            else:
-                return self.normal_behavior()
-
-        return control
-
-
+    def normal_behavior(self):
+        target_speed = min([
+            self.config.speed.max_speed,
+            self.config.live_info.current_speed_limit - self.config.speed.speed_lim_dist])
+        self._local_planner.set_speed(target_speed)
+        return self._local_planner.run_step()
 
     # TODO: The manager functions could be moved into a separate class or file
     # ; cleans up space here and might be more logical
@@ -383,7 +382,7 @@ class LunaticAgent(BehaviorAgent):
         # Actual safety distance area, try to follow the speed of the vehicle in front.
         elif 2 * self.config.speed.safety_time > ttc >= self.config.speed.safety_time:
             target_speed = min([
-                max(self._min_speed, vehicle_speed),
+                max(self.config.speed.min_speed, vehicle_speed),
                 self.config.speed.max_speed,
                 self.config.live_info.current_speed_limit - self.config.speed.speed_lim_dist])
             self._local_planner.set_speed(target_speed)
@@ -759,6 +758,9 @@ class LunaticAgent(BehaviorAgent):
         :param control: (carla.VehicleControl) control to be modified
         :param enable_random_steer: (bool, optional) Flag to enable random steering
         """
+        print("Emergency stop", reason)
+        if control is None:
+            control = self._local_planner.run_step()
 
         # TODO, future: Use rules here.
         if self.config.emergency.ignore_percentage > 0.0 and self.config.emergency.ignore_percentage / 100 > random.random():
@@ -774,6 +776,10 @@ class LunaticAgent(BehaviorAgent):
         # Enable random steering if flagged
         if self.config.emergency.do_random_steering:
             control.steer = random.uniform(*self.config.emergency.random_steering_range)  # Randomly adjust steering
+
+        control.brake = self.config.controls.max_brake
+
+        # TODO: more soffisticated emergency behavior
 
         return control
     
@@ -797,7 +803,7 @@ class LunaticAgent(BehaviorAgent):
 
         behind_vehicle_state, behind_vehicle, _ = self._vehicle_obstacle_detected(vehicle_list, max(
             self.config.distance.min_proximity_threshold, self.config.live_info.current_speed_limit / 2), up_angle_th=180, low_angle_th=160)
-        if behind_vehicle_state and self._speed < get_speed(behind_vehicle):
+        if behind_vehicle_state and self.config.live_info.current_speed < get_speed(behind_vehicle):
             if (right_turn == carla.LaneChange.Right or right_turn ==
                 carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
                 new_vehicle_state, _, _ = self._vehicle_obstacle_detected(vehicle_list, max(
