@@ -11,6 +11,6 @@
     },
     "overtake_mistake_chance": "5",
     "risky_overtake_chance": "10",
-    "ignore_obstacle_chance": "1"
+    "ignore_obstacle_chance": "0"
   }
 }

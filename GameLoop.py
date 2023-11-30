@@ -46,11 +46,11 @@ def main():
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        ap = TrafficManagerD(client, v.actor, speed_limit_scale=60, min_front_distance=8)
+        ap = TrafficManager(client, v.actor, speed_limit_scale=60, min_front_distance=8)
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManagerD(client, ego_vehicle,
+    tm = TrafficManager(client, ego_vehicle,
                          speed_limit_scale=-driver1.speed_range[1],
                          min_front_distance=driver1.distance_range[0])
     tm.init_lunatic_driver()
@@ -104,7 +104,7 @@ def main():
                     overtake_direction = random.choice([-1, 1])
                     tm.force_overtake(100, overtake_direction)
 
-                print("Risky overtake!")
+                print("Risky lance change!")
 
             if matrix[i_car - 1][j_car + 1] == 0:
                 # print("can overtake on left")
