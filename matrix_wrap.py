@@ -1,21 +1,25 @@
-import collections
 from copy import deepcopy
-import carla
+
 from DataGathering.informationUtils import *
 
 
 def wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids,
                                 radius=100, highway_shape=None):
+    global highway_junction, highway_forward_vector, street_type, forward_vector_set, junction_old, highway_shape_old, ego_on_bad_highway_street, left_location, wrong_shape, exit_over, highway_forward_location, matrix, junction_id_skip
     junction_shape = None
     lanes_all_junction = None
     junction_roads_junction = None
     yaw = None
+    highway_junction = None
+    highway_forward_vector = None
     junction = None
     same_junction = False
     on_junction = False
     junctions_detected = False
     wps_old = None
     wps = None
+    on_entry = None
+
     distance_to_junc = 20
     direction_angle = 20
 
@@ -295,12 +299,12 @@ def wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids,
                     ego_location, ego_vehicle, matrix, road_lane_ids, world, radius, ego_on_highway,
                     highway_shape
                 )
-
+    log(street_type.__str__())
     return matrix
 
 
 def get_car_coords(matrix):
-    (i_car, j_car) = (0,0)
+    (i_car, j_car) = (0, 0)
     for lane in matrix:
         for i in range(len(matrix[lane])):
             if matrix[lane][i] == 1:

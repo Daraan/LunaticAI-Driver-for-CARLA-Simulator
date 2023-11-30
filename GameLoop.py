@@ -67,11 +67,15 @@ def main():
             matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
             (i_car, j_car) = get_car_coords(matrix)
 
+            # if matrix[(int(i_car) + 1).__str__()][j_car + 1] == 0:
+            #     log("can overtake on right")
+            # if matrix[(int(i_car) - 1).__str__()][j_car + 1] == 0:
+            #     log("can overtake on left")
+
             if matrix[i_car][j_car + 1] == 2:
                 log("overtake!")
                 tm.force_overtake(20)
 
-            world.tick()
 
         except Exception as e:
             log(e.__str__())
