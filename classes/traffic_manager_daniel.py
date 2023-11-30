@@ -2,8 +2,8 @@ class TrafficManagerD:
     tm = None
 
     def __init__(self, client, actor, *,
-                 speed_limit_scale=-25,
-                 min_front_distance=3,
+                 speed_limit_scale,
+                 min_front_distance,
                  seed=1):
         # TODO use a settings file
         if True or TrafficManagerD.tm is None:
@@ -29,8 +29,8 @@ class TrafficManagerD:
         self.tm.auto_lane_change(self.actor, False)
         self.tm.random_right_lanechange_percentage(self.actor, 0)
         self.tm.random_left_lanechange_percentage(self.actor, 0)
-        self.tm.vehicle_percentage_speed_difference(self.actor, 60)
-        self.tm.distance_to_leading_vehicle(self.actor, 8)
+        self.tm.vehicle_percentage_speed_difference(self.actor, self.speed_limit_scale)
+        self.tm.distance_to_leading_vehicle(self.actor, self.min_front_distance)
         self.tm.ignore_lights_percentage(self.actor, 100)
         self.actor.set_autopilot(True)
 

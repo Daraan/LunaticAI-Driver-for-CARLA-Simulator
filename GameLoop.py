@@ -46,11 +46,13 @@ def main():
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        ap = TrafficManagerD(client, v.actor)
+        ap = TrafficManagerD(client, v.actor, speed_limit_scale=-25,
+                             min_front_distance=3)
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManagerD(client, ego_vehicle)
+    tm = TrafficManagerD(client, ego_vehicle, speed_limit_scale=driver1.speed_range[1],
+                         min_front_distance=driver1.distance_range[0])
     tm.init_lunatic_driver()
     tm.start_drive()
 
@@ -68,7 +70,6 @@ def main():
             # print(matrix)
             ego_location = ego_vehicle.get_location()
             ego_waypoint = world_map.get_waypoint(ego_location)
-
 
             (i_car, j_car) = get_car_coords(matrix)
             overtake_direction = 0
