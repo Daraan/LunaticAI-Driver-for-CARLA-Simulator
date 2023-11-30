@@ -277,6 +277,10 @@ class LunaticAgent(BehaviorAgent):
         if affected_by_vehicle:
             hazard_detected = True
 
+        # Red lights and stops behavior
+        if self.traffic_light_manager():
+            return self.emergency_stop()
+
         # Check if the vehicle is affected by a red traffic light
         max_tlight_distance = self.config.obstacles.base_tlight_threshold + self.config.obstacles.detection_speed_ratio * vehicle_speed
         affected_by_tlight, _ = self._affected_by_traffic_light(self._lights_list, max_tlight_distance)
@@ -298,9 +302,7 @@ class LunaticAgent(BehaviorAgent):
             ego_vehicle_loc = self._vehicle.get_location()
             ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
 
-            # Red lights and stops behavior
-            if self.traffic_light_manager():
-                return self.emergency_stop()
+
 
             # Pedestrian avoidance behaviors
             walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
@@ -589,10 +591,16 @@ class LunaticAgent(BehaviorAgent):
         if random.random() < self.config.obstacles.ignore_lights_percentage:
             return False
     	
+        # Basic agent setting:
+        # TODO decide which is better
+        max_tlight_distance = self.config.obstacles.base_tlight_threshold + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
+        # Behavior setting:
+        max_tlight_distance = self.config.obstacles.base_tlight_threshold
+
         # TODO check if lights should be copied.
         # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
         affected, traffic_light = self._affected_by_traffic_light(self._lights_list, 
-						max_distance=self.config.obstacles.base_tlight_threshold)
+						max_distance=max_tlight_distance)
 
         # TODO: Implement other behaviors if needed, like taking a wrong turn or additional actions
 
