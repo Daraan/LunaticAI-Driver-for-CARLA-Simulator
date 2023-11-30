@@ -53,13 +53,14 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     # USAGE: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
     # USAGE: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
 
+    """
     obstacles.detection_angles = {} 
     # angles are [low_angle_th, up_angle_th]
     obstacles.detection_angles.walkers_lane_change = [0., 90.]
     obstacles.detection_angles.walkers_same_lane = [0., 60.]
     obstacles.detection_angles.cars_lane_change = [0., 180.]
     obstacles.detection_angles.cars_same_lane = [0., 30.]
-
+    """
 
     # --------------------------
     # Planer Level
