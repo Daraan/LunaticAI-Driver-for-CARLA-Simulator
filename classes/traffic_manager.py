@@ -1,4 +1,4 @@
-class TrafficManagerD:
+class TrafficManager:
     tm = None
 
     def __init__(self, client, actor, *,
@@ -6,10 +6,10 @@ class TrafficManagerD:
                  min_front_distance,
                  seed=1):
         # TODO use a settings file
-        if True or TrafficManagerD.tm is None:
-            # TrafficManagerD.tm : carla.TrafficManager =\
+        if True or TrafficManager.tm is None:
+            # TrafficManager.tm : carla.TrafficManager =\
             self.tm = client.get_trafficmanager()
-            # TrafficManagerD.tm.set_random_device_seed(seed)
+            # TrafficManager.tm.set_random_device_seed(seed)
             self.tm.set_random_device_seed(seed)
         self.min_front_distance = min_front_distance
         self.speed_limit_scale: float = speed_limit_scale
