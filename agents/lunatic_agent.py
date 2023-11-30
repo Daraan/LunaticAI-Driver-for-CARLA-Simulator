@@ -200,8 +200,6 @@ class LunaticAgent(BehaviorAgent):
         else:
             self._current_waypoint = self._incoming_waypoint
 
-
-
     def _collision_event(self):
         # TODO: Brainstorm and implement
         # e.g. setting ignore_vehicles to False, if it was True before.

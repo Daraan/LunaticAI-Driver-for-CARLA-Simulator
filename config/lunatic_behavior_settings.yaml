@@ -3,8 +3,8 @@ live_info:
   current_speed_limit: null
   direction: null
 speed:
-  current_speed: ${..live_info.current_speed}
-  current_speed_limit: ${..live_info.current_speed_limit}
+  current_speed: ${live_info.current_speed}
+  current_speed_limit: ${live_info.current_speed_limit}
   target_speed: 20
   follow_speed_limits: false
   max_speed: 50
@@ -13,6 +13,9 @@ speed:
   min_speed: 5
   speed_lim_dist: 6
   vehicle_percentage_speed_difference: 30
+  intersection_speed_decrease: 5.0
+  intersection_target_speed: ${min:${.max_speed}, 
+    ${subtract:${.current_speed_limit}, ${.intersection_speed_decrease}}}
 distance:
   base_min_distance: 3.0
   distance_ratio: 0.5
@@ -20,7 +23,7 @@ distance:
   braking_distance: 6
   distance_to_leading_vehicle: 5.0
 lane_change:
-  auto_lange_change: true
+  auto_lane_change: true
   random_left_lanechange_percentage: 0.1
   random_right_lanechange_percentage: 0.1
   keep_right_rule_percentage: 0.7
@@ -31,22 +34,10 @@ obstacles:
   base_tlight_threshold: 5.0
   base_vehicle_threshold: 5.0
   detection_speed_ratio: 1.0
-  detection_angles:
-    walkers_lane_change:
-    - 0.0
-    - 90.0
-    walkers_same_lane:
-    - 0.0
-    - 60.0
-    cars_lane_change:
-    - 0.0
-    - 180.0
-    cars_same_lane:
-    - 0.0
-    - 30.0
   ignore_lights_percentage: 0.0
   ignore_signs_percentage: 0.0
   ignore_walkers_percentage: 0.0
+  dynamic_threshold_by_speed: true
 controls:
   max_brake: 0.5
   max_throttle: 0.75
@@ -60,16 +51,16 @@ planner:
     K_I: 0.05
     K_D: 0.2
     dt: ${..dt}
-  args_lateral_dict: ${lateral_control_dict}
+  args_lateral_dict: ${.lateral_control_dict}
   longitudinal_control_dict:
     K_P: 1.0
     K_I: 0.05
     K_D: 0
     dt: ${..dt}
-  args_longitudinal_dict: ${longitudinal_control_dict}
+  args_longitudinal_dict: ${.longitudinal_control_dict}
 other:
   tailgate_counter: 0
-  vehicle_lane_offset: ${..planer.offset}
+  vehicle_lane_offset: ${controls.offset}
   update_vehicle_lights: false
 unknown:
   use_bbs_detection: false

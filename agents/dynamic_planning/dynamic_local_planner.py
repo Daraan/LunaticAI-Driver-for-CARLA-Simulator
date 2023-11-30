@@ -120,7 +120,7 @@ class DynamicLocalPlanner(LocalPlanner):
 
     @property # allows to use _compute_next_waypoints of parent
     def _sampling_radius(self):
-        return self.config.planer.sampling_radius 
+        return self.config.planner.sampling_radius 
 
     # set_global_plan -> parent
 
