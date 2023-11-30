@@ -103,40 +103,6 @@ def distance(p1, p2):
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2 + (p1.z - p2.z) ** 2)
 
 
-def follow_car(ego_vehicle, world):
-    """
-    Set the spectator's view to follow the ego vehicle.
-
-    Parameters:
-        ego_vehicle (Vehicle): The ego vehicle that the spectator will follow.
-        world (World): The game world where the spectator view is set.
-
-    Description:
-        This function calculates the desired spectator transform by positioning the spectator
-        10 meters behind the ego vehicle and 5 meters above it. The spectator's view will follow
-        the ego vehicle from this transformed position.
-
-    Note:
-        To face the vehicle from behind, uncomment the line 'spectator_transform.rotation.yaw += 180'.
-
-    Returns:
-        None: The function does not return any value.
-    """
-    # Calculate the desired spectator transform
-    vehicle_transform = ego_vehicle.get_transform()
-    spectator_transform = vehicle_transform
-    spectator_transform.location -= (
-            vehicle_transform.get_forward_vector() * 10
-    )  # Move 10 meters behind the vehicle
-    spectator_transform.location += (
-            vehicle_transform.get_up_vector() * 5
-    )  # Move 5 meters above the vehicle
-    # spectator_transform.rotation.yaw += 180 # Face the vehicle from behind
-
-    # Set the spectator's transform in the world
-    world.get_spectator().set_transform(spectator_transform)
-
-
 def get_ego_direction_lanes(ego_vehicle, road_lane_ids, world_map):
     """
     Determine the lanes in the same and opposite direction as the ego vehicle.
@@ -209,7 +175,7 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
     # Get lane id for ego_vehicle
     ego_vehilce_waypoint = world_map.get_waypoint(ego_vehicle_location)
     ego_vehilce_lane_id = str(ego_vehilce_waypoint.lane_id)
-    log("ego_vehicle_lane_id: "+ ego_vehilce_lane_id)
+    log("ego_vehicle_lane_id: " + ego_vehilce_lane_id)
     ego_vehilce_road_id = str(ego_vehilce_waypoint.road_id)
 
     lanes = []
@@ -1689,7 +1655,7 @@ def fill_boxes(boxes, ego_vehicle, world, junction_waypoints, traffic_light_entr
         car_location = car.get_location()
         if junction_waypoints[-1][0].get_junction().id == 1368 and distance(
                 junction_waypoints[-1][0].transform.location, car_location) < 30 and world.get_map().get_waypoint(
-                car_location).is_junction and not traffic_light_entry_right:
+            car_location).is_junction and not traffic_light_entry_right:
             if car.id == ego_vehicle.id:
                 special_junction_rows.append((1, 1))  # (row, cell value)
             elif world.get_map().get_waypoint(car_location).road_id != 1450:

@@ -1,10 +1,12 @@
 import random
+import threading
 import time
 
 import carla
 
 import utils
-from DataGathering.informationUtils import get_all_road_lane_ids, follow_car
+from Camera import follow_car, camera_function
+from DataGathering.informationUtils import get_all_road_lane_ids
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
@@ -24,9 +26,9 @@ def main():
     world_map = world.get_map()
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
-    driver2 = Driver("config/insane_driver.json", traffic_manager=client)
-    driver3 = Driver("config/aggressive_driver.json", traffic_manager=client)
-    driver1 = Driver("config/default_driver.json", traffic_manager=client)
+    driver1 = Driver("config/insane_driver.json", traffic_manager=client)
+    driver2 = Driver("config/aggressive_driver.json", traffic_manager=client)
+    driver3 = Driver("config/default_driver.json", traffic_manager=client)
 
     spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
 
@@ -56,6 +58,7 @@ def main():
                         speed_limit_scale=-driver1.speed_range[1],
                         min_front_distance=driver1.distance_range[0])
     tm.init_lunatic_driver()
+    # tm.init_passive_driver()
     tm.start_drive()
 
     # Define the radius to search for other vehicles
@@ -68,24 +71,23 @@ def main():
     crazy = False
     lane_change = False
 
+    # Create a thread for the camera functionality
+    camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
+    camera_thread.start()
+
     while time.time() < t_end:
         try:
-            follow_car(ego_vehicle, world)
-
-            if crazy:
-                continue
-
+            # follow_car(ego_vehicle, world)
             disable_collision = random.randint(1, 100)
             if disable_collision <= driver1.ignore_obstacle_chance:
                 driver1.vehicle.actor.set_autopilot(False)
                 driver1.vehicle.setThrottle(200)
                 print("Crazy")
-                crazy = True
+                time.sleep(1)
 
             driver1.vehicle.actor.set_autopilot(True)
 
             matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
-            follow_car(ego_vehicle, world)
             # print(matrix)
             ego_location = ego_vehicle.get_location()
             ego_waypoint = world_map.get_waypoint(ego_location)
@@ -144,6 +146,7 @@ def main():
             print(e.__str__())
 
     input("press any key to end...")
+    camera_thread.join()
 
 
 if __name__ == '__main__':
