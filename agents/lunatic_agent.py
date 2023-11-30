@@ -147,18 +147,18 @@ class LunaticAgent(BehaviorAgent):
     def _set_collision_sensor(self):
         blueprint = self._world.get_blueprint_library().find('sensor.other.collision')
         self._collision_sensor = self._world.spawn_actor(blueprint, carla.Transform(), attach_to=self._vehicle)
-        self._collision_sensor.listen(lambda event: self.collision_detected())
+        self._collision_sensor.listen(lambda event: self._collision_event())
 
     def destroy_sensor(self):
         if self._collision_sensor:
             self._collision_sensor.destroy()
             self._collision_sensor = None
 
-    def _collision_detected(self):
+    def _collision_event(self):
         # TODO: Brainstorm and implement
         # e.g. setting ignore_vehicles to False, if it was True before.
         # do an emergency stop (in certain situations)
-        raise NotImplemented
+        NotImplemented
     
     def temporary_settings(self, temp_settings: dict) -> dict:
         """
