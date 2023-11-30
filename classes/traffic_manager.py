@@ -1,4 +1,4 @@
-class TrafficManagerD:
+class TrafficManager:
     tm = None
 
     def __init__(self, client, actor, *,
@@ -6,7 +6,7 @@ class TrafficManagerD:
                  min_front_distance,
                  seed=1):
         # TODO use a settings file
-        if True or TrafficManagerD.tm is None:
+        if True or TrafficManager.tm is None:
             # TrafficManagerD.tm : carla.TrafficManager =\
             self.tm = client.get_trafficmanager()
             # TrafficManagerD.tm.set_random_device_seed(seed)

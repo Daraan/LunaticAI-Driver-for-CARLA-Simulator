@@ -9,6 +9,7 @@
       "from": 0.5,
       "to": 1.5
     },
-    "overtake_mistake_chance": "60"
+    "overtake_mistake_chance": "60",
+    "risky_overtake_change" : "0"
   }
 }
