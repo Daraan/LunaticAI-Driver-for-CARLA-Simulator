@@ -988,7 +988,7 @@ def detect_ego_before_junction(
     for road in junction_roads:
         lanes_all[road[1]] = [int(id) for id in lanes_all[road[1]]]
 
-    print(lanes_all)
+    log(lanes_all.__str__())
 
     # check on which lane ego is: i=0 means most out
     if lane_id_ego > 0:
