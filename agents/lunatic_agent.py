@@ -27,6 +27,7 @@ from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, R
 from config.default_options.original_behavior import BasicAgentSettings
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
+from agents import rule_behavior
 
 # As Reference:
 '''
@@ -118,13 +119,6 @@ class LunaticAgent(BehaviorAgent):
         self.config.speed.min_speed
         #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
 
-        # Change parameters according to the dictionary
-        # opt_dict['target_speed'] = target_speed
-        # TODO instead of storing variables updating the dict could change the agent dynamically.
-        #        con: Not intuitive.
-        #        Better: A update_options(dict) function
-        # TODO: instead of checking now throw failures if an option is not present in opt_dict (ours contains all parameters)
-
         # Initialize the planners
         self._local_planner = DynamicLocalPlanner(self._vehicle, opt_dict=opt_dict, map_inst=self._map, world=self._world if self._world else "MISSING")
         if grp_inst:
@@ -153,21 +147,13 @@ class LunaticAgent(BehaviorAgent):
         if self._collision_sensor:
             self._collision_sensor.destroy()
             self._collision_sensor = None
-
-    def _collision_event(self):
-        # TODO: Brainstorm and implement
-        # e.g. setting ignore_vehicles to False, if it was True before.
-        # do an emergency stop (in certain situations)
-        NotImplemented
+    
+    # ------------------ Settings functions ------------------ #
     
     def temporary_settings(self, temp_settings: dict) -> dict:
-        """
-        Returns a new dictionary with the agent's settings overwritten by the given temporary settings.
-        NOTE: This does not change the agent's settings only returns a new dictionary to be used.
-        """
-        # TODO: Maybe make a temp_settings attribute, problem what if multiple temporary settings are needed that live longer.
-        return { **self.config, **temp_settings} 
+        NotImplemented
 
+    #@override 
     def set_target_speed(self, speed):
         """
         Changes the target speed of the agent
@@ -183,60 +169,11 @@ class LunaticAgent(BehaviorAgent):
         If active, the agent will dynamically change the target speed according to the speed limits
             :param value: (bool) whether to activate this behavior
         """
-        self._local_planner.follow_speed_limits(value)
+        self.config.speed.follow_speed_limits = value
 
-    #def get_local_planner(self):
-    #def get_global_planner(self):
+    # ------------------ Information functions ------------------ #
 
-    def set_destination(self, end_location, start_location=None):
-        """
-        This method creates a list of waypoints between a starting and ending location,
-        based on the route returned by the global router, and adds it to the local planner.
-        If no starting location is passed, the vehicle local planner's target location is chosen,
-        which corresponds (by default), to a location about 5 meters in front of the vehicle.
-
-            :param end_location (carla.Location): final location of the route
-            :param start_location (carla.Location): starting location of the route
-        """
-        if not start_location:
-            start_location = self._local_planner.target_waypoint.transform.location
-            clean_queue = True
-        else:
-            start_location = self._vehicle.get_location()
-            clean_queue = False
-
-        start_waypoint = self._map.get_waypoint(start_location)
-        end_waypoint = self._map.get_waypoint(end_location)
-
-        route_trace = self.trace_route(start_waypoint, end_waypoint)
-        self._local_planner.set_global_plan(route_trace, clean_queue=clean_queue)
-
-    def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
-        """
-        Adds a specific plan to the agent.
-
-            :param plan: list of [carla.Waypoint, RoadOption] representing the route to be followed
-            :param stop_waypoint_creation: stops the automatic random creation of waypoints
-            :param clean_queue: resets the current agent's plan
-        """
-        self._local_planner.set_global_plan(
-            plan,
-            stop_waypoint_creation=stop_waypoint_creation,
-            clean_queue=clean_queue
-        )
-
-    def trace_route(self, start_waypoint, end_waypoint):
-        """
-        Calculates the shortest route between a starting and ending waypoint.
-
-            :param start_waypoint (carla.Waypoint): initial waypoint
-            :param end_waypoint (carla.Waypoint): final waypoint
-        """
-        start_location = start_waypoint.transform.location
-        end_location = end_waypoint.transform.location
-        return self._global_planner.trace_route(start_location, end_location)
-
-    def _update_information(self):
+    def _update_information(self, exact_waypoint=True):
         """
         This method updates the information regarding the ego
         vehicle based on the surrounding world.
@@ -257,6 +194,22 @@ class LunaticAgent(BehaviorAgent):
         if self._incoming_direction is None:
             self._incoming_direction = RoadOption.LANEFOLLOW
 
+        self.location = ego_vehicle_loc = self._vehicle.get_location()
+        if exact_waypoint:
+            self._current_waypoint = self._map.get_waypoint(ego_vehicle_loc)
+        else:
+            self._current_waypoint = self._incoming_waypoint
+
+
+
+    def _collision_event(self):
+        # TODO: Brainstorm and implement
+        # e.g. setting ignore_vehicles to False, if it was True before.
+        # do an emergency stop (in certain situations)
+        NotImplemented
+
+    # ------------------ Step & Loop Logic ------------------ #
+
     def run_step(self, debug=False):
         # NOTE: This is our main entry point that runs every tick.
         self._update_information()
@@ -264,30 +217,33 @@ class LunaticAgent(BehaviorAgent):
         hazard_detected = self.detect_hazard()
         control = self.react_to_hazard(hazard_detected, debug)
         return control
-
+    
     def detect_hazard(self):
+        hazard_detected = set()
         vehicle_list = self._world.get_actors().filter("*vehicle*")
 
         vehicle_speed = get_speed(self._vehicle) / 3.6
 
+        # Red lights and stops behavior
+        if self.traffic_light_manager():
+            hazard_detected.add("traffic_light")
+
+        # Pedestrian avoidance behaviors
+        walker_state, walker, w_distance = self.pedestrian_avoid_manager(self._current_waypoint)
+        # TODO: Here we should insert rules:
+        if walker_state and (w_distance - max(walker.bounding_box.extent.y, walker.bounding_box.extent.x)
+                                - max(self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
+                                < self.config.distance.braking_distance):
+            return self.emergency_stop()
+        
         # Check for possible vehicle obstacles
         max_vehicle_distance = self.config.obstacles.base_vehicle_threshold + self.config.obstacles.detection_speed_ratio * vehicle_speed
         affected_by_vehicle, _, _ = self._vehicle_obstacle_detected(vehicle_list, max_vehicle_distance)
         if affected_by_vehicle:
             hazard_detected = True
 
-        # Red lights and stops behavior
-        if self.traffic_light_manager():
-            return self.emergency_stop()
-
-        # Check if the vehicle is affected by a red traffic light
-        max_tlight_distance = self.config.obstacles.base_tlight_threshold + self.config.obstacles.detection_speed_ratio * vehicle_speed
-        affected_by_tlight, _ = self._affected_by_traffic_light(self._lights_list, max_tlight_distance)
-        if affected_by_tlight:
-            hazard_detected = True
-
         # Combine hazard detection results
-        return affected_by_vehicle or affected_by_tlight
+        return affected_by_vehicle 
 
     def pedestrian_avoidance_behavior(self, ego_vehicle_wp):
         walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
@@ -336,10 +292,7 @@ class LunaticAgent(BehaviorAgent):
         # Other behaviors based on hazard detection
         else:
             self.config.other.tailgate_counter = max(0, self.config.other.tailgate_counter - 1)
-            ego_vehicle_loc = self._vehicle.get_location()
-            ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
-
-
+            ego_vehicle_wp = self._current_waypoint
 
             # Pedestrian avoidance behaviors
             pedestrian_avoidance = self.pedestrian_avoidance_behavior(ego_vehicle_wp)
@@ -366,10 +319,8 @@ class LunaticAgent(BehaviorAgent):
             else:
                 return self.normal_behavior()
 
-    def get_current_waypoint(self):
-        ego_vehicle_loc = self._vehicle.get_location()
-        ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
-        return ego_vehicle_wp
+        return control
+
 
 
     # TODO: The manager functions could be moved into a separate class or file
@@ -491,9 +442,6 @@ class LunaticAgent(BehaviorAgent):
 
         return vehicle_state, vehicle, distance
 
-
-    #def done(self): # from base class self._local_planner.done()
-
     def ignore_traffic_lights(self, active=True):
         """(De)activates the checks for traffic lights"""
         self.config.obstacles.ignore_traffic_lights = active
@@ -613,12 +561,13 @@ class LunaticAgent(BehaviorAgent):
         # Todo: check if drawing randomly each step is more efficient than the calculation below
         if random.random() < self.config.obstacles.ignore_lights_percentage:
             return False
-    	
-        # Basic agent setting:
-        # TODO decide which is better
-        max_tlight_distance = self.config.obstacles.base_tlight_threshold + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
-        # Behavior setting:
-        max_tlight_distance = self.config.obstacles.base_tlight_threshold
+
+        if self.config.obstacles.dynamic_threshold_by_speed:
+            # Basic agent setting:
+            max_tlight_distance = self.config.obstacles.base_tlight_threshold + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
+        else:
+            # Behavior setting:
+            max_tlight_distance = self.config.obstacles.base_tlight_threshold
 
         # TODO check if lights should be copied.
         # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
@@ -831,6 +780,7 @@ class LunaticAgent(BehaviorAgent):
         return control
     
     # ported from behavior_agent, maybe we can make a # updated behaviorAgent class
+    # Todo port settings to property and this can be removed (if not adjusted)
     #@override
     def _tailgating(self, waypoint, vehicle_list):
         """
@@ -869,4 +819,41 @@ class LunaticAgent(BehaviorAgent):
                     self.config.other.tailgate_counter = 200
                     self.set_destination(end_waypoint.transform.location,
                                          left_wpt.transform.location)
+                    
+    # ------------------------------------ #
+    # As reference Parent Functions 
+    # ------------------------------------ #
+    #def get_local_planner(self):
+    #def get_global_planner(self):
+
+    #def done(self): # from base class self._local_planner.done()
+
+   #def set_destination(self, end_location, start_location=None):
+        """
+        This method creates a list of waypoints between a starting and ending location,
+        based on the route returned by the global router, and adds it to the local planner.
+        If no starting location is passed, the vehicle local planner's target location is chosen,
+        which corresponds (by default), to a location about 5 meters in front of the vehicle.
+
+            :param end_location (carla.Location): final location of the route
+            :param start_location (carla.Location): starting location of the route
+        """
+
+    #def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
+        """
+        Adds a specific plan to the agent.
+
+            :param plan: list of [carla.Waypoint, RoadOption] representing the route to be followed
+            :param stop_waypoint_creation: stops the automatic random creation of waypoints
+            :param clean_queue: resets the current agent's plan
+        """
+
+    #def trace_route(self, start_waypoint, end_waypoint):
+        """
+        Calculates the shortest route between a starting and ending waypoint.
+
+            :param start_waypoint (carla.Waypoint): initial waypoint
+            :param end_waypoint (carla.Waypoint): final waypoint
+        """
+    
 
