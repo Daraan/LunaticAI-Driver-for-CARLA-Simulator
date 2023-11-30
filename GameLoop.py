@@ -53,12 +53,8 @@ def main():
     tm.init_lunatic_driver()
     tm.start_drive()
 
-    # Define the radius to search for other vehicles
-    radius = 100
-
     # Initialize speed of ego_vehicle to use as global variable
     world.tick()
-    highway_shape = None
     road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
     t_end = time.time() + 10000
     while time.time() < t_end:
