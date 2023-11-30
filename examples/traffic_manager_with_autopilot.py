@@ -1,5 +1,4 @@
-import os
-
+import __allow_imports_from_root  # add project root folder to path
 import carla
 
 import utils

@@ -1,3 +1,4 @@
+import __allow_imports_from_root
 import random
 import sys
 

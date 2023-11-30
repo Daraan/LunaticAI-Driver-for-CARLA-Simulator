@@ -31,6 +31,19 @@ obstacles:
   base_tlight_threshold: 5.0
   base_vehicle_threshold: 5.0
   detection_speed_ratio: 1.0
+  detection_angles:
+    walkers_lane_change:
+    - 0.0
+    - 90.0
+    walkers_same_lane:
+    - 0.0
+    - 60.0
+    cars_lane_change:
+    - 0.0
+    - 180.0
+    cars_same_lane:
+    - 0.0
+    - 30.0
   ignore_lights_percentage: 0.0
   ignore_signs_percentage: 0.0
   ignore_walkers_percentage: 0.0
@@ -61,3 +74,11 @@ other:
 unknown:
   use_bbs_detection: false
   sampling_resolution: 2.0
+emergency:
+  ignore_percentage: 0.0
+  do_random_steering: false
+  random_steering_range:
+  - -0.25
+  - 0.25
+  use_hand_brake: false
+  hand_brake_modify_chance: 0.0

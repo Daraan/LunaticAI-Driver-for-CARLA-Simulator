@@ -1,0 +1,16 @@
+{
+  "use_traffic_manager": "default_driver",
+  "driver": {
+    "speed": {
+      "from": 0,
+      "to": 0.9
+    },
+    "distance": {
+      "from": 0,
+      "to": 0.75
+    },
+    "overtake_mistake_chance": "10",
+    "risky_overtake_chance": "10",
+    "ignore_obstacle_chance": "0"
+  }
+}

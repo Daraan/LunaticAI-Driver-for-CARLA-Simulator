@@ -6,6 +6,7 @@ Example of the agent system
 Based on German Ros's (german.ros@intel.com) example of automatic_control shipped with carla.
 """
 from __future__ import print_function  # for python 2.7 compatibility
+import __allow_imports_from_root
 
 import logging
 import random
@@ -15,11 +16,15 @@ import threading
 import carla
 import numpy.random as random
 import pygame
+from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
 import utils
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
+
+from agents.lunatic_agent import LunaticAgent
+
 from classes.carla_originals.HUD import HUD
 from classes.carla_originals.world import World
 from classes.traffic_manager_daniel import TrafficManagerD
@@ -95,7 +100,12 @@ def game_loop(args):
         # world.set_actor(ego.actor)
 
         # carlaService.assignDriver(ego, driver1)
-        if args.agent == "Basic":
+        args.agent = "Lunatic"
+
+        if args.agent == "Lunatic":
+            behavior = LunaticBehaviorSettings()
+            agent = LunaticAgent(world.player, behavior)
+        elif args.agent == "Basic":
             agent = BasicAgent(world.player, 30)
             agent.follow_speed_limits(True)
         elif args.agent == "Constant":
@@ -118,7 +128,7 @@ def game_loop(args):
         destination = left.transform.location
 
         agent.set_destination(destination)
-        agent.ignore_vehicles(agent._behavior.ignore_vehicles)
+        #agent.ignore_vehicles(agent._behavior.ignore_vehicles)
 
         clock = pygame.time.Clock()
 
@@ -128,10 +138,11 @@ def game_loop(args):
             v.spawn(sp)
             world.actors.append(v)
             # v.setVelocity(1)
+            v.actor.set_autopilot(True)
             print(v.actor)
-            ap = TrafficManagerD(client, v.actor)
-            ap.init_passive_driver()
-            ap.start_drive()
+            #ap = TrafficManagerD(client, v.actor)
+            #ap.init_passive_driver()
+            #ap.start_drive()
 
         ego.set_target_velocity(carla.Vector3D(-7.5, 0, 0))
 

@@ -1,3 +1,4 @@
+import __allow_imports_from_root # add project root folder to path
 import time
 
 import carla

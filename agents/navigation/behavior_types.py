@@ -3,10 +3,13 @@
 
 """ This module contains the different parameters sets for each behavior. """
 
-from config.original_behavior import BasicBehavior
 
+class CarlaOriginalBehavior:
+    pass
 
-class Cautious(BasicBehavior):
+#￿TODO: does not work currently
+
+class Cautious(CarlaOriginalBehavior):
     """Class for Cautious agent."""
 
     """The maximum speed in km/h your vehicle will be able to reach."""
@@ -20,7 +23,7 @@ class Cautious(BasicBehavior):
     tailgate_counter = 0
 
 
-class Normal(BasicBehavior):
+class Normal(CarlaOriginalBehavior):
     """Class for Normal agent."""
     max_speed = 50
     speed_lim_dist = 3
@@ -31,7 +34,7 @@ class Normal(BasicBehavior):
     tailgate_counter = 0
 
 
-class Aggressive(BasicBehavior):
+class Aggressive(CarlaOriginalBehavior):
     """Class for Aggressive agent."""
     max_speed = 70
     speed_lim_dist = 1
@@ -44,7 +47,7 @@ class Aggressive(BasicBehavior):
 
 # Experiments (not really successful)
 
-class Tailgating2(BasicBehavior):
+class Tailgating2(CarlaOriginalBehavior):
     """Class for Aggressive agent."""
     max_speed = 60
     speed_lim_dist = 1

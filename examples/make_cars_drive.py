@@ -1,3 +1,4 @@
+import __allow_imports_from_root
 # see https://carla.readthedocs.io/en/latest/core_map/#changing-the-map
 import os
 import sys

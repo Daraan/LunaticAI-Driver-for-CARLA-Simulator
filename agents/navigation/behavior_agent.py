@@ -13,7 +13,7 @@ import numpy as np
 
 import agents.navigation.behavior_types as _behavior_types
 from agents.navigation.basic_agent import BasicAgent
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal, BasicBehavior
+from agents.navigation.behavior_types import CarlaOriginalBehavior, Cautious, Aggressive, Normal
 from agents.navigation.local_planner import RoadOption
 
 behavior_types = vars(_behavior_types)
@@ -55,9 +55,8 @@ class BehaviorAgent(BasicAgent):
         self._sampling_resolution = 4.5  # NOTE also set in default behaviors
 
         print("Behavior of Agent", behavior)
-        if isinstance(behavior, BasicBehavior):
+        if isinstance(behavior, CarlaOriginalBehavior):
             self._behavior = behavior
-
         # Parameters for agent behavior
         elif behavior == 'cautious':
             self._behavior = Cautious()
@@ -69,10 +68,11 @@ class BehaviorAgent(BasicAgent):
             self._behavior = Aggressive()
         else:
             self._behavior = behavior_types[behavior]
+        print("Behavior is", self._behavior, type(self._behavior))
 
-        opts = self._behavior.get_options().copy()  # base options from templates
-        opts.update(opt_dict)  # update by custom options
-        super().__init__(vehicle, opt_dict=opts, map_inst=map_inst, grp_inst=grp_inst)
+        #opts = self._behavior.get_options().copy()  # base options from templates
+        #opts.update(opt_dict)  # update by custom options
+        super().__init__(vehicle, opt_dict=opt_dict, map_inst=map_inst, grp_inst=grp_inst)
 
     def _update_information(self):
         """

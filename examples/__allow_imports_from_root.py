@@ -17,7 +17,7 @@ p = os.environ.get("LUNATIC_AI_ROOT", None)
 # conda env config vars set LUNATIC_AI_ROOT=<path_to>/LunaticAI
 
 if p is None:
-    print("Warning: CARLA_ROOT not set. Trying to use parent folder of this file.")
+    print("Warning: LUNATIC_AI_ROOT not set. Trying to use parent folder of this file.") 
     # TODO: add support for example/<subfolders>
     p = os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..'))  # todo: could be more elegant and more fail safe.
