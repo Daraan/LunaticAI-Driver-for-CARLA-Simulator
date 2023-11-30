@@ -17,14 +17,16 @@ vehicles = []
 def main():
     global client, i_car, j_car
     carlaService = CarlaService("Town04", "127.0.0.1", 2000)
+    # carlaService = CarlaService()
     client = carlaService.client
 
     world = carlaService.getWorld()
     world_map = world.get_map()
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
-    driver2 = Driver("config/default_driver.json", traffic_manager=client)
+    driver2 = Driver("config/insane_driver.json", traffic_manager=client)
     driver1 = Driver("config/aggressive_driver.json", traffic_manager=client)
+    driver3 = Driver("config/default_driver.json", traffic_manager=client)
 
     spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
 
@@ -32,8 +34,8 @@ def main():
     ego = Vehicle(world, ego_bp)
     try:
         ego.spawn(spawn_points[0])
-    except:
-        pass
+    except Exception as e:
+        print(e.__str__())
 
     vehicles.append(ego)
     carlaService.assignDriver(ego, driver1)
@@ -72,8 +74,7 @@ def main():
             if crazy:
                 continue
 
-            disable_collision = random.randint(0, 100)
-            # print(disable_collision, driver1.ignore_obstacle_chance)
+            disable_collision = random.randint(1, 100)
             if disable_collision <= driver1.ignore_obstacle_chance:
                 driver1.vehicle.actor.set_autopilot(False)
                 driver1.vehicle.setThrottle(200)
@@ -88,9 +89,6 @@ def main():
 
             (i_car, j_car) = get_car_coords(matrix)
             overtake_direction = 0
-            if matrix[i_car + 1][j_car + 1] == 0:
-                # print("can overtake on right")
-                overtake_direction = 1
 
             overtake_choice = random.randint(1, 100)
             if overtake_choice <= driver1.risky_overtake_chance:
@@ -103,8 +101,12 @@ def main():
                 else:
                     overtake_direction = random.choice([-1, 1])
                     tm.force_overtake(100, overtake_direction)
-
                 print("Risky overtake!")
+                continue
+
+            if matrix[i_car + 1][j_car + 1] == 0:
+                # print("can overtake on right")
+                overtake_direction = 1
 
             if matrix[i_car - 1][j_car + 1] == 0:
                 # print("can overtake on left")
@@ -115,8 +117,12 @@ def main():
                 if overtake_choice >= driver1.overtake_mistake_chance:
                     tm.force_overtake(100, overtake_direction)
                     print("overtake!")
+                    continue
                 else:
                     print("overtake averted by chance")
+
+            if matrix[i_car][j_car + 1] == 2:
+                driver1.vehicle.setBrake(10)
 
         except Exception as e:
             print(e.__str__())

@@ -17,7 +17,7 @@ class TrafficManager:
 
     def init_lunatic_driver(self):
         self.tm.auto_lane_change(self.actor, False)
-        self.tm.distance_to_leading_vehicle(self.actor, self.min_front_distance)
+        self.tm.distance_to_leading_vehicle(self.actor, (self.min_front_distance - 1) % 10 + 1)
         self.tm.vehicle_percentage_speed_difference(self.actor, self.speed_limit_scale)
         self.tm.keep_right_rule_percentage(self.actor, 0)
         self.tm.random_right_lanechange_percentage(self.actor, 0)
