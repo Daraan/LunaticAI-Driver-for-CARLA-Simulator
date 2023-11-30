@@ -16,12 +16,12 @@ class TrafficManagerD:
         self.actor = actor
 
     def init_lunatic_driver(self):
-        self.tm.auto_lane_change(self.actor, True)
+        self.tm.auto_lane_change(self.actor, False)
         self.tm.distance_to_leading_vehicle(self.actor, self.min_front_distance)
         self.tm.vehicle_percentage_speed_difference(self.actor, self.speed_limit_scale)
         self.tm.keep_right_rule_percentage(self.actor, 0)
-        self.tm.random_right_lanechange_percentage(self.actor, 25)
-        self.tm.random_left_lanechange_percentage(self.actor, 50)
+        self.tm.random_right_lanechange_percentage(self.actor, 0)
+        self.tm.random_left_lanechange_percentage(self.actor, 0)
         self.tm.ignore_vehicles_percentage(self.actor, 40)
         self.tm.ignore_lights_percentage(self.actor, 100)
 
@@ -34,9 +34,9 @@ class TrafficManagerD:
         self.tm.ignore_lights_percentage(self.actor, 100)
         self.actor.set_autopilot(True)
 
-    def force_overtake(self, speed):
-        self.force_lane_change(right=False)
-        self.actor.setThrottle(speed)
+    def force_overtake(self, speed, overtake_direction):
+        self.force_lane_change(right=overtake_direction == 1)
+        # self.actor.setThrottle(speed)
 
     def force_lane_change(self, right=False):
         self.tm.force_lane_change(self.actor, right)

@@ -1,0 +1,14 @@
+{
+  "use_traffic_manager": "crashing_driver",
+  "driver": {
+    "speed": {
+      "from": 0,
+      "to": 0.9
+    },
+    "distance": {
+      "from": 0,
+      "to": 0.75
+    },
+    "overtake_mistake_chance": "10"
+  }
+}

@@ -6,8 +6,9 @@
       "to": 0.9
     },
     "distance": {
-      "from": 0,
-      "to": 0.75
-    }
+      "from": 0.5,
+      "to": 1.5
+    },
+    "overtake_mistake_chance": "60"
   }
 }
