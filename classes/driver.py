@@ -21,6 +21,8 @@ class Driver:
         self.vehicle = None
         self.config = None
         self.overtake_mistake_chance = 0
+        self.risky_overtake_chance = 0
+        self.ignore_obstacle_chance = 0
 
         if isinstance(traffic_manager, carla.TrafficManager):
             self.tm = traffic_manager  # Traffic manager short alias
@@ -35,6 +37,8 @@ class Driver:
             driver_data = data.get("driver", {})
             speed_range = driver_data.get("speed", {})
             self.overtake_mistake_chance = int(driver_data.get("overtake_mistake_chance", {}))
+            self.risky_overtake_chance = int(driver_data.get("risky_overtake_chance", {}))
+            self.ignore_obstacle_chance = int(driver_data.get("ignore_obstacle_chance", {}))
             distance_range = driver_data.get("distance", {})
 
             # Store the specified speed and distance ranges
