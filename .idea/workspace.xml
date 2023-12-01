@@ -5,10 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7f383ccf-065b-445a-ac14-000e25710be1" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Camera.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DataGathering/informationUtils.py" beforeDir="false" afterPath="$PROJECT_DIR$/DataGathering/informationUtils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GameLoop.py" beforeDir="false" afterPath="$PROJECT_DIR$/GameLoop.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config/insane_driver.json" beforeDir="false" afterPath="$PROJECT_DIR$/config/insane_driver.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -90,6 +87,7 @@
       <workItem from="1699817544175" duration="992000" />
       <workItem from="1701094399967" duration="316000" />
       <workItem from="1701293735793" duration="435000" />
+      <workItem from="1701385848646" duration="2214000" />
     </task>
     <servers />
   </component>
@@ -117,7 +115,7 @@
     <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$Camera.coverage" NAME="Camera Coverage Results" MODIFIED="1701362289557" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$data_matrix_example.coverage" NAME="data_matrix_example Coverage Results" MODIFIED="1701084473178" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/examples" />
     <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$traffic_manager_daniel.coverage" NAME="traffic_manager_daniel Coverage Results" MODIFIED="1701180464023" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/classes" />
-    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$GameLoop.coverage" NAME="GameLoop Coverage Results" MODIFIED="1701362997801" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$GameLoop.coverage" NAME="GameLoop Coverage Results" MODIFIED="1701389527227" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Driver_py$make_cars_drive.coverage" NAME="make_cars_drive Coverage Results" MODIFIED="1701163113182" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/examples" />
     <SUITE FILE_PATH="coverage/LunaticAI_Driver_for_CARLA_Simulator$OldGameLoop.coverage" NAME="OldGameLoop Coverage Results" MODIFIED="1701094597031" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
