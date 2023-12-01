@@ -1,6 +1,5 @@
 from typing import Callable, Any, TYPE_CHECKING
-if TYPE_CHECKING:
-    from agents.lunatic_agent import LunaticAgent
+from agents.lunatic_agent import LunaticAgent
 import inspect
 
 
@@ -61,9 +60,6 @@ class EvaluationFunction:
 class ActionFunction(EvaluationFunction):
     def __init__(self, action_function: Callable[["LunaticAgent"], Any], name="ActionFunction"):
         super().__init__(action_function, name)
-
-    # Overriding the NOT method isn't appropriate here since this class is for actions, not evaluations.
-    # If you wish to have a NOT like functionality, it should be clearly defined what "NOT" an action means.
 
     def __call__(self, agent: "LunaticAgent", *args, **kwargs) -> Any:
         return self.action_function(agent, *args, **kwargs)
