@@ -1,14 +1,12 @@
-import random
 import threading
 import time
-from asyncio import Queue
 
 import carla
 
 import utils
 from Camera import camera_function
 from DataGathering.informationUtils import get_all_road_lane_ids
-from DataGathering.run_matrix import matrix_function
+from Rules.HardcodedRules import go_crazy, brake_check, overtake_logic, brake_logic, random_lane_change
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
@@ -84,18 +82,12 @@ def main():
     # Create a thread for the camera functionality
     camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
     camera_thread.start()
+    matrix = []
 
     while time.time() < t_end:
         try:
-            disable_collision = random.randint(1, 1000)
-            if disable_collision <= driver1.ignore_obstacle_chance:
-                driver1.vehicle.actor.set_autopilot(False)
-                driver1.vehicle.setThrottle(20)
-                print("Crazy")
-                time.sleep(1)
-                driver1.vehicle.actor.set_autopilot(True)
-                driver1.vehicle.setThrottle(0)
-                print("Crazy over")
+            if go_crazy(driver1, matrix, i_car, j_car, tm):
+                continue
 
             matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
 
@@ -106,54 +98,19 @@ def main():
             (i_car, j_car) = get_car_coords(matrix)
 
             # random brake check
-            brake_check_choice = random.randint(1, 100)
-            if (brake_check_choice <= driver1.brake_check_chance
-                    and (matrix[i_car][j_car - 1] == 2)
-            ):
-                driver1.vehicle.actor.set_autopilot(False)
-                driver1.vehicle.setThrottle(0)
-                driver1.vehicle.setBrake(10)
-                time.sleep(1.0)
-                print("Brake check")
-                driver1.vehicle.setBrake(0)
-                driver1.vehicle.actor.set_autopilot(True)
-
-            overtake_direction = 0
-            # Random lane change
-            overtake_choice = random.randint(1, 100)
-            if overtake_choice <= driver1.risky_overtake_chance:
-                if matrix[i_car + 1][j_car + 1] == 3 and matrix[i_car - 1][j_car + 1] == 3:
-                    continue
-                elif matrix[i_car + 1][j_car + 1] == 3:
-                    tm.force_overtake(100, -1)
-                elif matrix[i_car - 1][j_car + 1] == 3:
-                    tm.force_overtake(100, 1)
-                else:
-                    overtake_direction = random.choice([-1, 1])
-                    tm.force_overtake(100, overtake_direction)
-                print("Random lane change")
+            if brake_check(driver1, matrix, i_car, j_car, tm):
                 continue
 
-            if matrix[i_car + 1][j_car + 1] == 0:
-                # print("can overtake on right")
-                overtake_direction = 1
-            if matrix[i_car - 1][j_car + 1] == 0:
-                # print("can overtake on left")
-                overtake_direction = -1
+            # Random lane change
+            if random_lane_change(driver1, matrix, i_car, j_car, tm):
+                continue
 
-            # Overtake logic
-            if matrix[i_car][j_car + 1] == 2 or matrix[i_car][j_car + 2] == 2:
-                overtake_choice = random.randint(1, 100)
-                if overtake_choice >= driver1.overtake_mistake_chance:
-                    tm.force_overtake(100, overtake_direction)
-                    print("overtake!")
-                    continue
-                else:
-                    print("overtake averted by chance")
+            if overtake_logic(driver1, matrix, i_car, j_car, tm):
+                continue
 
             # brake logic
-            if matrix[i_car][j_car + 1] == 2:
-                driver1.vehicle.setBrake(4)
+            if brake_logic(driver1, matrix, i_car, j_car, tm):
+                continue
 
         except Exception as e:
             print(e.__str__())
