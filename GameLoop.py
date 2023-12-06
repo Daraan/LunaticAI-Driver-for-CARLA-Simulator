@@ -1,17 +1,19 @@
 import random
 import threading
 import time
+from asyncio import Queue
 
 import carla
 
 import utils
 from Camera import camera_function
 from DataGathering.informationUtils import get_all_road_lane_ids
+from DataGathering.run_matrix import matrix_function
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
-from matrix_wrap import wrap_matrix_functionalities, get_car_coords
+from DataGathering.matrix_wrap import get_car_coords
 
 vehicles = []
 
@@ -49,10 +51,10 @@ def main():
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        ap = TrafficManager(client, v.actor, speed_limit_scale=-driver1.speed_range[1], min_front_distance=driver1.distance_range[0])
+        ap = TrafficManager(client, v.actor, speed_limit_scale=-driver1.speed_range[1],
+                            min_front_distance=driver1.distance_range[0])
         ap.init_lunatic_driver()
         ap.start_drive()
-
 
     for sp in spawn_points[5:]:
         v = Vehicle(world, car_bp)
@@ -61,8 +63,6 @@ def main():
         ap = TrafficManager(client, v.actor, speed_limit_scale=60, min_front_distance=8)
         ap.init_passive_driver()
         ap.start_drive()
-
-
 
     tm = TrafficManager(client, ego_vehicle,
                         speed_limit_scale=-driver1.speed_range[1],
@@ -85,6 +85,13 @@ def main():
     camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
     camera_thread.start()
 
+    # Create a thread for the matrix
+    matrix_queue = Queue()
+    matrix = []
+    matrix_thread = threading.Thread(target=matrix_function,
+                                     args=(ego_vehicle, world, world_map, road_lane_ids, matrix_queue))
+    matrix_thread.start()
+
     while time.time() < t_end:
         try:
             disable_collision = random.randint(1, 1000)
@@ -97,7 +104,12 @@ def main():
                 driver1.vehicle.setThrottle(0)
                 print("Crazy over")
 
-            matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
+            # matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
+
+            if not matrix_queue.empty():
+                matrix = matrix_queue.get()
+                matrix_queue.task_done()
+
             # print(matrix)
             ego_location = ego_vehicle.get_location()
             ego_waypoint = world_map.get_waypoint(ego_location)
@@ -116,7 +128,6 @@ def main():
                 print("Brake check")
                 driver1.vehicle.setBrake(0)
                 driver1.vehicle.actor.set_autopilot(True)
-
 
             overtake_direction = 0
             # Random lane change
@@ -160,6 +171,7 @@ def main():
 
     input("press any key to end...")
     camera_thread.join()
+    matrix_thread.join()
 
 
 if __name__ == '__main__':
