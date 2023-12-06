@@ -1,11 +1,14 @@
+import asyncio
+
 from DataGathering.matrix_wrap import wrap_matrix_functionalities
 
 
-def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_queue):
+async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_queue):
     while True:
         matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
         # Put the matrix into the queue for access outside the thread
-        result_queue.put(matrix)
+        await result_queue.put(matrix)
+        await asyncio.sleep(1)
 
 # class DataMatrix:
 #     def __init__(self, agent, world):

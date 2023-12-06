@@ -13,7 +13,7 @@ from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
-from DataGathering.matrix_wrap import get_car_coords
+from DataGathering.matrix_wrap import get_car_coords, wrap_matrix_functionalities
 
 vehicles = []
 
@@ -85,13 +85,6 @@ def main():
     camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
     camera_thread.start()
 
-    # Create a thread for the matrix
-    matrix_queue = Queue()
-    matrix = []
-    matrix_thread = threading.Thread(target=matrix_function,
-                                     args=(ego_vehicle, world, world_map, road_lane_ids, matrix_queue))
-    matrix_thread.start()
-
     while time.time() < t_end:
         try:
             disable_collision = random.randint(1, 1000)
@@ -104,11 +97,7 @@ def main():
                 driver1.vehicle.setThrottle(0)
                 print("Crazy over")
 
-            # matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
-
-            if not matrix_queue.empty():
-                matrix = matrix_queue.get()
-                matrix_queue.task_done()
+            matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
 
             # print(matrix)
             ego_location = ego_vehicle.get_location()
@@ -171,7 +160,6 @@ def main():
 
     input("press any key to end...")
     camera_thread.join()
-    matrix_thread.join()
 
 
 if __name__ == '__main__':
