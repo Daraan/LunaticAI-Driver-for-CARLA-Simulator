@@ -1,9 +1,18 @@
 {
-  "required_imports": ["random", "time"],
+  "required_imports": [
+    "random",
+    "time"
+  ],
   "go_crazy": {
     "description": "Function to simulate erratic behavior when encountering obstacles.",
     "logic": "disable_collision = random.randint(1, chances)\nif disable_collision <= driver.ignore_obstacle_chance:\n    driver.vehicle.actor.set_autopilot(False)\n    driver.vehicle.setThrottle(20)\n    print('Crazy')\n    time.sleep(1)\n    driver.vehicle.actor.set_autopilot(True)\n    driver.vehicle.setThrottle(0)\n    print('Crazy over')",
-    "parameters": ["driver", "matrix", "i_car", "j_car", "tm"],
+    "parameters": [
+      "driver",
+      "matrix",
+      "i_car",
+      "j_car",
+      "tm"
+    ],
     "optional_parameters": {
       "chances": 1000
     }
@@ -11,7 +20,13 @@
   "brake_check": {
     "description": "Function to perform a brake check based on certain conditions.",
     "logic": "brake_check_choice = random.randint(1, chances)\nif brake_check_choice <= driver.brake_check_chance and matrix[i_car][j_car - 1] == 2:\n    driver.vehicle.actor.set_autopilot(False)\n    driver.vehicle.setThrottle(0)\n    driver.vehicle.setBrake(10)\n    time.sleep(1.0)\n    print('Brake check')\n    driver.vehicle.setBrake(0)\n    driver.vehicle.actor.set_autopilot(True)",
-    "parameters": ["driver", "matrix", "i_car", "j_car", "tm"],
+    "parameters": [
+      "driver",
+      "matrix",
+      "i_car",
+      "j_car",
+      "tm"
+    ],
     "optional_parameters": {
       "chances": 100
     }
@@ -19,7 +34,13 @@
   "overtake_logic": {
     "description": "Function to handle overtaking logic based on surroundings.",
     "logic": "overtake_direction = 0\nif matrix[i_car + 1][j_car + 1] == 0:\n    overtake_direction = 1\nif matrix[i_car - 1][j_car + 1] == 0:\n    overtake_direction = -1\nif matrix[i_car][j_car + 1] == 2 or matrix[i_car][j_car + 2] == 2:\n    overtake_choice = random.randint(1, chances)\n    if overtake_choice >= driver.overtake_mistake_chance:\n        tm.force_overtake(100, overtake_direction)\n        print('overtake!')",
-    "parameters": ["driver", "matrix", "i_car", "j_car", "tm"],
+    "parameters": [
+      "driver",
+      "matrix",
+      "i_car",
+      "j_car",
+      "tm"
+    ],
     "optional_parameters": {
       "chances": 100
     }
@@ -27,12 +48,24 @@
   "brake_logic": {
     "description": "Function to apply brakes in certain conditions.",
     "logic": "if matrix[i_car][j_car + 1] == 2:\n    driver.vehicle.setBrake(4)",
-    "parameters": ["driver", "matrix", "i_car", "j_car", "tm"]
+    "parameters": [
+      "driver",
+      "matrix",
+      "i_car",
+      "j_car",
+      "tm"
+    ]
   },
   "random_lane_change": {
     "description": "Function to simulate a random lane change.",
     "logic": "overtake_choice = random.randint(1, chances)\nif overtake_choice <= driver.risky_overtake_chance:\n    if matrix[i_car + 1][j_car + 1] == 3 and matrix[i_car - 1][j_car + 1] == 3:\n        return False\n    elif matrix[i_car + 1][j_car + 1] == 3:\n        tm.force_overtake(100, -1)\n    elif matrix[i_car - 1][j_car + 1] == 3:\n        tm.force_overtake(100, 1)\n    else:\n        overtake_direction = random.choice([-1, 1])\n        tm.force_overtake(100, overtake_direction)\n    print('Random lane change')",
-    "parameters": ["driver", "matrix", "i_car", "j_car", "tm"],
+    "parameters": [
+      "driver",
+      "matrix",
+      "i_car",
+      "j_car",
+      "tm"
+    ],
     "optional_parameters": {
       "chances": 100
     }

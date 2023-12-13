@@ -1,4 +1,5 @@
 from typing import Callable, Any, TYPE_CHECKING
+
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 import inspect

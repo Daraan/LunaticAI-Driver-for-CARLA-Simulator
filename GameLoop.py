@@ -4,15 +4,14 @@ import time
 import carla
 
 import utils
-from Rules.ApplyRules import RuleInterpreter
-from utils.Camera import camera_function
 from DataGathering.informationUtils import get_all_road_lane_ids
-from Rules.HardcodedRules import go_crazy, brake_check, overtake_logic, brake_logic, random_lane_change
+from DataGathering.matrix_wrap import get_car_coords, wrap_matrix_functionalities
+from Rules.ApplyRules import RuleInterpreter
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
-from DataGathering.matrix_wrap import get_car_coords, wrap_matrix_functionalities
+from utils.Camera import camera_function
 
 vehicles = []
 
@@ -27,9 +26,9 @@ def main():
     world_map = world.get_map()
     ego_bp, car_bp = utils.prepare_blueprints(world)
 
-    driver1 = Driver("config/insane_driver.json", traffic_manager=client)
-    driver2 = Driver("config/aggressive_driver.json", traffic_manager=client)
-    driver3 = Driver("config/default_driver.json", traffic_manager=client)
+    driver1 = Driver("config/default_driver.json", traffic_manager=client)
+    # driver1 = Driver("config/aggressive_driver.json", traffic_manager=client)
+    # driver1 = Driver("config/insane_driver.json", traffic_manager=client)
 
     spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
 

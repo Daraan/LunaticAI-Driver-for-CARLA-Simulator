@@ -1,7 +1,9 @@
 import builtins
 import importlib
 import json
+
 import yaml
+
 
 class RuleInterpreter:
     def __init__(self, filename):
