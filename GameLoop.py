@@ -4,6 +4,7 @@ import time
 import carla
 
 import utils
+from Rules.ApplyRules import RuleInterpreter
 from utils.Camera import camera_function
 from DataGathering.informationUtils import get_all_road_lane_ids
 from Rules.HardcodedRules import go_crazy, brake_check, overtake_logic, brake_logic, random_lane_change
@@ -31,6 +32,9 @@ def main():
     driver3 = Driver("config/default_driver.json", traffic_manager=client)
 
     spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
+
+    # Interpret rules
+    rule_interpreter = RuleInterpreter("Rules/config/defaultRules.json")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)
@@ -83,12 +87,10 @@ def main():
     camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
     camera_thread.start()
     matrix = []
+    i_car, j_car = 0, 0
 
     while time.time() < t_end:
         try:
-            if go_crazy(driver1, matrix, i_car, j_car, tm):
-                continue
-
             matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
 
             # print(matrix)
@@ -97,19 +99,27 @@ def main():
 
             (i_car, j_car) = get_car_coords(matrix)
 
-            # random brake check
-            if brake_check(driver1, matrix, i_car, j_car, tm):
-                continue
+            # if go_crazy(driver1, matrix, i_car, j_car, tm):
+            #     continue
+            #
+            # # random brake check
+            # if brake_check(driver1, matrix, i_car, j_car, tm):
+            #     continue
+            #
+            # # Random lane change
+            # if random_lane_change(driver1, matrix, i_car, j_car, tm):
+            #     continue
+            #
+            # if overtake_logic(driver1, matrix, i_car, j_car, tm):
+            #     continue
+            #
+            # # brake logic
+            # if brake_logic(driver1, matrix, i_car, j_car, tm):
+            #     continue
 
-            # Random lane change
-            if random_lane_change(driver1, matrix, i_car, j_car, tm):
-                continue
+            results = rule_interpreter.execute_all_functions(driver1, matrix, i_car, j_car, tm)
 
-            if overtake_logic(driver1, matrix, i_car, j_car, tm):
-                continue
-
-            # brake logic
-            if brake_logic(driver1, matrix, i_car, j_car, tm):
+            if any(results.values()):
                 continue
 
         except Exception as e:

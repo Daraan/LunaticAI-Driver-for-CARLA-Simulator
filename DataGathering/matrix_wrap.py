@@ -1,13 +1,8 @@
-from copy import deepcopy
-
 from DataGathering.informationUtils import *
 
 
 def wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids,
                                 radius=100, highway_shape=None):
-    from DataGathering.informationUtils import check_ego_on_highway, create_city_matrix, detect_surrounding_cars
-
-    matrix = []
     ego_location = ego_vehicle.get_location()
     ego_waypoint = world_map.get_waypoint(ego_location)
     ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)

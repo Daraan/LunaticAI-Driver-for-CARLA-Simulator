@@ -7,7 +7,7 @@ import carla
 import matplotlib
 import plotly.graph_objs as go
 import plotly.subplots
-from carla import Vector3D
+from carla.libcarla import Vector3D
 
 matplotlib.use('TkAgg')
 

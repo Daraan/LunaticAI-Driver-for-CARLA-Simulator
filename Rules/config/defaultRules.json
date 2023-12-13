@@ -1,4 +1,5 @@
 {
+  "required_imports": ["random", "time"],
   "go_crazy": {
     "description": "Function to simulate erratic behavior when encountering obstacles.",
     "logic": "disable_collision = random.randint(1, chances)\nif disable_collision <= driver.ignore_obstacle_chance:\n    driver.vehicle.actor.set_autopilot(False)\n    driver.vehicle.setThrottle(20)\n    print('Crazy')\n    time.sleep(1)\n    driver.vehicle.actor.set_autopilot(True)\n    driver.vehicle.setThrottle(0)\n    print('Crazy over')",
