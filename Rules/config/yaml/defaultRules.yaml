@@ -1,3 +1,7 @@
+required_imports:
+  - random
+  - time
+
 go_crazy:
   description: "Function to simulate erratic behavior when encountering obstacles."
   logic: |
@@ -10,7 +14,12 @@ go_crazy:
         driver.vehicle.actor.set_autopilot(True)
         driver.vehicle.setThrottle(0)
         print('Crazy over')
-  parameters: [ "driver", "matrix", "i_car", "j_car", "tm" ]
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm
   optional_parameters:
     chances: 1000
 
@@ -26,7 +35,12 @@ brake_check:
         print('Brake check')
         driver.vehicle.setBrake(0)
         driver.vehicle.actor.set_autopilot(True)
-  parameters: [ "driver", "matrix", "i_car", "j_car", "tm" ]
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm
   optional_parameters:
     chances: 100
 
@@ -43,7 +57,12 @@ overtake_logic:
         if overtake_choice >= driver.overtake_mistake_chance:
             tm.force_overtake(100, overtake_direction)
             print('overtake!')
-  parameters: [ "driver", "matrix", "i_car", "j_car", "tm" ]
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm
   optional_parameters:
     chances: 100
 
@@ -52,9 +71,13 @@ brake_logic:
   logic: |
     if matrix[i_car][j_car + 1] == 2:
         driver.vehicle.setBrake(4)
-  parameters: [ "driver", "matrix", "i_car", "j_car", "tm" ]
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm
 
-groups:
 random_lane_change:
   description: "Function to simulate a random lane change."
   logic: |
@@ -69,7 +92,12 @@ random_lane_change:
         else:
             overtake_direction = random.choice([-1, 1])
             tm.force_overtake(100, overtake_direction)
-        print('Random lane change')
-  parameters: [ "driver", "matrix", "i_car", "j_car", "tm" ]
+            print('Random lane change')
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm
   optional_parameters:
     chances: 100

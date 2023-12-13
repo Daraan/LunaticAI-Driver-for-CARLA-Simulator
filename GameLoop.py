@@ -34,7 +34,8 @@ def main():
     spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
 
     # Interpret rules
-    rule_interpreter = RuleInterpreter("Rules/config/defaultRules.json")
+    # rule_interpreter = RuleInterpreter("Rules/config/json/defaultRules.json")
+    rule_interpreter = RuleInterpreter("Rules/config/yaml/defaultRules.yaml")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)
@@ -98,24 +99,6 @@ def main():
             ego_waypoint = world_map.get_waypoint(ego_location)
 
             (i_car, j_car) = get_car_coords(matrix)
-
-            # if go_crazy(driver1, matrix, i_car, j_car, tm):
-            #     continue
-            #
-            # # random brake check
-            # if brake_check(driver1, matrix, i_car, j_car, tm):
-            #     continue
-            #
-            # # Random lane change
-            # if random_lane_change(driver1, matrix, i_car, j_car, tm):
-            #     continue
-            #
-            # if overtake_logic(driver1, matrix, i_car, j_car, tm):
-            #     continue
-            #
-            # # brake logic
-            # if brake_logic(driver1, matrix, i_car, j_car, tm):
-            #     continue
 
             results = rule_interpreter.execute_all_functions(driver1, matrix, i_car, j_car, tm)
 

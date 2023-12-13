@@ -1,7 +1,7 @@
 import builtins
 import importlib
 import json
-
+import yaml
 
 class RuleInterpreter:
     def __init__(self, filename):
@@ -19,8 +19,11 @@ class RuleInterpreter:
         if file_extension == 'json':
             with open(filename, 'r') as file:
                 return json.load(file)
+        elif file_extension in ['yaml', 'yml']:
+            with open(filename, 'r') as file:
+                return yaml.safe_load(file)
         else:
-            raise ValueError("Unsupported file format. Please provide a JSON file.")
+            raise ValueError("Unsupported file format. Please provide a JSON or YAML file.")
 
     def execute_all_functions(self, driver, matrix, i_car, j_car, tm):
         results = {}
