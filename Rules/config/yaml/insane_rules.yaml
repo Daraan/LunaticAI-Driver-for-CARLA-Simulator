@@ -1,0 +1,39 @@
+required_imports:
+  - random
+  - time
+
+ignore_obstacles:
+  description: "Insane logic to ignore obstacles."
+  logic: |
+    if random.randint(1, 1) <= driver.ignore_obstacle_chance:
+        driver.vehicle.actor.set_autopilot(False)
+        driver.vehicle.setThrottle(1)
+        print('Ignoring obstacles')
+        time.sleep(1)
+        driver.vehicle.actor.set_autopilot(True)
+        driver.vehicle.setThrottle(0)
+        print('Ignore over')
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm
+
+brake_for_no_reason:
+  description: "Function to brake randomly for no reason."
+  logic: |
+    if random.randint(1, 5) <= driver.brake_check_chance:
+        driver.vehicle.actor.set_autopilot(False)
+        driver.vehicle.setThrottle(0)
+        driver.vehicle.setBrake(1)
+        time.sleep(random.uniform(0.5, 2.0))
+        print('Random brake')
+        driver.vehicle.setBrake(0)
+        driver.vehicle.actor.set_autopilot(True)
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm
