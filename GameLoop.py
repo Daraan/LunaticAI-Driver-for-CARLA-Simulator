@@ -5,7 +5,8 @@ import carla
 
 import utils
 from DataGathering.informationUtils import get_all_road_lane_ids
-from DataGathering.matrix_wrap import get_car_coords, wrap_matrix_functionalities
+from DataGathering.matrix_wrap import get_car_coords
+from DataGathering.run_matrix import DataMatrix
 from Rules.ApplyRules import RuleInterpreter
 from classes.carla_service import CarlaService
 from classes.driver import Driver
@@ -89,9 +90,19 @@ def main():
     matrix = []
     i_car, j_car = 0, 0
 
+    # Initialize matrix thread
+    data_matrix = DataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+
     while time.time() < t_end:
         try:
-            matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
+            # matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
+
+            # Retrieve the latest matrix from the matrix thread
+            matrix = data_matrix.getMatrix()
+
+            if matrix is None:
+                # time.sleep(0.1)
+                continue
 
             # print(matrix)
             ego_location = ego_vehicle.get_location()
@@ -108,6 +119,7 @@ def main():
             print(e.__str__())
 
     input("press any key to end...")
+    data_matrix.stop()
     camera_thread.join()
 
 
