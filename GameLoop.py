@@ -4,7 +4,7 @@ import time
 import carla
 
 import utils
-from Camera import camera_function
+from utils.Camera import camera_function
 from DataGathering.informationUtils import get_all_road_lane_ids
 from Rules.HardcodedRules import go_crazy, brake_check, overtake_logic, brake_logic, random_lane_change
 from classes.carla_service import CarlaService

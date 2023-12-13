@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7f383ccf-065b-445a-ac14-000e25710be1" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/LunaticAI-Driver-for-CARLA-Simulator.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/LunaticAI-Driver-for-CARLA-Simulator.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Rules/ApplyRules.py" beforeDir="false" afterPath="$PROJECT_DIR$/Rules/ApplyRules.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -104,7 +102,8 @@
       <workItem from="1701851988442" duration="1029000" />
       <workItem from="1701877491487" duration="3673000" />
       <workItem from="1702040832661" duration="1168000" />
-      <workItem from="1702455062786" duration="392000" />
+      <workItem from="1702455062786" duration="626000" />
+      <workItem from="1702476443072" duration="95000" />
     </task>
     <servers />
   </component>

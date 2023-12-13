@@ -1,4 +1,5 @@
 import json
+
 import yaml
 
 
@@ -7,7 +8,7 @@ class RuleInterpreter:
         self.functions = self.load_functions(filename)
 
     @staticmethod
-    def load_functions(self, filename):
+    def load_functions(filename):
         file_extension = filename.split('.')[-1].lower()
         if file_extension == 'json':
             with open(filename, 'r') as file:

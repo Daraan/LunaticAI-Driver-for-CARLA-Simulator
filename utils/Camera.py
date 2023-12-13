@@ -1,6 +1,3 @@
-import time
-
-
 def follow_car(ego_vehicle, world):
     vehicle_transform = ego_vehicle.get_transform()
     spectator_transform = vehicle_transform
