@@ -1,12 +1,22 @@
 import json
-import random
-import time
+import yaml
 
 
 class RuleInterpreter:
     def __init__(self, filename):
-        with open(filename, 'r') as file:
-            self.functions = json.load(file)
+        self.functions = self.load_functions(filename)
+
+    @staticmethod
+    def load_functions(self, filename):
+        file_extension = filename.split('.')[-1].lower()
+        if file_extension == 'json':
+            with open(filename, 'r') as file:
+                return json.load(file)
+        elif file_extension == 'yaml' or file_extension == 'yml':
+            with open(filename, 'r') as file:
+                return yaml.safe_load(file)
+        else:
+            raise ValueError("Unsupported file format. Please provide a JSON or YAML file.")
 
     def execute_all_functions(self, driver, matrix, i_car, j_car, tm):
         results = {}
