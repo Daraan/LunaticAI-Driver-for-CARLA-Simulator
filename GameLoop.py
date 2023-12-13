@@ -6,7 +6,7 @@ from asyncio import Queue
 import carla
 
 import utils
-from Camera import camera_function
+from utils.Camera import camera_function
 from DataGathering.informationUtils import get_all_road_lane_ids
 from DataGathering.run_matrix import matrix_function
 from classes.carla_service import CarlaService
