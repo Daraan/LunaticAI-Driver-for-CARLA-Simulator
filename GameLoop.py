@@ -8,7 +8,8 @@ import carla
 import utils
 from utils.Camera import camera_function
 from DataGathering.informationUtils import get_all_road_lane_ids
-from DataGathering.run_matrix import matrix_function
+from DataGathering.matrix_wrap import get_car_coords
+from DataGathering.run_matrix import DataMatrix
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
@@ -85,19 +86,19 @@ def main():
     camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
     camera_thread.start()
 
+    # Initialize matrix thread
+    data_matrix = DataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+
     while time.time() < t_end:
         try:
-            disable_collision = random.randint(1, 1000)
-            if disable_collision <= driver1.ignore_obstacle_chance:
-                driver1.vehicle.actor.set_autopilot(False)
-                driver1.vehicle.setThrottle(20)
-                print("Crazy")
-                time.sleep(1)
-                driver1.vehicle.actor.set_autopilot(True)
-                driver1.vehicle.setThrottle(0)
-                print("Crazy over")
+            # matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
 
-            matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
+            # Retrieve the latest matrix from the matrix thread
+            matrix = data_matrix.getMatrix()
+
+            if matrix is None:
+                # time.sleep(0.1)
+                continue
 
             # print(matrix)
             ego_location = ego_vehicle.get_location()
@@ -159,6 +160,7 @@ def main():
             print(e.__str__())
 
     input("press any key to end...")
+    data_matrix.stop()
     camera_thread.join()
 
 
