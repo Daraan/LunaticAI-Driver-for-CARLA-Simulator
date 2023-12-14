@@ -5,12 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7f383ccf-065b-445a-ac14-000e25710be1" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/Rules/config/xml/default_rules.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GameLoop.py" beforeDir="false" afterPath="$PROJECT_DIR$/GameLoop.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Rules/ApplyRules.py" beforeDir="false" afterPath="$PROJECT_DIR$/Rules/ApplyRules.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/doc/Exit_Highway.mp4" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/doc/Overtake_example.mp4" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/doc/Risky_Overtake.mp4" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,11 +78,11 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Mannheim\LunaticAI-Driver-for-CARLA-Simulator\Rules\config\python" />
       <recent name="C:\Mannheim\LunaticAI-Driver-for-CARLA-Simulator\Rules\config\yaml" />
       <recent name="C:\Mannheim\LunaticAI-Driver-for-CARLA-Simulator\Rules\config\json" />
       <recent name="C:\Mannheim\LunaticAI-Driver-for-CARLA-Simulator\config\driver_config" />
       <recent name="C:\Mannheim\LunaticAI-Driver-for-CARLA-Simulator\utils" />
-      <recent name="C:\Mannheim\LunaticAI-Driver-for-CARLA-Simulator\Rules" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -116,7 +113,7 @@
       <workItem from="1702455062786" duration="626000" />
       <workItem from="1702476443072" duration="95000" />
       <workItem from="1702491703102" duration="7712000" />
-      <workItem from="1702534345950" duration="1148000" />
+      <workItem from="1702534345950" duration="1825000" />
     </task>
     <servers />
   </component>

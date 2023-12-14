@@ -1,7 +1,8 @@
-import json
-import yaml
 import importlib.util
-import builtins
+import json
+import xml.etree.ElementTree as ET
+
+import yaml
 
 
 class RuleInterpreter:
@@ -19,14 +20,30 @@ class RuleInterpreter:
                 return yaml.safe_load(file)
         elif file_extension == 'py':
             return self.load_py_functions(filename)
+        elif file_extension == 'xml':
+            return self.load_xml_functions(filename)
         else:
-            raise ValueError("Unsupported file format. Please provide a JSON, YAML, or Python file.")
+            raise ValueError("Unsupported file format. Please provide a JSON, YAML, Python, or XML file.")
 
-    def load_py_functions(self, filepath):
+    @staticmethod
+    def load_py_functions(filepath):
         spec = importlib.util.spec_from_file_location("module.name", filepath)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return {func: getattr(module, func) for func in dir(module) if callable(getattr(module, func))}
+
+    @staticmethod
+    def load_xml_functions(filepath):
+        tree = ET.parse(filepath)
+        root = tree.getroot()
+        functions = {}
+        for func in root.findall('function'):
+            name = func.get('name')
+            logic = func.find('logic').text
+            params = [param.text for param in func.find('parameters')]
+            opt_params = {opt_param.tag: opt_param.text for opt_param in func.find('optional_parameters')}
+            functions[name] = {'logic': logic, 'parameters': params, 'optional_parameters': opt_params}
+        return functions
 
     def execute_all_functions(self, driver, matrix, i_car, j_car, tm):
         results = {}
@@ -39,7 +56,6 @@ class RuleInterpreter:
                     exec(logic, globals(), local_vars)
                     func = local_vars.get(function_name)
                 else:
-                    # Handling Python file loaded functions
                     func = function_data
 
                 if callable(func):
