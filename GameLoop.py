@@ -34,8 +34,8 @@ def main():
     spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
 
     # Interpret rules
-    # rule_interpreter = RuleInterpreter("Rules/config/json/defaultRules.json")
-    rule_interpreter = RuleInterpreter("Rules/config/yaml/defaultRules.yaml")
+    # rule_interpreter = RuleInterpreter("Rules/config/json/default_rules.json")
+    rule_interpreter = RuleInterpreter("Rules/config/yaml/default_rules.yaml")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)
@@ -74,20 +74,16 @@ def main():
     # tm.init_passive_driver()
     tm.start_drive()
 
-    # Define the radius to search for other vehicles
-    radius = 100
-
     # Initialize speed of ego_vehicle to use as global variable
     world.tick()
     road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
     t_end = time.time() + 10000
-    crazy = False
-    lane_change = False
 
     # Create a thread for the camera functionality
     camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
     camera_thread.start()
-    matrix = []
+
+    # Initialize loop variables
     i_car, j_car = 0, 0
 
     # Initialize matrix thread
