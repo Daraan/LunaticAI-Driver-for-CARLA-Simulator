@@ -67,6 +67,7 @@ def main():
         ap.init_passive_driver()
         ap.start_drive()
 
+    # Initialise traffic manager
     tm = TrafficManager(client, ego_vehicle,
                         speed_limit_scale=-driver1.speed_range[1],
                         min_front_distance=driver1.distance_range[0])
@@ -74,17 +75,15 @@ def main():
     # tm.init_passive_driver()
     tm.start_drive()
 
-    # Initialize speed of ego_vehicle to use as global variable
+    # Initialize loop variables
     world.tick()
     road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
     t_end = time.time() + 10000
+    i_car, j_car = 0, 0
 
     # Create a thread for the camera functionality
     camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
     camera_thread.start()
-
-    # Initialize loop variables
-    i_car, j_car = 0, 0
 
     # Initialize matrix thread
     data_matrix = DataMatrix(ego_vehicle, world, world_map, road_lane_ids)

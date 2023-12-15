@@ -5,8 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7f383ccf-065b-445a-ac14-000e25710be1" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Rules/config/xml/default_rules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/game_loop_config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GameLoop.py" beforeDir="false" afterPath="$PROJECT_DIR$/GameLoop.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Rules/ApplyRules.py" beforeDir="false" afterPath="$PROJECT_DIR$/Rules/ApplyRules.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -113,7 +114,8 @@
       <workItem from="1702455062786" duration="626000" />
       <workItem from="1702476443072" duration="95000" />
       <workItem from="1702491703102" duration="7712000" />
-      <workItem from="1702534345950" duration="1825000" />
+      <workItem from="1702534345950" duration="2171000" />
+      <workItem from="1702630521859" duration="800000" />
     </task>
     <servers />
   </component>

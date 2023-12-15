@@ -50,7 +50,6 @@ class RuleInterpreter:
         for function_name, function_data in self.functions.items():
             try:
                 if isinstance(function_data, dict):
-                    # Handling JSON or YAML loaded functions
                     logic = compile(function_data['logic'], '', 'exec')
                     local_vars = {**locals().copy(), **function_data.get('optional_parameters', {})}
                     exec(logic, globals(), local_vars)
