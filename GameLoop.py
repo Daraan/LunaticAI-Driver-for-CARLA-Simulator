@@ -3,77 +3,35 @@ import time
 
 import carla
 
-import utils
+from CarlaFunctions import *
 from DataGathering.informationUtils import get_all_road_lane_ids
 from DataGathering.matrix_wrap import get_car_coords
 from DataGathering.run_matrix import DataMatrix
-from Rules.ApplyRules import RuleInterpreter
-from classes.carla_service import CarlaService
-from classes.driver import Driver
-from classes.traffic_manager import TrafficManager
-from classes.vehicle import Vehicle
 from utils.Camera import camera_function
 
 vehicles = []
 
 
 def main():
-    global client, i_car, j_car
-    carlaService = CarlaService("Town04", "127.0.0.1", 2000)
-    # carlaService = CarlaService()
-    client = carlaService.client
+    global client, i_car, j_car, vehicles
+    # Usage of functions from CarlaFunctions.py
+    # Initialize the Carla service
+    carla_service = initialize_carla_service()
 
-    world = carlaService.getWorld()
-    world_map = world.get_map()
-    ego_bp, car_bp = utils.prepare_blueprints(world)
+    # Set up the world
+    world, world_map = setup_world(carla_service)
 
-    driver1 = Driver("config/default_driver.json", traffic_manager=client)
-    # driver1 = Driver("config/aggressive_driver.json", traffic_manager=client)
-    # driver1 = Driver("config/insane_driver.json", traffic_manager=client)
+    # Prepare vehicles
+    ego_bp, car_bp, driver1, spawn_points, rule_interpreter = prepare_vehicles(world)
 
-    spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
+    # Spawn vehicles
+    ego = spawn_vehicles(world, ego_bp, car_bp)
 
-    # Interpret rules
-    # rule_interpreter = RuleInterpreter("Rules/config/json/default_rules.json")
-    rule_interpreter = RuleInterpreter("Rules/config/yaml/default_rules.yaml")
+    # Assign drivers
+    ego_vehicle = assign_drivers(carla_service, ego, driver1)
 
-    # Spawn Ego
-    ego = Vehicle(world, ego_bp)
-    try:
-        ego.spawn(spawn_points[0])
-    except Exception as e:
-        print(e.__str__())
-
-    vehicles.append(ego)
-    carlaService.assignDriver(ego, driver1)
-
-    ego_vehicle = ego.actor
-
-    # spawn others
-    for sp in spawn_points[1:5]:
-        v = Vehicle(world, car_bp)
-        v.spawn(sp)
-        vehicles.append(v)
-        ap = TrafficManager(client, v.actor, speed_limit_scale=-driver1.speed_range[1],
-                            min_front_distance=driver1.distance_range[0])
-        ap.init_lunatic_driver()
-        ap.start_drive()
-
-    for sp in spawn_points[5:]:
-        v = Vehicle(world, car_bp)
-        v.spawn(sp)
-        vehicles.append(v)
-        ap = TrafficManager(client, v.actor, speed_limit_scale=60, min_front_distance=8)
-        ap.init_passive_driver()
-        ap.start_drive()
-
-    # Initialise traffic manager
-    tm = TrafficManager(client, ego_vehicle,
-                        speed_limit_scale=-driver1.speed_range[1],
-                        min_front_distance=driver1.distance_range[0])
-    tm.init_lunatic_driver()
-    # tm.init_passive_driver()
-    tm.start_drive()
+    # Spawn traffic
+    vehicles, tm = spawn_traffic(world, car_bp, spawn_points, driver1, ego_vehicle)
 
     # Initialize loop variables
     world.tick()
