@@ -23,9 +23,9 @@ def setup_world(carla_service):
 
 def prepare_vehicles(world):
     ego_bp, car_bp = utils.prepare_blueprints(world)
-    driver1 = Driver("config/default_driver.json", traffic_manager=client)
-    spawn_points = utils.csv_to_transformations("doc/highway_example_car_positions.csv")
-    rule_interpreter = RuleInterpreter("Rules/config/yaml/default_rules.yaml")
+    driver1 = Driver("../config/default_driver.json", traffic_manager=client)
+    spawn_points = utils.csv_to_transformations("../doc/highway_example_car_positions.csv")
+    rule_interpreter = RuleInterpreter("../Rules/config/yaml/default_rules.yaml")
     return ego_bp, car_bp, driver1, spawn_points, rule_interpreter
 
 

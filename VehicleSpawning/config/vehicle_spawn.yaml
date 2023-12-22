@@ -1,0 +1,13 @@
+carla_service:
+  map: "Town04"
+  ip: "127.0.0.1"
+  port: 2000
+
+driver:
+  config: "config/default_driver.json"
+
+spawn_points:
+  file: "doc/highway_example_car_positions.csv"
+
+rule_interpreter:
+  config: "Rules/config/yaml/default_rules.yaml"
