@@ -134,7 +134,7 @@ class Phases(Flag):
 # TODO: see if max_distance is currently still necessary
 # TODO: move angles to config
 #@override
-def detect_vehicles(self : LunaticAgent, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
+def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
                                 lane_offset=0):
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.

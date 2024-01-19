@@ -5,11 +5,11 @@ from agents.tools.misc import (is_within_distance,
                                get_trafficlight_trigger_location, TrafficLightDetectionResult)
 
 if TYPE_CHECKING:
-    import carla
     from agents.lunatic_agent import LunaticAgent
- 
-def affected_by_traffic_light(self : LunaticAgent, 
-                              lights_list : List[carla.TrafficLight]=None, 
+    import carla
+    pass
+def affected_by_traffic_light(self : "LunaticAgent", 
+                              lights_list : List["carla.TrafficLight"]=None, 
                               max_distance : float=None) -> TrafficLightDetectionResult:
         """
         Method to check if there is a red light affecting the vehicle.
@@ -68,7 +68,7 @@ def affected_by_traffic_light(self : LunaticAgent,
         return TrafficLightDetectionResult(False, None)
 
 
-def traffic_light_manager(self : LunaticAgent, traffic_lights : List[carla.TrafficLight]) -> bool:
+def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.TrafficLight"]) -> bool:
         """
         This method is in charge of behaviors for red lights.
         """

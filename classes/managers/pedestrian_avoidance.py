@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
     import carla
 
-def pedestrian_avoid_manager(self, waypoint : carla.Waypoint) -> ObstacleDetectionResult:
+def pedestrian_avoid_manager(self, waypoint : "carla.Waypoint") -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     with any pedestrian.

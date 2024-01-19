@@ -29,6 +29,7 @@ from agents.tools.lunatic_agent_tools import Phases
 
 # NEW: Style
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
+from classes.rule import Rule
 from config.default_options.original_behavior import BasicAgentSettings
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 

@@ -1,11 +1,13 @@
+import numpy as np
 import carla
 
-from agents import LunaticAgent
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from agents.lunatic_agent import LunaticAgent
 from agents.tools.misc import get_speed
-import numpy as np
 __epsilon = np.nextafter(0., 1.) # to not divide by 0
 
-def car_following_manager(self:LunaticAgent, vehicle : carla.Vehicle, distance:float, debug:bool=False) -> carla.VehicleControl:
+def car_following_manager(self:"LunaticAgent", vehicle : carla.Vehicle, distance:float, debug:bool=False) -> carla.VehicleControl:
         """
         Module in charge of car-following behaviors when there's
         someone in front of us.

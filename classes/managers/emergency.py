@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
 
-def emergency_manager(self : LunaticAgent, control : carla.VehicleControl, reason : str):
+def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", reason : str):
     """
     Modifies the control values to perform an emergency stop.
     The steering remains unchanged to avoid going out of the lane during turns.

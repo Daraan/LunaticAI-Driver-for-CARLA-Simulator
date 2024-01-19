@@ -1,7 +1,9 @@
+import carla
+
 from agents.dynamic_planning.dynamic_local_planner import RoadOption
 
 from agents.tools.misc import get_speed, ObstacleDetectionResult
-from agents.tools import detect_vehicles
+from agents.tools.lunatic_agent_tools import detect_vehicles
 
 from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
  # ported from behavior_agent, maybe we can make a # updated behaviorAgent class
     # Todo port settings to property and this can be removed (if not adjusted)
     #@override
-def _tailgating(self : LunaticAgent, waypoint : carla.Waypoint, vehicle_list : List[carla.Vehicle]):
+def _tailgating(self : "LunaticAgent", waypoint : carla.Waypoint, vehicle_list : List[carla.Vehicle]):
     """
     This method is in charge of tailgating behaviors.
 
@@ -54,7 +56,7 @@ def _tailgating(self : LunaticAgent, waypoint : carla.Waypoint, vehicle_list : L
                 self.set_destination(end_waypoint.transform.location,
                                         left_wpt.transform.location)
 
-def collision_and_car_avoid_manager(self : LunaticAgent, waypoint: carla.Waypoint):
+def collision_and_car_avoid_manager(self : "LunaticAgent", waypoint: carla.Waypoint):
         """
         This module is in charge of warning in case of a collision
         and managing possible tailgating chances.

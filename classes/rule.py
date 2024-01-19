@@ -10,8 +10,8 @@ if TYPE_CHECKING:
 
 class Rule:
     def __init__(self, 
-                 phases : Union[Phases, Iterable[Phases]],
-                 rule: Callable[["LunaticAgent"], bool], 
+                 phases : Union[Phases, Iterable], #￿iterable of Phases
+                 rule : Callable[["LunaticAgent"], bool], 
                  action: Union[Callable, Dict[Any, Callable]] = None, 
                  false_action = None,
                  *, 

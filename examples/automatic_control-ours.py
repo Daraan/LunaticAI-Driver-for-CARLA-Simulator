@@ -16,6 +16,7 @@ import threading
 import carla
 import numpy.random as random
 import pygame
+from agents.tools.lunatic_agent_tools import Phases
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
 import utils
