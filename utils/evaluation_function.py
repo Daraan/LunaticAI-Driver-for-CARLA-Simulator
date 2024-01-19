@@ -28,13 +28,17 @@ class EvaluationFunction:
         * func1.AND(func2)
         * EvaluationFunction.AND(func1, func2)
 
-    EvaluationFunctions also allow for more specifc returns types:
+    EvaluationFunctions also allow for more specific returns types:
         @EvaluationFunction
         def is_speeding(agent: LunaticAgent) -> Hashable:
             if agent.speed > agent.speed_limit+20:
                 return "very fast"
-            else:
+            elif agent.speed > agent.speed_limit+5:
                 return "fast"
+            elif: agent.speed < agent.speed_limit-20:
+                return "very slow"
+            else:
+                return "normal"
 
         Rule(is_speeding, action={
                                 "very fast": lambda agent: agent.follow_speed_limits()

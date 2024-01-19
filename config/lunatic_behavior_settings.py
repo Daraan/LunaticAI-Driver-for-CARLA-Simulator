@@ -14,6 +14,7 @@ from config.default_options.original_autopilot_behavior import AutopilotBehavior
 # or have bad vision from time to time
 # alternatively mange collision avoidance elsewhere
 
+# TODO: # CRITICAL: Parenting does not work 
 detection_angles = new_config("detection_angles", parent=obstacles)
 # angles are [low_angle_th, up_angle_th]
 detection_angles.walkers_lane_change = [0., 90.]

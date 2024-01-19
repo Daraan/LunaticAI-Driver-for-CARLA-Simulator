@@ -13,7 +13,16 @@ if TYPE_CHECKING:
 def always_execute(agent):
     return True
 
+#TODO: maybe create some omega conf dict creator that allows to create settings more easily
+# e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
+# QUESTION: How to merge more than one entry?
+
+# ------ Speed Rules ------
+
 def set_default_intersection_speed(agent):
+    """
+    Slow down the car when turning at a junction.
+    """
     target_speed = min([
             agent.config.speed.max_speed,
             agent.config.live_info.current_speed_limit - agent.config.speed.intersection_speed_decrease]
@@ -24,9 +33,16 @@ def set_default_intersection_speed(agent):
 normal_intersection_speed_rule = Rule(Phases.TURNING_AT_JUNCTION | Phases.BEGIN, 
                                       rule=always_execute, 
                                       action=set_default_intersection_speed, 
+                                      overwrite_settings= {"speed": {"intersection_speed_decrease": 10}},
                                       description="Set speed to intersection speed")
 
+# -----
+
 def set_default_speed(agent):
+    """
+    Speed to apply when the car drives under normal circumstances, 
+    i.e. no junctions, no obstacles, etc. detected.
+    """
     target_speed = min([
             agent.config.speed.max_speed,
             agent.config.live_info.current_speed_limit - agent.config.speed.speed_lim_dist])
@@ -41,7 +57,7 @@ normal_speed_rule = Rule(Phases.TAKE_NORMAL_STEP | Phases.BEGIN,
 
 def avoid_tailgator(agent : "LunaticAgent"):
     """
-    This method is in charge of tailgating behaviors.
+    If a tailgator is detected, move to the left/right lane if possible
 
         :param waypoint: current waypoint of the agent
         :param vehicle_list: list of all the nearby vehicles
@@ -79,7 +95,7 @@ def avoid_tailgator(agent : "LunaticAgent"):
             if  not detection_result.obstacle_was_found:
                 print("Tailgating, moving to the left!")
                 end_waypoint = agent._local_planner.target_waypoint
-                agent.config.other.tailgate_counter = 200
+                agent.config.other.tailgate_counter = 200  # TODO: Hardcoded
                 agent.set_destination(end_waypoint.transform.location,
                                         left_wpt.transform.location)
 
@@ -95,9 +111,10 @@ def avoid_tailgator_check(agent : "LunaticAgent") -> bool:
 
     return (agent.config.live_info.direction == RoadOption.LANEFOLLOW \
             and not waypoint.is_junction and agent.config.live_info.current_speed > 10  #TODO Hardcoded
-            and agent.config.other.tailgate_counter == 0)
+            and agent.config.other.tailgate_counter == 0 # Counter to not change lane too often
+            )
 
-Rule(Phases.DETECT_CARS | Phases.END,
-     rule=avoid_tailgator_check,
-     action=avoid_tailgator,
-     description="Avoid tailgating when followed by a faster car that is quite close.")
+avoid_tailgator_rule = Rule(Phases.DETECT_CARS | Phases.END,
+                            rule=avoid_tailgator_check,
+                            action=avoid_tailgator,
+                            description="Avoid tailgating when followed by a faster car that is quite close.")

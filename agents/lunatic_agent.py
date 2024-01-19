@@ -222,7 +222,7 @@ class LunaticAgent(BehaviorAgent):
 
 
     def add_rule(self, rule : Rule, position=-1):
-        self.rules.insert(position, rule)
+        self.rules.insert(position, rule) #TODO: return some ids for deletion, modification of rules.
         
 
     def execute_phase(self, phase, *, phase_results, control:carla.VehicleControl=None):
@@ -239,11 +239,28 @@ class LunaticAgent(BehaviorAgent):
                 rule(self, control=control, phase_results=phase_results)
 
     def run_step(self, debug=False):
-        # NOTE: This is our main entry point that runs every tick.        
+        """
+        This is our main entry point that runs every tick.  
+        """
+
+        # ----------------------------
+        # Phase 0 - Update Information
+        # ----------------------------
         self.execute_phase(Phases.UPDATE_INFORMATION | Phases.BEGIN)
         self.config.other.tailgate_counter = max(0, self.config.other.tailgate_counter - 1)
         self._update_information()
         self.execute_phase(Phases.UPDATE_INFORMATION | Phases.END)
+
+        # ----------------------------
+        # Phase 1 - Plan Path
+        # ----------------------------
+
+            # TODO: add option to diverge from existing path here, or plan a new path
+            # NOTE: Currently done in the local planner and behavior functions
+
+        # ----------------------------
+        # Phase 2 - Detection of Pedestrians and Traffic Lights
+        # ----------------------------
 
         # Detect hazards
         # phases are executed in detect_hazard
@@ -254,25 +271,38 @@ class LunaticAgent(BehaviorAgent):
         # Pedestrian avoidance behaviors
         # currently doing either emergency (detect_hazard) stop or nothing 
         if pedestrians_or_traffic_light:
+            # ----------------------------
+            # Phase Hazard Detected (traffic light or pedestrian)
+            # ----------------------------
             print("Hazard detected", pedestrians_or_traffic_light)
             (control, end_loop) = self.react_to_hazard(controls=None, hazard_detected=pedestrians_or_traffic_light)
             # Other behaviors based on hazard detection
             # TODO: needs overhaul 
-            if end_loop:
+            if end_loop: # Likely emergency stop
                 return control
     
         # Car following behaviors
+        # ----------------------------
+        # Phase 3 - Detection of Cars
+        # ----------------------------
         self.execute_phase(Phases.DETECT_CARS | Phases.BEGIN)
         detection_result = self.collision_and_car_avoid_manager(self._current_waypoint)
         # TODO: add a way to let the execution overwrite
         if detection_result.obstacle_was_found:
+            # ----------------------------
+            # Phase 2.A - React to cars in front
+            # TODO: turn this into a rule.
+            #    remove CAR_DETECTED -> pass detection_result to rules
+            # ----------------------------
             self.execute_phase(Phases.CAR_DETECTED | Phases.BEGIN)
-            # TODO some way to circumvent returning control here
+            # TODO some way to circumvent returning control here, like above.
             # TODO: Needs refinement with fthe car_following_behavior
+            # NOTE: can go into EMEGENCY phase
             control = self.car_following_behavior(*detection_result)
             self.execute_phase(Phases.CAR_DETECTED | Phases.END, control)
             return control
-        #TODO: maybe new phase
+        
+        #TODO: maybe new phase instead of END
         # NOte: avoiding tailgate here
         self.execute_phase(Phases.DETECT_CARS | Phases.END)     
         
@@ -280,11 +310,17 @@ class LunaticAgent(BehaviorAgent):
         # TODO: another phase that indicates a junction is coming up
         # NOTE: is_taking_turn == self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
         if self._incoming_waypoint.is_junction and self.is_taking_turn():
+            # ----------------------------
+            # Phase Turning at Junction
+            # ----------------------------
             self.execute_phase(Phases.TURNING_AT_JUNCTION | Phases.BEGIN)
             control = self.intersection_behavior() 
             self.execute_phase(Phases.TURNING_AT_JUNCTION | Phases.END, control)
             return control
 
+        # ----------------------------
+        # Phase 4 - Plan Path normally
+        # ----------------------------
         # Normal behavior
         self.execute_phase(Phases.TAKE_NORMAL_STEP | Phases.BEGIN)
         control = self.normal_behavior()
@@ -413,7 +449,7 @@ class LunaticAgent(BehaviorAgent):
     # TODO: see if max_distance is currently still necessary
     # TODO: move angles to config
     #@override
-    @wraps(agents.tools.detect_vehicles)
+    @wraps(agents.tools.lunatic_agent_tools.detect_vehicles)
     def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, 
                                    up_angle_th=90, 
                                    low_angle_th=0,
@@ -430,7 +466,7 @@ class LunaticAgent(BehaviorAgent):
         Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
         low_angle_th < angle < up_angle_th.
         """
-        detected_vehicle_distance = agents.tools.detect_vehicles(self, vehicle_list, max_distance, up_angle_th, low_angle_th, lane_offset)
+        detected_vehicle_distance = agents.tools.lunatic_agent_tools.detect_vehicles(self, vehicle_list, max_distance, up_angle_th, low_angle_th, lane_offset)
         return detected_vehicle_distance
 
 

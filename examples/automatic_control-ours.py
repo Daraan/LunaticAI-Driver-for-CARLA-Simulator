@@ -186,6 +186,9 @@ def game_loop(args):
                 world.render(display)
                 pygame.display.flip()
 
+
+                # TODO: Make this a rule and/or move inside agent
+                # TODO: make a Phases.DONE
                 if agent.done():
                     if args.loop:
                         agent.set_destination(random.choice(spawn_points).location)
@@ -194,11 +197,21 @@ def game_loop(args):
                     else:
                         print("The target has been reached, stopping the simulation")
                         break
-
+                
+                # ----------------------------
+                # Phase NONE - Before Running step
+                # ----------------------------
                 control = agent.run_step(debug=True)  # debug=True draws waypoints
-                control.manual_gear_shift = False
+                control.manual_gear_shift = False # TODO: turn into a rule
                 print("Appling control", control)
+                # ----------------------------
+                # Phase 5 - Apply Control to Vehicle
+                # ----------------------------
+                # TODO: add execution of rules here:
+                agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.BEGIN, control)
                 world.player.apply_control(control)
+                agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.END, control)
+                
                 # if i % 50 == 0:
                 #    print("Tailgate Counter", agent._behavior.tailgate_counter)
                 i += 1

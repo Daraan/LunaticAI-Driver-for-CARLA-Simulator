@@ -14,8 +14,8 @@ speed:
   speed_lim_dist: 6
   vehicle_percentage_speed_difference: 30
   intersection_speed_decrease: 5.0
-  intersection_target_speed: ${min:${.max_speed}, 
-    ${subtract:${.current_speed_limit}, ${.intersection_speed_decrease}}}
+  intersection_target_speed: ${min:${.max_speed}, ${subtract:${.current_speed_limit},
+    ${.intersection_speed_decrease}}}
 distance:
   base_min_distance: 3.0
   distance_ratio: 0.5
