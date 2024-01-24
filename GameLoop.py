@@ -17,7 +17,6 @@ vehicles = []
 
 def main():
     global spawner, vehicles
-    carlaService = CarlaService("Town04", "127.0.0.1", 2000)
 
     # Initialise the class for vehicle spawning
     spawner = VehicleSpawner('VehicleSpawning/config/vehicle_spawn.yaml')
@@ -28,9 +27,7 @@ def main():
     # Spawn vehicles and assign drivers
     ego = spawner.spawn_vehicles(world, ego_bp, spawn_points)
     ego_vehicle = spawner.assign_drivers(ego, driver1)
-    driver1 = Driver("config/aggressive_driver.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
     # Spawn traffic
     vehicles, tm = spawner.spawn_traffic(world, car_bp, spawn_points, driver1, ego.vehicle)
 
