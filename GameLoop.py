@@ -1,17 +1,19 @@
 import random
 import threading
 import time
+from asyncio import Queue
 
 import carla
 
 import utils
-from Camera import follow_car, camera_function
+from Camera import camera_function
 from DataGathering.informationUtils import get_all_road_lane_ids
+from DataGathering.run_matrix import matrix_function
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
-from matrix_wrap import wrap_matrix_functionalities, get_car_coords
+from DataGathering.matrix_wrap import get_car_coords, wrap_matrix_functionalities
 
 vehicles = []
 
@@ -43,10 +45,18 @@ def main():
     carlaService.assignDriver(ego, driver1)
 
     ego_vehicle = ego.actor
-    vehicle_type = ego_vehicle.type_id
 
     # spawn others
-    for sp in spawn_points[1:]:
+    for sp in spawn_points[1:5]:
+        v = Vehicle(world, car_bp)
+        v.spawn(sp)
+        vehicles.append(v)
+        ap = TrafficManager(client, v.actor, speed_limit_scale=-driver1.speed_range[1],
+                            min_front_distance=driver1.distance_range[0])
+        ap.init_lunatic_driver()
+        ap.start_drive()
+
+    for sp in spawn_points[5:]:
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
@@ -77,17 +87,18 @@ def main():
 
     while time.time() < t_end:
         try:
-            # follow_car(ego_vehicle, world)
-            disable_collision = random.randint(1, 100)
+            disable_collision = random.randint(1, 1000)
             if disable_collision <= driver1.ignore_obstacle_chance:
                 driver1.vehicle.actor.set_autopilot(False)
-                driver1.vehicle.setThrottle(200)
+                driver1.vehicle.setThrottle(20)
                 print("Crazy")
                 time.sleep(1)
-
-            driver1.vehicle.actor.set_autopilot(True)
+                driver1.vehicle.actor.set_autopilot(True)
+                driver1.vehicle.setThrottle(0)
+                print("Crazy over")
 
             matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
+
             # print(matrix)
             ego_location = ego_vehicle.get_location()
             ego_waypoint = world_map.get_waypoint(ego_location)
@@ -97,13 +108,15 @@ def main():
             # random brake check
             brake_check_choice = random.randint(1, 100)
             if (brake_check_choice <= driver1.brake_check_chance
-                    and (matrix[i_car][j_car - 1] == 2 or matrix[i_car][j_car - 2])
+                    and (matrix[i_car][j_car - 1] == 2)
             ):
-                driver1.vehicle.setThrottle(0)
-                driver1.vehicle.setBrake(0)
                 driver1.vehicle.actor.set_autopilot(False)
+                driver1.vehicle.setThrottle(0)
+                driver1.vehicle.setBrake(10)
                 time.sleep(1.0)
                 print("Brake check")
+                driver1.vehicle.setBrake(0)
+                driver1.vehicle.actor.set_autopilot(True)
 
             overtake_direction = 0
             # Random lane change
@@ -118,7 +131,7 @@ def main():
                 else:
                     overtake_direction = random.choice([-1, 1])
                     tm.force_overtake(100, overtake_direction)
-                print("Risky overtake!")
+                print("Random lane change")
                 continue
 
             if matrix[i_car + 1][j_car + 1] == 0:
