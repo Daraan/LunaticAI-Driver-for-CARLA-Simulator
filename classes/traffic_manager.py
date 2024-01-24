@@ -1,3 +1,7 @@
+"""
+Uses the built in carla.TrafficManager to use the autopilot written in C.
+"""
+
 class TrafficManager:
     tm = None
 
