@@ -80,7 +80,7 @@ def game_loop(args):
         # carlaService = CarlaService("Town04", "127.0.0.1", 2000)
 
         # Set the agent destination
-       # import os
+        # import os
         #print(os.path.exists("examples/highway_example_car_positions.csv"))
         #print(os.getcwd())
         #import time
@@ -169,7 +169,6 @@ def game_loop(args):
         ego.set_target_velocity(carla.Vector3D(-7.5, 0, 0))
 
         def loop():
-
             args.loop = True
 
             i = 0
@@ -186,10 +185,10 @@ def game_loop(args):
                 world.render(display)
                 pygame.display.flip()
 
-
                 # TODO: Make this a rule and/or move inside agent
                 # TODO: make a Phases.DONE
                 if agent.done():
+                    agent.execute_phase(Phases.DONE| Phases.BEGIN, prior_results=None, control=control)
                     if args.loop:
                         agent.set_destination(random.choice(spawn_points).location)
                         world.hud.notification("Target reached", seconds=4.0)
@@ -197,20 +196,26 @@ def game_loop(args):
                     else:
                         print("The target has been reached, stopping the simulation")
                         break
+                    agent.execute_phase(Phases.DONE| Phases.END, prior_results=None, control=control)
                 
                 # ----------------------------
                 # Phase NONE - Before Running step
                 # ----------------------------
                 control = agent.run_step(debug=True)  # debug=True draws waypoints
-                control.manual_gear_shift = False # TODO: turn into a rule
-                print("Appling control", control)
+
                 # ----------------------------
                 # Phase 5 - Apply Control to Vehicle
                 # ----------------------------
-                # TODO: add execution of rules here:
-                agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.BEGIN, control)
+
+                # TODO: Remove phase > EXECUTION | BEGIN 
+                agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.BEGIN, prior_results=None, control=control)
+                control.manual_gear_shift = False # TODO: turn into a rule
+                agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.END, prior_results=None, control=control)
+                print("Appling control", control)
+
+                agent.execute_phase(Phases.EXECUTION | Phases.BEGIN, prior_results=None, control=control)
                 world.player.apply_control(control)
-                agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.END, control)
+                agent.execute_phase(Phases.EXECUTION | Phases.END, prior_results=None, control=control)
                 
                 # if i % 50 == 0:
                 #    print("Tailgate Counter", agent._behavior.tailgate_counter)

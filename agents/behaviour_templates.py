@@ -105,7 +105,9 @@ def avoid_tailgator_check(agent : "LunaticAgent") -> bool:
     Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
     and did not avoided tailgating in the last 200 steps
 
-    Assumes: No car in front/side (which is a hazard in itself)
+    ASSUMES: No car in front/side (which is a hazard in itself) found in DETECT_CARS phase
+    
+    # TODO: add option in rule to receive the result of the DETECT_CARS phase
     """
     waypoint = agent._current_waypoint
 

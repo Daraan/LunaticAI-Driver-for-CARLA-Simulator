@@ -44,7 +44,6 @@ class Phases(Flag):
 
     UPDATE_INFORMATION = auto()
     PHASE_0 = UPDATE_INFORMATION
-    START_STEP = PHASE_0 | BEGIN
 
     PLAN_PATH = auto()
     PHASE_1 = PLAN_PATH # alias
@@ -74,12 +73,13 @@ class Phases(Flag):
     EMERGENCY = auto()
     COLLISION = auto()
     # States which the agent can be in outside of a normal Phase0-5 loop 
-    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION
+    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED 
 
     NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP | MODIFY_FINAL_CONTROLS
     IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
 
     EXECUTION = auto() # Out of loop
+    DONE = auto() # agent.done() -> True
     """
     def __eq__(self, other):
         # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION
@@ -92,10 +92,9 @@ class Phases(Flag):
 
     def next_phase(self):
         # Hardcoded transitions
-        print(self)
-        if self is Phases.NONE: # Begin loop
+        if self in (Phases.NONE, Phases.EXECUTION|Phases.END, Phases.DONE|Phases.END): # Begin loop
             return Phases.BEGIN | Phases.UPDATE_INFORMATION
-        if self is Phases.END | Phases.EXECUTION: # End loop
+        if self in (Phases.END | Phases.EXECUTION, Phases.DONE| Phases.END) : # End loop
             return Phases.NONE
         if self is Phases.MODIFY_FINAL_CONTROLS | Phases.END: # do not go into emergency state
             return Phases.EXECUTION | Phases.BEGIN
