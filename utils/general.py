@@ -2,7 +2,7 @@
 """Contains snippets that can can import/export vehicle positions from/to csv files."""
 
 import pandas as pd
-from carla import Location, Rotation, Transform
+from carla.libcarla import Location, Rotation, Transform
 
 
 def get_actor_display_name(actor, truncate=250):

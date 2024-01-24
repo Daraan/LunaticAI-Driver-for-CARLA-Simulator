@@ -10,11 +10,11 @@ class AutopilotBehavior(BehaviorAgentSettings):
     NOTE: That default values do not exist for most settings; we should set it to something reasonable.
     """
 
-    lane_change.auto_lange_change: bool = True  # Turns on or off lane changing behaviour for a vehicle. 
+    lane_change.auto_lane_change: bool = True  # Turns on or off lane changing behaviour for a vehicle. 
     
     # "Sets a lane offset displacement from the center line. Positive values imply a right offset while negative ones mean a left one. 
     # Default is 0. Numbers high enough to cause the vehicle to drive through other lanes might break the controller."
-    other.vehicle_lane_offset : str = "${..planer.offset}"
+    other.vehicle_lane_offset : str = "${controls.offset}"
 
     #Adjust probability that in each timestep the actor will perform a left/right lane change, 
     # dependent on lane change availability. 

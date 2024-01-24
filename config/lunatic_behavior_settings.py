@@ -1,6 +1,6 @@
 from omegaconf import DictConfig, OmegaConf 
 
-from config.settings_base_class import new_config, obstacles
+from config.settings_base_class import new_config, obstacles, speed
 from config.default_options.original_behavior import BehaviorAgentSettings
 from config.default_options.original_autopilot_behavior import AutopilotBehavior
 
@@ -14,6 +14,7 @@ from config.default_options.original_autopilot_behavior import AutopilotBehavior
 # or have bad vision from time to time
 # alternatively mange collision avoidance elsewhere
 
+# TODO: # CRITICAL: Parenting does not work 
 detection_angles = new_config("detection_angles", parent=obstacles)
 # angles are [low_angle_th, up_angle_th]
 detection_angles.walkers_lane_change = [0., 90.]
@@ -30,6 +31,17 @@ detection_angles.cars_adjust_angle =[20, -50]
 
 
 # Implemented -----
+
+speed.intersection_speed_decrease = 5.0
+OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
+OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
+OmegaConf.register_new_resolver("min", lambda *els: min(els))
+speed.intersection_target_speed = "${min:${.max_speed}, ${subtract:${.current_speed_limit}, ${.intersection_speed_decrease}}}"
+
+print(OmegaConf.to_yaml(speed))
+
+obstacles.dynamic_threshold_by_speed = True
+
 emergency = new_config("emergency")
 
 emergency.ignore_percentage : float = 0.0
@@ -49,6 +61,8 @@ class LunaticBehaviorSettings(AutopilotBehavior):
     def __init__(self, overwrites=None):
         super().__init__()
         if overwrites is not None:
+            if not isinstance(overwrites, DictConfig):
+                overwrites = OmegaConf.create(overwrites)
             self._options = OmegaConf.merge(self._options, overwrites)
         #self._options = self.init_default_options.copy()
 

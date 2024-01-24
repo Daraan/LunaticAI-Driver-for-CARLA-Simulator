@@ -63,10 +63,10 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     """
 
     # --------------------------
-    # Planer Level
+    # Planner Level
     # --------------------------
-    speed.current_speed = "${..live_info.current_speed}" # This is a reference to live_info.speed, which is updated by the agent
-    speed.current_speed_limit = "${..live_info.current_speed_limit}" # This is a reference to live_info.speed_limit, which is updated by the agent
+    speed.current_speed = "${live_info.current_speed}" # This is a reference to live_info.speed, which is updated by the agent
+    speed.current_speed_limit = "${live_info.current_speed_limit}" # This is a reference to live_info.speed_limit, which is updated by the agent
     
     speed.target_speed : float = 20  # desired cruise speed in Km/h; overwritten by SpeedLimit if follow_speed_limit is True
     speed.follow_speed_limits : bool = False  # NOTE: SpeedLimit overwrites target_speed if True (local_planner.py)
@@ -78,7 +78,7 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     # USAGE: min_distance = base_min_distance + distance_ratio * vehicle_speed # see local_planner.py run_step()
 
     # --------------------------
-    # PIDController Level (called from planer)
+    # PIDController Level (called from planner)
     # --------------------------
     controls.max_brake : float = 0.5  # vehicle control how strong the brake is used, # NOTE: Also used in emergency stop
     controls.max_throttle : float = 0.75  # maximum throttle applied to the vehicle
@@ -99,11 +99,11 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     """
     # values of the lateral PID controller
     planner.lateral_control_dict = {'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2, 'dt': "${..dt}"} # original values
-    planner.args_lateral_dict = "${lateral_control_dict}"
+    planner.args_lateral_dict = "${.lateral_control_dict}"
 
     # values of the longitudinal PID controller
     planner.longitudinal_control_dict = {'K_P': 1.0, 'K_I': 0.05, 'K_D': 0, 'dt': "${..dt}"} # Note: ${..dt} points to planner.dt, similar to a directory
-    planner.args_longitudinal_dict = "${longitudinal_control_dict}" # points to the variable above
+    planner.args_longitudinal_dict = "${.longitudinal_control_dict}" # points to the variable above
 
     # ---------------------
     # End of settings

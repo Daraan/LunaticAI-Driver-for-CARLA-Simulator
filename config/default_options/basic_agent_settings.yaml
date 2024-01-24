@@ -3,8 +3,8 @@ live_info:
   current_speed_limit: null
   direction: null
 speed:
-  current_speed: ${..live_info.current_speed}
-  current_speed_limit: ${..live_info.current_speed_limit}
+  current_speed: ${live_info.current_speed}
+  current_speed_limit: ${live_info.current_speed_limit}
   target_speed: 20
   follow_speed_limits: false
 distance:
@@ -31,13 +31,13 @@ planner:
     K_I: 0.05
     K_D: 0.2
     dt: ${..dt}
-  args_lateral_dict: ${lateral_control_dict}
+  args_lateral_dict: ${.lateral_control_dict}
   longitudinal_control_dict:
     K_P: 1.0
     K_I: 0.05
     K_D: 0
     dt: ${..dt}
-  args_longitudinal_dict: ${longitudinal_control_dict}
+  args_longitudinal_dict: ${.longitudinal_control_dict}
 other: {}
 unknown:
   use_bbs_detection: false

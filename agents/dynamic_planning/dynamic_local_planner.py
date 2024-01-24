@@ -4,18 +4,20 @@
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
 """ This module contains a local planner to perform low-level waypoint following based on PID controllers. """
-
-from agents.navigation import local_planner 
-from agents.navigation.local_planner import LocalPlanner, RoadOption
-
 from collections import deque
 import random
-
+from omegaconf import DictConfig
 import carla
+
+from typing import NamedTuple
+
+from agents.navigation import local_planner 
+from agents.navigation.local_planner import LocalPlanner, RoadOption, PlannedWaypoint
+
+
 from agents.dynamic_planning.dynamic_controller import DynamicVehiclePIDController
 from agents.tools.misc import draw_waypoints, get_speed
 
-from omegaconf import DictConfig
 
 '''
 # left here for reference
@@ -32,6 +34,7 @@ class RoadOption(IntEnum):
     CHANGELANELEFT = 5
     CHANGELANERIGHT = 6
 '''
+
 
 
 class DynamicLocalPlanner(LocalPlanner):
@@ -87,6 +90,9 @@ class DynamicLocalPlanner(LocalPlanner):
         # initializing controller
         self._init_controller()
 
+    @property
+    def next_target(self) -> PlannedWaypoint: 
+        return self._waypoints_queue[0]
 
     def _init_controller(self):
         """Controller initialization"""
@@ -95,7 +101,7 @@ class DynamicLocalPlanner(LocalPlanner):
         # Compute the current vehicle waypoint
         current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
         self.target_waypoint, self.target_road_option = (current_waypoint, RoadOption.LANEFOLLOW)
-        self._waypoints_queue.append((self.target_waypoint, self.target_road_option))
+        self._waypoints_queue.append(PlannedWaypoint(self.target_waypoint, self.target_road_option))
 
     def set_speed(self, speed):
         """
@@ -120,7 +126,7 @@ class DynamicLocalPlanner(LocalPlanner):
 
     @property # allows to use _compute_next_waypoints of parent
     def _sampling_radius(self):
-        return self.config.planer.sampling_radius 
+        return self.config.planner.sampling_radius 
 
     # set_global_plan -> parent
 
@@ -172,7 +178,7 @@ class DynamicLocalPlanner(LocalPlanner):
             control.manual_gear_shift = False
         else:
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
-            control = self._vehicle_controller.run_step(self.config.speed.target_speed, self.target_waypoint)
+            control = self._vehicle_controller.run_step(self.target_waypoint)
 
         if debug:
             draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)

@@ -50,7 +50,7 @@ class DynamicVehiclePIDController(VehiclePIDController):
         self._lon_controller = DynamicPIDLongitudinalController(vehicle, config)
         self._lat_controller = DynamicPIDLateralController(vehicle, config)
 
-    def run_step(self, target_speed, waypoint):
+    def run_step(self, waypoint):
         """
         Execute one step of control invoking both lateral and longitudinal
         PID controllers to reach a target waypoint
@@ -60,8 +60,7 @@ class DynamicVehiclePIDController(VehiclePIDController):
             :param waypoint: target location encoded as a waypoint
             :return: distance (in meters) to the waypoint
         """
-
-        acceleration = self._lon_controller.run_step(target_speed)
+        acceleration = self._lon_controller.run_step()
         current_steering = self._lat_controller.run_step(waypoint)
         control = carla.VehicleControl()
         if acceleration >= 0.0:

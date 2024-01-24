@@ -14,6 +14,9 @@ import carla
 from agents.navigation.controller import VehiclePIDController
 from agents.tools.misc import draw_waypoints, get_speed
 
+from typing import NamedTuple
+
+
 
 class RoadOption(IntEnum):
     """
@@ -28,6 +31,9 @@ class RoadOption(IntEnum):
     CHANGELANELEFT = 5
     CHANGELANERIGHT = 6
 
+class PlannedWaypoint(NamedTuple):
+    waypoint: carla.Waypoint
+    road_option: RoadOption
 
 class LocalPlanner(object):
     """
@@ -137,7 +143,7 @@ class LocalPlanner(object):
         # Compute the current vehicle waypoint
         current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
         self.target_waypoint, self.target_road_option = (current_waypoint, RoadOption.LANEFOLLOW)
-        self._waypoints_queue.append((self.target_waypoint, self.target_road_option))
+        self._waypoints_queue.append(PlannedWaypoint(self.target_waypoint, self.target_road_option))
 
     def set_speed(self, speed):
         """
@@ -189,7 +195,7 @@ class LocalPlanner(object):
                 next_waypoint = next_waypoints[road_options_list.index(
                     road_option)]
 
-            self._waypoints_queue.append((next_waypoint, road_option))
+            self._waypoints_queue.append(PlannedWaypoint(next_waypoint, road_option))
 
     def set_global_plan(self, current_plan, stop_waypoint_creation=True, clean_queue=True):
         """
