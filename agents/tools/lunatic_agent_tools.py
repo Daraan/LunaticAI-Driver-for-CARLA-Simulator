@@ -176,7 +176,9 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
     if self.config.obstacles.ignore_vehicles:
         return ObstacleDetectionResult(False, None, -1)
 
-    if not vehicle_list:
+    if vehicle_list is None:
+        # NOTE: If empty list is passed e.g. for walkers this pulls all vehicles
+        # TODO: Propose update to original carla
         vehicle_list = self._world.get_actors().filter("*vehicle*")
 
     if not max_distance:
