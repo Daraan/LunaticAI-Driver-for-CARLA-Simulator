@@ -28,7 +28,6 @@ from agents.lunatic_agent import LunaticAgent
 
 from classes.carla_originals.HUD import HUD
 from classes.carla_originals.world import World
-#from classes.traffic_manager_daniel import TrafficManagerD
 from classes.vehicle import Vehicle
 from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 

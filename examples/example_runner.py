@@ -1,3 +1,7 @@
+"""
+Executing this files allows to run all files in the examples folder.
+"""
+
 import os
 import sys
 

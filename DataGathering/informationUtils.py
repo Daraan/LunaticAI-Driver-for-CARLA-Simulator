@@ -4,6 +4,8 @@ import math
 import carla
 import numpy as np
 
+from utils.logging import log
+
 
 def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
     ego_vehicle_waypoint = world_map.get_waypoint(ego_vehicle_location)
