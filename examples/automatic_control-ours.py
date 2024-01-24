@@ -211,7 +211,7 @@ def game_loop(args):
                 agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.BEGIN, prior_results=None, control=control)
                 control.manual_gear_shift = False # TODO: turn into a rule
                 agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.END, prior_results=None, control=control)
-                print("Appling control", control)
+                #print("Appling control", control)
 
                 agent.execute_phase(Phases.EXECUTION | Phases.BEGIN, prior_results=None, control=control)
                 world.player.apply_control(control)

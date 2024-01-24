@@ -73,13 +73,14 @@ class Phases(Flag):
     EMERGENCY = auto()
     COLLISION = auto()
     # States which the agent can be in outside of a normal Phase0-5 loop 
-    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED 
-
-    NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP | MODIFY_FINAL_CONTROLS
-    IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
 
     EXECUTION = auto() # Out of loop
     DONE = auto() # agent.done() -> True
+
+    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED| DONE 
+
+    NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP | MODIFY_FINAL_CONTROLS
+    IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
     """
     def __eq__(self, other):
         # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION

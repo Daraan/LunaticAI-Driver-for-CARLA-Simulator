@@ -3,8 +3,9 @@ from agents.navigation.local_planner import RoadOption
 from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
     import carla
+    from agents.lunatic_agent import LunaticAgent
 
-def pedestrian_avoid_manager(self, waypoint : "carla.Waypoint") -> ObstacleDetectionResult:
+def pedestrian_avoid_manager(self : "LunaticAgent", waypoint : "carla.Waypoint") -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     with any pedestrian.
@@ -15,7 +16,7 @@ def pedestrian_avoid_manager(self, waypoint : "carla.Waypoint") -> ObstacleDetec
         :return vehicle: nearby walker
         :return distance: distance to nearby walker
     """
-
+    # TODO: # CRITICAL: This for some reasons also detects vehicles as pedestrians
     walker_list = self._world.get_actors().filter("*walker.pedestrian*")
 
     def dist(w):

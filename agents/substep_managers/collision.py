@@ -23,5 +23,5 @@ def collision_manager(self, event: carla.CollisionEvent):
     """
     What to do in case of a collision
     """
-    print("Collision detected!", event)
+    print("Collision detected!", event, "during", self.phase)
     print("WARNING: Collision manager not implemented yet!")

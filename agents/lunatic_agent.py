@@ -26,6 +26,7 @@ from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleD
 
 from agents.navigation.behavior_agent import BehaviorAgent
 from agents.tools.lunatic_agent_tools import Phases
+import agents.tools.lunatic_agent_tools
 
 # NEW: Style
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
@@ -256,6 +257,9 @@ class LunaticAgent(BehaviorAgent):
         # Phase 1 - Plan Path
         # ----------------------------
 
+        # TODO: What TODO if the last phase was COLLISION, EMERGENCY
+        # Some information to PLAN_PATH should reflect this
+
         # TODO: add option to diverge from existing path here, or plan a new path
         # NOTE: Currently done in the local planner and behavior functions
         self.execute_phase(Phases.PLAN_PATH | Phases.BEGIN, prior_results=None)
@@ -284,6 +288,8 @@ class LunaticAgent(BehaviorAgent):
             (control, end_loop) = self.react_to_hazard(control=None, hazard_detected=pedestrians_or_traffic_light)
             # Other behaviors based on hazard detection
             if end_loop: # Likely emergency stop
+                # TODO: overhaul -> this might not be the best place to do this
+                self.execute_phase(Phases.EMERGENCY | Phases.END, prior_results=pedestrians_or_traffic_light, control=control)
                 return control
     
         # ----------------------------
@@ -365,11 +371,15 @@ class LunaticAgent(BehaviorAgent):
         print("Hazard(s) detected: ", hazard_detected)
         
         end_loop = True
+
         if "pedestrian" in hazard_detected:
-            pass
+            pass # Maybe let rules handle this and remove
         if "traffic_light" in hazard_detected:
             pass
+        # TODO: PRIORITY: let execute_phase handle end_loop
+        self.execute_phase(Phases.EMERGENCY | Phases.BEGIN, prior_results=hazard_detected)
         control = self.add_emergency_stop(control)
+        self.execute_phase(Phases.EMERGENCY | Phases.END, control=control, prior_results=hazard_detected)
         print("Emergency controls", control)
         return control, end_loop
     
@@ -377,6 +387,8 @@ class LunaticAgent(BehaviorAgent):
     # TODO: Section needs overhaul -> turn into rules
 
     def pedestrian_avoidance_behavior(self, ego_vehicle_wp):
+        # TODO: # CRITICAL: This for some reasons also detects vehicles as pedestrians
+        # note ego_vehicle_wp is the current waypoint self._current_waypoint
         detection_result = self.pedestrian_avoid_manager(ego_vehicle_wp)
         if (detection_result.obstacle_was_found
             and (detection_result.distance - max(detection_result.obstacle.bounding_box.extent.y, 
