@@ -10,7 +10,8 @@
       "to": 0.75
     },
     "overtake_mistake_chance": "0",
-    "risky_overtake_chance": "75",
-    "ignore_obstacle_chance": "1"
+    "risky_overtake_chance": "5",
+    "ignore_obstacle_chance": "1",
+    "brake_check_chance": "5"
   }
 }
