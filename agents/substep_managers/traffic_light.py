@@ -6,8 +6,9 @@ from agents.tools.misc import (is_within_distance,
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
-    import carla
-    pass
+def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
+    return traffic_light.state == carla.TrafficLightState.Red
+
 def affected_by_traffic_light(self : "LunaticAgent", 
                               lights_list : List["carla.TrafficLight"]=None, 
                               max_distance : float=None) -> TrafficLightDetectionResult:
@@ -37,7 +38,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
         ego_vehicle_location = self._vehicle.get_location()
         ego_vehicle_waypoint = self._map.get_waypoint(ego_vehicle_location)
 
-        for traffic_light in lights_list:
+        for traffic_light in filter(_is_red_light, lights_list):
             if traffic_light.id in self._lights_map:
                 trigger_wp = self._lights_map[traffic_light.id]
             else:
@@ -56,9 +57,6 @@ def affected_by_traffic_light(self : "LunaticAgent",
             dot_ve_wp = ve_dir.x * wp_dir.x + ve_dir.y * wp_dir.y + ve_dir.z * wp_dir.z
 
             if dot_ve_wp < 0:
-                continue
-
-            if traffic_light.state != carla.TrafficLightState.Red:
                 continue
 
             if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]):
