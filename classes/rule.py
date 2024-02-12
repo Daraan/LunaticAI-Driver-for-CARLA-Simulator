@@ -1,3 +1,4 @@
+from enum import IntEnum
 from typing import Any, Set, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
 from collections.abc import Iterable
 

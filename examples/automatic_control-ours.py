@@ -189,6 +189,7 @@ def game_loop(args):
                 if agent.done():
                     agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
                     if args.loop:
+                        # TODO: Rule / Action to define next waypoint
                         agent.set_destination(random.choice(spawn_points).location)
                         world.hud.notification("Target reached", seconds=4.0)
                         print("The target has been reached, searching for another target")
@@ -222,6 +223,7 @@ def game_loop(args):
                 i += 1
             agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
 
+        # Interactive
         if "-I" in sys.argv:
             thread = threading.Thread(target=loop)
             thread.start()

@@ -2,6 +2,7 @@
 # NOTE it might has to use synchonous_mode
 import re
 import sys
+from typing import Optional
 
 import carla
 import numpy.random as random
