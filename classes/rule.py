@@ -8,6 +8,17 @@ from utils.evaluation_function import EvaluationFunction
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 
+class RulePriority(IntEnum):
+    """
+    Priority of a rule. The smaller a value, the higher the priority.
+    Rules are sorted by their priority before being applied.
+    """
+    HIGHEST = -10
+    HIGH = -5
+    NORMAL = 0
+    LOW = 5
+    LOWEST = 10
+
 class Rule:
     def __init__(self, 
                  phases : Union[Phase, Iterable], # iterable of Phases
