@@ -352,12 +352,17 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.BEGIN, prior_results=None)
         tlight_detection_result = self.traffic_light_manager()
         if tlight_detection_result.traffic_light_was_found:
-            hazard_detected.add("traffic_light")
+            hazard_detected.add(Hazard.TRAFFIC_LIGHT)             #TODO: Currently cannot give fine grained priority results
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.END, prior_results=tlight_detection_result)
 
         # Pedestrian avoidance behaviors
         self.execute_phase(Phase.DETECT_PEDESTRIANS | Phase.BEGIN, prior_results=None)
         hazard, detection_result = self.pedestrian_avoidance_behavior(self._current_waypoint)
+        if detection_result.obstacle_was_found:
+            if hazard:   #TODO: Currently cannot give very fine grained priority results, i.e. slow down or stop
+                hazard_detected.add(Hazard.PEDESTRIAN | Hazard.EMERGENCY)
+            else:
+                hazard_detected.add(Hazard.PEDESTRIAN | Hazard.WARNING)
         self.execute_phase(Phase.DETECT_PEDESTRIANS | Phase.END, prior_results=(hazard, detection_result))
         
         return hazard_detected

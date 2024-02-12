@@ -1,4 +1,4 @@
-from enum import Flag, auto
+from enum import Enum, Flag, auto
 from shapely.geometry import Polygon
 from functools import lru_cache, partial
 
@@ -129,6 +129,23 @@ class Phase(Flag):
         if phase is None:
             return cls.NONE
         return getattr(cls, f"PHASE_{phase}") | (Phase.END if end else Phase.BEGIN)
+    
+class Hazard(Flag):
+    # Type
+    TRAFFIC_LIGHT = auto()
+    PEDESTRIAN = auto()
+    CAR = auto()
+    OBSTACLE = PEDESTRIAN | CAR
+    OTHER = auto()
+
+    JUNCTION = auto() # maybe
+
+    # Severity
+    WARNING = auto()
+    CRITICAL = WARNING | auto()
+    EMERGENCY = CRITICAL | auto()
+
+    COLLISION = auto()
     
 
 
