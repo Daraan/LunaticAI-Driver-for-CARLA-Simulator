@@ -29,8 +29,6 @@ class Phase(Flag):
     <Phases.DETECT_CARS|END: 66>,
     <Phases.POST_DETECTION_PHASE|BEGIN: 129>,
     <Phases.POST_DETECTION_PHASE|END: 130>,
-    <Phases.MODIFY_FINAL_CONTROLS|BEGIN: 257>,
-    <Phases.MODIFY_FINAL_CONTROLS|END: 258>,
     <Phases.EXECUTION|BEGIN: 1025>,
     <Phases.EXECUTION|END: 1026>
     """
@@ -166,6 +164,17 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
     Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
     low_angle_th < angle < up_angle_th.
     """
+
+    if self.config.obstacles.ignore_vehicles:
+        return ObstacleDetectionResult(False, None, -1)
+    
+    if vehicle_list is None:
+        # NOTE: If empty list is passed e.g. for walkers this pulls all vehicles
+        # TODO: Propose update to original carla
+        vehicle_list = self._world.get_actors().filter("*vehicle*")
+    elif len(vehicle_list) == 0: # Case for no pedestrians
+        return ObstacleDetectionResult(False, None, -1)
+
     def get_route_polygon():
         # Note nested functions can access variables from the outer scope
         route_bb = []
@@ -192,13 +201,8 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
 
         return Polygon(route_bb)
 
-    if self.config.obstacles.ignore_vehicles:
-        return ObstacleDetectionResult(False, None, -1)
 
-    if vehicle_list is None:
-        # NOTE: If empty list is passed e.g. for walkers this pulls all vehicles
-        # TODO: Propose update to original carla
-        vehicle_list = self._world.get_actors().filter("*vehicle*")
+    
 
     if not max_distance:
         max_distance = self.config.obstacles.base_vehicle_threshold
