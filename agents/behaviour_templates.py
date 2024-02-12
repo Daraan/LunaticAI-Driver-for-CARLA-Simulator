@@ -2,7 +2,7 @@ import carla
 from agents.navigation.local_planner import RoadOption
 
 from classes.rule import Rule, EvaluationFunction
-from agents.tools.lunatic_agent_tools import Phases, detect_vehicles
+from agents.tools.lunatic_agent_tools import Phase, detect_vehicles
 from agents.tools.misc import get_speed
 
 from typing import TYPE_CHECKING, List
@@ -30,7 +30,7 @@ def set_default_intersection_speed(agent):
     # NOTE: could interpolate this in omega conf
     agent.config.speed.target_speed = target_speed
     
-normal_intersection_speed_rule = Rule(Phases.TURNING_AT_JUNCTION | Phases.BEGIN, 
+normal_intersection_speed_rule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
                                       rule=always_execute, 
                                       action=set_default_intersection_speed, 
                                       overwrite_settings= {"speed": {"intersection_speed_decrease": 10}},
@@ -48,7 +48,7 @@ def set_default_speed(agent):
             agent.config.live_info.current_speed_limit - agent.config.speed.speed_lim_dist])
     agent.config.speed.target_speed = target_speed
 
-normal_speed_rule = Rule(Phases.TAKE_NORMAL_STEP | Phases.BEGIN,
+normal_speed_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
                         rule=always_execute,
                         action=set_default_speed,
                         description="Set speed to normal speed")
@@ -116,7 +116,7 @@ def avoid_tailgator_check(agent : "LunaticAgent") -> bool:
             and agent.config.other.tailgate_counter == 0 # Counter to not change lane too often
             )
 
-avoid_tailgator_rule = Rule(Phases.DETECT_CARS | Phases.END,
+avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,
                             rule=avoid_tailgator_check,
                             action=avoid_tailgator,
                             description="Avoid tailgating when followed by a faster car that is quite close.")

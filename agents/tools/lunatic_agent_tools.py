@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, NamedTuple, Union
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 
-
-class Phases(Flag):
+class Phase(Flag):
     """
     Order of Looped through by the agent is:
     <Phases.NONE: 0>,
@@ -63,8 +62,8 @@ class Phases(Flag):
     TAKE_NORMAL_STEP = auto()
     PHASE_4 = TAKE_NORMAL_STEP # alias
 
-    MODIFY_FINAL_CONTROLS = auto()
-    PHASE_5 = MODIFY_FINAL_CONTROLS # out of loop
+    EXECUTION = auto() # Out of loop
+    PHASE_5 = EXECUTION # out of loop
 
     # --- Special situations ---
 
@@ -74,13 +73,15 @@ class Phases(Flag):
     COLLISION = auto()
     # States which the agent can be in outside of a normal Phase0-5 loop 
 
-    EXECUTION = auto() # Out of loop
+
     DONE = auto() # agent.done() -> True
 
-    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED| DONE 
+    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE 
 
-    NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP | MODIFY_FINAL_CONTROLS
+    NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP
     IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
+
+    TERMINATING = auto() # When closing the loop
     """
     def __eq__(self, other):
         # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION
@@ -93,32 +94,32 @@ class Phases(Flag):
 
     def next_phase(self):
         # Hardcoded transitions
-        if self in (Phases.NONE, Phases.EXECUTION|Phases.END, Phases.DONE|Phases.END): # Begin loop
-            return Phases.BEGIN | Phases.UPDATE_INFORMATION
-        if self in (Phases.END | Phases.EXECUTION, Phases.DONE| Phases.END) : # End loop
-            return Phases.NONE
-        if self is Phases.MODIFY_FINAL_CONTROLS | Phases.END: # do not go into emergency state
-            return Phases.EXECUTION | Phases.BEGIN
-        if Phases.BEGIN in self:
-            return (self & ~Phases.BEGIN) | Phases.END
-        if Phases.END in self:
-            return Phases.BEGIN | Phases((self & ~Phases.END).value * 2)
+        if self in (Phase.NONE, Phase.EXECUTION|Phase.END, Phase.DONE|Phase.END): # Begin loop
+            return Phase.BEGIN | Phase.UPDATE_INFORMATION
+        if self in (Phase.END | Phase.EXECUTION, Phase.DONE| Phase.END) : # End loop
+            return Phase.NONE
+        #if self is Phase.MODIFY_FINAL_CONTROLS | Phase.END: # do not go into emergency state
+        #    return Phase.EXECUTION | Phase.BEGIN
+        if Phase.BEGIN in self:
+            return (self & ~Phase.BEGIN) | Phase.END
+        if Phase.END in self:
+            return Phase.BEGIN | Phase((self & ~Phase.END).value * 2)
         raise ValueError(f"Phase {self} is not a valid phase")
-        return Phases(self.value * 2)
+        return Phase(self.value * 2)
 
     @classmethod
     @lru_cache(1)  # < Python3.8
     def get_phases(cls):
         main_phases = [cls.NONE]
         p = cls.NONE.next_phase()
-        while p != Phases.NONE:
+        while p != Phase.NONE:
             main_phases.append(p)
             print(p)
             p = p.next_phase()
         return main_phases
 
     @classmethod
-    def set_phase(cls, phase : Union[int, None], end:bool=False) -> "Phases":
+    def set_phase(cls, phase : Union[int, None], end:bool=False) -> "Phase":
         """
         Set Phase by the number of the phase, i.e. PHASE_#.
         Not to be confused wih the flag value.
@@ -127,7 +128,7 @@ class Phases(Flag):
         """
         if phase is None:
             return cls.NONE
-        return getattr(cls, f"PHASE_{phase}") | (Phases.END if end else Phases.BEGIN)
+        return getattr(cls, f"PHASE_{phase}") | (Phase.END if end else Phase.BEGIN)
     
 
 

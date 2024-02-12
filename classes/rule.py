@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Any, Set, Union, Iterable, Callable, Optional, Dict, TYPE_CHECKING
 from collections.abc import Iterable
 
-from agents.tools.lunatic_agent_tools import Phases
+from agents.tools.lunatic_agent_tools import Phase
 from utils.evaluation_function import EvaluationFunction
 
 if TYPE_CHECKING:
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 class Rule:
     def __init__(self, 
-                 phases : Union[Phases, Iterable], #￿iterable of Phases
+                 phases : Union[Phase, Iterable], # iterable of Phases
                  rule : Callable[["LunaticAgent"], bool], 
                  action: Union[Callable, Dict[Any, Callable]] = None, 
                  false_action = None,
@@ -26,7 +26,7 @@ class Rule:
             else:
                 phases = {phases}
         for p in phases:
-            if not isinstance(p, Phases):
+            if not isinstance(p, Phase):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
         
         self.apply_in_phases = phases # TODO: CRITICAL: 
