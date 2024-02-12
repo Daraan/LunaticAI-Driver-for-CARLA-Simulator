@@ -44,14 +44,15 @@ class Context:
 
 class RulePriority(IntEnum):
     """
-    Priority of a rule. The smaller a value, the higher the priority.
+    Priority of a rule. The higher a value, the higher the priority.
     Rules are sorted by their priority before being applied.
     """
-    HIGHEST = -10
-    HIGH = -5
-    NORMAL = 0
-    LOW = 5
-    LOWEST = 10
+    NULL = 0
+    LOWEST = 1
+    LOW = 2
+    NORMAL = 4
+    HIGH = 8
+    HIGHEST = 16
 
 class Rule:
     rule : EvaluationFunction
