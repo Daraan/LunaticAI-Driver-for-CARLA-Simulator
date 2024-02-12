@@ -1,6 +1,8 @@
+from functools import wraps
+from itertools import accumulate
 import random
 from enum import IntEnum
-from typing import Any, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
+from typing import Any, ClassVar, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
 
 from omegaconf import DictConfig
 
@@ -65,17 +67,21 @@ class Rule:
     overwrite_settings : Dict[str, Any]
     apply_in_phases : Set[Phase]
 
+    # Indicate that no rule was applicable in the current phase
+    # i.e.  rule(ctx) in actions was False 
+    NOT_APPLICABLE : ClassVar = object()
+
     def __init__(self, 
                  phases : Union[Phase, Iterable], # iterable of Phases
                  rule : Callable[[Context], Hashable], 
-                 action: Union[Callable, Dict[Any, Callable]] = None, 
+                 action: Union[Callable[[Context]], Dict[Any, Callable]] = None, 
                  false_action = None,
                  *, 
-                 priority: RulePriority = RulePriority.NORMAL,
                  actions : Dict[Any, Callable[[Context], Any]] = None,
                  description: str = "What does this rule do?",
                  overwrite_settings: Optional[Dict[str, Any]] = None,
-                 ignore_chance=0.2,
+                 priority: RulePriority = RulePriority.NORMAL,
+                 ignore_chance=NotImplemented,
                  ) -> None:
         if not isinstance(phases, set):
             if isinstance(phases, Iterable):
@@ -118,78 +124,128 @@ class Rule:
             return None # not applicable for this phase
         result = self.evaluate(ctx, overwrite)
         ctx.evaluation_results[ctx.agent.current_phase] = result
-        if result in self.actions: # TODO: allow for multiple actions / weighted random actions
+        if result in self.actions:
             action_result = self.actions[result](ctx, overwrite) #todo allow priority, random chance
             ctx.action_results[ctx.agent.current_phase] = action_result
             return action_result
-        return None
+        return self.NOT_APPLICABLE # No action was executed
+
 
 class MultiRule(Rule):
-    def __init__(self, 
-                 phases: Union[Phase, Iterable], 
-                 rules: List[Rule], 
-                 rule=always_execute,
-                 *,
-                 ignore_phase=True,
-                 priority: RulePriority = RulePriority.NORMAL, 
-                 description: str = "If its own rule is true calls the passed rules."):
-        """
-        Initializes a Rule object.
-        NOTE: Rules are evaluated in the order they are passed. Their priorities are not considered.
 
-        Args:
-            phases (Union[Phase, Iterable]): The phase or phases in which the rule should be active.
-            rules (List[Rule]): The list of rules to be called if the rule's condition is true.
-            rule: The condition that determines if the rule should be executed. Defaults to always_execute.
-            ignore_phase (bool): Flag indicating whether to ignore the phase when evaluating the rule. Defaults to True.
-            priority (RulePriority): The priority of the rule. Defaults to RulePriority.NORMAL.
-            description (str): The description of the rule. Defaults to "If its own rule is true calls the passed rules.".
+    def _wrap_action(self, action: Callable[[Context], Any]):
         """
-        self.ignore_phase = ignore_phase
-        self.rules = rules
-        super().__init__(phases, rule=rule, action=self._action, description=description, priority=priority, ignore_phase=ignore_phase)
+        Wrap the past function to that afterwards the children rules are executed.
+        """
+        @wraps(action)
+        def wrapper(ctx : Context, *args, **kwargs) -> Any:
+            result = action(ctx, *args, **kwargs)
+            results = self.evaluate_children(ctx) # execute given rules as well
+            return result, results
+        return wrapper
+
+    def __init__(self, 
+                     phases: Union[Phase, Iterable], 
+                     rules: List[Rule], 
+                     rule : Callable[[Context]] = always_execute,
+                     *,
+                     execute_all_rules = False,
+                     sort_rules_by_priority : bool = True,
+                     prior_action : Optional[Callable[[Context]]] = None,
+                     ignore_phase : bool =True,
+                     overwrite_settings: Optional[Dict[str, Any]] = None,
+                     priority: RulePriority = RulePriority.NORMAL, 
+                     description: str = "If its own rule is true calls the passed rules."):
+            """
+            Initializes a Rule object.
+
+            Args:
+                phases (Union[Phase, Iterable]): The phase or phases in which the rule should be active.
+                rules (List[Rule]): The list of rules to be called if the rule's condition is true.
+                rule (Callable[[Context]], optional): The condition that determines if the rules should be evaluated. Defaults to always_execute.
+                execute_all_rules (bool, optional): Flag indicating whether to execute all rules or stop after a rule as been applied. Defaults to False.
+                sort_rules_by_priority (bool, optional): Flag indicating whether to sort the rules by priority. Defaults to True.
+                prior_action (Callable[[Context]], optional): The action to be executed before the passed rules are evaluated. Defaults to None.
+                ignore_phase (bool, optional): Flag indicating whether to ignore the Phase of the passed rules. Defaults to True.
+                overwrite_settings (Dict[str, Any], optional): Additional settings to overwrite the rule's settings. Defaults to None.
+                priority (RulePriority, optional): The priority of the rule. Defaults to RulePriority.NORMAL.
+                description (str, optional): The description of the rule. Defaults to "If its own rule is true calls the passed rules.".
+            """
+            self.ignore_phase = ignore_phase
+            self.rules = rules
+            self.execute_all_rules = execute_all_rules
+            if sort_rules_by_priority:
+                self.rules.sort(key=lambda r: r.priority.value, reverse=True)
+            # if an action is passed to be executed before the passed rules it is wrapped to execute both
+            if prior_action is not None:
+                prior_action = self._wrap_action(prior_action)
+            else:
+                prior_action = self.evaluate_children
+            super().__init__(phases, rule=rule, 
+                             action=prior_action, 
+                             description=description, 
+                             overwrite_settings=overwrite_settings,
+                             priority=priority, 
+                             ignore_phase=ignore_phase)
     
-    def _action(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
-        results = []
-        for rule in self.rules:
-            result = rule(ctx, overwrite, ignore_phase=self.ignore_phase)
-            result[rule] = result
-        return results
+    def evaluate_children(self, ctx : Context) -> List[Any] | Any:
+            """
+            Evaluates the children rules of the current rule in the given context.
+
+            Args:
+                ctx (Context): The context in which the rules are evaluated.
+
+            Returns:
+                Union[List[Any], Any]: The results of evaluating the children rules.
+                    Returns a list of results if execute_all_rules is True, otherwise the result of the first rule that was applied.
+            """
+            results = []
+            for rule in self.rules:
+                result = rule(ctx, ignore_phase=self.ignore_phase)
+                if not self.execute_all_rules and result is not Rule.NOT_APPLICABLE: # one rule was applied end.
+                    return result
+                results.append(result)
+            return results
 
 class RandomRule(MultiRule):
-
-    def _action(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
-        selection = random.choices(self.rules, cum_weights=self.weights, k=self.amount)
-        results : List[Tuple[Rule, Any]] = []
-        for rule in selection:
-            result = rule(ctx, overwrite, ignore_phase=self.ignore_phase) #NOTE: Context action/evaluation results only store result of LAST rule
-            results.append((rule, result))
-        return results
 
     def __init__(self, 
                  phases : Union[Phase, Iterable], 
                  rules : Union[Dict[Rule, int | float], List[Rule]], 
-                 amount : int = 1,
-                 rule = always_execute, *, 
-                 ignore_phase=True,
+                 repeat_if_not_applicable : bool = True,
+                 rule = always_execute, *,
+                 prior_action : Optional[Callable[[Context]]] = None,
+                 ignore_phase = True,
                  priority: RulePriority = RulePriority.NORMAL, 
                  description: str = "If its own rule is true calls one or more random rule from the passed rules.", 
                  weights: List[float] = None):
-        if amount < 1:
-            raise ValueError("Amount must be at least 1")
+        #if amount < 1:
+        #    raise ValueError("Amount must be at least 1")
+        #self.amount = amount 
         if isinstance(rules, dict):
             if weights is not None:
                 raise ValueError("When passing rules a dict with weights, the weights argument must be None")
-            from itertools import accumulate
             self.weights = list(accumulate(rules.values())) # cumulative weights for random.choices are more efficient
             self.rules = list(rules.keys())
         else:
             self.weights = weights or list(accumulate(r.priority.value for r in rules))
             self.rules = rules
-        self.amount = amount 
-        super().__init__(phases, rule=rule, action=self._action, description=description, priority=priority, ignore_phase=ignore_phase, priority=priority)
+        self.repeat_if_not_applicable = repeat_if_not_applicable
+        super().__init__(phases, rule=rule, prior_action=prior_action, description=description, priority=priority, ignore_phase=ignore_phase)
 
-            
+    def evaluate_children(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
+        if self.repeat_if_not_applicable:
+            rules = self.rules.copy()
+            weights = self.weights.copy()
+        else:
+            rules = self.rules
+            weights = self.weights
 
-
-
+        while rules:
+            rule = random.choices(rules, cum_weights=weights, k=1)[0]
+            result = rule(ctx, overwrite, ignore_phase=self.ignore_phase) #NOTE: Context action/evaluation results only store result of LAST rule
+            if not self.repeat_if_not_applicable or result is not Rule.NOT_APPLICABLE:
+                break
+            rules.remove(rule)
+            weights = list(accumulate(r.priority.value for r in rules))
+        return result
