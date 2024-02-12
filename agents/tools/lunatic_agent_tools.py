@@ -140,8 +140,10 @@ class Hazard(Flag):
 
     # Severity
     WARNING = auto()
-    CRITICAL = WARNING | auto()
-    EMERGENCY = CRITICAL | auto()
+    _IS_CRITICAL = auto()
+    CRITICAL = WARNING | _IS_CRITICAL
+    _IS_EMERGENCY = auto()
+    EMERGENCY = CRITICAL | _IS_EMERGENCY
 
     COLLISION = auto()
     

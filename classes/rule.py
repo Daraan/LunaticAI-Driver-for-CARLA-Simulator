@@ -18,7 +18,7 @@ class Context:
     config : DictConfig
     evaluation_results : Dict[Phase, Hashable] # ambigious wording, which result? here evaluation result
     action_results : Dict[Phase, Any] 
-    control : carla.VehicleControl
+    control : "carla.VehicleControl"
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
@@ -34,7 +34,7 @@ class Context:
     def current_phase(self) -> Phase:
         return self.agent.current_phase
     
-    def set_control(self, control : carla.VehicleControl):
+    def set_control(self, control : "carla.VehicleControl"):
         self.control = control
     
     def end_of_phase(self):
@@ -74,7 +74,7 @@ class Rule:
     def __init__(self, 
                  phases : Union[Phase, Iterable], # iterable of Phases
                  rule : Callable[[Context], Hashable], 
-                 action: Union[Callable[[Context]], Dict[Any, Callable]] = None, 
+                 action: Union[Callable[[Context], Any], Dict[Any, Callable]] = None, 
                  false_action = None,
                  *, 
                  actions : Dict[Any, Callable[[Context], Any]] = None,
@@ -109,7 +109,7 @@ class Rule:
         self.description = description
         self.overwrite_settings = overwrite_settings or {}
 
-    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> bool | Hashable:
+    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable]:
         settings = self.overwrite_settings.copy()
         if overwrite is not None:
             settings.update(overwrite)
@@ -147,11 +147,11 @@ class MultiRule(Rule):
     def __init__(self, 
                      phases: Union[Phase, Iterable], 
                      rules: List[Rule], 
-                     rule : Callable[[Context]] = always_execute,
+                     rule : Callable[[Context], Any] = always_execute,
                      *,
                      execute_all_rules = False,
                      sort_rules_by_priority : bool = True,
-                     prior_action : Optional[Callable[[Context]]] = None,
+                     prior_action : Optional[Callable[[Context], Any]] = None,
                      ignore_phase : bool =True,
                      overwrite_settings: Optional[Dict[str, Any]] = None,
                      priority: RulePriority = RulePriority.NORMAL, 
@@ -188,7 +188,7 @@ class MultiRule(Rule):
                              priority=priority, 
                              ignore_phase=ignore_phase)
     
-    def evaluate_children(self, ctx : Context) -> List[Any] | Any:
+    def evaluate_children(self, ctx : Context) -> Union[List[Any], Any]:
             """
             Evaluates the children rules of the current rule in the given context.
 
@@ -211,10 +211,10 @@ class RandomRule(MultiRule):
 
     def __init__(self, 
                  phases : Union[Phase, Iterable], 
-                 rules : Union[Dict[Rule, int | float], List[Rule]], 
+                 rules : Union[Dict[Rule, float], List[Rule]], 
                  repeat_if_not_applicable : bool = True,
                  rule = always_execute, *,
-                 prior_action : Optional[Callable[[Context]]] = None,
+                 prior_action : Optional[Callable[[Context], Any]] = None,
                  ignore_phase = True,
                  priority: RulePriority = RulePriority.NORMAL, 
                  description: str = "If its own rule is true calls one or more random rule from the passed rules.", 
