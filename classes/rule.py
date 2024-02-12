@@ -1,6 +1,6 @@
+import random
 from enum import IntEnum
-from typing import Any, Set, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
-from collections.abc import Iterable
+from typing import Any, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
 
 from omegaconf import DictConfig
 
@@ -54,6 +54,10 @@ class RulePriority(IntEnum):
     HIGH = 8
     HIGHEST = 16
 
+@EvaluationFunction
+def always_execute(ctx : Context):
+    return True
+
 class Rule:
     rule : EvaluationFunction
     actions : Dict[Any, Callable[[Context], Any]]
@@ -81,6 +85,7 @@ class Rule:
         for p in phases:
             if not isinstance(p, Phase):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
+        self.priority : float | int | RulePriority = priority
         
         self.apply_in_phases = phases # TODO: CRITICAL: 
         if isinstance(action, dict):
@@ -107,9 +112,9 @@ class Rule:
         result = self.rule(ctx, settings)
         return result
 
-    def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
+    def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *, ignore_phase=False) -> Any:
         # Check phase
-        if ctx.agent.current_phase not in self.apply_in_phases:
+        if not ignore_phase or ctx.agent.current_phase not in self.apply_in_phases:
             return None # not applicable for this phase
         result = self.evaluate(ctx, overwrite)
         ctx.evaluation_results[ctx.agent.current_phase] = result
@@ -118,6 +123,73 @@ class Rule:
             ctx.action_results[ctx.agent.current_phase] = action_result
             return action_result
         return None
+
+class MultiRule(Rule):
+    def __init__(self, 
+                 phases: Union[Phase, Iterable], 
+                 rules: List[Rule], 
+                 rule=always_execute,
+                 *,
+                 ignore_phase=True,
+                 priority: RulePriority = RulePriority.NORMAL, 
+                 description: str = "If its own rule is true calls the passed rules."):
+        """
+        Initializes a Rule object.
+        NOTE: Rules are evaluated in the order they are passed. Their priorities are not considered.
+
+        Args:
+            phases (Union[Phase, Iterable]): The phase or phases in which the rule should be active.
+            rules (List[Rule]): The list of rules to be called if the rule's condition is true.
+            rule: The condition that determines if the rule should be executed. Defaults to always_execute.
+            ignore_phase (bool): Flag indicating whether to ignore the phase when evaluating the rule. Defaults to True.
+            priority (RulePriority): The priority of the rule. Defaults to RulePriority.NORMAL.
+            description (str): The description of the rule. Defaults to "If its own rule is true calls the passed rules.".
+        """
+        self.ignore_phase = ignore_phase
+        self.rules = rules
+        super().__init__(phases, rule=rule, action=self._action, description=description, priority=priority, ignore_phase=ignore_phase)
+    
+    def _action(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
+        results = []
+        for rule in self.rules:
+            result = rule(ctx, overwrite, ignore_phase=self.ignore_phase)
+            result[rule] = result
+        return results
+
+class RandomRule(MultiRule):
+
+    def _action(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
+        selection = random.choices(self.rules, cum_weights=self.weights, k=self.amount)
+        results : List[Tuple[Rule, Any]] = []
+        for rule in selection:
+            result = rule(ctx, overwrite, ignore_phase=self.ignore_phase) #NOTE: Context action/evaluation results only store result of LAST rule
+            results.append((rule, result))
+        return results
+
+    def __init__(self, 
+                 phases : Union[Phase, Iterable], 
+                 rules : Union[Dict[Rule, int | float], List[Rule]], 
+                 amount : int = 1,
+                 rule = always_execute, *, 
+                 ignore_phase=True,
+                 priority: RulePriority = RulePriority.NORMAL, 
+                 description: str = "If its own rule is true calls one or more random rule from the passed rules.", 
+                 weights: List[float] = None):
+        if amount < 1:
+            raise ValueError("Amount must be at least 1")
+        if isinstance(rules, dict):
+            if weights is not None:
+                raise ValueError("When passing rules a dict with weights, the weights argument must be None")
+            from itertools import accumulate
+            self.weights = list(accumulate(rules.values())) # cumulative weights for random.choices are more efficient
+            self.rules = list(rules.keys())
+        else:
+            self.weights = weights or list(accumulate(r.priority.value for r in rules))
+            self.rules = rules
+        self.amount = amount 
+        super().__init__(phases, rule=rule, action=self._action, description=description, priority=priority, ignore_phase=ignore_phase, priority=priority)
+
+            
 
 
 

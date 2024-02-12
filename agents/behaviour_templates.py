@@ -1,17 +1,15 @@
 import carla
 from agents.navigation.local_planner import RoadOption
 
-from classes.rule import Rule, EvaluationFunction, Context
+from classes.rule import Rule, EvaluationFunction, Context, always_execute
 from agents.tools.lunatic_agent_tools import Phase, detect_vehicles
 from agents.tools.misc import get_speed
 
 from typing import TYPE_CHECKING, List
+
+from classes.rule import always_execute
 if TYPE_CHECKING:
     from agents import LunaticAgent
-
-@EvaluationFunction
-def always_execute(agent):
-    return True
 
 #TODO: maybe create some omega conf dict creator that allows to create settings more easily
 # e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
