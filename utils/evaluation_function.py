@@ -1,12 +1,9 @@
-from collections.abc import Hashable
-
-from typing import Callable, Any, TYPE_CHECKING
+from typing import Callable, Any, Hashable, TYPE_CHECKING
 
 import inspect
 from enum import Enum
 
 if TYPE_CHECKING:
-    from agents.lunatic_agent import LunaticAgent
     from classes.rule import Context
 
 class EvaluationFunction:
@@ -46,7 +43,7 @@ class EvaluationFunction:
                                 "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5)
                                 })
     """
-    def __init__(self, evaluation_function: Callable[["LunaticAgent"], Hashable], name="EvaluationFunction"):
+    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction"):
         self.evaluation_function = evaluation_function
         self.name = name if name != "EvaluationFunction" else evaluation_function.__name__
 

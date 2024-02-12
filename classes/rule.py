@@ -1,14 +1,21 @@
-from enum import Enum
-from typing import Any, Set, Union, Iterable, Callable, Optional, Dict, TYPE_CHECKING
+from typing import Any, Set, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
 from collections.abc import Iterable
+
+from omegaconf import DictConfig
 
 from agents.tools.lunatic_agent_tools import Phase
 from utils.evaluation_function import EvaluationFunction
 
 if TYPE_CHECKING:
+    import carla
     from agents.lunatic_agent import LunaticAgent
 
 class Context:
+    agent : "LunaticAgent"
+    config : DictConfig
+    evaluation_results : Dict[Phase, Hashable] # ambigious wording, which result? here evaluation result
+    action_results : Dict[Phase, Any] 
+    control : carla.VehicleControl
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
@@ -46,13 +53,20 @@ class RulePriority(IntEnum):
     LOWEST = 10
 
 class Rule:
+    rule : EvaluationFunction
+    actions : Dict[Any, Callable[[Context], Any]]
+    description : str
+    overwrite_settings : Dict[str, Any]
+    apply_in_phases : Set[Phase]
+
     def __init__(self, 
                  phases : Union[Phase, Iterable], # iterable of Phases
-                 rule : Callable[["LunaticAgent"], bool], 
+                 rule : Callable[[Context], Hashable], 
                  action: Union[Callable, Dict[Any, Callable]] = None, 
                  false_action = None,
                  *, 
-                 actions : Dict[Any, Callable] = None,
+                 priority: RulePriority = RulePriority.NORMAL,
+                 actions : Dict[Any, Callable[[Context], Any]] = None,
                  description: str = "What does this rule do?",
                  overwrite_settings: Optional[Dict[str, Any]] = None,
                  ignore_chance=0.2,

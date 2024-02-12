@@ -10,9 +10,11 @@
 waypoints and avoiding other vehicles. The agent also responds to traffic lights,
 traffic signs, and has different possible configurations. """
 
+from __future__ import annotations
+
 from functools import wraps
 import random
-from typing import List, Set
+from typing import Dict, List, Set, Tuple
 import numpy as np
 from omegaconf import DictConfig
 
@@ -85,7 +87,7 @@ class LunaticAgent(BehaviorAgent):
 
     # todo: rename in the future
 
-    def __init__(self, vehicle, behavior : LunaticBehaviorSettings, map_inst=None, grp_inst=None, overwrite_options: dict = {}):
+    def __init__(self, vehicle : carla.Vehicle, behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -118,11 +120,11 @@ class LunaticAgent(BehaviorAgent):
         self.current_phase = Phase.NONE # current phase of the agent inside the loop
 
         # todo set a initial tailgaite counter here, either as instance variable or in live_info
-        self.config.live_info.current_tailgate_counter : int = self.config.other.tailgate_counter
+        self.config.live_info.current_tailgate_counter : int = self.config.other.tailgate_counter # type: ignore
 
         # Original Setup ---------------------------------------------------------
-        self._vehicle = vehicle
-        self._world = self._vehicle.get_world()
+        self._vehicle : carla.Vehicle = vehicle
+        self._world :carla.World = self._vehicle.get_world()
         
         if map_inst:
             if isinstance(map_inst, carla.Map):
@@ -144,8 +146,8 @@ class LunaticAgent(BehaviorAgent):
         self.live_info.speed = 0
         self.live_info.speed_limit = 0
         self.live_info.direction = None
-        self._incoming_direction = None
-        self._incoming_waypoint = None
+        self._incoming_direction : RoadOption = None
+        self._incoming_waypoint : carla.Waypoint = None
         #config.speed.min_speed = 5
         self.config.speed.min_speed
         #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
@@ -166,9 +168,11 @@ class LunaticAgent(BehaviorAgent):
         self._lights_map = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
 
         # From ConstantVelocityAgent ----------------------------------------------
-        self._collision_sensor = None
+        self._collision_sensor : carla.Sensor = None
         self._set_collision_sensor()
-        self.rules = []
+
+        #Rule Framework
+        self.rules : List[Rule] = []
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
@@ -198,7 +202,7 @@ class LunaticAgent(BehaviorAgent):
         # planner has access to config
         #self._local_planner.set_speed(self.live_info.speed_limit)            # <-- Adjusts Planner
         
-        self.live_info.direction : RoadOption = self._local_planner.target_road_option
+        self.live_info.direction : RoadOption = self._local_planner.target_road_option # type: ignore
         if self.live_info.direction is None:
             self.live_info.direction = RoadOption.LANEFOLLOW
 
@@ -211,11 +215,10 @@ class LunaticAgent(BehaviorAgent):
 
         self.location = ego_vehicle_loc = self._vehicle.get_location()
         if exact_waypoint:
-            self._current_waypoint = self._map.get_waypoint(ego_vehicle_loc)
+            self._current_waypoint : carla.Waypoint = self._map.get_waypoint(ego_vehicle_loc)
         else:
-            self._current_waypoint = self._incoming_waypoint
+            self._current_waypoint : carla.Waypoint = self._incoming_waypoint
 
-        self.vehicles_nearby : List[carla.Vehicle] = self._world.get_actors().filter("*vehicle*")
         # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us.
 
     def is_taking_turn(self) -> bool:
@@ -298,7 +301,7 @@ class LunaticAgent(BehaviorAgent):
         # ----------------------------
             
         self.execute_phase(Phase.DETECT_CARS | Phase.BEGIN, prior_results=None) # TODO: Maybe add some prio result
-        detection_result = self.collision_and_car_avoid_manager(self._current_waypoint)
+        detection_result :ObstacleDetectionResult = substep_managers.collision_detection_manager(self._current_waypoint)
         # TODO: add a way to let the execution overwrite
         if detection_result.obstacle_was_found:
 
@@ -390,7 +393,7 @@ class LunaticAgent(BehaviorAgent):
     # ------------------ Behaviors ------------------ #
     # TODO: Section needs overhaul -> turn into rules
 
-    def pedestrian_avoidance_behavior(self, ego_vehicle_wp):
+    def pedestrian_avoidance_behavior(self, ego_vehicle_wp : carla.Waypoint) -> Tuple[bool, ObstacleDetectionResult]:
         # TODO: # CRITICAL: This for some reasons also detects vehicles as pedestrians
         # note ego_vehicle_wp is the current waypoint self._current_waypoint
         detection_result = self.pedestrian_avoid_manager(ego_vehicle_wp)
@@ -405,7 +408,7 @@ class LunaticAgent(BehaviorAgent):
         # TODO detected but not stopping -> ADD avoidance behavior
         return False, detection_result
         
-    def car_following_behavior(self, vehicle_detected, vehicle, distance) -> carla.VehicleControl:
+    def car_following_behavior(self, vehicle_detected:bool, vehicle:carla.Actor, distance:float) -> carla.VehicleControl:
         distance = distance - max(vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
             self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
 
@@ -475,7 +478,7 @@ class LunaticAgent(BehaviorAgent):
     def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, 
                                    up_angle_th=90, 
                                    low_angle_th=0,
-                                   lane_offset=0):
+                                   lane_offset=0) -> ObstacleDetectionResult:
         """
         Method to check if there is a vehicle in front or around the agent blocking its path.
 
@@ -495,7 +498,7 @@ class LunaticAgent(BehaviorAgent):
     #@override
     # TODO: Port this to a rule that is used during emergencies.
     @wraps(substep_managers.emergency_manager)
-    def add_emergency_stop(self, control, reason:str=None):
+    def add_emergency_stop(self, control, reason:str=None) -> carla.VehicleControl:
         """
         Modifies the control values to perform an emergency stop.
         The steering remains unchanged to avoid going out of the lane during turns.

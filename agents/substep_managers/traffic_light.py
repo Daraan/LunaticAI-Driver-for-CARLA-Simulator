@@ -5,7 +5,9 @@ from agents.tools.misc import (is_within_distance,
                                get_trafficlight_trigger_location, TrafficLightDetectionResult)
 
 if TYPE_CHECKING:
+    import carla
     from agents.lunatic_agent import LunaticAgent
+    
 def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
     return traffic_light.state == carla.TrafficLightState.Red
 
@@ -21,7 +23,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
                 If None, the base threshold value is used
         """
         if self.config.obstacles.ignore_traffic_lights:
-            return (False, None)
+            return TrafficLightDetectionResult(False, None)
 
         if not lights_list:
             lights_list = self._world.get_actors().filter("*traffic_light*")
@@ -33,7 +35,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
             if self._last_traffic_light.state != carla.TrafficLightState.Red:
                 self._last_traffic_light = None
             else:
-                return True, self._last_traffic_light
+                return TrafficLightDetectionResult(True, self._last_traffic_light)
 
         ego_vehicle_location = self._vehicle.get_location()
         ego_vehicle_waypoint = self._map.get_waypoint(ego_vehicle_location)
@@ -66,7 +68,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
         return TrafficLightDetectionResult(False, None)
 
 
-def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.TrafficLight"]) -> bool:
+def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.TrafficLight"]) -> TrafficLightDetectionResult:
         """
         This method is in charge of behaviors for red lights.
         """
