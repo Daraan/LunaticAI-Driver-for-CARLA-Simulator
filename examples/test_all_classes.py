@@ -1,6 +1,18 @@
 import __allow_imports_from_root
+import carla
 from agents.lunatic_agent import LunaticAgent
+from agents.tools.lunatic_agent_tools import Phase
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
+from classes.rule import Rule, EvaluationFunction, Context, always_execute
+
+arule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
+                                      rule=always_execute, 
+                                      action=lambda ctx: print("Hello World"), 
+                                      overwrite_settings= {"speed": {"intersection_speed_decrease": 10}},
+                                      description="Set speed to intersection speed")
+
+print(arule)
+arule(carla.Vehicle())
 
 
 behavior = LunaticBehaviorSettings()
