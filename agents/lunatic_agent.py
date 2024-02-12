@@ -37,7 +37,6 @@ from config.default_options.original_behavior import BasicAgentSettings
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
 #from agents import rule_behavior
-# TODO: Not a class currently, maybe move to tools.
 from agents import substep_managers
 
 # As Reference:
@@ -54,26 +53,6 @@ class RoadOption(IntEnum):
     LANEFOLLOW = 4
     CHANGELANELEFT = 5
     CHANGELANERIGHT = 6
-
-class Phases(Flag):
-    <Phases.NONE: 0>,
-    <Phases.UPDATE_INFORMATION|BEGIN: 5>,
-    <Phases.UPDATE_INFORMATION|END: 6>,
-    <Phases.PLAN_PATH|BEGIN: 9>,
-    <Phases.PLAN_PATH|END: 10>,
-    <Phases.DETECT_TRAFFIC_LIGHTS|BEGIN: 17>,
-    <Phases.DETECT_TRAFFIC_LIGHTS|END: 18>,
-    <Phases.DETECT_PEDESTRIANS|BEGIN: 33>,
-    <Phases.DETECT_PEDESTRIANS|END: 34>,
-    <Phases.DETECT_CARS|BEGIN: 65>,
-    <Phases.DETECT_CARS|END: 66>,
-    <Phases.POST_DETECTION_PHASE|BEGIN: 129>,
-    <Phases.POST_DETECTION_PHASE|END: 130>,
-    <Phases.MODIFY_FINAL_CONTROLS|BEGIN: 257>,
-    <Phases.MODIFY_FINAL_CONTROLS|END: 258>,
-    <Phases.EXECUTION|BEGIN: 1025>,
-    <Phases.EXECUTION|END: 1026>
-
 '''
 
 
@@ -164,8 +143,9 @@ class LunaticAgent(BehaviorAgent):
             self._global_planner = GlobalRoutePlanner(self._map, self.config.unknown.sampling_resolution)
 
         # Get the static elements of the scene
+        # TODO: This could be done globally and not for each instance :/
         self._lights_list = self._world.get_actors().filter("*traffic_light*")
-        self._lights_map = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
+        self._lights_map : Dict[int, carla.Waypoint] = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
 
         # From ConstantVelocityAgent ----------------------------------------------
         self._collision_sensor : carla.Sensor = None
@@ -181,7 +161,7 @@ class LunaticAgent(BehaviorAgent):
         self._collision_sensor : carla.Sensor = self._world.spawn_actor(blueprint, carla.Transform(), attach_to=self._vehicle)
         def collision_callback(event : carla.SensorData):
             self._collision_event(event)
-        self._collision_sensor.listen(collision_callback)
+        self._collision_sensor.listen(self._collision_event)
 
     def destroy_sensor(self):
         if self._collision_sensor:
@@ -220,6 +200,8 @@ class LunaticAgent(BehaviorAgent):
             self._current_waypoint : carla.Waypoint = self._incoming_waypoint
 
         # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us.
+        self.vehicles_nearby : List[carla.Vehicle] = self._world.get_actors().filter("*vehicle*")
+        self.walkers_nearby : List[carla.Walker] = self._world.get_actors().filter("*walker.pedestrian*")
 
     def is_taking_turn(self) -> bool:
         return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
@@ -230,7 +212,6 @@ class LunaticAgent(BehaviorAgent):
     def add_rule(self, rule : Rule, position=-1):
         self.rules.insert(position, rule) #TODO: return some ids for deletion, modification of rules.
         
-
     def execute_phase(self, phase, *, prior_results, control:carla.VehicleControl=None):
         """
         Sets the current phase of the agent and executes all rules that are associated with it.
@@ -293,6 +274,7 @@ class LunaticAgent(BehaviorAgent):
             # Other behaviors based on hazard detection
             if end_loop: # Likely emergency stop
                 # TODO: overhaul -> this might not be the best place to do this
+                #TODO HIGH: This is doubled in react_to_hazard!
                 self.execute_phase(Phase.EMERGENCY | Phase.END, prior_results=pedestrians_or_traffic_light, control=control)
                 return control
     
@@ -337,7 +319,7 @@ class LunaticAgent(BehaviorAgent):
         # ----------------------------
         # Phase 4 - Plan Path normally
         # ----------------------------
-
+        
         # Normal behavior
         self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.BEGIN, prior_results=None)
         control = self._local_planner.run_step()
@@ -376,13 +358,13 @@ class LunaticAgent(BehaviorAgent):
         # Stop indicates if the loop shoul
 
         print("Hazard(s) detected: ", hazard_detected)
-        
         end_loop = True
-
+        
         if "pedestrian" in hazard_detected:
             pass # Maybe let rules handle this and remove
         if "traffic_light" in hazard_detected:
             pass
+
         # TODO: PRIORITY: let execute_phase handle end_loop
         self.execute_phase(Phase.EMERGENCY | Phase.BEGIN, prior_results=hazard_detected)
         control = self.add_emergency_stop(control)
@@ -396,7 +378,7 @@ class LunaticAgent(BehaviorAgent):
     def pedestrian_avoidance_behavior(self, ego_vehicle_wp : carla.Waypoint) -> Tuple[bool, ObstacleDetectionResult]:
         # TODO: # CRITICAL: This for some reasons also detects vehicles as pedestrians
         # note ego_vehicle_wp is the current waypoint self._current_waypoint
-        detection_result = self.pedestrian_avoid_manager(ego_vehicle_wp)
+        detection_result = substep_managers.pedestrian_detection_manager(self, ego_vehicle_wp)
         if (detection_result.obstacle_was_found
             and (detection_result.distance - max(detection_result.obstacle.bounding_box.extent.y, 
                                                  detection_result.obstacle.bounding_box.extent.x)
@@ -409,49 +391,17 @@ class LunaticAgent(BehaviorAgent):
         return False, detection_result
         
     def car_following_behavior(self, vehicle_detected:bool, vehicle:carla.Actor, distance:float) -> carla.VehicleControl:
-        distance = distance - max(vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
+        exact_distance = distance - max(vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
             self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
 
-        if distance < self.config.distance.braking_distance:
-            controls, end_loop = self.react_to_hazard(control=None, hazard_detected={"vehicle"})
+        if exact_distance < self.config.distance.braking_distance:
+            controls, end_loop = self.react_to_hazard(control=None, hazard_detected={Hazard.CAR})
         else:
-            controls = self.car_following_manager(vehicle, distance)
+            controls = self.car_following_manager(vehicle, exact_distance)
         return controls
-
 
     # ------------------ Managers for Behaviour ------------------ #
 
-    @wraps(substep_managers.pedestrian_avoid_manager)
-    def pedestrian_avoid_manager(self, waypoint) -> ObstacleDetectionResult:
-        """
-        This module is in charge of warning in case of a collision
-        with any pedestrian.
-
-            :param location: current location of the agent
-            :param waypoint: current waypoint of the agent
-            :return vehicle_state: True if there is a walker nearby, False if not
-            :return vehicle: nearby walker
-            :return distance: distance to nearby walker
-        """
-        return substep_managers.pedestrian_avoid_manager(self, waypoint)
-        
-    @wraps(substep_managers.car_following_manager)
-    def car_following_manager(self, vehicle, distance, debug=False):
-        return substep_managers.car_following_manager(self, vehicle, distance, debug=debug)
-
-    @wraps(substep_managers.collision_and_car_avoid_manager)
-    def collision_and_car_avoid_manager(self, waypoint) -> ObstacleDetectionResult:
-        """
-        This module is in charge of warning in case of a collision
-        and managing possible tailgating chances.
-
-            :param location: current location of the agent
-            :param waypoint: current waypoint of the agent
-            :return vehicle_state: True if there is a vehicle nearby, False if not
-            :return vehicle: nearby vehicle
-            :return distance: distance to nearby vehicle
-        """
-        return substep_managers.collision_and_car_avoid_manager(self, waypoint)
     
     @wraps(substep_managers.traffic_light_manager)
     def traffic_light_manager(self) -> TrafficLightDetectionResult:
@@ -461,6 +411,10 @@ class LunaticAgent(BehaviorAgent):
         tlight_detection_result = substep_managers.traffic_light_manager(self, self._lights_list)
         return tlight_detection_result
     
+    @wraps(substep_managers.car_following_manager)
+    def car_following_manager(self, vehicle, distance, debug=False) -> carla.VehicleControl:
+        return substep_managers.car_following_manager(self, vehicle, distance, debug=debug)
+    
     def _collision_event(self, event : carla.CollisionEvent):
         # https://carla.readthedocs.io/en/latest/python_api/#carla.CollisionEvent
         # e.g. setting ignore_vehicles to False, if it was True before.
@@ -469,7 +423,6 @@ class LunaticAgent(BehaviorAgent):
         return substep_managers.collision_manager(self, event)
 
     # ----
-
 
     # TODO: see if max_distance is currently still necessary
     # TODO: move angles to config
@@ -491,9 +444,7 @@ class LunaticAgent(BehaviorAgent):
         Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
         low_angle_th < angle < up_angle_th.
         """
-        detected_vehicle_distance = agents.tools.lunatic_agent_tools.detect_vehicles(self, vehicle_list, max_distance, up_angle_th, low_angle_th, lane_offset)
-        return detected_vehicle_distance
-
+        return agents.tools.lunatic_agent_tools.detect_vehicles(self, vehicle_list, max_distance, up_angle_th, low_angle_th, lane_offset)
 
     #@override
     # TODO: Port this to a rule that is used during emergencies.
@@ -564,6 +515,14 @@ class LunaticAgent(BehaviorAgent):
 
     # ------------------ Overwritten functions ------------------ #
 
+    # NOTE: the original pedestrian_avoid_manager is still usable
+    def pedestrian_avoid_manager(self, waypoint):
+        raise NotImplementedError("This function was replaced by ", substep_managers.pedestrian_detection_manager)
+
+    #@override
+    def collision_and_car_avoid_manager(self, waypoint):
+        raise NotImplementedError("This function was split into collision_detection_manager and car_following_manager")
+    
     #@override
     def _tailgating(self, waypoint, vehicle_list):
         raise NotImplementedError("Tailgating has been implemented as a rule")
@@ -584,7 +543,7 @@ class LunaticAgent(BehaviorAgent):
 
     #def done(self): # from base class self._local_planner.done()
 
-   #def set_destination(self, end_location, start_location=None):
+    #def set_destination(self, end_location, start_location=None):
         """
         This method creates a list of waypoints between a starting and ending location,
         based on the route returned by the global router, and adds it to the local planner.

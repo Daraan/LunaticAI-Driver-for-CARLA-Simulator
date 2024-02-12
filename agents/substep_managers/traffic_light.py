@@ -31,10 +31,11 @@ def affected_by_traffic_light(self : "LunaticAgent",
         if not max_distance:
             max_distance = self.config.obstacles.base_tlight_threshold
 
+        # Currently affected by a traffic light
         if self._last_traffic_light:
             if self._last_traffic_light.state != carla.TrafficLightState.Red:
                 self._last_traffic_light = None
-            else:
+            else: # Still Red
                 return TrafficLightDetectionResult(True, self._last_traffic_light)
 
         ego_vehicle_location = self._vehicle.get_location()
@@ -74,7 +75,6 @@ def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.Tr
         """
         # Introduce a random chance to ignore the traffic light
         
-        # Todo: check if drawing randomly each step is more efficient than the calculation below
         if random.random() < self.config.obstacles.ignore_lights_percentage:
             return TrafficLightDetectionResult(False, None)
 

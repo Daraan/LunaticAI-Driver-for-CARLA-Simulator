@@ -1,11 +1,16 @@
 from agents.tools.misc import ObstacleDetectionResult
 from agents.navigation.local_planner import RoadOption
+from agents.tools.lunatic_agent_tools import detect_vehicles
+
 from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
 
-def pedestrian_avoid_manager(self : "LunaticAgent", waypoint : "carla.Waypoint") -> ObstacleDetectionResult:
+# TODO: Despite a few constants very similar to vehicle to the collision_detection_manager,
+    # might be fusable
+
+def pedestrian_detection_manager(self : "LunaticAgent", waypoint : "carla.Waypoint") -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     with any pedestrian.
@@ -16,22 +21,27 @@ def pedestrian_avoid_manager(self : "LunaticAgent", waypoint : "carla.Waypoint")
         :return vehicle: nearby walker
         :return distance: distance to nearby walker
     """
-    # TODO: # CRITICAL: This for some reasons also detects vehicles as pedestrians
-    walker_list = self._world.get_actors().filter("*walker.pedestrian*")
-
     def dist(w):
         return w.get_location().distance(waypoint.transform.location)
 
-    walker_list = [w for w in walker_list if dist(w) < 10]
+    # TODO: Make this a parameter
+    walker_list = [w for w in self.walkers_nearby if dist(w) < 10]
 
     if self.config.live_info.direction == RoadOption.CHANGELANELEFT:
-        walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
-            self.config.distance.min_proximity_threshold, self.config.live_info.current_speed_limit / 2), up_angle_th=90, lane_offset=-1)
+        detection_result = detect_vehicles(self, walker_list, 
+                                           max(self.config.distance.min_proximity_threshold, 
+                                               self.config.live_info.current_speed_limit / 2), 
+                                            up_angle_th=90, 
+                                            lane_offset=-1)
     elif self.config.live_info.direction == RoadOption.CHANGELANERIGHT:
-        walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
-            self.config.distance.min_proximity_threshold, self.config.live_info.current_speed_limit / 2), up_angle_th=90, lane_offset=1)
+        detection_result = detect_vehicles(self, walker_list, 
+                                            max(self.config.distance.min_proximity_threshold, 
+                                                self.config.live_info.current_speed_limit / 2), 
+                                            up_angle_th=90, 
+                                            lane_offset=1)
     else:
-        walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
-            self.config.distance.min_proximity_threshold, self.config.live_info.current_speed_limit / 3), up_angle_th=60)
-
-    return ObstacleDetectionResult(walker_state, walker, distance)
+        detection_result = detect_vehicles(self, walker_list, 
+                                           max(self.config.distance.min_proximity_threshold, 
+                                               self.config.live_info.current_speed_limit / 3),             
+                                            up_angle_th=60)
+    return detection_result
