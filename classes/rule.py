@@ -8,6 +8,32 @@ from utils.evaluation_function import EvaluationFunction
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 
+class Context:
+
+    def __init__(self, agent : "LunaticAgent", **kwargs):
+        self.agent = agent
+        self.control = None
+        self._init_arguments = kwargs
+        self.evaluation_results = {}
+        self.action_results = {}
+        self.last_phase_evaluation_results = {}
+        self.last_phase_action_results = {}
+        self.__dict__.update(kwargs)
+
+    @property
+    def current_phase(self) -> Phase:
+        return self.agent.current_phase
+    
+    def set_control(self, control : carla.VehicleControl):
+        self.control = control
+    
+    def end_of_phase(self):
+        self.last_phase_action_results = self.action_results.copy()
+        self.last_phase_evaluation_results = self.evaluation_results.copy()
+        self.evaluation_results.clear()
+        self.action_results.clear()
+
+
 class RulePriority(IntEnum):
     """
     Priority of a rule. The smaller a value, the higher the priority.
@@ -56,20 +82,25 @@ class Rule:
         self.description = description
         self.overwrite_settings = overwrite_settings or {}
 
-    def evaluate(self, agent: "LunaticAgent", overwrite: Optional[Dict[str, Any]] = None) -> bool:
+    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> bool | Hashable:
         settings = self.overwrite_settings.copy()
         if overwrite is not None:
             settings.update(overwrite)
-        result = self.rule(agent, settings)
+        ctx.config = ctx.agent.config.copy()
+        ctx.config.update(settings)
+        result = self.rule(ctx, settings)
         return result
 
-    def __call__(self, agent: "LunaticAgent", overwrite: Optional[Dict[str, Any]] = None) -> Any:
+    def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
         # Check phase
-        if agent.current_phase not in self.apply_in_phases:
+        if ctx.agent.current_phase not in self.apply_in_phases:
             return None # not applicable for this phase
-        result = self.evaluate(agent, overwrite)
-        if result in self.actions:
-            return self.actions[result](agent, overwrite)
+        result = self.evaluate(ctx, overwrite)
+        ctx.evaluation_results[ctx.agent.current_phase] = result
+        if result in self.actions: # TODO: allow for multiple actions / weighted random actions
+            action_result = self.actions[result](ctx, overwrite) #todo allow priority, random chance
+            ctx.action_results[ctx.agent.current_phase] = action_result
+            return action_result
         return None
 
 

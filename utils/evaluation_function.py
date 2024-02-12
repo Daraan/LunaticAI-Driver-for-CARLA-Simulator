@@ -7,7 +7,7 @@ from enum import Enum
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
-
+    from classes.rule import Context
 
 class EvaluationFunction:
     """
@@ -18,11 +18,11 @@ class EvaluationFunction:
     from simpler ones.
     The operators + or &, | and ~ are aliases for AND, OR and NOT respectively.
     e.g. 
-    func1 = EvaluationFunction(lambda agent: agent.speed > 10)
-    func2 = EvaluationFunction(lambda agent: agent.speed < 20)
+    func1 = EvaluationFunction(lambda ctx: ctx.speed > 10)
+    func2 = EvaluationFunction(lambda ctx: ctx.speed < 20)
 
     These statements are all equivalent:
-        * EvaluationFunction(lambda agent: 10 < agent.speed < 20)
+        * EvaluationFunction(lambda ctx: 10 < ctx.speed < 20)
         * func1 + func2
         * func1 & func2
         * func1.AND(func2)
@@ -30,27 +30,28 @@ class EvaluationFunction:
 
     EvaluationFunctions also allow for more specific returns types:
         @EvaluationFunction
-        def is_speeding(agent: LunaticAgent) -> Hashable:
-            if agent.speed > agent.speed_limit+20:
+        def is_speeding(ctx: Context) -> Hashable:
+            config = ctx.agent.config
+            if config.speed > config.speed_limit+20:
                 return "very fast"
-            elif agent.speed > agent.speed_limit+5:
+            elif config.speed > config.speed_limit+5:
                 return "fast"
-            elif: agent.speed < agent.speed_limit-20:
+            elif: config.speed < config.speed_limit-20:
                 return "very slow"
             else:
                 return "normal"
 
         Rule(is_speeding, action={
-                                "very fast": lambda agent: agent.follow_speed_limits()
-                                "fast" : lambda agent: agent.set_target_speed(agent.speed_limit+5)
+                                "very fast": lambda ctx: ctx.agent.config.follow_speed_limits()
+                                "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5)
                                 })
     """
     def __init__(self, evaluation_function: Callable[["LunaticAgent"], Hashable], name="EvaluationFunction"):
         self.evaluation_function = evaluation_function
         self.name = name if name != "EvaluationFunction" else evaluation_function.__name__
 
-    def __call__(self, agent: "LunaticAgent", *args, **kwargs) -> Hashable:
-        result = self.evaluation_function(agent, *args, **kwargs)
+    def __call__(self, ctx: "Context", *args, **kwargs) -> Hashable:
+        result = self.evaluation_function(ctx, *args, **kwargs)
         assert isinstance(result, Hashable), f"evaluation_function must return a hashable type, not {type(result)}"
         return result
 
@@ -72,21 +73,21 @@ class EvaluationFunction:
 
     @classmethod
     def AND(cls, func1, func2):
-        def combined_func(agent: "LunaticAgent", *args, **kwargs):
-            return func1(agent, *args, **kwargs) and func2(agent, *args, **kwargs)
+        def combined_func(ctx: "Context", *args, **kwargs):
+            return func1(ctx, *args, **kwargs) and func2(ctx, *args, **kwargs)
         return cls(combined_func, name=f"{func1.name}_and_{func2.name}")
 
     @classmethod
     def OR(cls, func1, func2):
-        def combined_func(agent: "LunaticAgent", *args, **kwargs):
-            return func1(agent, *args, **kwargs) or func2(agent, *args, **kwargs)
+        def combined_func(ctx: "Context", *args, **kwargs):
+            return func1(ctx, *args, **kwargs) or func2(ctx, *args, **kwargs)
 
         return cls(combined_func, name=f"{func1.name}_or_{func2.name}")
 
     @classmethod
     def NOT(cls, func):
-        def combined_func(agent: "LunaticAgent", *args, **kwargs):
-            return not func(agent, *args, **kwargs)
+        def combined_func(ctx: "Context", *args, **kwargs):
+            return not func(ctx, *args, **kwargs)
 
         return cls(combined_func, name=f"not_{func.name}")
 
@@ -104,12 +105,12 @@ class EvaluationFunction:
 
 
 class ActionFunction(EvaluationFunction):
-    def __init__(self, action_function: Callable[["LunaticAgent"], Any], name="ActionFunction"):
+    def __init__(self, action_function: Callable[["Context"], Any], name="ActionFunction"):
         super().__init__(action_function, name)
 
     # Overriding the NOT method isn't appropriate here since this class is for actions, not evaluations.
     # If you wish to have a NOT like functionality, it should be clearly defined what "NOT" an action means.
 
-    def __call__(self, agent: "LunaticAgent", *args, **kwargs) -> Any:
-        return self.action_function(agent, *args, **kwargs)
+    def __call__(self, ctx: "Context", *args, **kwargs) -> Any:
+        return self.evaluation_function(ctx, *args, **kwargs)
 

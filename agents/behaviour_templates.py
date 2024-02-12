@@ -1,7 +1,7 @@
 import carla
 from agents.navigation.local_planner import RoadOption
 
-from classes.rule import Rule, EvaluationFunction
+from classes.rule import Rule, EvaluationFunction, Context
 from agents.tools.lunatic_agent_tools import Phase, detect_vehicles
 from agents.tools.misc import get_speed
 
@@ -100,7 +100,7 @@ def avoid_tailgator(agent : "LunaticAgent"):
                                         left_wpt.transform.location)
 
 @EvaluationFunction            
-def avoid_tailgator_check(agent : "LunaticAgent") -> bool:
+def avoid_tailgator_check(ctx : "Context") -> bool:
     """
     Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
     and did not avoided tailgating in the last 200 steps
@@ -109,11 +109,11 @@ def avoid_tailgator_check(agent : "LunaticAgent") -> bool:
     
     # TODO: add option in rule to receive the result of the DETECT_CARS phase
     """
-    waypoint = agent._current_waypoint
+    waypoint = ctx.agent._current_waypoint
 
-    return (agent.config.live_info.direction == RoadOption.LANEFOLLOW \
-            and not waypoint.is_junction and agent.config.live_info.current_speed > 10  #TODO Hardcoded
-            and agent.config.other.tailgate_counter == 0 # Counter to not change lane too often
+    return (ctx.agent.config.live_info.direction == RoadOption.LANEFOLLOW \
+            and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10  #TODO Hardcoded
+            and ctx.agent.config.other.tailgate_counter == 0 # Counter to not change lane too often
             )
 
 avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,

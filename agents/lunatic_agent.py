@@ -30,7 +30,7 @@ import agents.tools.lunatic_agent_tools
 
 # NEW: Style
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
-from classes.rule import Rule
+from classes.rule import Context, Rule
 from config.default_options.original_behavior import BasicAgentSettings
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
@@ -236,10 +236,11 @@ class LunaticAgent(BehaviorAgent):
         assert phase == normal_next or phase & Phase.EXCEPTIONS, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
         
         self.current_phase = phase # set next phase
+        ctx = Context(agent=self, control=control, prior_results=prior_results)
         for rule in self.rules: # todo: maybe dict? grouped by phase?
             #todo check here for the phase instead of in the rule
             if self.current_phase in rule.phases:
-                rule(self, control=control, phase_results=prior_results)
+                rule(ctx, control=control, phase_results=prior_results)
 
     def run_step(self, debug=False):
         """
