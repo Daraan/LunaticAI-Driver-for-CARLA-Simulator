@@ -120,3 +120,27 @@ avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,
                             rule=avoid_tailgator_check,
                             action=avoid_tailgator,
                             description="Avoid tailgating when followed by a faster car that is quite close.")
+
+
+# ----------- Plan next waypoint -----------
+
+def set_random_waypoint(agent : "LunaticAgent", waypoints : List[carla.Waypoint]=None):
+    """
+    Set a random waypoint as the next target.
+    """
+    if waypoints is None:
+        waypoints = agent._map.get_spawn_points()
+    import random
+    agent.set_destination(random.choice(waypoints))
+
+@EvaluationFunction
+def is_agent_done(ctx : Context) -> bool:
+    """
+    Agent has reached its destination.
+    """
+    return ctx.agent.done()
+
+set_random_waypoint_when_done = Rule(Phase.DONE | Phase.BEGIN,
+                                     rule=is_agent_done,
+                                     action=set_random_waypoint,
+                                     description="Sets random waypoint when done")
