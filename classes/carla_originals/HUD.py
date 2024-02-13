@@ -10,6 +10,7 @@
 import math
 import os
 from datetime import timedelta
+from typing import ClassVar
 
 import carla
 import pygame
@@ -24,15 +25,15 @@ from utils import get_actor_display_name
 
 class HUD(object):
     """Class for HUD text"""
+    default_font : ClassVar[str] = 'ubuntumono'
 
-    def __init__(self, width, height):
+    def __init__(self, width:int, height:int):
         """Constructor method"""
         self.dim = (width, height)
         font = pygame.font.Font(pygame.font.get_default_font(), 20)
         font_name = 'courier' if os.name == 'nt' else 'mono'
         fonts = [x for x in pygame.font.get_fonts() if font_name in x]
-        default_font = 'ubuntumono'
-        mono = default_font if default_font in fonts else fonts[0]
+        mono = self.default_font if self.default_font in fonts else fonts[0]
         mono = pygame.font.match_font(mono)
         self._font_mono = pygame.font.Font(mono, 12 if os.name == 'nt' else 14)
         self._notifications = FadingText(font, (width, 40), (0, height - 40))

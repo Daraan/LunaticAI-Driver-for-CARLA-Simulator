@@ -5,6 +5,7 @@ from typing import Optional
 
 import carla
 import numpy.random as random
+from classes.carla_originals.HUD import HUD
 
 from classes.carla_originals.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
@@ -23,7 +24,7 @@ class World(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, carla_world : carla.World, hud, args, player:Optional[carla.Vehicle]=None):
+    def __init__(self, carla_world : carla.World, hud :"HUD", args, player:Optional[carla.Vehicle]=None):
         """Constructor method"""
         self._args = args
         self.world = carla_world
@@ -47,6 +48,7 @@ class World(object):
         self.camera_manager = None
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
+        self.weather = None
         self._actor_filter = args.filter
         self._actor_generation = args.generation
         self._gamma = args.gamma
@@ -152,6 +154,7 @@ class World(object):
         preset = self._weather_presets[self._weather_index]
         self.hud.notification('Weather: %s' % preset[1])
         self.player.get_world().set_weather(preset[0])
+        self.weather = preset[1]
 
     def next_map_layer(self, reverse=False):
         self.current_map_layer += -1 if reverse else 1
