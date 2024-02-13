@@ -27,7 +27,7 @@ from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # p
 from agents.lunatic_agent import LunaticAgent
 
 from classes.carla_originals.HUD import HUD
-from classes.carla_originals.world import World
+from classes.world import World
 from classes.vehicle import Vehicle
 from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 
