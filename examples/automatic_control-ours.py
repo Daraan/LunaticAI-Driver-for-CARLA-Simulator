@@ -16,7 +16,7 @@ import threading
 import carla
 import numpy.random as random
 import pygame
-from agents.tools.lunatic_agent_tools import Phases
+from agents.tools.lunatic_agent_tools import Phase
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
 import utils
@@ -107,7 +107,7 @@ def game_loop(args):
         # carlaService.assignDriver(ego, driver1)
         args.agent = "Lunatic"
 
-        if args.agent == "Lunatic":
+        if True or args.agent == "Lunatic":
             behavior = LunaticBehaviorSettings({'distance':
                { "base_min_distance": 5.0,
                 "min_proximity_threshold": 12.0,
@@ -187,15 +187,17 @@ def game_loop(args):
                 # TODO: Make this a rule and/or move inside agent
                 # TODO: make a Phases.DONE
                 if agent.done():
-                    agent.execute_phase(Phases.DONE| Phases.BEGIN, prior_results=None, control=control)
+                    agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
                     if args.loop:
+                        # TODO: Rule / Action to define next waypoint
                         agent.set_destination(random.choice(spawn_points).location)
                         world.hud.notification("Target reached", seconds=4.0)
                         print("The target has been reached, searching for another target")
                     else:
                         print("The target has been reached, stopping the simulation")
+                        agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
                         break
-                    agent.execute_phase(Phases.DONE| Phases.END, prior_results=None, control=control)
+                    agent.execute_phase(Phase.DONE| Phase.END, prior_results=None, control=control)
                 
                 # ----------------------------
                 # Phase NONE - Before Running step
@@ -206,20 +208,17 @@ def game_loop(args):
                 # Phase 5 - Apply Control to Vehicle
                 # ----------------------------
 
-                # TODO: Remove phase > EXECUTION | BEGIN 
-                agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.BEGIN, prior_results=None, control=control)
+                agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
                 control.manual_gear_shift = False # TODO: turn into a rule
-                agent.execute_phase(Phases.MODIFY_FINAL_CONTROLS | Phases.END, prior_results=None, control=control)
-                #print("Appling control", control)
-
-                agent.execute_phase(Phases.EXECUTION | Phases.BEGIN, prior_results=None, control=control)
                 world.player.apply_control(control)
-                agent.execute_phase(Phases.EXECUTION | Phases.END, prior_results=None, control=control)
+                agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
                 
                 # if i % 50 == 0:
                 #    print("Tailgate Counter", agent._behavior.tailgate_counter)
                 i += 1
+            agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
 
+        # Interactive
         if "-I" in sys.argv:
             thread = threading.Thread(target=loop)
             thread.start()

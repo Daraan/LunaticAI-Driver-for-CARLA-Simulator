@@ -1,17 +1,15 @@
 import carla
 from agents.navigation.local_planner import RoadOption
 
-from classes.rule import Rule, EvaluationFunction
-from agents.tools.lunatic_agent_tools import Phases, detect_vehicles
+from classes.rule import Rule, EvaluationFunction, Context, always_execute
+from agents.tools.lunatic_agent_tools import Phase, detect_vehicles
 from agents.tools.misc import get_speed
 
 from typing import TYPE_CHECKING, List
+
+from classes.rule import always_execute
 if TYPE_CHECKING:
     from agents import LunaticAgent
-
-@EvaluationFunction
-def always_execute(agent):
-    return True
 
 #TODO: maybe create some omega conf dict creator that allows to create settings more easily
 # e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
@@ -30,7 +28,7 @@ def set_default_intersection_speed(agent):
     # NOTE: could interpolate this in omega conf
     agent.config.speed.target_speed = target_speed
     
-normal_intersection_speed_rule = Rule(Phases.TURNING_AT_JUNCTION | Phases.BEGIN, 
+normal_intersection_speed_rule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
                                       rule=always_execute, 
                                       action=set_default_intersection_speed, 
                                       overwrite_settings= {"speed": {"intersection_speed_decrease": 10}},
@@ -48,7 +46,7 @@ def set_default_speed(agent):
             agent.config.live_info.current_speed_limit - agent.config.speed.speed_lim_dist])
     agent.config.speed.target_speed = target_speed
 
-normal_speed_rule = Rule(Phases.TAKE_NORMAL_STEP | Phases.BEGIN,
+normal_speed_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
                         rule=always_execute,
                         action=set_default_speed,
                         description="Set speed to normal speed")
@@ -100,7 +98,7 @@ def avoid_tailgator(agent : "LunaticAgent"):
                                         left_wpt.transform.location)
 
 @EvaluationFunction            
-def avoid_tailgator_check(agent : "LunaticAgent") -> bool:
+def avoid_tailgator_check(ctx : "Context") -> bool:
     """
     Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
     and did not avoided tailgating in the last 200 steps
@@ -109,14 +107,38 @@ def avoid_tailgator_check(agent : "LunaticAgent") -> bool:
     
     # TODO: add option in rule to receive the result of the DETECT_CARS phase
     """
-    waypoint = agent._current_waypoint
+    waypoint = ctx.agent._current_waypoint
 
-    return (agent.config.live_info.direction == RoadOption.LANEFOLLOW \
-            and not waypoint.is_junction and agent.config.live_info.current_speed > 10  #TODO Hardcoded
-            and agent.config.other.tailgate_counter == 0 # Counter to not change lane too often
+    return (ctx.agent.config.live_info.direction == RoadOption.LANEFOLLOW \
+            and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10  #TODO Hardcoded
+            and ctx.agent.config.other.tailgate_counter == 0 # Counter to not change lane too often
             )
 
-avoid_tailgator_rule = Rule(Phases.DETECT_CARS | Phases.END,
+avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,
                             rule=avoid_tailgator_check,
                             action=avoid_tailgator,
                             description="Avoid tailgating when followed by a faster car that is quite close.")
+
+
+# ----------- Plan next waypoint -----------
+
+def set_random_waypoint(agent : "LunaticAgent", waypoints : List[carla.Waypoint]=None):
+    """
+    Set a random waypoint as the next target.
+    """
+    if waypoints is None:
+        waypoints = agent._map.get_spawn_points()
+    import random
+    agent.set_destination(random.choice(waypoints))
+
+@EvaluationFunction
+def is_agent_done(ctx : Context) -> bool:
+    """
+    Agent has reached its destination.
+    """
+    return ctx.agent.done()
+
+set_random_waypoint_when_done = Rule(Phase.DONE | Phase.BEGIN,
+                                     rule=is_agent_done,
+                                     action=set_random_waypoint,
+                                     description="Sets random waypoint when done")

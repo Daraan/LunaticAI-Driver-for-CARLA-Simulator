@@ -34,6 +34,6 @@ def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", r
 
     control.brake = self.config.controls.max_brake
 
-    # TODO: more soffisticated emergency behavior
+    # TODO: more sophisticated emergency behavior
 
     return control

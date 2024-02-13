@@ -2,6 +2,7 @@
 # NOTE it might has to use synchonous_mode
 import re
 import sys
+from typing import Optional
 
 import carla
 import numpy.random as random
@@ -22,7 +23,7 @@ class World(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, carla_world, hud, args, player=None):
+    def __init__(self, carla_world : carla.World, hud, args, player:Optional[carla.Vehicle]=None):
         """Constructor method"""
         self._args = args
         self.world = carla_world
@@ -58,7 +59,7 @@ class World(object):
         cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
 
         # Get a random blueprint.
-        blueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
+        blueprint : carla.ActorBlueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
         blueprint.set_attribute('role_name', 'hero')
         if blueprint.has_attribute('color'):
             color = random.choice(blueprint.get_attribute('color').recommended_values)
