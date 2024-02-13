@@ -1,15 +1,16 @@
 import random
 from typing import TYPE_CHECKING, List
 
+import carla
+from carla import TrafficLightState
 from agents.tools.misc import (is_within_distance,
                                get_trafficlight_trigger_location, TrafficLightDetectionResult)
 
 if TYPE_CHECKING:
-    import carla
     from agents.lunatic_agent import LunaticAgent
     
 def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
-    return traffic_light.state == carla.TrafficLightState.Red
+    return traffic_light.state == TrafficLightState.Red
 
 def affected_by_traffic_light(self : "LunaticAgent", 
                               lights_list : List["carla.TrafficLight"]=None, 
@@ -33,7 +34,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
 
         # Currently affected by a traffic light
         if self._last_traffic_light:
-            if self._last_traffic_light.state != carla.TrafficLightState.Red:
+            if self._last_traffic_light.state != TrafficLightState.Red:
                 self._last_traffic_light = None
             else: # Still Red
                 return TrafficLightDetectionResult(True, self._last_traffic_light)

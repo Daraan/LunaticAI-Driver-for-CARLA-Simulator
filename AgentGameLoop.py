@@ -154,7 +154,7 @@ def game_loop(args):
         clock = pygame.time.Clock()
 
         # spawn others
-        for sp in spawn_points[1:]:
+        for sp in spawn_points[1:4]:
             v = Vehicle(world, car_bp)
             v.spawn(sp)
             world.actors.append(v)
@@ -208,13 +208,8 @@ def game_loop(args):
                 # Phase 5 - Apply Control to Vehicle
                 # ----------------------------
 
-                # TODO: Remove phase > EXECUTION | BEGIN 
-                agent.execute_phase(Phase.MODIFY_FINAL_CONTROLS | Phase.BEGIN, prior_results=None, control=control)
-                control.manual_gear_shift = False # TODO: turn into a rule
-                agent.execute_phase(Phase.MODIFY_FINAL_CONTROLS | Phase.END, prior_results=None, control=control)
-                #print("Appling control", control)
-
                 agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
+                control.manual_gear_shift = False # TODO: turn into a rule
                 world.player.apply_control(control)
                 agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
                 

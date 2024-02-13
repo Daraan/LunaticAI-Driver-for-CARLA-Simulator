@@ -107,7 +107,7 @@ def game_loop(args):
         # carlaService.assignDriver(ego, driver1)
         args.agent = "Lunatic"
 
-        if args.agent == "Lunatic":
+        if True or args.agent == "Lunatic":
             behavior = LunaticBehaviorSettings({'distance':
                { "base_min_distance": 5.0,
                 "min_proximity_threshold": 12.0,
@@ -208,13 +208,8 @@ def game_loop(args):
                 # Phase 5 - Apply Control to Vehicle
                 # ----------------------------
 
-                # TODO: Remove phase > EXECUTION | BEGIN 
-                agent.execute_phase(Phase.MODIFY_FINAL_CONTROLS | Phase.BEGIN, prior_results=None, control=control)
-                control.manual_gear_shift = False # TODO: turn into a rule
-                agent.execute_phase(Phase.MODIFY_FINAL_CONTROLS | Phase.END, prior_results=None, control=control)
-                #print("Appling control", control)
-
                 agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
+                control.manual_gear_shift = False # TODO: turn into a rule
                 world.player.apply_control(control)
                 agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
                 

@@ -2,6 +2,7 @@ import math
 # COMMENT: do we need this?
 import time
 from cmath import sqrt
+from typing import List
 
 import carla
 import matplotlib
@@ -103,11 +104,11 @@ class VehicleBase:
 
         return relative_x_rotated, relative_y_rotated
 
-    def distanceToCarAhead(self, vehicles: []):
+    def distanceToCarAhead(self, vehicle_list: List[carla.Vehicle]):
         closestCar = None
         closestDistance = float('inf')  # Initialize with a very large value
 
-        for car in vehicles:
+        for car in vehicle_list:
             if car != self:
                 car_location = car.getLocation()
 
@@ -127,11 +128,11 @@ class VehicleBase:
         else:
             return None
 
-    def distanceToCarBehind(self, vehicles: []):
+    def distanceToCarBehind(self, vehicle_list: List[carla.Vehicle]):
         closestCar = None
         closestDistance = float('inf')  # Initialize with a very large value
 
-        for car in vehicles:
+        for car in vehicle_list:
             if car != self:
                 car_location = car.getLocation()
 

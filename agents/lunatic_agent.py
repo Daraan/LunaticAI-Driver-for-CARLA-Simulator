@@ -283,7 +283,7 @@ class LunaticAgent(BehaviorAgent):
         # ----------------------------
             
         self.execute_phase(Phase.DETECT_CARS | Phase.BEGIN, prior_results=None) # TODO: Maybe add some prio result
-        detection_result :ObstacleDetectionResult = substep_managers.collision_detection_manager(self._current_waypoint)
+        detection_result :ObstacleDetectionResult = substep_managers.collision_detection_manager(self, self._current_waypoint)
         # TODO: add a way to let the execution overwrite
         if detection_result.obstacle_was_found:
 
