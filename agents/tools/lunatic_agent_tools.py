@@ -32,36 +32,31 @@ class Phase(Flag):
     <Phases.EXECUTION|BEGIN: 1025>,
     <Phases.EXECUTION|END: 1026>
     """
+
+    # NOTE: # CRITICAL : Alias creation should be done after all the phases are created.
+    # see https://github.com/python/cpython/issues/91456
+    # Before python version (3.12+?) auto() DOES NOT WORK AS EXPECTED when using ALIASES
+
     NONE = 0
 
     # These can be combined with any of the other Phases
     BEGIN = auto()
     END = auto()
-    # maybe, RETURN_CONTROLS = auto()
 
     UPDATE_INFORMATION = auto()
-    PHASE_0 = UPDATE_INFORMATION
 
     PLAN_PATH = auto()
-    PHASE_1 = PLAN_PATH # alias
 
     DETECT_TRAFFIC_LIGHTS = auto()
     DETECT_PEDESTRIANS = auto()
-    DETECT_NON_CARS = DETECT_TRAFFIC_LIGHTS | DETECT_PEDESTRIANS
-    PHASE_2 = DETECT_NON_CARS  # alias
-
+    
     DETECT_CARS = auto()
-    PHASE_3 = DETECT_CARS # alias
 
     CAR_DETECTED = auto()
 
-    DETECTION_PHASE = DETECT_NON_CARS | DETECT_CARS
-
     TAKE_NORMAL_STEP = auto()
-    PHASE_4 = TAKE_NORMAL_STEP # alias
 
     EXECUTION = auto() # Out of loop
-    PHASE_5 = EXECUTION # out of loop
 
     # --- Special situations ---
 
@@ -71,15 +66,28 @@ class Phase(Flag):
     COLLISION = auto()
     # States which the agent can be in outside of a normal Phase0-5 loop 
 
-
+    # --- Aliases & Combination Phases ---
+    # NOTE: # CRITICAL : Alias creation should be done after all the phases are created.!!!
+    
     DONE = auto() # agent.done() -> True
+    TERMINATING = auto() # When closing the loop
+
+    DETECT_NON_CARS = DETECT_TRAFFIC_LIGHTS | DETECT_PEDESTRIANS
+    DETECTION_PHASE = DETECT_NON_CARS | DETECT_CARS
+
+    PHASE_0 = UPDATE_INFORMATION
+    PHASE_1 = PLAN_PATH # alias
+    PHASE_2 = DETECT_NON_CARS  # alias
+    PHASE_3 = DETECT_CARS # alias
+    PHASE_4 = TAKE_NORMAL_STEP # alias
+    PHASE_5 = EXECUTION # out of loop
 
     EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE 
 
     NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP
     IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
 
-    TERMINATING = auto() # When closing the loop
+
     """
     def __eq__(self, other):
         # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION
@@ -92,15 +100,21 @@ class Phase(Flag):
 
     def next_phase(self):
         # Hardcoded transitions
-        if self in (Phase.NONE, Phase.EXECUTION|Phase.END, Phase.DONE|Phase.END): # Begin loop
+        if self in (Phase.NONE, Phase.EXECUTION | Phase.END, Phase.DONE|Phase.END): # Begin loop
             return Phase.BEGIN | Phase.UPDATE_INFORMATION
         if self in (Phase.END | Phase.EXECUTION, Phase.DONE| Phase.END) : # End loop
             return Phase.NONE
         #if self is Phase.MODIFY_FINAL_CONTROLS | Phase.END: # do not go into emergency state
         #    return Phase.EXECUTION | Phase.BEGIN
+            
         if Phase.BEGIN in self:
             return (self & ~Phase.BEGIN) | Phase.END
-        if Phase.END in self:
+        # Note these should all be END phases
+        if Phase.EXCEPTIONS & self:
+            return Phase.EXECUTION | Phase.BEGIN
+        if Phase.TERMINATING in self:
+            return Phase.NONE
+        if Phase.END in self: # Safeguard
             return Phase.BEGIN | Phase((self & ~Phase.END).value * 2)
         raise ValueError(f"Phase {self} is not a valid phase")
         return Phase(self.value * 2)
@@ -133,19 +147,22 @@ class Hazard(Flag):
     TRAFFIC_LIGHT = auto()
     PEDESTRIAN = auto()
     CAR = auto()
-    OBSTACLE = PEDESTRIAN | CAR
     OTHER = auto()
 
     JUNCTION = auto() # maybe
 
     # Severity
-    WARNING = auto()
+    WARNING = auto() # Level 1
     _IS_CRITICAL = auto()
-    CRITICAL = WARNING | _IS_CRITICAL
     _IS_EMERGENCY = auto()
-    EMERGENCY = CRITICAL | _IS_EMERGENCY
 
     COLLISION = auto()
+
+    # Aliases
+    CRITICAL = WARNING | _IS_CRITICAL # Level 2
+    EMERGENCY = CRITICAL | _IS_EMERGENCY # Level 3
+    
+    OBSTACLE = PEDESTRIAN | CAR
     
 
 
