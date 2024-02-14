@@ -120,15 +120,28 @@ class Phase(Flag):
         return Phase(self.value * 2)
 
     @classmethod
-    @lru_cache(1)  # < Python3.8
     def get_phases(cls):
-        main_phases = [cls.NONE]
-        p = cls.NONE.next_phase()
-        while p != Phase.NONE:
+        return cls.get_main_phases() + cls.get_exceptions() + [cls.TERMINATING | cls.BEGIN, cls.TERMINATING | cls.END]
+
+    @classmethod
+    @lru_cache(1)  # < Python3.8
+    def get_main_phases(cls):
+        main_phases = [cls.NONE, cls.UPDATE_INFORMATION | cls.BEGIN]
+        p = main_phases[1].next_phase()
+        while p != main_phases[1]:
             main_phases.append(p)
-            print(p)
             p = p.next_phase()
         return main_phases
+    
+    @classmethod
+    @lru_cache(1)  # < Python3.8
+    def get_exceptions(cls):
+        exceptions = [cls.TURNING_AT_JUNCTION, cls.HAZARD, cls.EMERGENCY, cls.COLLISION, cls.CAR_DETECTED, cls.DONE] # TODO: Get this from EXCEPTIONS
+        exception_phases = []
+        for e in exceptions: # improve with itertools
+            exception_phases.append(e | cls.BEGIN)
+            exception_phases.append(e | cls.END)
+        return exception_phases
 
     @classmethod
     def set_phase(cls, phase : Union[int, None], end:bool=False) -> "Phase":

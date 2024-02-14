@@ -12,14 +12,14 @@ traffic signs, and has different possible configurations. """
 
 from __future__ import annotations
 
+from copy import deepcopy
 from functools import wraps
 import random
-from typing import Dict, List, Set, Tuple
-import numpy as np
+from typing import ClassVar, Dict, List, Set, Tuple
+
 from omegaconf import DictConfig
 
 import carla
-from shapely.geometry import Polygon
 
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 import agents.tools
@@ -63,6 +63,10 @@ class LunaticAgent(BehaviorAgent):
     It has several functions available to specify the route that the agent must follow,
     as well as to change its parameters in case a different driving mode is desired.
     """
+
+    # using a ClassVar which allows to define preset rules for a child class
+    # NOTE: Use deepcopy to avoid shared state between instances
+    rules : ClassVar[Dict[Phase, List[Rule]]] = dict.fromkeys(Phase.get_phases(), [])
 
     # todo: rename in the future
 
@@ -152,7 +156,7 @@ class LunaticAgent(BehaviorAgent):
         self._set_collision_sensor()
 
         #Rule Framework
-        self.rules : List[Rule] = []
+        self.rules = deepcopy(self.rules) # Copies the ClassVar to the instance
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
