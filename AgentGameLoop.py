@@ -27,7 +27,7 @@ from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # p
 from agents.lunatic_agent import LunaticAgent
 
 from classes.carla_originals.HUD import HUD
-from classes.carla_originals.world import World
+from classes.world import World
 from classes.vehicle import Vehicle
 from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 
@@ -160,6 +160,7 @@ def game_loop(args):
             world.actors.append(v)
             # v.setVelocity(1)
             v.actor.set_autopilot(True)
+            v.actor.set_target_velocity(carla.Vector3D(-6, 0, 0))
             print(v.actor)
             #ap = TrafficManagerD(client, v.actor)
             #ap.init_passive_driver()
@@ -187,6 +188,7 @@ def game_loop(args):
                 # TODO: Make this a rule and/or move inside agent
                 # TODO: make a Phases.DONE
                 if agent.done():
+                    # NOTE: Might be in NONE phase here.
                     agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
                     if args.loop:
                         # TODO: Rule / Action to define next waypoint

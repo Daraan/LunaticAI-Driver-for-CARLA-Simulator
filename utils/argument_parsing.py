@@ -33,9 +33,22 @@ def client_settings(parser):
 def interactive_mode(parser):
     parser.add_argument('-I', '--interactive', action='store_true', help='Interactive mode', default=False)
 
+@subparser
+def interactive_control_example(parser):
+    parser.add_argument(
+        '--rolename',
+        metavar='NAME',
+        default='hero',
+        help='actor role name (default: "hero")')
+    parser.add_argument(
+        '--gamma',
+        default=2.2,
+        type=float,
+        help='Gamma correction of the camera (default: 2.2)')
 
 @subparser
 def automatic_control_example(argparser):
+    interactive_control_example(argparser)
     argparser.description = 'CARLA Automatic Control Client'
     argparser.add_argument(
         '-v', '--verbose',
