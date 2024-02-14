@@ -12,32 +12,31 @@ traffic signs, and has different possible configurations. """
 
 from __future__ import annotations
 
+from copy import deepcopy
 from functools import wraps
 import random
-from typing import Dict, List, Set, Tuple
-import numpy as np
+from typing import ClassVar, Dict, List, Set, Tuple
+
 from omegaconf import DictConfig
 
 import carla
-from shapely.geometry import Polygon
 
 from agents.navigation.global_route_planner import GlobalRoutePlanner
+from agents.navigation.behavior_agent import BehaviorAgent
+
 import agents.tools
 from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
                                compute_distance)
 
-from agents.navigation.behavior_agent import BehaviorAgent
-from agents.tools.lunatic_agent_tools import Hazard, Phase
+from agents import substep_managers
 import agents.tools.lunatic_agent_tools
-
-# NEW: Style
+from agents.tools.lunatic_agent_tools import Hazard, Phase
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
+
 from classes.rule import Context, Rule
 from config.default_options.original_behavior import BasicAgentSettings
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
-#from agents import rule_behavior
-from agents import substep_managers
 
 # As Reference:
 '''
@@ -63,6 +62,10 @@ class LunaticAgent(BehaviorAgent):
     It has several functions available to specify the route that the agent must follow,
     as well as to change its parameters in case a different driving mode is desired.
     """
+
+    # using a ClassVar which allows to define preset rules for a child class
+    # NOTE: Use deepcopy to avoid shared state between instances
+    rules : ClassVar[Dict[Phase, List[Rule]]] = dict.fromkeys(Phase.get_phases(), [])
 
     # todo: rename in the future
 
@@ -100,6 +103,13 @@ class LunaticAgent(BehaviorAgent):
 
         # todo set a initial tailgaite counter here, either as instance variable or in live_info
         self.config.live_info.current_tailgate_counter : int = self.config.other.tailgate_counter # type: ignore
+        # Vehicle information
+        self.live_info.speed = 0
+        self.live_info.speed_limit = 0
+        self.live_info.direction = None
+        #config.speed.min_speed = 5
+        self.config.speed.min_speed
+        #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
 
         # Original Setup ---------------------------------------------------------
         self._vehicle : carla.Vehicle = vehicle
@@ -119,17 +129,10 @@ class LunaticAgent(BehaviorAgent):
 
         # Parameters from BehaviorAgent ------------------------------------------
         # todo: check redefinitions
-        self._look_ahead_steps = 0  # updated in _update_information used for local_planner.get_incoming_waypoint_and_direction
 
-        # Vehicle information
-        self.live_info.speed = 0
-        self.live_info.speed_limit = 0
-        self.live_info.direction = None
-        self._incoming_direction : RoadOption = None
         self._incoming_waypoint : carla.Waypoint = None
-        #config.speed.min_speed = 5
-        self.config.speed.min_speed
-        #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
+        self._look_ahead_steps = 0  # updated in _update_information used for local_planner.get_incoming_waypoint_and_direction
+        self._incoming_direction : RoadOption = None
 
         # Initialize the planners
         self._local_planner = DynamicLocalPlanner(self._vehicle, opt_dict=opt_dict, map_inst=self._map, world=self._world if self._world else "MISSING")
@@ -144,7 +147,7 @@ class LunaticAgent(BehaviorAgent):
 
         # Get the static elements of the scene
         # TODO: This could be done globally and not for each instance :/
-        self._lights_list = self._world.get_actors().filter("*traffic_light*")
+        self._lights_list : List[carla.TrafficLight] = self._world.get_actors().filter("*traffic_light*")
         self._lights_map : Dict[int, carla.Waypoint] = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
 
         # From ConstantVelocityAgent ----------------------------------------------
@@ -152,7 +155,7 @@ class LunaticAgent(BehaviorAgent):
         self._set_collision_sensor()
 
         #Rule Framework
-        self.rules : List[Rule] = []
+        self.rules = deepcopy(self.rules) # Copies the ClassVar to the instance
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
@@ -210,7 +213,9 @@ class LunaticAgent(BehaviorAgent):
 
 
     def add_rule(self, rule : Rule, position=-1):
-        self.rules.insert(position, rule) #TODO: return some ids for deletion, modification of rules.
+        for p in rule.phases:
+            self.rules[p].append(rule)
+            self.rules[p].sort(key=lambda r: r.priority, reverse=True)
         
     def execute_phase(self, phase, *, prior_results, control:carla.VehicleControl=None):
         """
@@ -221,9 +226,10 @@ class LunaticAgent(BehaviorAgent):
         
         self.current_phase = phase # set next phase
         ctx = Context(agent=self, control=control, prior_results=prior_results)
-        for rule in self.rules: # todo: maybe dict? grouped by phase?
+        rules_to_check = self.rules[phase]
+        for rule in rules_to_check: # todo: maybe dict? grouped by phase?
             #todo check here for the phase instead of in the rule
-            if self.current_phase in rule.phases:
+            if self.current_phase in rule: # TODO remove:
                 rule(ctx, control=control, phase_results=prior_results)
 
     def run_step(self, debug=False):
@@ -313,7 +319,7 @@ class LunaticAgent(BehaviorAgent):
 
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, prior_results=None)
             control = self._local_planner.run_step()
-            self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, control)
+            self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, control=control, prior_results=None)
             return control
 
         # ----------------------------

@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 
 class Context:
+    """
+    Object to be passed as the first argument (instead of self) to rules, actions and evaluation functions.
+    """
     agent : "LunaticAgent"
     config : DictConfig
     evaluation_results : Dict[Phase, Hashable] # ambigious wording, which result? here evaluation result
@@ -65,14 +68,20 @@ class Rule:
     actions : Dict[Any, Callable[[Context], Any]]
     description : str
     overwrite_settings : Dict[str, Any]
-    apply_in_phases : Set[Phase]
+    phases : Set[Phase]
+
+    DEFAULT_COOLDOWN_STEPS : ClassVar[int] = 50
+    cooldown_reset : int = DEFAULT_COOLDOWN_STEPS
+    _cooldown : int # if 0 the rule can be executed
+
+    group : Optional[str] = None # group of rules that share a cooldown
 
     # Indicate that no rule was applicable in the current phase
     # i.e.  rule(ctx) in actions was False 
     NOT_APPLICABLE : ClassVar = object()
 
     def __init__(self, 
-                 phases : Union[Phase, Iterable], # iterable of Phases
+                 phases : Union[Phase, Iterable[Phase]], # iterable of Phases
                  rule : Callable[[Context], Hashable], 
                  action: Union[Callable[[Context], Any], Dict[Any, Callable]] = None, 
                  false_action = None,
@@ -81,6 +90,8 @@ class Rule:
                  description: str = "What does this rule do?",
                  overwrite_settings: Optional[Dict[str, Any]] = None,
                  priority: RulePriority = RulePriority.NORMAL,
+                 cooldown : Optional[int] = None,
+                 group : Optional[str] = None,
                  ignore_chance=NotImplemented,
                  ) -> None:
         if not isinstance(phases, set):
@@ -92,8 +103,12 @@ class Rule:
             if not isinstance(p, Phase):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
         self.priority : float | int | RulePriority = priority
+
+        self.group = group or self.group
+        self._cooldown : int = 0
+        self.max_cooldown = cooldown or self.DEFAULT_COOLDOWN_STEPS
         
-        self.apply_in_phases = phases # TODO: CRITICAL: 
+        self.phases = phases
         if isinstance(action, dict):
             self.actions = action
             if false_action is not None or actions is not None:
@@ -109,6 +124,14 @@ class Rule:
         self.description = description
         self.overwrite_settings = overwrite_settings or {}
 
+    def is_ready(self) -> bool:
+        return self._cooldown == 0
+    
+    # TODO: # CRITICAL: implement how cooldown is reduced
+    def update_cooldown(self):
+        if self._cooldown > 0:
+            self._cooldown -= 1
+
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable]:
         settings = self.overwrite_settings.copy()
         if overwrite is not None:
@@ -118,15 +141,18 @@ class Rule:
         result = self.rule(ctx, settings)
         return result
 
-    def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *, ignore_phase=False) -> Any:
+    def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *, ignore_phase=False, ignore_cooldown=False) -> Any:
         # Check phase
-        if not ignore_phase or ctx.agent.current_phase not in self.apply_in_phases:
-            return None # not applicable for this phase
+        if not self.is_ready() and not ignore_cooldown:
+            return self.NOT_APPLICABLE
+        if not ignore_phase or ctx.agent.current_phase not in self.phases:
+            return self.NOT_APPLICABLE # not applicable for this phase
         result = self.evaluate(ctx, overwrite)
         ctx.evaluation_results[ctx.agent.current_phase] = result
         if result in self.actions:
             action_result = self.actions[result](ctx, overwrite) #todo allow priority, random chance
             ctx.action_results[ctx.agent.current_phase] = action_result
+            self._cooldown = self.max_cooldown
             return action_result
         return self.NOT_APPLICABLE # No action was executed
 

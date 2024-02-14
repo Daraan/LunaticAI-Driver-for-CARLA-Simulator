@@ -23,9 +23,10 @@ def calculateDistance(location1, location2):
 
 class VehicleBase:
     instances: list = []  # for easier destruction later
+    actor : carla.Vehicle
 
     def __init__(self, world: carla.World, make=""):
-        self.actor: carla.Actor = None
+        self.actor: carla.Vehicle = None
         self.world = world if isinstance(world, carla.World) else world.world  # if using classes.world.World
         self.control: carla.VehicleControl = carla.VehicleControl()
         blueprint_library = world.get_blueprint_library()
@@ -49,7 +50,7 @@ class VehicleBase:
         )
 
     def spawn(self, transform):
-        self.actor: carla.Actor = self.world.spawn_actor(self.actorBlueprint, transform)
+        self.actor: carla.Vehicle = self.world.spawn_actor(self.actorBlueprint, transform)
         self.actor.apply_control(self.control)
 
     def focusCamera(self):

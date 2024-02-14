@@ -2,10 +2,13 @@
 Uses the built in carla.TrafficManager to use the autopilot written in C.
 """
 
-class TrafficManager:
-    tm = None
+from typing import ClassVar
+import carla
 
-    def __init__(self, client, actor, *,
+class TrafficManager:
+    tm : ClassVar[carla.TrafficManager] = None
+
+    def __init__(self, client : carla.Client, actor, *,
                  speed_limit_scale,
                  min_front_distance,
                  seed=1):

@@ -5,6 +5,10 @@ import numpy as np
 import pygame
 from carla import ColorConverter as cc
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from classes.carla_originals.HUD import HUD
+
 
 # ==============================================================================
 # -- CameraManager -------------------------------------------------------------
@@ -14,12 +18,12 @@ from carla import ColorConverter as cc
 class CameraManager(object):
     """ Class for camera management"""
 
-    def __init__(self, parent_actor, hud):
+    def __init__(self, parent_actor : carla.Actor, hud : "HUD", gamma_correction=0):
         """Constructor method"""
         self.sensor = None
-        self.surface = None
+        self.surface : pygame.Surface = None
         self._parent = parent_actor
-        self.hud = hud
+        self.hud : "HUD" = hud
         self.recording = False
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
@@ -52,6 +56,8 @@ class CameraManager(object):
             if item[0].startswith('sensor.camera'):
                 blp.set_attribute('image_size_x', str(hud.dim[0]))
                 blp.set_attribute('image_size_y', str(hud.dim[1]))
+                if blp.has_attribute('gamma'):
+                    blp.set_attribute('gamma', str(gamma_correction))
             elif item[0].startswith('sensor.lidar'):
                 blp.set_attribute('range', '50')
             item.append(blp)
