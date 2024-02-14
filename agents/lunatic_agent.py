@@ -22,22 +22,21 @@ from omegaconf import DictConfig
 import carla
 
 from agents.navigation.global_route_planner import GlobalRoutePlanner
+from agents.navigation.behavior_agent import BehaviorAgent
+
 import agents.tools
 from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
                                compute_distance)
 
-from agents.navigation.behavior_agent import BehaviorAgent
-from agents.tools.lunatic_agent_tools import Hazard, Phase
+from agents import substep_managers
 import agents.tools.lunatic_agent_tools
-
-# NEW: Style
+from agents.tools.lunatic_agent_tools import Hazard, Phase
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
+
 from classes.rule import Context, Rule
 from config.default_options.original_behavior import BasicAgentSettings
 from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
-#from agents import rule_behavior
-from agents import substep_managers
 
 # As Reference:
 '''
@@ -104,6 +103,13 @@ class LunaticAgent(BehaviorAgent):
 
         # todo set a initial tailgaite counter here, either as instance variable or in live_info
         self.config.live_info.current_tailgate_counter : int = self.config.other.tailgate_counter # type: ignore
+        # Vehicle information
+        self.live_info.speed = 0
+        self.live_info.speed_limit = 0
+        self.live_info.direction = None
+        #config.speed.min_speed = 5
+        self.config.speed.min_speed
+        #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
 
         # Original Setup ---------------------------------------------------------
         self._vehicle : carla.Vehicle = vehicle
@@ -123,17 +129,10 @@ class LunaticAgent(BehaviorAgent):
 
         # Parameters from BehaviorAgent ------------------------------------------
         # todo: check redefinitions
-        self._look_ahead_steps = 0  # updated in _update_information used for local_planner.get_incoming_waypoint_and_direction
 
-        # Vehicle information
-        self.live_info.speed = 0
-        self.live_info.speed_limit = 0
-        self.live_info.direction = None
-        self._incoming_direction : RoadOption = None
         self._incoming_waypoint : carla.Waypoint = None
-        #config.speed.min_speed = 5
-        self.config.speed.min_speed
-        #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
+        self._look_ahead_steps = 0  # updated in _update_information used for local_planner.get_incoming_waypoint_and_direction
+        self._incoming_direction : RoadOption = None
 
         # Initialize the planners
         self._local_planner = DynamicLocalPlanner(self._vehicle, opt_dict=opt_dict, map_inst=self._map, world=self._world if self._world else "MISSING")
@@ -148,7 +147,7 @@ class LunaticAgent(BehaviorAgent):
 
         # Get the static elements of the scene
         # TODO: This could be done globally and not for each instance :/
-        self._lights_list = self._world.get_actors().filter("*traffic_light*")
+        self._lights_list : List[carla.TrafficLight] = self._world.get_actors().filter("*traffic_light*")
         self._lights_map : Dict[int, carla.Waypoint] = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
 
         # From ConstantVelocityAgent ----------------------------------------------
