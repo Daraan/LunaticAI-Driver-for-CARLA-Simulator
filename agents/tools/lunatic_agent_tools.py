@@ -51,26 +51,26 @@ class Phase(Flag):
     DETECT_PEDESTRIANS = auto()
     
     DETECT_CARS = auto()
-
-    CAR_DETECTED = auto()
-
     TAKE_NORMAL_STEP = auto()
 
     EXECUTION = auto() # Out of loop
 
     # --- Special situations ---
+    CAR_DETECTED = auto()
 
     TURNING_AT_JUNCTION = auto()
+
     HAZARD = auto()
     EMERGENCY = auto()
     COLLISION = auto()
+
+    DONE = auto() # agent.done() -> True
+    TERMINATING = auto() # When closing the loop
     # States which the agent can be in outside of a normal Phase0-5 loop 
 
     # --- Aliases & Combination Phases ---
     # NOTE: # CRITICAL : Alias creation should be done after all the phases are created.!!!
     
-    DONE = auto() # agent.done() -> True
-    TERMINATING = auto() # When closing the loop
 
     DETECT_NON_CARS = DETECT_TRAFFIC_LIGHTS | DETECT_PEDESTRIANS
     DETECTION_PHASE = DETECT_NON_CARS | DETECT_CARS
@@ -100,12 +100,10 @@ class Phase(Flag):
 
     def next_phase(self):
         # Hardcoded transitions
-        if self in (Phase.NONE, Phase.EXECUTION | Phase.END, Phase.DONE|Phase.END): # Begin loop
+        if self in (Phase.NONE, Phase.EXECUTION|Phase.END, Phase.DONE|Phase.END): # Begin loop
             return Phase.BEGIN | Phase.UPDATE_INFORMATION
-        if self in (Phase.END | Phase.EXECUTION, Phase.DONE| Phase.END) : # End loop
-            return Phase.NONE
-        #if self is Phase.MODIFY_FINAL_CONTROLS | Phase.END: # do not go into emergency state
-        #    return Phase.EXECUTION | Phase.BEGIN
+        #if self in (Phase.EXECUTION|Phase.END, Phase.DONE| Phase.END) : # End loop
+        #    return Phase.NONE
             
         if Phase.BEGIN in self:
             return (self & ~Phase.BEGIN) | Phase.END

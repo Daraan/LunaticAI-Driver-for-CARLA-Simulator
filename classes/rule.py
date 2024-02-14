@@ -68,7 +68,7 @@ class Rule:
     actions : Dict[Any, Callable[[Context], Any]]
     description : str
     overwrite_settings : Dict[str, Any]
-    apply_in_phases : Set[Phase]
+    phases : Set[Phase]
 
     DEFAULT_COOLDOWN_STEPS : ClassVar[int] = 50
     cooldown_reset : int = DEFAULT_COOLDOWN_STEPS
@@ -81,7 +81,7 @@ class Rule:
     NOT_APPLICABLE : ClassVar = object()
 
     def __init__(self, 
-                 phases : Union[Phase, Iterable], # iterable of Phases
+                 phases : Union[Phase, Iterable[Phase]], # iterable of Phases
                  rule : Callable[[Context], Hashable], 
                  action: Union[Callable[[Context], Any], Dict[Any, Callable]] = None, 
                  false_action = None,
@@ -108,7 +108,7 @@ class Rule:
         self._cooldown : int = 0
         self.max_cooldown = cooldown or self.DEFAULT_COOLDOWN_STEPS
         
-        self.apply_in_phases = phases # TODO: CRITICAL: 
+        self.phases = phases
         if isinstance(action, dict):
             self.actions = action
             if false_action is not None or actions is not None:
@@ -145,7 +145,7 @@ class Rule:
         # Check phase
         if not self.is_ready() and not ignore_cooldown:
             return self.NOT_APPLICABLE
-        if not ignore_phase or ctx.agent.current_phase not in self.apply_in_phases:
+        if not ignore_phase or ctx.agent.current_phase not in self.phases:
             return self.NOT_APPLICABLE # not applicable for this phase
         result = self.evaluate(ctx, overwrite)
         ctx.evaluation_results[ctx.agent.current_phase] = result

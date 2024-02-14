@@ -320,7 +320,7 @@ class LunaticAgent(BehaviorAgent):
 
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, prior_results=None)
             control = self._local_planner.run_step()
-            self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, control)
+            self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, control=control, prior_results=None)
             return control
 
         # ----------------------------
