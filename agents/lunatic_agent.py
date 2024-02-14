@@ -214,7 +214,9 @@ class LunaticAgent(BehaviorAgent):
 
 
     def add_rule(self, rule : Rule, position=-1):
-        self.rules.insert(position, rule) #TODO: return some ids for deletion, modification of rules.
+        for p in rule.phases:
+            self.rules[p].append(rule)
+            self.rules[p].sort(key=lambda r: r.priority, reverse=True)
         
     def execute_phase(self, phase, *, prior_results, control:carla.VehicleControl=None):
         """
@@ -225,9 +227,10 @@ class LunaticAgent(BehaviorAgent):
         
         self.current_phase = phase # set next phase
         ctx = Context(agent=self, control=control, prior_results=prior_results)
-        for rule in self.rules: # todo: maybe dict? grouped by phase?
+        rules_to_check = self.rules[phase]
+        for rule in rules_to_check: # todo: maybe dict? grouped by phase?
             #todo check here for the phase instead of in the rule
-            if self.current_phase in rule.phases:
+            if self.current_phase in rule: # TODO remove:
                 rule(ctx, control=control, phase_results=prior_results)
 
     def run_step(self, debug=False):

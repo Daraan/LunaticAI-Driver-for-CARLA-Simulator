@@ -146,7 +146,7 @@ class Rule:
         if not self.is_ready() and not ignore_cooldown:
             return self.NOT_APPLICABLE
         if not ignore_phase or ctx.agent.current_phase not in self.apply_in_phases:
-            return None # not applicable for this phase
+            return self.NOT_APPLICABLE # not applicable for this phase
         result = self.evaluate(ctx, overwrite)
         ctx.evaluation_results[ctx.agent.current_phase] = result
         if result in self.actions:
