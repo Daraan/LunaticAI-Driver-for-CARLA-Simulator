@@ -4,15 +4,16 @@
 from omegaconf import OmegaConf, DictConfig
 from dataclasses import dataclass, field
 
-from typing import Dict
+from typing import Dict, TYPE_CHECKING
 
-from config.settings_base_class import BaseCategories, _AnnotationChecker
-from config.settings_base_class import live_info, speed, distance, lane_change, obstacles, controls, planner, other, unknown
-import config.settings_base_class
+import conf.settings_base_class
+from conf.settings_base_class import BaseCategories, _AnnotationChecker
+from conf.settings_base_class import live_info, speed, distance, lane_change, obstacles, controls, planner, other, unknown
 
-from agents.navigation.local_planner import RoadOption
+if TYPE_CHECKING:
+    from agents.navigation.local_planner import RoadOption
 
-assert speed is config.settings_base_class.speed
+assert speed is conf.settings_base_class.speed
 
 class BasicAgentSettings(BaseCategories): # _AnnotationChecker, 
     """
@@ -33,7 +34,7 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     
     live_info.current_speed : float = None
     live_info.current_speed_limit : float = None
-    live_info.direction : RoadOption = None 
+    live_info.direction : "RoadOption" = None 
 
     # --------------------------
     # Agent Level
@@ -150,7 +151,7 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
 
 basic_options = BasicAgentSettings()
 basic_options._options = basic_options._init_default_options(reinit=True).copy()
-basic_options.export_options("config/default_options/basic_agent_settings.yaml")    
+basic_options.export_options("conf/default_options/basic_agent_settings.yaml")    
 
 
 class BehaviorAgentSettings(BasicAgentSettings):
@@ -207,5 +208,5 @@ class BehaviorAgentSettings(BasicAgentSettings):
 
 behavior_agent_options = BehaviorAgentSettings()
 behavior_agent_options._options = behavior_agent_options._init_default_options(reinit=True).copy()
-behavior_agent_options.export_options("config/default_options/behavior_agent_settings.yaml")
-config.settings_base_class.default_options = None
+behavior_agent_options.export_options("conf/default_options/behavior_agent_settings.yaml")
+conf.settings_base_class.default_options = None

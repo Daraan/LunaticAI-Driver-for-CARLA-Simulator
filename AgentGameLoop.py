@@ -19,7 +19,6 @@ import numpy.random as random
 import pygame
 from agents.tools.lunatic_agent_tools import Phase
 from classes.rule import Rule
-from config.lunatic_behavior_settings import LunaticBehaviorSettings
 
 import utils
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
@@ -27,6 +26,7 @@ from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=im
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
 
 from agents.lunatic_agent import LunaticAgent
+from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
 from classes.carla_originals.HUD import HUD
 from classes.world import World
