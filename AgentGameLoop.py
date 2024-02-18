@@ -8,6 +8,7 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 from __future__ import print_function  # for python 2.7 compatibility
 
 
+import argparse
 import logging
 import random
 import sys
@@ -36,8 +37,7 @@ from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 # -- Game Loop ---------------------------------------------------------
 # ==============================================================================
 
-
-def game_loop(args):
+def game_loop(args : argparse.ArgumentParser):
     """
     Main loop of the simulation. It handles updating all the HUD information,
     ticking the agent and, if needed, the world.

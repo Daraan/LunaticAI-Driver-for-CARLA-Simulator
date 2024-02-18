@@ -1,14 +1,15 @@
 import argparse
 from functools import wraps
+from typing import Optional
 
 
 # todo later: add some more flexible way to construct a parser. i.e. combine certain subparsers, e.g. one for port& host another one for settings
 
-def subparser(func):
+def subparser(func) -> argparse.ArgumentParser:
     """This decorator allows to join multiple subparsers in a flexible way."""
 
     @wraps(func)
-    def wrapper(parser=None, *args, **kwargs):
+    def wrapper(parser:Optional[argparse.ArgumentParser]=None, *args, **kwargs) -> argparse.ArgumentParser:
         if parser is None:  # create a parser if none is given
             parser = argparse.ArgumentParser()
         # else: TODO: are subparsers useful?
@@ -24,17 +25,17 @@ def subparser(func):
 
 
 @subparser
-def client_settings(parser):
+def client_settings(parser:argparse.ArgumentParser):
     parser.add_argument('-p', '--port', help='TCP Port', default="2000", type=int)
     parser.add_argument('-i', '--host', help='Host', default="localhost", type=str)
 
 
 @subparser
-def interactive_mode(parser):
+def interactive_mode(parser:argparse.ArgumentParser):
     parser.add_argument('-I', '--interactive', action='store_true', help='Interactive mode', default=False)
 
 @subparser
-def interactive_control_example(parser):
+def interactive_control_example(parser:argparse.ArgumentParser):
     parser.add_argument(
         '--rolename',
         metavar='NAME',
@@ -47,9 +48,9 @@ def interactive_control_example(parser):
         help='Gamma correction of the camera (default: 2.2)')
 
 @subparser
-def automatic_control_example(argparser):
+def automatic_control_example(argparser:argparse.ArgumentParser):
     interactive_control_example(argparser)
-    argparser.description = 'CARLA Automatic Control Client'
+    argparser.description = 'CARLA Lunatic Agent Example'
     argparser.add_argument(
         '-v', '--verbose',
         action='store_true',
