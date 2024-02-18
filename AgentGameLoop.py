@@ -6,6 +6,7 @@ Example of the agent system
 Based on German Ros's (german.ros@intel.com) example of automatic_control shipped with carla.
 """
 from __future__ import print_function  # for python 2.7 compatibility
+from egg_import import import_carla
 
 
 import argparse
@@ -14,10 +15,14 @@ import random
 import sys
 import threading
 
-import carla
 import numpy.random as random
 import pygame
 from agents.tools.lunatic_agent_tools import Phase
+try:
+    import carla
+except ImportError as e:
+    carla = import_carla()
+    
 from classes.rule import Rule
 
 import utils
