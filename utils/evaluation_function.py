@@ -1,7 +1,6 @@
 from typing import Callable, Any, Hashable, TYPE_CHECKING
 
 import inspect
-from enum import Enum
 
 if TYPE_CHECKING:
     from classes.rule import Context

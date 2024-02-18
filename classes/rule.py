@@ -8,12 +8,12 @@ from weakref import WeakSet, WeakValueDictionary
 
 from omegaconf import DictConfig
 
-from agents.tools.lunatic_agent_tools import Phase
 from utils.evaluation_function import EvaluationFunction
 
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
+    from agents.tools.lunatic_agent_tools import Phase
 
 class Context:
     """
@@ -21,8 +21,8 @@ class Context:
     """
     agent : "LunaticAgent"
     config : DictConfig
-    evaluation_results : Dict[Phase, Hashable] # ambigious wording, which result? here evaluation result
-    action_results : Dict[Phase, Any] 
+    evaluation_results : Dict["Phase", Hashable] # ambigious wording, which result? here evaluation result
+    action_results : Dict["Phase", Any] 
     control : "carla.VehicleControl"
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
@@ -36,7 +36,7 @@ class Context:
         self.__dict__.update(kwargs)
 
     @property
-    def current_phase(self) -> Phase:
+    def current_phase(self) -> "Phase":
         return self.agent.current_phase
     
     def set_control(self, control : "carla.VehicleControl"):
@@ -195,7 +195,7 @@ class Rule(_CountdownRule):
     actions : Dict[Any, Callable[[Context], Any]]
     description : str
     overwrite_settings : Dict[str, Any]
-    phases : Set[Phase]
+    phases : Set["Phase"]
 
     group : Optional[str] = None # group of rules that share a cooldown
 
@@ -204,7 +204,7 @@ class Rule(_CountdownRule):
     NOT_APPLICABLE : ClassVar = object()
 
     def __init__(self, 
-                 phases : Union[Phase, Iterable[Phase]], # iterable of Phases
+                 phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
                  rule : Callable[[Context], Hashable], 
                  action: Union[Callable[[Context], Any], Dict[Any, Callable]] = None, 
                  false_action = None,
@@ -223,7 +223,7 @@ class Rule(_CountdownRule):
             else:
                 phases = {phases}
         for p in phases:
-            if not isinstance(p, Phase):
+            if not isinstance(p, "Phase"):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
         super().__init__(cooldown_reset_value)
         self.priority : float | int | RulePriority = priority
@@ -287,7 +287,7 @@ class MultiRule(Rule):
         return wrapper
 
     def __init__(self, 
-                 phases: Union[Phase, Iterable], 
+                 phases: Union["Phase", Iterable], 
                  rules: List[Rule], 
                  rule : Callable[[Context], Any] = always_execute,
                  *,
@@ -356,7 +356,7 @@ class MultiRule(Rule):
 class RandomRule(MultiRule):
 
     def __init__(self, 
-                 phases : Union[Phase, Iterable], 
+                 phases : Union["Phase", Iterable], 
                  rules : Union[Dict[Rule, float], List[Rule]], 
                  repeat_if_not_applicable : bool = True,
                  rule = always_execute, 
