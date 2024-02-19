@@ -180,7 +180,7 @@ def game_loop(args : argparse.ArgumentParser):
 
             i = 0
             while True:
-                with Rule.CooldownFramework: # todo: low prio, make cooldown dependant on the tick speed.
+                with Rule.CooldownFramework(): # todo: low prio, make cooldown dependant on the tick speed.
                     clock.tick()
                     if args.sync:
                         world.world.tick()

@@ -65,6 +65,7 @@ class RulePriority(IntEnum):
 def always_execute(ctx : Context):
     return True
 
+
 class _CountdownRule:
 
     # TODO: low prio: make cooldown dependant of tickrate or add a conversion from seconds to ticks OR make time-based
@@ -113,24 +114,16 @@ class _CountdownRule:
         for instance in cls.instances:
             instance.update_cooldown()
     
-    @classmethod
-    def CooldownFramework(cls):
-        """
-        For a more descriptive name for the context manager.
-        Use with Rule.CooldownFramework:
-        """
-        return cls
+    class CooldownFramework:
 
-    @classmethod
-    def __enter__(cls):
-        # Enter the context
-        return cls
+        def __enter__(self):
+            # Enter the context
+            return self
 
-    @classmethod
-    def __exit__(cls, exc_type, exc_value, traceback):
-        # Exit the context
-        if exc_type is None:
-            cls.update_all_cooldowns()
+        def __exit__(_, exc_type, exc_value, traceback):
+            # Exit the context
+            if exc_type is None:
+                _CountdownRule.update_all_cooldowns()
 
 class _GroupRule(_CountdownRule):
     group : Optional[str] = None # group of rules that share a cooldown
