@@ -1,7 +1,43 @@
+import math
 import pygame
 from pygame.locals import KMOD_CTRL
+from pygame.locals import KMOD_SHIFT
+from pygame.locals import K_BACKSPACE
+from pygame.locals import K_TAB
+from pygame.locals import K_DOWN
 from pygame.locals import K_ESCAPE
+from pygame.locals import K_F1
+from pygame.locals import K_F2
+from pygame.locals import K_F3
+from pygame.locals import K_F4
+from pygame.locals import K_F5
+from pygame.locals import K_F6
+from pygame.locals import K_LEFT
+from pygame.locals import K_RIGHT
+from pygame.locals import K_SLASH
+from pygame.locals import K_SPACE
+from pygame.locals import K_UP
+from pygame.locals import K_a
+from pygame.locals import K_b
+from pygame.locals import K_d
+from pygame.locals import K_g
+from pygame.locals import K_h
+from pygame.locals import K_n
+from pygame.locals import K_p
 from pygame.locals import K_q
+from pygame.locals import K_r
+from pygame.locals import K_s
+from pygame.locals import K_w
+from pygame.locals import K_l
+from pygame.locals import K_i
+from pygame.locals import K_z
+from pygame.locals import K_x
+from pygame.locals import MOUSEBUTTONDOWN
+from pygame.locals import MOUSEBUTTONUP
+
+
+import carla
+
 
 
 # ==============================================================================
@@ -28,3 +64,260 @@ class PassiveKeyboardControl(object):
         return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
 
 # todo: copy&paste interactive keyboard controls
+
+
+class RSSKeyboardControl(object):
+
+    MOUSE_STEERING_RANGE = 200
+    signal_received = False
+
+    """Class that handles keyboard input."""
+
+    def __init__(self, world, start_in_autopilot):
+        self._autopilot_enabled = start_in_autopilot
+        self._world = world
+        self._control = carla.VehicleControl()
+        self._lights = carla.VehicleLightState.NONE
+        world.player.set_autopilot(self._autopilot_enabled)
+        self._restrictor = carla.RssRestrictor()
+        self._vehicle_physics = world.player.get_physics_control()
+        world.player.set_light_state(self._lights)
+        self._steer_cache = 0.0
+        self._mouse_steering_center = None
+
+        self._surface = pygame.Surface((self.MOUSE_STEERING_RANGE * 2, self.MOUSE_STEERING_RANGE * 2))
+        self._surface.set_colorkey(pygame.Color('black'))
+        self._surface.set_alpha(60)
+
+        line_width = 2
+        pygame.draw.polygon(self._surface,
+                            (0, 0, 255),
+                            [
+                                (0, 0),
+                                (0, self.MOUSE_STEERING_RANGE * 2 - line_width),
+                                (self.MOUSE_STEERING_RANGE * 2 - line_width,
+                                 self.MOUSE_STEERING_RANGE * 2 - line_width),
+                                (self.MOUSE_STEERING_RANGE * 2 - line_width, 0),
+                                (0, 0)
+                            ], line_width)
+        pygame.draw.polygon(self._surface,
+                            (0, 0, 255),
+                            [
+                                (0, self.MOUSE_STEERING_RANGE),
+                                (self.MOUSE_STEERING_RANGE * 2, self.MOUSE_STEERING_RANGE)
+                            ], line_width)
+        pygame.draw.polygon(self._surface,
+                            (0, 0, 255),
+                            [
+                                (self.MOUSE_STEERING_RANGE, 0),
+                                (self.MOUSE_STEERING_RANGE, self.MOUSE_STEERING_RANGE * 2)
+                            ], line_width)
+
+        world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
+
+    def render(self, display):
+        if self._mouse_steering_center:
+            display.blit(
+                self._surface, (self._mouse_steering_center[0] - self.MOUSE_STEERING_RANGE, self._mouse_steering_center[1] - self.MOUSE_STEERING_RANGE))
+
+    @staticmethod
+    def signal_handler(signum, _):
+        print('\nReceived signal {}. Trigger stopping...'.format(signum))
+        RSSKeyboardControl.signal_received = True
+
+    def parse_events(self, world, clock, sync_mode):
+        if RSSKeyboardControl.signal_received:
+            print('\nAccepted signal. Stopping loop...')
+            return True
+        if isinstance(self._control, carla.VehicleControl):
+            current_lights = self._lights
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return True
+            elif event.type == pygame.KEYUP:
+                if self._is_quit_shortcut(event.key):
+                    return True
+                elif event.key == K_BACKSPACE:
+                    if self._autopilot_enabled:
+                        world.player.set_autopilot(False)
+                        world.restart()
+                        world.player.set_autopilot(True)
+                    else:
+                        world.restart()
+                elif event.key == K_F1:
+                    world.hud.toggle_info()
+                elif event.key == K_h or (event.key == K_SLASH and pygame.key.get_mods() & KMOD_SHIFT):
+                    world.hud.help.toggle()
+                elif event.key == K_TAB:
+                    world.rss_unstructured_scene_visualizer.toggle_camera()
+                elif event.key == K_n:
+                    world.toggle_pause()
+                elif event.key == K_r:
+                    world.toggle_recording()
+                elif event.key == K_F2:
+                    if self._world and self._world.rss_sensor:
+                        self._world.rss_sensor.toggle_debug_visualization_mode()
+                elif event.key == K_F3:
+                    if self._world and self._world.rss_sensor:
+                        self._world.rss_sensor.decrease_log_level()
+                        self._restrictor.set_log_level(self._world.rss_sensor.log_level)
+                elif event.key == K_F4:
+                    if self._world and self._world.rss_sensor:
+                        self._world.rss_sensor.increase_log_level()
+                        self._restrictor.set_log_level(self._world.rss_sensor.log_level)
+                elif event.key == K_F5:
+                    if self._world and self._world.rss_sensor:
+                        self._world.rss_sensor.decrease_map_log_level()
+                elif event.key == K_F6:
+                    if self._world and self._world.rss_sensor:
+                        self._world.rss_sensor.increase_map_log_level()
+                elif event.key == K_b:
+                    if self._world and self._world.rss_sensor:
+                        if self._world.rss_sensor.sensor.road_boundaries_mode == carla.RssRoadBoundariesMode.Off:
+                            self._world.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On
+                            print("carla.RssRoadBoundariesMode.On")
+                        else:
+                            self._world.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.Off
+                            print("carla.RssRoadBoundariesMode.Off")
+                elif event.key == K_g:
+                    if self._world and self._world.rss_sensor:
+                        self._world.rss_sensor.drop_route()
+                if isinstance(self._control, carla.VehicleControl):
+                    if event.key == K_q:
+                        self._control.gear = 1 if self._control.reverse else -1
+                    elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
+                        self._autopilot_enabled = not self._autopilot_enabled
+                        world.player.set_autopilot(self._autopilot_enabled)
+                        world.hud.notification(
+                            'Autopilot %s' % ('On' if self._autopilot_enabled else 'Off'))
+                    elif event.key == K_l and pygame.key.get_mods() & KMOD_CTRL:
+                        current_lights ^= carla.VehicleLightState.Special1
+                    elif event.key == K_l and pygame.key.get_mods() & KMOD_SHIFT:
+                        current_lights ^= carla.VehicleLightState.HighBeam
+                    elif event.key == K_l:
+                        # Use 'L' key to switch between lights:
+                        # closed -> position -> low beam -> fog
+                        if not self._lights & carla.VehicleLightState.Position:
+                            world.hud.notification("Position lights")
+                            current_lights |= carla.VehicleLightState.Position
+                        else:
+                            world.hud.notification("Low beam lights")
+                            current_lights |= carla.VehicleLightState.LowBeam
+                        if self._lights & carla.VehicleLightState.LowBeam:
+                            world.hud.notification("Fog lights")
+                            current_lights |= carla.VehicleLightState.Fog
+                        if self._lights & carla.VehicleLightState.Fog:
+                            world.hud.notification("Lights off")
+                            current_lights ^= carla.VehicleLightState.Position
+                            current_lights ^= carla.VehicleLightState.LowBeam
+                            current_lights ^= carla.VehicleLightState.Fog
+                    elif event.key == K_i:
+                        current_lights ^= carla.VehicleLightState.Interior
+                    elif event.key == K_z:
+                        current_lights ^= carla.VehicleLightState.LeftBlinker
+                    elif event.key == K_x:
+                        current_lights ^= carla.VehicleLightState.RightBlinker
+            elif event.type == MOUSEBUTTONDOWN:
+                # store current mouse position for mouse-steering
+                if event.button == 1:
+                    self._mouse_steering_center = event.pos
+            elif event.type == MOUSEBUTTONUP:
+                if event.button == 1:
+                    self._mouse_steering_center = None
+        if not self._autopilot_enabled:
+            prev_steer_cache = self._steer_cache
+            self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time())
+            if pygame.mouse.get_pressed()[0]:
+                self._parse_mouse(pygame.mouse.get_pos())
+            self._control.reverse = self._control.gear < 0
+
+            vehicle_control = self._control
+            world.hud.original_vehicle_control = vehicle_control
+            world.hud.restricted_vehicle_control = vehicle_control
+
+            # limit speed to 30kmh
+            v = self._world.player.get_velocity()
+            if (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)) > 30.0:
+                self._control.throttle = 0
+
+            # if self._world.rss_sensor and self._world.rss_sensor.ego_dynamics_on_route and not self._world.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
+            #    print ("Not on route!" +  str(self._world.rss_sensor.ego_dynamics_on_route))
+            if self._restrictor:
+                rss_proper_response = self._world.rss_sensor.proper_response if self._world.rss_sensor and self._world.rss_sensor.response_valid else None
+                if rss_proper_response:
+                    if not (pygame.key.get_mods() & KMOD_CTRL):
+                        vehicle_control = self._restrictor.restrict_vehicle_control(
+                            vehicle_control, rss_proper_response, self._world.rss_sensor.ego_dynamics_on_route, self._vehicle_physics)
+                    world.hud.restricted_vehicle_control = vehicle_control
+                    world.hud.allowed_steering_ranges = self._world.rss_sensor.get_steering_ranges()
+                    if world.hud.original_vehicle_control.steer != world.hud.restricted_vehicle_control.steer:
+                        self._steer_cache = prev_steer_cache
+
+            # Set automatic control-related vehicle lights
+            if vehicle_control.brake:
+                current_lights |= carla.VehicleLightState.Brake
+            else:  # Remove the Brake flag
+                current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Brake
+            if vehicle_control.reverse:
+                current_lights |= carla.VehicleLightState.Reverse
+            else:  # Remove the Reverse flag
+                current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Reverse
+            if current_lights != self._lights:  # Change the light state only if necessary
+                self._lights = current_lights
+                world.player.set_light_state(carla.VehicleLightState(self._lights))
+
+            world.player.apply_control(vehicle_control)
+
+    def _parse_vehicle_keys(self, keys, milliseconds):
+        if keys[K_UP] or keys[K_w]:
+            self._control.throttle = min(self._control.throttle + 0.2, 1)
+        else:
+            self._control.throttle = max(self._control.throttle - 0.2, 0)
+
+        if keys[K_DOWN] or keys[K_s]:
+            self._control.brake = min(self._control.brake + 0.2, 1)
+        else:
+            self._control.brake = max(self._control.brake - 0.2, 0)
+
+        steer_increment = 5e-4 * milliseconds
+        if keys[K_LEFT] or keys[K_a]:
+            if self._steer_cache > 0:
+                self._steer_cache = 0
+            else:
+                self._steer_cache -= steer_increment
+        elif keys[K_RIGHT] or keys[K_d]:
+            if self._steer_cache < 0:
+                self._steer_cache = 0
+            else:
+                self._steer_cache += steer_increment
+        elif self._steer_cache > 0:
+            self._steer_cache = max(self._steer_cache - steer_increment, 0.0)
+        elif self._steer_cache < 0:
+            self._steer_cache = min(self._steer_cache + steer_increment, 0.0)
+        else:
+            self._steer_cache = 0
+
+        self._steer_cache = min(1.0, max(-1.0, self._steer_cache))
+        self._control.steer = round(self._steer_cache, 1)
+        self._control.hand_brake = keys[K_SPACE]
+
+    def _parse_mouse(self, pos):
+        if not self._mouse_steering_center:
+            return
+
+        lateral = float(pos[0] - self._mouse_steering_center[0])
+        longitudinal = float(pos[1] - self._mouse_steering_center[1])
+        max_val = self.MOUSE_STEERING_RANGE
+        lateral = -max_val if lateral < -max_val else max_val if lateral > max_val else lateral
+        longitudinal = -max_val if longitudinal < -max_val else max_val if longitudinal > max_val else longitudinal
+        self._control.steer = lateral / max_val
+        if longitudinal < 0.0:
+            self._control.throttle = -longitudinal / max_val
+            self._control.brake = 0.0
+        elif longitudinal > 0.0:
+            self._control.throttle = 0.0
+            self._control.brake = longitudinal / max_val
+
+    @staticmethod
+    def _is_quit_shortcut(key):
+        return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
