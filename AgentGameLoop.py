@@ -7,37 +7,44 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
-
-import logging
-import random
 import sys
+import argparse
+import logging
 import threading
-
-import carla
-import numpy.random as random
 import pygame
-from agents.tools.lunatic_agent_tools import Phase
-from config.lunatic_behavior_settings import LunaticBehaviorSettings
+
+import random
+import numpy.random as random # TODO: fix import
+
+#try:
+#    import carla
+#except ImportError as e:
+#    from utils.egg_import import carla
+import carla 
+    
+from classes.rule import Rule
 
 import utils
-from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
-from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
-from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
+from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
+
+from agents.tools.lunatic_agent_tools import Phase
+from agents.navigation.basic_agent import BasicAgent  
+from agents.navigation.behavior_agent import BehaviorAgent 
+from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 
 
 from agents.lunatic_agent import LunaticAgent
+from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
 from classes.carla_originals.HUD import HUD
 from classes.world import World
 from classes.vehicle import Vehicle
-from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 
 
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
 # ==============================================================================
 
-
-def game_loop(args):
+def game_loop(args : argparse.ArgumentParser):
     """
     Main loop of the simulation. It handles updating all the HUD information,
     ticking the agent and, if needed, the world.
@@ -173,51 +180,52 @@ def game_loop(args):
 
             i = 0
             while True:
-                clock.tick()
-                if args.sync:
-                    world.world.tick()
-                else:
-                    world.world.wait_for_tick()
-                if controller.parse_events():
-                    return
-
-                world.tick(clock)
-                world.render(display)
-                pygame.display.flip()
-
-                # TODO: Make this a rule and/or move inside agent
-                # TODO: make a Phases.DONE
-                if agent.done():
-                    # NOTE: Might be in NONE phase here.
-                    agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
-                    if args.loop:
-                        # TODO: Rule / Action to define next waypoint
-                        agent.set_destination(random.choice(spawn_points).location)
-                        world.hud.notification("Target reached", seconds=4.0)
-                        print("The target has been reached, searching for another target")
+                with Rule.CooldownFramework(): # todo: low prio, make cooldown dependant on the tick speed.
+                    clock.tick()
+                    if args.sync:
+                        world.world.tick()
                     else:
-                        print("The target has been reached, stopping the simulation")
-                        agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
-                        break
-                    agent.execute_phase(Phase.DONE| Phase.END, prior_results=None, control=control)
-                
-                # ----------------------------
-                # Phase NONE - Before Running step
-                # ----------------------------
-                control = agent.run_step(debug=True)  # debug=True draws waypoints
+                        world.world.wait_for_tick()
+                    if controller.parse_events():
+                        return
 
-                # ----------------------------
-                # Phase 5 - Apply Control to Vehicle
-                # ----------------------------
+                    world.tick(clock)
+                    world.render(display)
+                    pygame.display.flip()
 
-                agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
-                control.manual_gear_shift = False # TODO: turn into a rule
-                world.player.apply_control(control)
-                agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
-                
-                # if i % 50 == 0:
-                #    print("Tailgate Counter", agent._behavior.tailgate_counter)
-                i += 1
+                    # TODO: Make this a rule and/or move inside agent
+                    # TODO: make a Phases.DONE
+                    if agent.done():
+                        # NOTE: Might be in NONE phase here.
+                        agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
+                        if args.loop:
+                            # TODO: Rule / Action to define next waypoint
+                            agent.set_destination(random.choice(spawn_points).location)
+                            world.hud.notification("Target reached", seconds=4.0)
+                            print("The target has been reached, searching for another target")
+                        else:
+                            print("The target has been reached, stopping the simulation")
+                            agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
+                            break
+                        agent.execute_phase(Phase.DONE| Phase.END, prior_results=None, control=control)
+                    
+                    # ----------------------------
+                    # Phase NONE - Before Running step
+                    # ----------------------------
+                    control = agent.run_step(debug=True)  # debug=True draws waypoints
+
+                    # ----------------------------
+                    # Phase 5 - Apply Control to Vehicle
+                    # ----------------------------
+
+                    agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
+                    control.manual_gear_shift = False # TODO: turn into a rule
+                    world.player.apply_control(control)
+                    agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
+                    
+                    # if i % 50 == 0:
+                    #    print("Tailgate Counter", agent._behavior.tailgate_counter)
+                    i += 1
             agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
 
         # Interactive

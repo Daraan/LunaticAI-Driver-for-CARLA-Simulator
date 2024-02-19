@@ -1,8 +1,8 @@
 from omegaconf import DictConfig, OmegaConf 
 
-from config.settings_base_class import new_config, obstacles, speed
-from config.default_options.original_behavior import BehaviorAgentSettings
-from config.default_options.original_autopilot_behavior import AutopilotBehavior
+from conf.settings_base_class import new_config, obstacles, speed
+from conf.default_options.original_behavior import BehaviorAgentSettings
+from conf.default_options.original_autopilot_behavior import AutopilotBehavior
 
 
 # TODOs: implement 

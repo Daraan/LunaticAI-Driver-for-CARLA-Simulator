@@ -17,7 +17,7 @@ import carla
 import numpy.random as random
 import pygame
 from agents.tools.lunatic_agent_tools import Phase
-from config.lunatic_behavior_settings import LunaticBehaviorSettings
+from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
 import utils
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error

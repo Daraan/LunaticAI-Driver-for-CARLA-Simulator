@@ -34,8 +34,8 @@ from agents.tools.lunatic_agent_tools import Hazard, Phase
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
 
 from classes.rule import Context, Rule
-from config.default_options.original_behavior import BasicAgentSettings
-from config.lunatic_behavior_settings import LunaticBehaviorSettings
+from conf.default_options.original_behavior import BasicAgentSettings
+from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
 
 # As Reference:
