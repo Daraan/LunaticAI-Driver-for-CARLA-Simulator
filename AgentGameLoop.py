@@ -6,29 +6,31 @@ Example of the agent system
 Based on German Ros's (german.ros@intel.com) example of automatic_control shipped with carla.
 """
 from __future__ import print_function  # for python 2.7 compatibility
-from egg_import import import_carla
 
-
+import sys
 import argparse
 import logging
-import random
-import sys
 import threading
-
-import numpy.random as random
 import pygame
-from agents.tools.lunatic_agent_tools import Phase
+
+import random
+import numpy.random as random # TODO: fix import
+
 try:
     import carla
 except ImportError as e:
+    from utils.egg_import import import_carla
     carla = import_carla()
     
 from classes.rule import Rule
 
 import utils
-from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
-from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
-from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
+from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
+
+from agents.tools.lunatic_agent_tools import Phase
+from agents.navigation.basic_agent import BasicAgent  
+from agents.navigation.behavior_agent import BehaviorAgent 
+from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 
 
 from agents.lunatic_agent import LunaticAgent
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
@@ -36,7 +38,7 @@ from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 from classes.carla_originals.HUD import HUD
 from classes.world import World
 from classes.vehicle import Vehicle
-from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
+
 
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
