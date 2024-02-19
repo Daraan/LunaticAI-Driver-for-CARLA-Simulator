@@ -7,7 +7,7 @@ from carla import ColorConverter as cc
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from classes.carla_originals.HUD import HUD
+    from classes.HUD import HUD
 
 
 # ==============================================================================
