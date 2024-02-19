@@ -16,11 +16,11 @@ import pygame
 import random
 import numpy.random as random # TODO: fix import
 
-try:
-    import carla
-except ImportError as e:
-    from utils.egg_import import import_carla
-    carla = import_carla()
+#try:
+#    import carla
+#except ImportError as e:
+#    from utils.egg_import import carla
+import carla 
     
 from classes.rule import Rule
 

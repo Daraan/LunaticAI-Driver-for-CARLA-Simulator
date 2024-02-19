@@ -2,12 +2,21 @@ import sys
 import os
 import glob
 
+CARLA_ROOT = os.environ.get("CARLA_ROOT")
+
 def import_carla():
-    try:
-        sys.path.append(glob.glob(os.path.abspath(os.path.join("..","**", 'PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (
+    if CARLA_ROOT is None:
+        path = os.path.abspath(os.path.join("..","**", 'PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (
             sys.version_info.major,
             sys.version_info.minor,
-            'win-amd64' if os.name == 'nt' else 'linux-x86_64'))))[0])
+            'win-amd64' if os.name == 'nt' else 'linux-x86_64')))
+    else:
+        path = os.path.abspath(os.path.join(CARLA_ROOT, 'PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (
+            sys.version_info.major,
+            sys.version_info.minor,
+            'win-amd64' if os.name == 'nt' else 'linux-x86_64')))
+    try:
+        sys.path.append(glob.glob(path)[0])
         print("Appended", sys.path[-1])
         import carla
         return carla
