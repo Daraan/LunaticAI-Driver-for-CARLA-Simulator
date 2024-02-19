@@ -1,7 +1,10 @@
 # Official Example from examples/automatic-control.py
 # NOTE it might has to use synchonous_mode
+import os
 import sys
-from typing import Optional
+from typing import List, Optional
+
+import pygame
 
 import carla
 import numpy.random as random
@@ -9,6 +12,10 @@ from classes.HUD import HUD
 
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
+
+from classes.carla_originals.rss_sensor import RssSensor
+from classes.carla_originals.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
+
 from utils import get_actor_display_name
 from utils.blueprint_helpers import get_actor_blueprints
 from utils.blueprint_helpers import find_weather_presets
@@ -28,9 +35,10 @@ class World(object):
         """Constructor method"""
         self._args = args
         self.world = carla_world
-        self.sync = args.sync # from interactive
+        self.sync = args.sync
         # TODO: must be added to arguments or removed
-        self.actor_role_name = args.rolename # from interactive, defaults to 'hero'
+        self.actor_role_name = args.rolename
+        self.dim = (args.width, args.height)
         try:
             self.map = self.world.get_map()
         except RuntimeError as error:
@@ -38,7 +46,14 @@ class World(object):
             print('  The server could not send the OpenDRIVE (.xodr) file:')
             print('  Make sure it exists, has the same name of your town, and is correct.')
             sys.exit(1)
-        self.hud = hud
+        self.external_actor = args.externalActor
+
+        self.hud = hud # or HUD(args.width, args.height, carla_world)
+        # TODO: Remove?
+        self.recording_frame_num = 0
+        self.recording = False
+        self.recording_dir_num = 0
+        
         self.player = player or None
         self.collision_sensor = None
         self.lane_invasion_sensor = None
@@ -52,8 +67,6 @@ class World(object):
         self._actor_filter = args.filter
         self._actor_generation = args.generation
         self._gamma = args.gamma
-        self.restart(args) # # interactive without args
-        self.world.on_tick(hud.on_world_tick)
         self.recording_enabled = False
         self.recording_start = 0
         self.actors = []
@@ -77,58 +90,100 @@ class World(object):
             carla.MapLayer.Walls,
             carla.MapLayer.All
         ]
+        # RSS
+        self.rss_sensor = None
+        self.rss_unstructured_scene_visualizer = None
+        self.rss_bounding_box_visualizer = None
+        self._actor_filter = args.filter
+        if not self._actor_filter.startswith("vehicle."):
+            print('Error: RSS only supports vehicles as ego.')
+            sys.exit(1)
+
+        self.restart(args) # # interactive without args
+        self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
+
+    def toggle_pause(self):
+        settings = self.world.get_settings()
+        self.pause_simulation(not settings.synchronous_mode)
+
+    def pause_simulation(self, pause):
+        settings = self.world.get_settings()
+        if pause and not settings.synchronous_mode:
+            settings.synchronous_mode = True
+            settings.fixed_delta_seconds = 0.05
+            self.world.apply_settings(settings)
+        elif not pause and settings.synchronous_mode:
+            settings.synchronous_mode = False
+            settings.fixed_delta_seconds = None
+            self.world.apply_settings(settings)
 
     def restart(self, args):
         """Restart the world"""
-        # From interactive:
-        self.player_max_speed = 1.589
-        self.player_max_speed_fast = 3.713
-    
-        # Keep same camera config if the camera manager exists.
-        cam_index = self.camera_manager.index if self.camera_manager is not None else 0
-        cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
+        if self.external_actor:
+            # Check whether there is already an actor with defined role name
+            for actor in self.world.get_actors():
+                if actor.attributes.get('role_name') == self.actor_role_name:
+                    self.player = actor
+        else:            
+            # From interactive:
+            #self.player_max_speed = 1.589
+            #self.player_max_speed_fast = 3.713
+        
+            # Keep same camera config if the camera manager exists.
+            cam_index = self.camera_manager.index if self.camera_manager is not None else 0
+            cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
 
-        # Get a random blueprint.
-        blueprint : carla.ActorBlueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
-        blueprint.set_attribute('role_name', self.actor_role_name)
-        if blueprint.has_attribute('color'):
-            color = random.choice(blueprint.get_attribute('color').recommended_values)
-            blueprint.set_attribute('color', color)
-        # From Interactive:
-        if blueprint.has_attribute('terramechanics'): # For Tire mechanics/Physics? # Todo is that needed?
-            blueprint.set_attribute('terramechanics', 'true')
-        if blueprint.has_attribute('driver_id'):
-            driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
-            blueprint.set_attribute('driver_id', driver_id)
-        if blueprint.has_attribute('is_invincible'):
-            blueprint.set_attribute('is_invincible', 'true')
-        # set the max speed
-        if blueprint.has_attribute('speed'):
-            self.player_max_speed = float(blueprint.get_attribute('speed').recommended_values[1])
-            self.player_max_speed_fast = float(blueprint.get_attribute('speed').recommended_values[2])
-
-        # Spawn the player.
-        if self.player is not None:
-            spawn_point = self.player.get_transform()
-            spawn_point.location.z += 2.0
-            spawn_point.rotation.roll = 0.0
-            spawn_point.rotation.pitch = 0.0
-            if self.camera_manager is not None:
-                self.destroy()
-                self.player = self.world.try_spawn_actor(blueprint, spawn_point)
-            self.modify_vehicle_physics(self.player)
-        while self.player is None:
-            if not self.map.get_spawn_points():
-                print('There are no spawn points available in your map/town.')
-                print('Please add some Vehicle Spawn Point to your UE4 scene.')
-                sys.exit(1)
-            spawn_points = self.map.get_spawn_points()
-            spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
-            self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+            # Get a random blueprint.
+            blueprint : carla.ActorBlueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
+            blueprint.set_attribute('role_name', self.actor_role_name)
+            if blueprint.has_attribute('color'):
+                color = random.choice(blueprint.get_attribute('color').recommended_values)
+                blueprint.set_attribute('color', color)
             # From Interactive:
-            # See: https://carla.readthedocs.io/en/latest/tuto_G_control_vehicle_physics/            
-            self.show_vehicle_telemetry = False
-            self.modify_vehicle_physics(self.player)
+            if blueprint.has_attribute('terramechanics'): # For Tire mechanics/Physics? # Todo is that needed?
+                blueprint.set_attribute('terramechanics', 'true')
+            if blueprint.has_attribute('driver_id'):
+                driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
+                blueprint.set_attribute('driver_id', driver_id)
+            if blueprint.has_attribute('is_invincible'):
+                blueprint.set_attribute('is_invincible', 'true')
+            # set the max speed
+            #if blueprint.has_attribute('speed'):
+            #    self.player_max_speed = float(blueprint.get_attribute('speed').recommended_values[1])
+            #    self.player_max_speed_fast = float(blueprint.get_attribute('speed').recommended_values[2])
+
+            # Spawn the player.
+            if self.player is not None:
+                spawn_point = self.player.get_transform()
+                spawn_point.location.z += 2.0
+                spawn_point.rotation.roll = 0.0
+                spawn_point.rotation.pitch = 0.0
+                if self.camera_manager is not None: # TODO: Validate, remove line
+                    self.destroy()
+                    self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+                self.modify_vehicle_physics(self.player)
+            while self.player is None:
+                if not self.map.get_spawn_points():
+                    print('There are no spawn points available in your map/town.')
+                    print('Please add some Vehicle Spawn Point to your UE4 scene.')
+                    sys.exit(1)
+                spawn_points = self.map.get_spawn_points()
+                spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+                self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+                # From Interactive:
+                # See: https://carla.readthedocs.io/en/latest/tuto_G_control_vehicle_physics/            
+                self.show_vehicle_telemetry = False
+                self.modify_vehicle_physics(self.player)
+
+        if self.external_actor:
+            ego_sensors = []
+            for actor in self.world.get_actors():
+                if actor.parent == self.player:
+                    ego_sensors.append(actor)
+
+            for ego_sensor in ego_sensors:
+                if ego_sensor is not None:
+                    ego_sensor.destroy()
 
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
@@ -141,11 +196,21 @@ class World(object):
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
         
-        # Note: other example has this before the sensor setup
+        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim)
+        self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
+        self.rss_sensor = RssSensor(self.player, self.world,
+                                    self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer)
         if self.sync:
             self.world.tick()
         else:
             self.world.wait_for_tick()
+
+    #def tick(self, clock):
+    #    self.hud.tick(self.player, clock) # RSS example. TODO: Check which has to be used!
+
+    def tick(self, clock):
+        """Method for every tick"""
+        self.hud.tick(self, clock)
 
     def next_weather(self, reverse=False):
         """Get next weather setting"""
@@ -171,6 +236,19 @@ class World(object):
             self.hud.notification('Loading map layer: %s' % selected)
             self.world.load_map_layer(selected)
 
+    def toggle_recording(self):
+        if not self.recording:
+            dir_name = "_out%04d" % self.recording_dir_num
+            while os.path.exists(dir_name):
+                self.recording_dir_num += 1
+                dir_name = "_out%04d" % self.recording_dir_num
+            self.recording_frame_num = 0
+            os.mkdir(dir_name)
+        else:
+            self.hud.notification('Recording finished (folder: _out%04d)' % self.recording_dir_num)
+        
+        self.recording = not self.recording
+    
     def toggle_radar(self):
         if self.radar_sensor is None:
             self.radar_sensor = RadarSensor(self.player)
@@ -187,14 +265,16 @@ class World(object):
         except Exception:
             pass
 
-    def tick(self, clock):
-        """Method for every tick"""
-        self.hud.tick(self, clock)
-
     def render(self, display):
         """Render world"""
         self.camera_manager.render(display)
+        self.rss_bounding_box_visualizer.render(display, self.camera_manager.current_frame)
+        self.rss_unstructured_scene_visualizer.render(display)
         self.hud.render(display)
+
+        if self.recording:
+            pygame.image.save(display, "_out%04d/%08d.bmp" % (self.recording_dir_num, self.recording_frame_num))
+            self.recording_frame_num += 1
 
     def destroy_sensors(self):
         """Destroy sensors"""
@@ -204,9 +284,16 @@ class World(object):
 
     def destroy(self):
         """Destroys all actors"""
+        # stop from ticking
+        if self.world_tick_id:
+            self.world.remove_on_tick(self.world_tick_id)
         if self.radar_sensor is not None:
             self.toggle_radar()
-        actors = [
+        if self.rss_sensor:
+            self.rss_sensor.destroy()
+        if self.rss_unstructured_scene_visualizer:
+            self.rss_unstructured_scene_visualizer.destroy()
+        actors : List[carla.Actor] = [
             self.camera_manager.sensor,
             self.collision_sensor.sensor,
             self.lane_invasion_sensor.sensor,
@@ -222,4 +309,5 @@ class World(object):
                 except AttributeError:
                     pass
                 actor.destroy()
+        # TODO: Call destroy_sensors?
 

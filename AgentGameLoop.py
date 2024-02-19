@@ -7,6 +7,7 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
+import signal
 import sys
 import argparse
 import logging
@@ -25,7 +26,7 @@ import carla
 from classes.rule import Rule
 
 import utils
-from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
+from utils.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from agents.tools.lunatic_agent_tools import Phase
 from agents.navigation.basic_agent import BasicAgent  
@@ -72,7 +73,6 @@ def game_loop(args : argparse.ArgumentParser):
             settings.synchronous_mode = True
             settings.fixed_delta_seconds = 0.05
             sim_world.apply_settings(settings)
-
             traffic_manager.set_synchronous_mode(True)
         else:
             logging.log(logging.DEBUG, "Might be using asynchronous mode if not changed.")
@@ -108,7 +108,8 @@ def game_loop(args : argparse.ArgumentParser):
         all_spawn_points = world.map.get_spawn_points()
         # destination = random.choice(all_spawn_points).location
 
-        controller = KeyboardControl(world)
+        controller = RSSKeyboardControl(world, start_in_autopilot=False)
+        #controller._autopilot_enabled = False
         # world.set_actor(ego.actor)
 
         # carlaService.assignDriver(ego, driver1)
@@ -167,7 +168,7 @@ def game_loop(args : argparse.ArgumentParser):
             world.actors.append(v)
             # v.setVelocity(1)
             v.actor.set_autopilot(True)
-            v.actor.set_target_velocity(carla.Vector3D(-6, 0, 0))
+            v.actor.set_target_velocity(carla.Vector3D(-2, 0, 0))
             print(v.actor)
             #ap = TrafficManagerD(client, v.actor)
             #ap.init_passive_driver()
@@ -186,8 +187,11 @@ def game_loop(args : argparse.ArgumentParser):
                         world.world.tick()
                     else:
                         world.world.wait_for_tick()
-                    if controller.parse_events():
-                        return
+                    try:
+                        if controller.parse_events(world, clock, args.sync):
+                            return
+                    except:
+                        controller.parse_events()
 
                     world.tick(clock)
                     world.render(display)
@@ -195,37 +199,35 @@ def game_loop(args : argparse.ArgumentParser):
 
                     # TODO: Make this a rule and/or move inside agent
                     # TODO: make a Phases.DONE
-                    if agent.done():
-                        # NOTE: Might be in NONE phase here.
-                        agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
-                        if args.loop:
-                            # TODO: Rule / Action to define next waypoint
-                            agent.set_destination(random.choice(spawn_points).location)
-                            world.hud.notification("Target reached", seconds=4.0)
-                            print("The target has been reached, searching for another target")
-                        else:
-                            print("The target has been reached, stopping the simulation")
-                            agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
-                            break
-                        agent.execute_phase(Phase.DONE| Phase.END, prior_results=None, control=control)
-                    
-                    # ----------------------------
-                    # Phase NONE - Before Running step
-                    # ----------------------------
-                    control = agent.run_step(debug=True)  # debug=True draws waypoints
+                    if not controller._autopilot_enabled:
+                        if agent.done():
+                            # NOTE: Might be in NONE phase here.
+                            agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
+                            if args.loop:
+                                # TODO: Rule / Action to define next waypoint
+                                agent.set_destination(random.choice(spawn_points).location)
+                                world.hud.notification("Target reached", seconds=4.0)
+                                print("The target has been reached, searching for another target")
+                            else:
+                                print("The target has been reached, stopping the simulation")
+                                agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
+                                break
+                            agent.execute_phase(Phase.DONE| Phase.END, prior_results=None, control=control)
+                        
+                        # ----------------------------
+                        # Phase NONE - Before Running step
+                        # ----------------------------
+                        control = agent.run_step(debug=True)  # debug=True draws waypoints
 
-                    # ----------------------------
-                    # Phase 5 - Apply Control to Vehicle
-                    # ----------------------------
+                        # ----------------------------
+                        # Phase 5 - Apply Control to Vehicle
+                        # ----------------------------
 
-                    agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
-                    control.manual_gear_shift = False # TODO: turn into a rule
-                    world.player.apply_control(control)
-                    agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
-                    
-                    # if i % 50 == 0:
-                    #    print("Tailgate Counter", agent._behavior.tailgate_counter)
-                    i += 1
+                        agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
+                        control.manual_gear_shift = False # TODO: turn into a rule
+                        world.player.apply_control(control)
+                        agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
+                        
             agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
 
         # Interactive
@@ -278,6 +280,8 @@ def main():
     logging.info('listening to server %s:%s', args.host, args.port)
 
     print(__doc__)
+
+    signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)
 
     try:
         game_loop(args)
