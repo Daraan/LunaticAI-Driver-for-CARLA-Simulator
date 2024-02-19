@@ -46,10 +46,13 @@ def interactive_control_example(parser:argparse.ArgumentParser):
         default=2.2,
         type=float,
         help='Gamma correction of the camera (default: 2.2)')
+    parser.add_argument(
+        '--externalActor',
+        action='store_true',
+        help='attaches to externally created actor by role name')
 
 @subparser
 def automatic_control_example(argparser:argparse.ArgumentParser):
-    interactive_control_example(argparser)
     argparser.description = 'CARLA Lunatic Agent Example'
     argparser.add_argument(
         '-v', '--verbose',
@@ -113,3 +116,13 @@ def automatic_control_example(argparser:argparse.ArgumentParser):
         '-I', '--interactive',
         help='Enter interactive mode after initialization',
         action="store_true")
+    argparser.add_argument(
+        '-ap', '--autopilot',
+        action='store_true',
+        help='enable autopilot')
+
+def main_parser():
+    parser = argparse.ArgumentParser()
+    automatic_control_example.add(parser)
+    interactive_control_example.add(parser)
+    return parser
