@@ -13,6 +13,7 @@ class CameraBlueprint(NamedTuple):
     blueprint_path : str
     color_convert : cc
     name : str
+    actual_blueprint : Optional[carla.ActorBlueprint] = None
 
 CameraBlueprints = {
     'Camera RGB' : CameraBlueprint('sensor.camera.rgb', cc.Raw, 'Camera RGB'),
@@ -67,7 +68,9 @@ class CameraManager(object):
         self.sensors = sensors if sensors else list(CameraBlueprints.values())
         world = self._parent.get_world()
         bp_library = world.get_blueprint_library()
-        for item in self.sensors:
+        for i, item in enumerate(self.sensors):
+            if item.actual_blueprint is not None:
+                continue
             blp = bp_library.find(item[0])
             if item[0].startswith('sensor.camera'):
                 blp.set_attribute('image_size_x', str(hud.dim[0]))
@@ -76,7 +79,7 @@ class CameraManager(object):
                     blp.set_attribute('gamma', str(gamma_correction))
             elif item[0].startswith('sensor.lidar'):
                 blp.set_attribute('range', '50')
-            item.append(blp)
+            self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
         self.index = None
 
     def toggle_camera(self):
