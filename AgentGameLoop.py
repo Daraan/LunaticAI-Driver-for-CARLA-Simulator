@@ -35,7 +35,7 @@ from agents.navigation.constant_velocity_agent import ConstantVelocityAgent
 from agents.lunatic_agent import LunaticAgent
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
-from classes.carla_originals.HUD import HUD
+from classes.HUD import HUD
 from classes.world import World
 from classes.vehicle import Vehicle
 

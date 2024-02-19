@@ -5,9 +5,9 @@ from typing import Optional
 
 import carla
 import numpy.random as random
-from classes.carla_originals.HUD import HUD
+from classes.HUD import HUD
 
-from classes.carla_originals.camera_manager import CameraManager
+from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 from utils import get_actor_display_name
 from utils.blueprint_helpers import get_actor_blueprints
