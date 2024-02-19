@@ -7,16 +7,17 @@
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
 """Example of automatic vehicle control from client side."""
-import math
 import os
-from datetime import timedelta
+import math
 from typing import ClassVar
+from datetime import timedelta
+import pygame
 
 import carla
-import pygame
 
 from utils import get_actor_display_name
 
+FONT_SIZE = 20
 
 # ==============================================================================
 # -- HUD -----------------------------------------------------------------------
@@ -27,9 +28,11 @@ class HUD(object):
     """Class for HUD text"""
     default_font : ClassVar[str] = 'ubuntumono'
 
-    def __init__(self, width:int, height:int):
+    def __init__(self, width:int, height:int, world):
         """Constructor method"""
         self.dim = (width, height)
+        self._world = world
+        self.map_name = world.get_map().name
         font = pygame.font.Font(pygame.font.get_default_font(), 20)
         font_name = 'courier' if os.name == 'nt' else 'mono'
         fonts = [x for x in pygame.font.get_fonts() if font_name in x]
@@ -37,7 +40,7 @@ class HUD(object):
         mono = pygame.font.match_font(mono)
         self._font_mono = pygame.font.Font(mono, 12 if os.name == 'nt' else 14)
         self._notifications = FadingText(font, (width, 40), (0, height - 40))
-        self.help = HelpText(pygame.font.Font(mono, 24), width, height)
+        self.help = HelpText(pygame.font.Font(mono, FONT_SIZE), width, height)
         self.server_fps = 0
         self.frame = 0
         self.simulation_time = 0
@@ -73,6 +76,7 @@ class HUD(object):
         self._info_text = [
             'Server:  % 16.0f FPS' % self.server_fps,
             'Client:  % 16.0f FPS' % clock.get_fps(),
+            'Map:     % 20s' % self.map_name, # from rss
             '',
             'Vehicle: % 20s' % get_actor_display_name(world.player, truncate=20),
             'Map:     % 20s' % world.map.name.split('/')[-1],
@@ -140,6 +144,7 @@ class HUD(object):
             v_offset = 4
             bar_h_offset = 100
             bar_width = 106
+            text_color = (255, 255, 255)
             for item in self._info_text:
                 if v_offset + 18 > self.dim[1]:
                     break
@@ -165,7 +170,7 @@ class HUD(object):
                         pygame.draw.rect(display, (255, 255, 255), rect)
                     item = item[0]
                 if item:  # At this point has to be a str.
-                    surface = self._font_mono.render(item, True, (255, 255, 255))
+                    surface = self._font_mono.render(item, True, text_color)
                     display.blit(surface, (8, v_offset))
                 v_offset += 18
         self._notifications.render(display)
@@ -213,20 +218,22 @@ class FadingText(object):
 
 
 class HelpText(object):
-    """ Helper class for text render"""
+    """Helper class to handle text output using pygame"""
 
     def __init__(self, font, width, height):
         """Constructor method"""
         lines = __doc__.split('\n')
         self.font = font
-        self.dim = (680, len(lines) * 22 + 12)
+        #self.dim = (680, len(lines) * 22 + 12)
+        self.line_space = 18
+        self.dim = (780, len(lines) * self.line_space + 12)
         self.pos = (0.5 * width - 0.5 * self.dim[0], 0.5 * height - 0.5 * self.dim[1])
         self.seconds_left = 0
         self.surface = pygame.Surface(self.dim)
         self.surface.fill((0, 0, 0, 0))
         for i, line in enumerate(lines):
             text_texture = self.font.render(line, True, (255, 255, 255))
-            self.surface.blit(text_texture, (22, i * 22))
+            self.surface.blit(text_texture, (22, i * self.line_space))
             self._render = False
         self.surface.set_alpha(220)
 

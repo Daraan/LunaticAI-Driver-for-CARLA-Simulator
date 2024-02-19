@@ -35,7 +35,7 @@ from agents.navigation.constant_velocity_agent import ConstantVelocityAgent
 from agents.lunatic_agent import LunaticAgent
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
-from classes.carla_originals.HUD import HUD
+from classes.HUD import HUD
 from classes.world import World
 from classes.vehicle import Vehicle
 
@@ -81,7 +81,7 @@ def game_loop(args : argparse.ArgumentParser):
             (args.width, args.height),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
-        hud = HUD(args.width, args.height)
+        hud = HUD(args.width, args.height, sim_world)
 
         # carlaService = CarlaService("Town04", "127.0.0.1", 2000)
 
@@ -100,7 +100,7 @@ def game_loop(args : argparse.ArgumentParser):
         # Spawn Ego
         ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(sim_world)
         ego = Vehicle(sim_world, ego_bp)
-        start: carla.Transform = spawn_points[0]
+        start : carla.libcarla.Transform = spawn_points[0]
         ego.spawn(start)
 
         world = World(client.get_world(), hud, args, player=ego.actor)
@@ -252,6 +252,10 @@ def game_loop(args : argparse.ArgumentParser):
             traffic_manager.set_synchronous_mode(True)
 
             world.destroy()
+        try:
+            ego.destroy()
+        except:
+            pass
 
         pygame.quit()
 
@@ -264,7 +268,7 @@ def game_loop(args : argparse.ArgumentParser):
 def main():
     """Main method"""
 
-    args = utils.argument_parsing.automatic_control_example.parse_args()
+    args = utils.argument_parsing.main_parser().parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
 
