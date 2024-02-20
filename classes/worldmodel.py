@@ -109,6 +109,12 @@ class WorldModel(object):
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
 
+    def rss_set_road_boundaries_mode(self, road_boundaries_mode: Union[bool, carla.RssRoadBoundariesMode]):
+        if self.rss_sensor:
+            self.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On if road_boundaries_mode else carla.RssRoadBoundariesMode.Off
+        else:
+            print("Warning: RSS Road Boundaries Mode not set. RSS sensor not found.")
+
     def toggle_pause(self):
         settings = self.world.get_settings()
         self.pause_simulation(not settings.synchronous_mode)

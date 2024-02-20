@@ -15,7 +15,7 @@ from __future__ import annotations
 from copy import deepcopy
 from functools import wraps
 import random
-from typing import ClassVar, Dict, List, Set, Tuple
+from typing import ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING
 
 from omegaconf import DictConfig
 
@@ -205,9 +205,13 @@ class LunaticAgent(BehaviorAgent):
         else:
             self._current_waypoint : carla.Waypoint = self._incoming_waypoint
 
-        # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us.
+        # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
         self.vehicles_nearby : List[carla.Vehicle] = self._world.get_actors().filter("*vehicle*")
         self.walkers_nearby : List[carla.Walker] = self._world.get_actors().filter("*walker.pedestrian*")
+        
+        # RSS
+        self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
+        
 
     def is_taking_turn(self) -> bool:
         return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
@@ -530,6 +534,11 @@ class LunaticAgent(BehaviorAgent):
     def ignore_vehicles(self, active=True):
         """(De)activates the checks for stop signs"""
         self.config.obstacles.ignore_vehicles = active
+        
+    def rss_set_road_boundaries_mode(self, road_boundaries_mode: Optional[Union[bool, carla.RssRoadBoundariesMode]]=None):
+        if road_boundaries_mode is None:
+            road_boundaries_mode : bool = self.config.rss.use_stay_on_road_feature
+        self._world_model.rss_set_road_boundaries_mode(road_boundaries_mode)
 
     # ------------------ Overwritten functions ------------------ #
 

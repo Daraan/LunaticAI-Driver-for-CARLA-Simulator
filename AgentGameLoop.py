@@ -225,6 +225,8 @@ def game_loop(args : argparse.ArgumentParser):
                             print("Rss proposal matches:", rss_updated_controls == control)
                             if rss_updated_controls != control:
                                 print("RSS updated controls")
+                                print(f"throttle: {control.throttle} -> {rss_updated_controls.throttle}, steer: {control.steer} -> {rss_updated_controls.steer}, brake: {control.brake} -> {rss_updated_controls.brake}")
+                            
                         ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls, control=control) # NOTE: rss_updated_controls could be None
                         control = ctx.control
                         assert control is not None
