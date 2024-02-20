@@ -35,6 +35,8 @@ from agents.navigation.behavior_agent import BehaviorAgent
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 
 
 from agents.lunatic_agent import LunaticAgent
+from agents import behaviour_templates
+
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
 from classes.HUD import HUD
@@ -135,7 +137,7 @@ def game_loop(args : argparse.ArgumentParser):
             from omegaconf import OmegaConf
             print(OmegaConf.to_yaml(behavior.options))
             agent = LunaticAgent(world_model.player, behavior)
-
+            agent.add_rules(behaviour_templates.default_rules)
 
         next_wps: List[carla.Waypoint] = wp_start.next(45)
         last = next_wps[-1]
@@ -226,7 +228,6 @@ def game_loop(args : argparse.ArgumentParser):
                         # ----------------------------
 
                         agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
-                        control.manual_gear_shift = False # TODO: turn into a rule
                         # Set automatic control-related vehicle lights
                         world_model.update_lights(control)
                         world_model.player.apply_control(control)
