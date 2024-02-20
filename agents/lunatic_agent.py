@@ -65,8 +65,8 @@ class LunaticAgent(BehaviorAgent):
 
     # using a ClassVar which allows to define preset rules for a child class
     # NOTE: Use deepcopy to avoid shared state between instances
-    rules : ClassVar[Dict[Phase, List[Rule]]] = dict.fromkeys(Phase.get_phases(), [])
-
+    rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
+    
     # todo: rename in the future
 
     def __init__(self, vehicle : carla.Vehicle, behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
@@ -218,10 +218,11 @@ class LunaticAgent(BehaviorAgent):
             self.rules[p].sort(key=lambda r: r.priority, reverse=True)
             
     def add_rules(self, rules : List[Rule]):
+        """Add a list of rules and sort the agents rules by priority."""
         for rule in rules:
             for phase in rule.phases:
                 self.rules[phase].append(rule)
-        for phase in rule.phases:
+        for phase in Phase.get_phases():
             self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
         
     def execute_phase(self, phase, *, prior_results, control:carla.VehicleControl=None) -> Context:
@@ -236,8 +237,8 @@ class LunaticAgent(BehaviorAgent):
         rules_to_check = self.rules[phase]
         for rule in rules_to_check: # todo: maybe dict? grouped by phase?
             #todo check here for the phase instead of in the rule
-            if self.current_phase in rule: # TODO remove:
-                rule(ctx)
+            assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
+            rule(ctx)
         return ctx
 
     def run_step(self, debug=False):

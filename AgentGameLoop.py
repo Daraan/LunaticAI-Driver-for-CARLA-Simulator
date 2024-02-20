@@ -12,10 +12,11 @@ import sys
 import argparse
 import logging
 import threading
-from typing import List
-import pygame
-
 import random
+from typing import List
+from pprint import pprint
+
+import pygame
 import numpy.random as random # TODO: fix import
 
 #try:
@@ -138,6 +139,8 @@ def game_loop(args : argparse.ArgumentParser):
             print(OmegaConf.to_yaml(behavior.options))
             agent = LunaticAgent(world_model.player, behavior)
             agent.add_rules(behaviour_templates.default_rules)
+            print("Lunatic Agent Rules")
+            pprint(agent.rules)
 
         next_wps: List[carla.Waypoint] = wp_start.next(45)
         last = next_wps[-1]
@@ -219,7 +222,9 @@ def game_loop(args : argparse.ArgumentParser):
                         assert rss_updated_controls is not control
                         if rss_updated_controls and rss_updated_controls is not control:
                             print("RSS updated controls")
-                            print(rss_updated_controls, "\n\nVs. OLD:\n", control)
+                            print("Rss proposal matches:", rss_updated_controls == control)
+                            if rss_updated_controls != control:
+                                print("RSS updated controls")
                         ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls, control=control) # NOTE: rss_updated_controls could be None
                         control = ctx.control
                         assert control is not None

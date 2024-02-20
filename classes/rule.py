@@ -223,6 +223,8 @@ class Rule(_CountdownRule):
         for p in phases:
             if not isinstance(p, Phase):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
+        if not isinstance(description, str):
+            raise ValueError(f"description must be of type str, not {type(description)}")
         super().__init__(cooldown_reset_value)
         self.priority : float | int | RulePriority = priority
 
@@ -258,6 +260,7 @@ class Rule(_CountdownRule):
 
     def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *, ignore_phase=False, ignore_cooldown=False) -> Any:
         # Check phase
+        assert ctx.agent.current_phase in self.phases
         if not self.is_ready() and not ignore_cooldown:
             return self.NOT_APPLICABLE
         if not ignore_phase or ctx.agent.current_phase not in self.phases:
@@ -270,6 +273,12 @@ class Rule(_CountdownRule):
             self._cooldown = self.max_cooldown
             return action_result
         return self.NOT_APPLICABLE # No action was executed
+    
+    def __str__(self) -> str:
+        return self.__class__.__name__ + f"(description={self.description}, phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, rule={self.rule})" 
+
+    def __repr__(self) -> str:
+        return str(self)
 
 class MultiRule(Rule):
 
