@@ -1,5 +1,6 @@
 from omegaconf import DictConfig, OmegaConf 
 
+import carla 
 from conf.settings_base_class import new_config, obstacles, speed
 from conf.default_options.original_behavior import BehaviorAgentSettings
 from conf.default_options.original_autopilot_behavior import AutopilotBehavior
@@ -52,7 +53,8 @@ emergency.hand_brake_modify_chance : float = 0.0 # to use hand brake with some c
 # ...
 # TODO: Come up with further ideas for emergency behavior, look at the agent.emergency_stop function
 
-
+rss = new_config("rss")
+rss.use_stay_on_road_feature : bool = True
 
 class LunaticBehaviorSettings(AutopilotBehavior):
 

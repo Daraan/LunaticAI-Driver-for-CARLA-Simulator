@@ -7,16 +7,19 @@
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
 """Example of automatic vehicle control from client side."""
-import math
 import os
-from datetime import timedelta
+import math
 from typing import ClassVar
+from datetime import timedelta
+import pygame
 
 import carla
-import pygame
 
 from utils import get_actor_display_name
 
+from classes.carla_originals.rss_visualization import RssStateVisualizer
+
+FONT_SIZE = 20
 
 # ==============================================================================
 # -- HUD -----------------------------------------------------------------------
@@ -27,9 +30,11 @@ class HUD(object):
     """Class for HUD text"""
     default_font : ClassVar[str] = 'ubuntumono'
 
-    def __init__(self, width:int, height:int):
+    def __init__(self, width:int, height:int, world):
         """Constructor method"""
         self.dim = (width, height)
+        self._world = world
+        self.map_name = world.get_map().name
         font = pygame.font.Font(pygame.font.get_default_font(), 20)
         font_name = 'courier' if os.name == 'nt' else 'mono'
         fonts = [x for x in pygame.font.get_fonts() if font_name in x]
@@ -37,29 +42,36 @@ class HUD(object):
         mono = pygame.font.match_font(mono)
         self._font_mono = pygame.font.Font(mono, 12 if os.name == 'nt' else 14)
         self._notifications = FadingText(font, (width, 40), (0, height - 40))
-        self.help = HelpText(pygame.font.Font(mono, 24), width, height)
+        self.help = HelpText(pygame.font.Font(mono, FONT_SIZE), width, height)
         self.server_fps = 0
         self.frame = 0
         self.simulation_time = 0
         self._show_info = True
         self._info_text = []
         self._server_clock = pygame.time.Clock()
+        # RSS
+        self.original_vehicle_control = None
+        self.restricted_vehicle_control = None
+        self.allowed_steering_ranges = []
+        self.rss_state_visualizer = RssStateVisualizer(self.dim, self._font_mono, self._world)
 
     def on_world_tick(self, timestamp):
         """Gets informations from the world at every tick"""
         self._server_clock.tick()
         self.server_fps = self._server_clock.get_fps()
-        self.frame = timestamp.frame_count
+        # self.frame = timestamp.frame_count # NON- RSS Example
+        self.frame = timestamp.frame
         self.simulation_time = timestamp.elapsed_seconds
 
     def tick(self, world, clock):
         """HUD method for every tick"""
-        self._notifications.tick(world, clock)
+        self._notifications.tick(clock)
         if not self._show_info:
             return
-        transform = world.player.get_transform()
-        vel = world.player.get_velocity()
-        control = world.player.get_control()
+        player = world.player
+        transform = player.get_transform()
+        vel = player.get_velocity()
+        control = player.get_control()
         heading = 'N' if abs(transform.rotation.yaw) < 89.5 else ''
         heading += 'S' if abs(transform.rotation.yaw) > 90.5 else ''
         heading += 'E' if 179.5 > transform.rotation.yaw > 0.5 else ''
@@ -73,22 +85,34 @@ class HUD(object):
         self._info_text = [
             'Server:  % 16.0f FPS' % self.server_fps,
             'Client:  % 16.0f FPS' % clock.get_fps(),
+            'Map:     % 20s' % self.map_name, # from rss
             '',
-            'Vehicle: % 20s' % get_actor_display_name(world.player, truncate=20),
+            'Vehicle: % 20s' % get_actor_display_name(player, truncate=20),
             'Map:     % 20s' % world.map.name.split('/')[-1],
             'Simulation time: % 12s' % timedelta(seconds=int(self.simulation_time)),
             '',
             'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)),
             u'Heading:% 16.0f\N{DEGREE SIGN} % 2s' % (transform.rotation.yaw, heading),
+            #  TODO maybe 'Heading: % 20.2f' % math.radians(transform.rotation.yaw),
             'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (transform.location.x, transform.location.y)),
             'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (world.gnss_sensor.lat, world.gnss_sensor.lon)),
             'Height:  % 18.0f m' % transform.location.z,
             '']
         if isinstance(control, carla.VehicleControl):
+            if self.original_vehicle_control:
+                orig_control = self.original_vehicle_control
+                restricted_control = self.restricted_vehicle_control
+                allowed_steering_ranges = self.allowed_steering_ranges
+                self._info_text += [
+                    ('Throttle:', orig_control.throttle, 0.0, 1.0, restricted_control.throttle),
+                    ('Steer:', orig_control.steer, -1.0, 1.0, restricted_control.steer, allowed_steering_ranges),
+                    ('Brake:', orig_control.brake, 0.0, 1.0, restricted_control.brake)]
+            else:
+                self._info_text += [
+                    ('Throttle:', control.throttle, 0.0, 1.0),
+                    ('Steer:', control.steer, -1.0, 1.0),
+                    ('Brake:', control.brake, 0.0, 1.0),]
             self._info_text += [
-                ('Throttle:', control.throttle, 0.0, 1.0),
-                ('Steer:', control.steer, -1.0, 1.0),
-                ('Brake:', control.brake, 0.0, 1.0),
                 ('Reverse:', control.reverse),
                 ('Hand brake:', control.hand_brake),
                 ('Manual:', control.manual_gear_shift),
@@ -140,6 +164,7 @@ class HUD(object):
             v_offset = 4
             bar_h_offset = 100
             bar_width = 106
+            text_color = (255, 255, 255)
             for item in self._info_text:
                 if v_offset + 18 > self.dim[1]:
                     break
@@ -151,23 +176,58 @@ class HUD(object):
                     v_offset += 18
                 elif isinstance(item, tuple):
                     if isinstance(item[1], bool):
-                        rect = pygame.Rect((bar_h_offset, v_offset + 8), (6, 6))
+                        # rect = pygame.Rect((bar_h_offset, v_offset + 8), (6, 6))
+                        rect = pygame.Rect((bar_h_offset, v_offset + 2), (10, 10))
                         pygame.draw.rect(display, (255, 255, 255), rect, 0 if item[1] else 1)
                     else:
-                        rect_border = pygame.Rect((bar_h_offset, v_offset + 8), (bar_width, 6))
+                        # draw allowed steering ranges
+                        if len(item) == 6 and item[2] < 0.0:
+                            for steering_range in item[5]:
+                                starting_value = min(steering_range[0], steering_range[1])
+                                length = (max(steering_range[0], steering_range[1]) -
+                                          min(steering_range[0], steering_range[1])) / 2
+                                rect = pygame.Rect(
+                                    (bar_h_offset + (starting_value + 1) * (bar_width / 2), v_offset + 2), (length * bar_width, 14))
+                                pygame.draw.rect(display, (0, 255, 0), rect)
+
+                        # draw border
+                        # rect_border = pygame.Rect((bar_h_offset, v_offset + 8), (bar_width, 6))
+                        rect_border = pygame.Rect((bar_h_offset, v_offset + 2), (bar_width, 14))
                         pygame.draw.rect(display, (255, 255, 255), rect_border, 1)
-                        fig = (item[1] - item[2]) / (item[3] - item[2])
+
+                        # draw value / restricted value
+                        input_value_rect_fill = 0
+                        if len(item) >= 5:
+                            if item[1] != item[4]:
+                                input_value_rect_fill = 1
+                                f = (item[4] - item[2]) / (item[3] - item[2])
+                                if item[2] < 0.0:
+                                    rect = pygame.Rect(
+                                        (bar_h_offset + 1 + f * (bar_width - 6), v_offset + 3), (12, 12))
+                                else:
+                                    rect = pygame.Rect((bar_h_offset + 1, v_offset + 3), (f * bar_width, 12))
+                                pygame.draw.rect(display, (255, 0, 0), rect)
+
+                        f = (item[1] - item[2]) / (item[3] - item[2])
+                        rect = None
                         if item[2] < 0.0:
-                            rect = pygame.Rect(
-                                (bar_h_offset + fig * (bar_width - 6), v_offset + 8), (6, 6))
+                            #rect = pygame.Rect(
+                            #    (bar_h_offset + fig * (bar_width - 6), v_offset + 8), (6, 6))
+                            rect = pygame.Rect((bar_h_offset + 2 + f * (bar_width - 14), v_offset + 4), (10, 10))
                         else:
-                            rect = pygame.Rect((bar_h_offset, v_offset + 8), (fig * bar_width, 6))
-                        pygame.draw.rect(display, (255, 255, 255), rect)
+                            #rect = pygame.Rect((bar_h_offset, v_offset + 8), (fig * bar_width, 6))
+                            if item[1] != 0:
+                                rect = pygame.Rect((bar_h_offset + 2, v_offset + 4), (f * (bar_width - 4), 10))
+                        if rect:
+                            # pygame.draw.rect(display, (255, 255, 255), rect)
+                            pygame.draw.rect(display, (255, 255, 255), rect, input_value_rect_fill)
                     item = item[0]
                 if item:  # At this point has to be a str.
-                    surface = self._font_mono.render(item, True, (255, 255, 255))
+                    surface = self._font_mono.render(item, True, text_color)
                     display.blit(surface, (8, v_offset))
                 v_offset += 18
+
+            self.rss_state_visualizer.render(display, v_offset)
         self._notifications.render(display)
         self.help.render(display)
 
@@ -196,7 +256,7 @@ class FadingText(object):
         self.surface.fill((0, 0, 0, 0))
         self.surface.blit(text_texture, (10, 11))
 
-    def tick(self, _, clock):
+    def tick(self, clock):
         """Fading text method for every tick"""
         delta_seconds = 1e-3 * clock.get_time()
         self.seconds_left = max(0.0, self.seconds_left - delta_seconds)
@@ -213,20 +273,22 @@ class FadingText(object):
 
 
 class HelpText(object):
-    """ Helper class for text render"""
+    """Helper class to handle text output using pygame"""
 
     def __init__(self, font, width, height):
         """Constructor method"""
         lines = __doc__.split('\n')
         self.font = font
-        self.dim = (680, len(lines) * 22 + 12)
+        #self.dim = (680, len(lines) * 22 + 12)
+        self.line_space = 18
+        self.dim = (780, len(lines) * self.line_space + 12)
         self.pos = (0.5 * width - 0.5 * self.dim[0], 0.5 * height - 0.5 * self.dim[1])
         self.seconds_left = 0
         self.surface = pygame.Surface(self.dim)
         self.surface.fill((0, 0, 0, 0))
         for i, line in enumerate(lines):
             text_texture = self.font.render(line, True, (255, 255, 255))
-            self.surface.blit(text_texture, (22, i * 22))
+            self.surface.blit(text_texture, (22, i * self.line_space))
             self._render = False
         self.surface.set_alpha(220)
 

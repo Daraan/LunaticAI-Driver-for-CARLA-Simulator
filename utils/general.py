@@ -1,6 +1,7 @@
 # Functions which not yet have a good grouping in their own files
 """Contains snippets that can can import/export vehicle positions from/to csv files."""
 
+from typing import List
 import pandas as pd
 from carla.libcarla import Location, Rotation, Transform
 
@@ -44,7 +45,7 @@ def vehicle_location_to_dataframe(vehicles: list):
     return df
 
 
-def csv_to_transformations(path):
+def csv_to_transformations(path) -> List[Transform]:
     df = pd.read_csv(path)
     transformations = []
     for idx, data in df.iterrows():

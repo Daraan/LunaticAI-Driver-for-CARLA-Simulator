@@ -38,6 +38,10 @@ from pygame.locals import MOUSEBUTTONUP
 
 import carla
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from classes.worldmodel import WorldModel
+
 
 
 # ==============================================================================
@@ -47,7 +51,7 @@ import carla
 
 class PassiveKeyboardControl(object):
     # COMMENT I think this only allows to end the script
-    def __init__(self, world):
+    def __init__(self, world : "WorldModel"):
         world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
 
     def parse_events(self):
@@ -63,22 +67,24 @@ class PassiveKeyboardControl(object):
         """Shortcut for quitting"""
         return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
 
-# todo: copy&paste interactive keyboard controls
 
 
 class RSSKeyboardControl(object):
+    """Class that handles keyboard input."""
 
     MOUSE_STEERING_RANGE = 200
     signal_received = False
 
-    """Class that handles keyboard input."""
+    # TODO: should be a toggle between None, Autopilot, Agent
 
-    def __init__(self, world, start_in_autopilot):
+    def __init__(self, world : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True):
+        if start_in_autopilot and agent_controlled:
+            raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
         self._autopilot_enabled = start_in_autopilot
-        self._world = world
+        self._agent_controlled = agent_controlled
+        self._world_model = world
         self._control = carla.VehicleControl()
         self._lights = carla.VehicleLightState.NONE
-        world.player.set_autopilot(self._autopilot_enabled)
         self._restrictor = carla.RssRestrictor()
         self._vehicle_physics = world.player.get_physics_control()
         world.player.set_light_state(self._lights)
@@ -115,6 +121,10 @@ class RSSKeyboardControl(object):
 
         world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
 
+    @property
+    def controlled_externally(self):
+        return self._autopilot_enabled or self._agent_controlled
+
     def render(self, display):
         if self._mouse_steering_center:
             display.blit(
@@ -125,7 +135,7 @@ class RSSKeyboardControl(object):
         print('\nReceived signal {}. Trigger stopping...'.format(signum))
         RSSKeyboardControl.signal_received = True
 
-    def parse_events(self, world, clock, sync_mode):
+    def parse_events(self, clock):
         if RSSKeyboardControl.signal_received:
             print('\nAccepted signal. Stopping loop...')
             return True
@@ -139,56 +149,57 @@ class RSSKeyboardControl(object):
                     return True
                 elif event.key == K_BACKSPACE:
                     if self._autopilot_enabled:
-                        world.player.set_autopilot(False)
-                        world.restart()
-                        world.player.set_autopilot(True)
+                        self._world_model.player.set_autopilot(False)
+                        self._world_model.restart()
+                        self._world_model.player.set_autopilot(True)
                     else:
-                        world.restart()
+                        self._world_model.restart()
                 elif event.key == K_F1:
-                    world.hud.toggle_info()
+                    self._world_model.hud.toggle_info()
                 elif event.key == K_h or (event.key == K_SLASH and pygame.key.get_mods() & KMOD_SHIFT):
-                    world.hud.help.toggle()
+                    self._world_model.hud.help.toggle()
                 elif event.key == K_TAB:
-                    world.rss_unstructured_scene_visualizer.toggle_camera()
+                    self._world_model.rss_unstructured_scene_visualizer.toggle_camera()
                 elif event.key == K_n:
-                    world.toggle_pause()
+                    self._world_model.toggle_pause()
                 elif event.key == K_r:
-                    world.toggle_recording()
+                    self._world_model.toggle_recording()
                 elif event.key == K_F2:
-                    if self._world and self._world.rss_sensor:
-                        self._world.rss_sensor.toggle_debug_visualization_mode()
+                    if self._world_model and self._world_model.rss_sensor:
+                        self._world_model.rss_sensor.toggle_debug_visualization_mode()
                 elif event.key == K_F3:
-                    if self._world and self._world.rss_sensor:
-                        self._world.rss_sensor.decrease_log_level()
-                        self._restrictor.set_log_level(self._world.rss_sensor.log_level)
+                    if self._world_model and self._world_model.rss_sensor:
+                        self._world_model.rss_sensor.decrease_log_level()
+                        self._restrictor.set_log_level(self._world_model.rss_sensor.log_level)
                 elif event.key == K_F4:
-                    if self._world and self._world.rss_sensor:
-                        self._world.rss_sensor.increase_log_level()
-                        self._restrictor.set_log_level(self._world.rss_sensor.log_level)
+                    if self._world_model and self._world_model.rss_sensor:
+                        self._world_model.rss_sensor.increase_log_level()
+                        self._restrictor.set_log_level(self._world_model.rss_sensor.log_level)
                 elif event.key == K_F5:
-                    if self._world and self._world.rss_sensor:
-                        self._world.rss_sensor.decrease_map_log_level()
+                    if self._world_model and self._world_model.rss_sensor:
+                        self._world_model.rss_sensor.decrease_map_log_level()
                 elif event.key == K_F6:
-                    if self._world and self._world.rss_sensor:
-                        self._world.rss_sensor.increase_map_log_level()
+                    if self._world_model and self._world_model.rss_sensor:
+                        self._world_model.rss_sensor.increase_map_log_level()
                 elif event.key == K_b:
-                    if self._world and self._world.rss_sensor:
-                        if self._world.rss_sensor.sensor.road_boundaries_mode == carla.RssRoadBoundariesMode.Off:
-                            self._world.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On
+                    if self._world_model and self._world_model.rss_sensor:
+                        if self._world_model.rss_sensor.sensor.road_boundaries_mode == carla.RssRoadBoundariesMode.Off:
+                            self._world_model.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On
                             print("carla.RssRoadBoundariesMode.On")
                         else:
-                            self._world.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.Off
+                            self._world_model.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.Off
                             print("carla.RssRoadBoundariesMode.Off")
                 elif event.key == K_g:
-                    if self._world and self._world.rss_sensor:
-                        self._world.rss_sensor.drop_route()
+                    if self._world_model and self._world_model.rss_sensor:
+                        self._world_model.rss_sensor.drop_route()
                 if isinstance(self._control, carla.VehicleControl):
                     if event.key == K_q:
                         self._control.gear = 1 if self._control.reverse else -1
                     elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
+                        # TODO: should be a toggle between None, Autopilot, Agent
                         self._autopilot_enabled = not self._autopilot_enabled
-                        world.player.set_autopilot(self._autopilot_enabled)
-                        world.hud.notification(
+                        self._world_model.player.set_autopilot(self._autopilot_enabled)
+                        self._world_model.hud.notification(
                             'Autopilot %s' % ('On' if self._autopilot_enabled else 'Off'))
                     elif event.key == K_l and pygame.key.get_mods() & KMOD_CTRL:
                         current_lights ^= carla.VehicleLightState.Special1
@@ -198,16 +209,16 @@ class RSSKeyboardControl(object):
                         # Use 'L' key to switch between lights:
                         # closed -> position -> low beam -> fog
                         if not self._lights & carla.VehicleLightState.Position:
-                            world.hud.notification("Position lights")
+                            self._world_model.hud.notification("Position lights")
                             current_lights |= carla.VehicleLightState.Position
                         else:
-                            world.hud.notification("Low beam lights")
+                            self._world_model.hud.notification("Low beam lights")
                             current_lights |= carla.VehicleLightState.LowBeam
                         if self._lights & carla.VehicleLightState.LowBeam:
-                            world.hud.notification("Fog lights")
+                            self._world_model.hud.notification("Fog lights")
                             current_lights |= carla.VehicleLightState.Fog
                         if self._lights & carla.VehicleLightState.Fog:
-                            world.hud.notification("Lights off")
+                            self._world_model.hud.notification("Lights off")
                             current_lights ^= carla.VehicleLightState.Position
                             current_lights ^= carla.VehicleLightState.LowBeam
                             current_lights ^= carla.VehicleLightState.Fog
@@ -232,41 +243,28 @@ class RSSKeyboardControl(object):
             self._control.reverse = self._control.gear < 0
 
             vehicle_control = self._control
-            world.hud.original_vehicle_control = vehicle_control
-            world.hud.restricted_vehicle_control = vehicle_control
+            self._world_model.hud.original_vehicle_control = vehicle_control
+            self._world_model.hud.restricted_vehicle_control = vehicle_control
 
             # limit speed to 30kmh
-            v = self._world.player.get_velocity()
-            if (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)) > 30.0:
-                self._control.throttle = 0
+            #v = self._world_model.player.get_velocity()
+            #if (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)) > 30.0:
+            #    self._control.throttle = 0
 
             # if self._world.rss_sensor and self._world.rss_sensor.ego_dynamics_on_route and not self._world.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
             #    print ("Not on route!" +  str(self._world.rss_sensor.ego_dynamics_on_route))
             if self._restrictor:
-                rss_proper_response = self._world.rss_sensor.proper_response if self._world.rss_sensor and self._world.rss_sensor.response_valid else None
+                rss_proper_response = self._world_model.rss_sensor.proper_response if self._world_model.rss_sensor and self._world_model.rss_sensor.response_valid else None
                 if rss_proper_response:
                     if not (pygame.key.get_mods() & KMOD_CTRL):
                         vehicle_control = self._restrictor.restrict_vehicle_control(
-                            vehicle_control, rss_proper_response, self._world.rss_sensor.ego_dynamics_on_route, self._vehicle_physics)
-                    world.hud.restricted_vehicle_control = vehicle_control
-                    world.hud.allowed_steering_ranges = self._world.rss_sensor.get_steering_ranges()
-                    if world.hud.original_vehicle_control.steer != world.hud.restricted_vehicle_control.steer:
+                            vehicle_control, rss_proper_response, self._world_model.rss_sensor.ego_dynamics_on_route, self._vehicle_physics)
+                    self._world_model.hud.restricted_vehicle_control = vehicle_control
+                    self._world_model.hud.allowed_steering_ranges = self._world_model.rss_sensor.get_steering_ranges()
+                    if self._world_model.hud.original_vehicle_control.steer != self._world_model.hud.restricted_vehicle_control.steer:
                         self._steer_cache = prev_steer_cache
 
-            # Set automatic control-related vehicle lights
-            if vehicle_control.brake:
-                current_lights |= carla.VehicleLightState.Brake
-            else:  # Remove the Brake flag
-                current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Brake
-            if vehicle_control.reverse:
-                current_lights |= carla.VehicleLightState.Reverse
-            else:  # Remove the Reverse flag
-                current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Reverse
-            if current_lights != self._lights:  # Change the light state only if necessary
-                self._lights = current_lights
-                world.player.set_light_state(carla.VehicleLightState(self._lights))
-
-            world.player.apply_control(vehicle_control)
+            self._world_model.player.apply_control(vehicle_control)
 
     def _parse_vehicle_keys(self, keys, milliseconds):
         if keys[K_UP] or keys[K_w]:

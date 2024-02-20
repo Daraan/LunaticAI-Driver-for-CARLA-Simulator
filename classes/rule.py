@@ -10,10 +10,10 @@ from omegaconf import DictConfig
 
 from utils.evaluation_function import EvaluationFunction
 
+from classes.constants import Phase
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
-    from agents.tools.lunatic_agent_tools import Phase
 
 class Context:
     """
@@ -24,6 +24,7 @@ class Context:
     evaluation_results : Dict["Phase", Hashable] # ambigious wording, which result? here evaluation result
     action_results : Dict["Phase", Any] 
     control : "carla.VehicleControl"
+    prior_result : Optional[Any]
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
@@ -104,10 +105,6 @@ class _CountdownRule:
     def update_cooldown(self):
         if self._cooldown > 0:
             self._cooldown -= 1
-
-    @property
-    def is_ready(self) -> bool:
-        return self._cooldown == 0
     
     @classmethod
     def update_all_cooldowns(cls):
@@ -145,6 +142,14 @@ class _GroupRule(_CountdownRule):
         if self.group:
             return _GroupRule.instances[self.group][0]
         return super().cooldown
+    
+    def is_ready(self) -> bool:
+        """Group aware check if a rule is ready."""
+        return self.cooldown == 0 
+    
+    @property
+    def has_group(self) -> bool:
+        return self.group is not None
     
     @cooldown.setter
     def cooldown(self, value):
@@ -216,8 +221,10 @@ class Rule(_CountdownRule):
             else:
                 phases = {phases}
         for p in phases:
-            if not isinstance(p, "Phase"):
+            if not isinstance(p, Phase):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
+        if not isinstance(description, str):
+            raise ValueError(f"description must be of type str, not {type(description)}")
         super().__init__(cooldown_reset_value)
         self.priority : float | int | RulePriority = priority
 
@@ -253,6 +260,7 @@ class Rule(_CountdownRule):
 
     def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *, ignore_phase=False, ignore_cooldown=False) -> Any:
         # Check phase
+        assert ctx.agent.current_phase in self.phases
         if not self.is_ready() and not ignore_cooldown:
             return self.NOT_APPLICABLE
         if not ignore_phase or ctx.agent.current_phase not in self.phases:
@@ -265,6 +273,12 @@ class Rule(_CountdownRule):
             self._cooldown = self.max_cooldown
             return action_result
         return self.NOT_APPLICABLE # No action was executed
+    
+    def __str__(self) -> str:
+        return self.__class__.__name__ + f"(description={self.description}, phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, rule={self.rule})" 
+
+    def __repr__(self) -> str:
+        return str(self)
 
 class MultiRule(Rule):
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 from copy import deepcopy
 from functools import wraps
 import random
-from typing import ClassVar, Dict, List, Set, Tuple
+from typing import ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING
 
 from omegaconf import DictConfig
 
@@ -30,13 +30,15 @@ from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleD
 
 from agents import substep_managers
 import agents.tools.lunatic_agent_tools
-from agents.tools.lunatic_agent_tools import Hazard, Phase
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
 
+from classes.constants import Phase, Hazard
 from classes.rule import Context, Rule
 from conf.default_options.original_behavior import BasicAgentSettings
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
+if TYPE_CHECKING:
+    from classes.worldmodel import WorldModel
 
 # As Reference:
 '''
@@ -65,11 +67,11 @@ class LunaticAgent(BehaviorAgent):
 
     # using a ClassVar which allows to define preset rules for a child class
     # NOTE: Use deepcopy to avoid shared state between instances
-    rules : ClassVar[Dict[Phase, List[Rule]]] = dict.fromkeys(Phase.get_phases(), [])
-
+    rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
+    
     # todo: rename in the future
 
-    def __init__(self, vehicle : carla.Vehicle, behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, world_model : "WorldModel", behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -112,8 +114,9 @@ class LunaticAgent(BehaviorAgent):
         #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
 
         # Original Setup ---------------------------------------------------------
-        self._vehicle : carla.Vehicle = vehicle
-        self._world :carla.World = self._vehicle.get_world()
+        self._vehicle : carla.Vehicle = world_model.player
+        self._world_model : WorldModel = world_model
+        self._world :carla.World = world_model.world
         
         if map_inst:
             if isinstance(map_inst, carla.Map):
@@ -202,9 +205,13 @@ class LunaticAgent(BehaviorAgent):
         else:
             self._current_waypoint : carla.Waypoint = self._incoming_waypoint
 
-        # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us.
+        # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
         self.vehicles_nearby : List[carla.Vehicle] = self._world.get_actors().filter("*vehicle*")
         self.walkers_nearby : List[carla.Walker] = self._world.get_actors().filter("*walker.pedestrian*")
+        
+        # RSS
+        self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
+        
 
     def is_taking_turn(self) -> bool:
         return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
@@ -216,8 +223,16 @@ class LunaticAgent(BehaviorAgent):
         for p in rule.phases:
             self.rules[p].append(rule)
             self.rules[p].sort(key=lambda r: r.priority, reverse=True)
+            
+    def add_rules(self, rules : List[Rule]):
+        """Add a list of rules and sort the agents rules by priority."""
+        for rule in rules:
+            for phase in rule.phases:
+                self.rules[phase].append(rule)
+        for phase in Phase.get_phases():
+            self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
         
-    def execute_phase(self, phase, *, prior_results, control:carla.VehicleControl=None):
+    def execute_phase(self, phase, *, prior_results, control:carla.VehicleControl=None) -> Context:
         """
         Sets the current phase of the agent and executes all rules that are associated with it.
         """
@@ -229,8 +244,9 @@ class LunaticAgent(BehaviorAgent):
         rules_to_check = self.rules[phase]
         for rule in rules_to_check: # todo: maybe dict? grouped by phase?
             #todo check here for the phase instead of in the rule
-            if self.current_phase in rule: # TODO remove:
-                rule(ctx, control=control, phase_results=prior_results)
+            assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
+            rule(ctx)
+        return ctx
 
     def run_step(self, debug=False):
         """
@@ -518,6 +534,11 @@ class LunaticAgent(BehaviorAgent):
     def ignore_vehicles(self, active=True):
         """(De)activates the checks for stop signs"""
         self.config.obstacles.ignore_vehicles = active
+        
+    def rss_set_road_boundaries_mode(self, road_boundaries_mode: Optional[Union[bool, carla.RssRoadBoundariesMode]]=None):
+        if road_boundaries_mode is None:
+            road_boundaries_mode : bool = self.config.rss.use_stay_on_road_feature
+        self._world_model.rss_set_road_boundaries_mode(road_boundaries_mode)
 
     # ------------------ Overwritten functions ------------------ #
 

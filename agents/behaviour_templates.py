@@ -1,8 +1,9 @@
 import carla
 from agents.navigation.local_planner import RoadOption
 
+from classes.constants import Phase
 from classes.rule import Rule, EvaluationFunction, Context, always_execute
-from agents.tools.lunatic_agent_tools import Phase, detect_vehicles
+from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
 
 from typing import TYPE_CHECKING, List
@@ -122,14 +123,14 @@ avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,
 
 # ----------- Plan next waypoint -----------
 
-def set_random_waypoint(agent : "LunaticAgent", waypoints : List[carla.Waypoint]=None):
+def set_random_waypoint(ctx : "Context", waypoints : List[carla.Waypoint]=None):
     """
     Set a random waypoint as the next target.
     """
     if waypoints is None:
-        waypoints = agent._map.get_spawn_points()
+        waypoints = ctx.agent._map.get_spawn_points()
     import random
-    agent.set_destination(random.choice(waypoints))
+    ctx.agent.set_destination(random.choice(waypoints))
 
 @EvaluationFunction
 def is_agent_done(ctx : Context) -> bool:
@@ -142,3 +143,21 @@ set_random_waypoint_when_done = Rule(Phase.DONE | Phase.BEGIN,
                                      rule=is_agent_done,
                                      action=set_random_waypoint,
                                      description="Sets random waypoint when done")
+
+# ----------- RSS Rules -----------
+
+def accept_rss_updates(ctx : Context):
+    """
+    Accept RSS updates from the RSS manager.
+    """
+    if ctx.prior_result is None:
+        return None
+    assert isinstance(ctx.prior_result, carla.VehicleControl)
+    ctx.control = ctx.prior_result
+
+always_accept_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
+                                     rule=always_execute,
+                                     action=accept_rss_updates,
+                                     description="Sets random waypoint when done")
+
+default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, set_random_waypoint_when_done, always_accept_rss_updates]

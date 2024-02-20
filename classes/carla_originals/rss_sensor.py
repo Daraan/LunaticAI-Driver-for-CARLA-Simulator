@@ -2,23 +2,12 @@
 #
 # Copyright (c) 2020 Intel Corporation
 #
-
-import glob
-import os
-import sys
-
-try:
-    sys.path.append(glob.glob(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + '/carla/dist/carla-*%d.%d-%s.egg' % (
-        sys.version_info.major,
-        sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
-except IndexError:
-    pass
+import math
+from typing import List, Tuple, cast as assure_type
 
 import inspect
 import carla
 from carla import ad
-import math
 from classes.carla_originals.rss_visualization import RssDebugVisualizer # pylint: disable=relative-import
 
 
@@ -75,7 +64,7 @@ class RssStateInfo(object):
 
 class RssSensor(object):
 
-    def __init__(self, parent_actor, world, unstructured_scene_visualizer, bounding_box_visualizer, state_visualizer, routing_targets=None):
+    def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer, bounding_box_visualizer, state_visualizer, routing_targets=None):
         self.sensor = None
         self.unstructured_scene_visualizer = unstructured_scene_visualizer
         self.bounding_box_visualizer = bounding_box_visualizer
@@ -105,7 +94,7 @@ class RssSensor(object):
 
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find('sensor.other.rss')
-        self.sensor = world.spawn_actor(bp, carla.Transform(carla.Location(x=0.0, z=0.0)), attach_to=self._parent)
+        self.sensor : carla.RssSensor = assure_type(carla.RssSensor, world.spawn_actor(bp, carla.Transform(carla.Location(x=0.0, z=0.0)), attach_to=self._parent)) # for correct type hint
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
 
@@ -136,7 +125,7 @@ class RssSensor(object):
             for target in routing_targets:
                 self.sensor.append_routing_target(target)
 
-    def _on_actor_constellation_request(self, actor_constellation_data):
+    def _on_actor_constellation_request(self, actor_constellation_data : carla.RssActorConstellationData):
         # print("_on_actor_constellation_request: ", str(actor_constellation_data))
 
         actor_constellation_result = carla.RssActorConstellationResult()
@@ -338,7 +327,7 @@ class RssSensor(object):
         self.sensor.drop_route()
 
     @staticmethod
-    def get_default_parameters():
+    def get_default_parameters() -> ad.rss.world.RssDynamics:
         ego_dynamics = ad.rss.world.RssDynamics()
         ego_dynamics.alphaLon.accelMax = 5
         ego_dynamics.alphaLon.brakeMax = -8
@@ -371,7 +360,7 @@ class RssSensor(object):
         self.current_vehicle_parameters = self.get_default_parameters()
 
     @staticmethod
-    def get_pedestrian_parameters():
+    def get_pedestrian_parameters() -> ad.rss.world.RssDynamics:
         pedestrian_dynamics = ad.rss.world.RssDynamics()
         pedestrian_dynamics.alphaLon.accelMax = 2.0
         pedestrian_dynamics.alphaLon.brakeMax = -2.0
@@ -400,7 +389,7 @@ class RssSensor(object):
         pedestrian_dynamics.unstructuredSettings.vehicleBrakeIntermediateAccelerationSteps = 3
         return pedestrian_dynamics
 
-    def get_steering_ranges(self):
+    def get_steering_ranges(self) -> List[Tuple[float, float]]:
         ranges = []
         for heading_range in self._allowed_heading_ranges:
             ranges.append(
@@ -410,7 +399,7 @@ class RssSensor(object):
             )
         return ranges
 
-    def _on_rss_response(self, response):
+    def _on_rss_response(self, response : carla.RssResponse):
         if not self or not response:
             return
         delta_time = 0.1

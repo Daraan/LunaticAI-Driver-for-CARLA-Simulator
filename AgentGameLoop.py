@@ -7,13 +7,16 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
+import signal
 import sys
 import argparse
 import logging
 import threading
-import pygame
-
 import random
+from typing import List
+from pprint import pprint
+
+import pygame
 import numpy.random as random # TODO: fix import
 
 #try:
@@ -25,18 +28,20 @@ import carla
 from classes.rule import Rule
 
 import utils
-from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
+from utils.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
-from agents.tools.lunatic_agent_tools import Phase
+from classes.constants import Phase
 from agents.navigation.basic_agent import BasicAgent  
 from agents.navigation.behavior_agent import BehaviorAgent 
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 
 
 from agents.lunatic_agent import LunaticAgent
+from agents import behaviour_templates
+
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
 from classes.HUD import HUD
-from classes.world import World
+from classes.worldmodel import WorldModel
 from classes.vehicle import Vehicle
 
 
@@ -52,7 +57,7 @@ def game_loop(args : argparse.ArgumentParser):
 
     pygame.init()
     pygame.font.init()
-    world = None
+    world_model : WorldModel = None
 
     try:
         vehicle = []
@@ -72,7 +77,6 @@ def game_loop(args : argparse.ArgumentParser):
             settings.synchronous_mode = True
             settings.fixed_delta_seconds = 0.05
             sim_world.apply_settings(settings)
-
             traffic_manager.set_synchronous_mode(True)
         else:
             logging.log(logging.DEBUG, "Might be using asynchronous mode if not changed.")
@@ -81,7 +85,7 @@ def game_loop(args : argparse.ArgumentParser):
             (args.width, args.height),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
-        hud = HUD(args.width, args.height)
+        hud = HUD(args.width, args.height, sim_world)
 
         # carlaService = CarlaService("Town04", "127.0.0.1", 2000)
 
@@ -100,15 +104,16 @@ def game_loop(args : argparse.ArgumentParser):
         # Spawn Ego
         ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(sim_world)
         ego = Vehicle(sim_world, ego_bp)
-        start: carla.Transform = spawn_points[0]
+        start : carla.libcarla.Transform = spawn_points[0]
         ego.spawn(start)
 
-        world = World(client.get_world(), hud, args, player=ego.actor)
-        wp_start = world.map.get_waypoint(start.location)
-        all_spawn_points = world.map.get_spawn_points()
+        world_model = WorldModel(client.get_world(), hud, args, player=ego.actor)
+        wp_start = world_model.map.get_waypoint(start.location)
+        all_spawn_points = world_model.map.get_spawn_points()
         # destination = random.choice(all_spawn_points).location
 
-        controller = KeyboardControl(world)
+        controller = RSSKeyboardControl(world_model, start_in_autopilot=False)
+        #controller._autopilot_enabled = False
         # world.set_actor(ego.actor)
 
         # carlaService.assignDriver(ego, driver1)
@@ -132,24 +137,12 @@ def game_loop(args : argparse.ArgumentParser):
                 )
             from omegaconf import OmegaConf
             print(OmegaConf.to_yaml(behavior.options))
-            agent = LunaticAgent(world.player, behavior)
-        elif args.agent == "Basic":
-            agent = BasicAgent(world.player, 30)
-            agent.follow_speed_limits(True)
-        elif args.agent == "Constant":
-            agent = ConstantVelocityAgent(world.player, 30)
-            ground_loc = world.world.ground_projection(world.player.get_location(), 5)
-            if ground_loc:
-                world.player.set_location(ground_loc.location + carla.Location(z=0.01))
-            agent.follow_speed_limits(True)
-        elif args.agent == "Behavior":
-            agent = BehaviorAgent(world.player, behavior=args.behavior)
-            from pprint import pprint
-            pprint(vars(agent._behavior))
-        else:
-            raise ValueError(args.agent)
+            agent = LunaticAgent(world_model, behavior)
+            agent.add_rules(behaviour_templates.default_rules)
+            print("Lunatic Agent Rules")
+            pprint(agent.rules)
 
-        next_wps: list = wp_start.next(45)
+        next_wps: List[carla.Waypoint] = wp_start.next(45)
         last = next_wps[-1]
         left = last.get_left_lane()
 
@@ -162,12 +155,12 @@ def game_loop(args : argparse.ArgumentParser):
 
         # spawn others
         for sp in spawn_points[1:4]:
-            v = Vehicle(world, car_bp)
+            v = Vehicle(world_model, car_bp)
             v.spawn(sp)
-            world.actors.append(v)
+            world_model.actors.append(v)
             # v.setVelocity(1)
             v.actor.set_autopilot(True)
-            v.actor.set_target_velocity(carla.Vector3D(-6, 0, 0))
+            v.actor.set_target_velocity(carla.Vector3D(-2, 0, 0))
             print(v.actor)
             #ap = TrafficManagerD(client, v.actor)
             #ap.init_passive_driver()
@@ -183,49 +176,70 @@ def game_loop(args : argparse.ArgumentParser):
                 with Rule.CooldownFramework(): # todo: low prio, make cooldown dependant on the tick speed.
                     clock.tick()
                     if args.sync:
-                        world.world.tick()
+                        world_model.world.tick()
                     else:
-                        world.world.wait_for_tick()
-                    if controller.parse_events():
-                        return
+                        world_model.world.wait_for_tick()
+                    if isinstance(controller, RSSKeyboardControl):
+                        if controller.parse_events(clock):
+                            return
+                    else:
+                        controller.parse_events()
 
-                    world.tick(clock)
-                    world.render(display)
+                    world_model.tick(clock)
+                    world_model.render(display)
                     pygame.display.flip()
 
                     # TODO: Make this a rule and/or move inside agent
                     # TODO: make a Phases.DONE
-                    if agent.done():
-                        # NOTE: Might be in NONE phase here.
-                        agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
-                        if args.loop:
-                            # TODO: Rule / Action to define next waypoint
-                            agent.set_destination(random.choice(spawn_points).location)
-                            world.hud.notification("Target reached", seconds=4.0)
-                            print("The target has been reached, searching for another target")
-                        else:
-                            print("The target has been reached, stopping the simulation")
-                            agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
-                            break
-                        agent.execute_phase(Phase.DONE| Phase.END, prior_results=None, control=control)
+                    if not controller._autopilot_enabled:
+                        if agent.done():
+                            # NOTE: Might be in NONE phase here.
+                            agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
+                            if args.loop:
+                                # TODO: Rule / Action to define next waypoint
+                                agent.set_destination(random.choice(spawn_points).location)
+                                world_model.hud.notification("Target reached", seconds=4.0)
+                                print("The target has been reached, searching for another target")
+                            else:
+                                print("The target has been reached, stopping the simulation")
+                                agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
+                                break
+                            agent.execute_phase(Phase.DONE| Phase.END, prior_results=None, control=control)
+                        
+                        # ----------------------------
+                        # Phase NONE - Before Running step
+                        # ----------------------------
+                        control = agent.run_step(debug=True)  # debug=True draws waypoints
                     
-                    # ----------------------------
-                    # Phase NONE - Before Running step
-                    # ----------------------------
-                    control = agent.run_step(debug=True)  # debug=True draws waypoints
+                        # ----------------------------
+                        # Phase RSS - Check RSS
+                        # ----------------------------
+                        control.manual_gear_shift = False # TODO: turn into a rule
+                        
+                        agent.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=control)
+                        rss_updated_controls = world_model.rss_check_control(control)
+                        # Todo: Remove
+                        assert rss_updated_controls is not control
+                        if rss_updated_controls and rss_updated_controls is not control:
+                            print("RSS updated controls")
+                            print("Rss proposal matches:", rss_updated_controls == control)
+                            if rss_updated_controls != control:
+                                print("RSS updated controls")
+                                print(f"throttle: {control.throttle} -> {rss_updated_controls.throttle}, steer: {control.steer} -> {rss_updated_controls.steer}, brake: {control.brake} -> {rss_updated_controls.brake}")
+                            
+                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls, control=control) # NOTE: rss_updated_controls could be None
+                        control = ctx.control
+                        assert control is not None
+                        # ----------------------------
+                        # Phase 5 - Apply Control to Vehicle
+                        # ----------------------------
 
-                    # ----------------------------
-                    # Phase 5 - Apply Control to Vehicle
-                    # ----------------------------
-
-                    agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
-                    control.manual_gear_shift = False # TODO: turn into a rule
-                    world.player.apply_control(control)
-                    agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
-                    
-                    # if i % 50 == 0:
-                    #    print("Tailgate Counter", agent._behavior.tailgate_counter)
-                    i += 1
+                        agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
+                        # Set automatic control-related vehicle lights
+                        world_model.update_lights(control)
+                        world_model.player.apply_control(control)
+                        agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
+                        
             agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
 
         # Interactive
@@ -244,14 +258,18 @@ def game_loop(args : argparse.ArgumentParser):
 
     finally:
 
-        if world is not None:
-            settings = world.world.get_settings()
+        if world_model is not None:
+            settings = world_model.world.get_settings()
             settings.synchronous_mode = False
             settings.fixed_delta_seconds = None
-            world.world.apply_settings(settings)
+            world_model.world.apply_settings(settings)
             traffic_manager.set_synchronous_mode(True)
 
-            world.destroy()
+            world_model.destroy()
+        try:
+            ego.destroy()
+        except:
+            pass
 
         pygame.quit()
 
@@ -264,7 +282,7 @@ def game_loop(args : argparse.ArgumentParser):
 def main():
     """Main method"""
 
-    args = utils.argument_parsing.automatic_control_example.parse_args()
+    args = utils.argument_parsing.main_parser().parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
 
@@ -274,6 +292,8 @@ def main():
     logging.info('listening to server %s:%s', args.host, args.port)
 
     print(__doc__)
+
+    signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)
 
     try:
         game_loop(args)

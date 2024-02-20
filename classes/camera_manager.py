@@ -5,9 +5,28 @@ import numpy as np
 import pygame
 from carla import ColorConverter as cc
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, NamedTuple, Optional, Union
 if TYPE_CHECKING:
     from classes.HUD import HUD
+
+class CameraBlueprint(NamedTuple):
+    blueprint_path : str
+    color_convert : cc
+    name : str
+    actual_blueprint : Optional[carla.ActorBlueprint] = None
+
+CameraBlueprints = {
+    'Camera RGB' : CameraBlueprint('sensor.camera.rgb', cc.Raw, 'Camera RGB'),
+    'Camera Depth (Raw)' : CameraBlueprint('sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'),
+    'Camera Depth (Gray Scale)' : CameraBlueprint('sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'),
+    'Camera Depth (Logarithmic Gray Scale)' : CameraBlueprint('sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'),
+    'Camera Semantic Segmentation (Raw)' : CameraBlueprint('sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'),
+    'Camera Semantic Segmentation (CityScapes Palette)' : CameraBlueprint('sensor.camera.semantic_segmentation', cc.CityScapesPalette,
+        'Camera Semantic Segmentation (CityScapes Palette)'),
+    'Lidar (Ray-Cast)' : CameraBlueprint('sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)')
+}
+
+CameraBlueprintsSimple = [CameraBlueprints['Camera RGB' ]]
 
 
 # ==============================================================================
@@ -18,12 +37,16 @@ if TYPE_CHECKING:
 class CameraManager(object):
     """ Class for camera management"""
 
-    def __init__(self, parent_actor : carla.Actor, hud : "HUD", gamma_correction=0):
+    def __init__(self, parent_actor : carla.Actor, 
+                 hud : "HUD", 
+                 gamma_correction=0,
+                 sensors:Optional[List[CameraBlueprint]]=CameraBlueprintsSimple):
         """Constructor method"""
         self.sensor = None
         self.surface : pygame.Surface = None
         self._parent = parent_actor
         self.hud : "HUD" = hud
+        self.current_frame = None
         self.recording = False
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
@@ -40,18 +63,14 @@ class CameraManager(object):
             (carla.Transform(carla.Location(x=-1.0, y=-1.0 * bound_y, z=0.4 * bound_z)), attachment.Rigid)]
 
         self.transform_index = 1
-        self.sensors = [
-            ['sensor.camera.rgb', cc.Raw, 'Camera RGB'],
-            ['sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'],
-            ['sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'],
-            ['sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'],
-            ['sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'],
-            ['sensor.camera.semantic_segmentation', cc.CityScapesPalette,
-             'Camera Semantic Segmentation (CityScapes Palette)'],
-            ['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)']]
+        # TODO: These are remnants from the original code, for our purpose most sensors are not relevant
+        # -> Move to globals or some config which should be used (also saves ressources)
+        self.sensors = sensors if sensors else list(CameraBlueprints.values())
         world = self._parent.get_world()
         bp_library = world.get_blueprint_library()
-        for item in self.sensors:
+        for i, item in enumerate(self.sensors):
+            if item.actual_blueprint is not None:
+                continue
             blp = bp_library.find(item[0])
             if item[0].startswith('sensor.camera'):
                 blp.set_attribute('image_size_x', str(hud.dim[0]))
@@ -60,7 +79,7 @@ class CameraManager(object):
                     blp.set_attribute('gamma', str(gamma_correction))
             elif item[0].startswith('sensor.lidar'):
                 blp.set_attribute('range', '50')
-            item.append(blp)
+            self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
         self.index = None
 
     def toggle_camera(self):
@@ -100,6 +119,16 @@ class CameraManager(object):
         self.recording = not self.recording
         self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
 
+    def destroy(self):
+        # TODO: has to be done for all sensors. TODO: also check if this is not handled outside.
+        for sensor in self.sensors:        
+            try:            
+                self.sensor.stop()
+            except:
+                pass
+            self.sensor.destroy()
+        self.sensor = None
+
     def render(self, display):
         """Render method"""
         if self.surface is not None:
@@ -110,6 +139,7 @@ class CameraManager(object):
         self = weak_self()
         if not self:
             return
+        self.current_frame = image.frame
         if self.sensors[self.index][0].startswith('sensor.lidar'):
             points = np.frombuffer(image.raw_data, dtype=np.dtype('f4'))
             points = np.reshape(points, (int(points.shape[0] / 4), 4))
@@ -124,7 +154,7 @@ class CameraManager(object):
             lidar_img[tuple(lidar_data.T)] = (255, 255, 255)
             self.surface = pygame.surfarray.make_surface(lidar_img)
         else:
-            image.convert(self.sensors[self.index][1])
+            image.convert(self.sensors[self.index][1]) # apply color converter
             array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (image.height, image.width, 4))
             array = array[:, :, :3]

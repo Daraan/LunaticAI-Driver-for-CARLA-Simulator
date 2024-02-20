@@ -3,12 +3,6 @@
 # Copyright (c) 2020 Intel Corporation
 #
 
-import glob
-import os
-import sys
-
-
-
 from enum import Enum
 import math
 import numpy as np
@@ -42,7 +36,7 @@ class RssStateVisualizer(object):
             elif state.rss_state.objectId == 18446744073709551615:
                 object_name = "Border Right"
             else:
-                other_actor = state.get_actor(self._world)
+                other_actor : carla.Actor = state.get_actor(self._world)
                 if other_actor:
                     li = list(other_actor.type_id.split("."))
                     if li:
@@ -116,7 +110,7 @@ class RssStateVisualizer(object):
             display.blit(self._surface, (0, v_offset))
 
 
-def get_matrix(transform):
+def get_matrix(transform : carla.Transform):
     """
     Creates matrix from carla transform.
     """
@@ -204,7 +198,7 @@ class RssUnstructuredSceneVisualizer(object):
             bp.set_attribute('image_size_x', str(self._dim[0]))
             bp.set_attribute('image_size_y', str(self._dim[1]))
 
-            self._camera = self._world.spawn_actor(
+            self._camera : carla.Sensor = self._world.spawn_actor(
                 bp,
                 carla.Transform(carla.Location(x=7.5, z=10), carla.Rotation(pitch=-90)),
                 attach_to=self._parent_actor)
@@ -591,10 +585,10 @@ class RssDebugVisualizationMode(Enum):
 
 class RssDebugVisualizer(object):
 
-    def __init__(self, player, world):
+    def __init__(self, player, world : carla.World):
         self._world = world
         self._player = player
-        self._visualization_mode = RssDebugVisualizationMode.Off
+        self._visualization_mode : RssDebugVisualizationMode = RssDebugVisualizationMode.Off
 
     def toggleMode(self):
         if self._visualization_mode == RssDebugVisualizationMode.All:

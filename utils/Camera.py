@@ -1,4 +1,6 @@
-def follow_car(ego_vehicle, world):
+import carla
+
+def follow_car(ego_vehicle, world : carla.World):
     vehicle_transform = ego_vehicle.get_transform()
     spectator_transform = vehicle_transform
     spectator_transform.location -= (vehicle_transform.get_forward_vector() * 10)
