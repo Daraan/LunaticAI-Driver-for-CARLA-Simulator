@@ -177,7 +177,7 @@ def game_loop(args : argparse.ArgumentParser):
                     else:
                         world_model.world.wait_for_tick()
                     if isinstance(controller, RSSKeyboardControl):
-                        if controller.parse_events(world_model, clock):
+                        if controller.parse_events(clock):
                             return
                     else:
                         controller.parse_events()
