@@ -104,10 +104,6 @@ class _CountdownRule:
     def update_cooldown(self):
         if self._cooldown > 0:
             self._cooldown -= 1
-
-    @property
-    def is_ready(self) -> bool:
-        return self._cooldown == 0
     
     @classmethod
     def update_all_cooldowns(cls):
@@ -145,6 +141,14 @@ class _GroupRule(_CountdownRule):
         if self.group:
             return _GroupRule.instances[self.group][0]
         return super().cooldown
+    
+    def is_ready(self) -> bool:
+        """Group aware check if a rule is ready."""
+        return self.cooldown == 0 
+    
+    @property
+    def has_group(self) -> bool:
+        return self.group is not None
     
     @cooldown.setter
     def cooldown(self, value):
