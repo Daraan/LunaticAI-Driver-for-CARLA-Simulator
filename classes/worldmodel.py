@@ -25,7 +25,7 @@ from utils.blueprint_helpers import find_weather_presets
 # -- World ---------------------------------------------------------------
 # ==============================================================================
 
-class World(object):
+class WorldModel(object):
     """ Class representing the surrounding environment """
 
     def get_blueprint_library(self):

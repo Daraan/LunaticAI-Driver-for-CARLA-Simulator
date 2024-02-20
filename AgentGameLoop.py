@@ -37,7 +37,7 @@ from agents.lunatic_agent import LunaticAgent
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
 from classes.HUD import HUD
-from classes.world import World
+from classes.worldmodel import WorldModel
 from classes.vehicle import Vehicle
 
 
@@ -103,7 +103,7 @@ def game_loop(args : argparse.ArgumentParser):
         start : carla.libcarla.Transform = spawn_points[0]
         ego.spawn(start)
 
-        world = World(client.get_world(), hud, args, player=ego.actor)
+        world = WorldModel(client.get_world(), hud, args, player=ego.actor)
         wp_start = world.map.get_waypoint(start.location)
         all_spawn_points = world.map.get_spawn_points()
         # destination = random.choice(all_spawn_points).location
