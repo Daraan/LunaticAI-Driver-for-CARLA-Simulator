@@ -54,7 +54,8 @@ class WorldModel(object):
         self.recording = False
         self.recording_dir_num = 0
         
-        self.player = player or None
+        self._lights = carla.VehicleLightState.NONE
+
         self.collision_sensor = None
         self.lane_invasion_sensor = None
         self.gnss_sensor = None
@@ -310,4 +311,19 @@ class WorldModel(object):
                     pass
                 actor.destroy()
         # TODO: Call destroy_sensors?
+        
+    def update_lights(self, vehicle_control : carla.VehicleControl):
+        current_lights = self._lights
+        if vehicle_control.brake:
+            current_lights |= carla.VehicleLightState.Brake
+        else:  # Remove the Brake flag
+            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Brake
+        if vehicle_control.reverse:
+            current_lights |= carla.VehicleLightState.Reverse
+        else:  # Remove the Reverse flag
+            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Reverse
+        if current_lights != self._lights:  # Change the light state only if necessary
+            self._lights = current_lights
+            self.player.set_light_state(carla.VehicleLightState(self._lights))
+
 

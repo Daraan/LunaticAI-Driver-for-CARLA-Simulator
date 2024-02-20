@@ -212,6 +212,8 @@ def game_loop(args : argparse.ArgumentParser):
 
                         agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
                         control.manual_gear_shift = False # TODO: turn into a rule
+                        # Set automatic control-related vehicle lights
+                        world_model.update_lights(control)
                         world_model.player.apply_control(control)
                         agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
                         
