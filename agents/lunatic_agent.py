@@ -37,6 +37,8 @@ from classes.rule import Context, Rule
 from conf.default_options.original_behavior import BasicAgentSettings
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
+if TYPE_CHECKING:
+    from classes.worldmodel import WorldModel
 
 # As Reference:
 '''
@@ -69,7 +71,7 @@ class LunaticAgent(BehaviorAgent):
     
     # todo: rename in the future
 
-    def __init__(self, vehicle : carla.Vehicle, behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, world_model : "WorldModel", behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -112,8 +114,9 @@ class LunaticAgent(BehaviorAgent):
         #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
 
         # Original Setup ---------------------------------------------------------
-        self._vehicle : carla.Vehicle = vehicle
-        self._world :carla.World = self._vehicle.get_world()
+        self._vehicle : carla.Vehicle = world_model.player
+        self._world_model : WorldModel = world_model
+        self._world :carla.World = world_model.world
         
         if map_inst:
             if isinstance(map_inst, carla.Map):

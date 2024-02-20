@@ -137,7 +137,7 @@ def game_loop(args : argparse.ArgumentParser):
                 )
             from omegaconf import OmegaConf
             print(OmegaConf.to_yaml(behavior.options))
-            agent = LunaticAgent(world_model.player, behavior)
+            agent = LunaticAgent(world_model, behavior)
             agent.add_rules(behaviour_templates.default_rules)
             print("Lunatic Agent Rules")
             pprint(agent.rules)
