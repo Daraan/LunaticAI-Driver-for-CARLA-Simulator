@@ -38,6 +38,10 @@ from pygame.locals import MOUSEBUTTONUP
 
 import carla
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from classes.worldmodel import WorldModel
+
 
 
 # ==============================================================================
@@ -73,7 +77,7 @@ class RSSKeyboardControl(object):
 
     """Class that handles keyboard input."""
 
-    def __init__(self, world, start_in_autopilot):
+    def __init__(self, world : "WorldModel", start_in_autopilot : bool):
         self._autopilot_enabled = start_in_autopilot
         self._world = world
         self._control = carla.VehicleControl()
@@ -125,7 +129,7 @@ class RSSKeyboardControl(object):
         print('\nReceived signal {}. Trigger stopping...'.format(signum))
         RSSKeyboardControl.signal_received = True
 
-    def parse_events(self, world, clock, sync_mode):
+    def parse_events(self, world : WorldModel, clock):
         if RSSKeyboardControl.signal_received:
             print('\nAccepted signal. Stopping loop...')
             return True

@@ -12,6 +12,7 @@ import sys
 import argparse
 import logging
 import threading
+from typing import List
 import pygame
 
 import random
@@ -53,7 +54,7 @@ def game_loop(args : argparse.ArgumentParser):
 
     pygame.init()
     pygame.font.init()
-    world = None
+    world_model : WorldModel = None
 
     try:
         vehicle = []
@@ -103,12 +104,12 @@ def game_loop(args : argparse.ArgumentParser):
         start : carla.libcarla.Transform = spawn_points[0]
         ego.spawn(start)
 
-        world = WorldModel(client.get_world(), hud, args, player=ego.actor)
-        wp_start = world.map.get_waypoint(start.location)
-        all_spawn_points = world.map.get_spawn_points()
+        world_model = WorldModel(client.get_world(), hud, args, player=ego.actor)
+        wp_start = world_model.map.get_waypoint(start.location)
+        all_spawn_points = world_model.map.get_spawn_points()
         # destination = random.choice(all_spawn_points).location
 
-        controller = RSSKeyboardControl(world, start_in_autopilot=False)
+        controller = RSSKeyboardControl(world_model, start_in_autopilot=False)
         #controller._autopilot_enabled = False
         # world.set_actor(ego.actor)
 
@@ -133,24 +134,10 @@ def game_loop(args : argparse.ArgumentParser):
                 )
             from omegaconf import OmegaConf
             print(OmegaConf.to_yaml(behavior.options))
-            agent = LunaticAgent(world.player, behavior)
-        elif args.agent == "Basic":
-            agent = BasicAgent(world.player, 30)
-            agent.follow_speed_limits(True)
-        elif args.agent == "Constant":
-            agent = ConstantVelocityAgent(world.player, 30)
-            ground_loc = world.world.ground_projection(world.player.get_location(), 5)
-            if ground_loc:
-                world.player.set_location(ground_loc.location + carla.Location(z=0.01))
-            agent.follow_speed_limits(True)
-        elif args.agent == "Behavior":
-            agent = BehaviorAgent(world.player, behavior=args.behavior)
-            from pprint import pprint
-            pprint(vars(agent._behavior))
-        else:
-            raise ValueError(args.agent)
+            agent = LunaticAgent(world_model.player, behavior)
 
-        next_wps: list = wp_start.next(45)
+
+        next_wps: List[carla.Waypoint] = wp_start.next(45)
         last = next_wps[-1]
         left = last.get_left_lane()
 
@@ -163,9 +150,9 @@ def game_loop(args : argparse.ArgumentParser):
 
         # spawn others
         for sp in spawn_points[1:4]:
-            v = Vehicle(world, car_bp)
+            v = Vehicle(world_model, car_bp)
             v.spawn(sp)
-            world.actors.append(v)
+            world_model.actors.append(v)
             # v.setVelocity(1)
             v.actor.set_autopilot(True)
             v.actor.set_target_velocity(carla.Vector3D(-2, 0, 0))
@@ -184,17 +171,17 @@ def game_loop(args : argparse.ArgumentParser):
                 with Rule.CooldownFramework(): # todo: low prio, make cooldown dependant on the tick speed.
                     clock.tick()
                     if args.sync:
-                        world.world.tick()
+                        world_model.world.tick()
                     else:
-                        world.world.wait_for_tick()
-                    try:
-                        if controller.parse_events(world, clock, args.sync):
+                        world_model.world.wait_for_tick()
+                    if isinstance(controller, RSSKeyboardControl):
+                        if controller.parse_events(world_model, clock):
                             return
-                    except:
+                    else:
                         controller.parse_events()
 
-                    world.tick(clock)
-                    world.render(display)
+                    world_model.tick(clock)
+                    world_model.render(display)
                     pygame.display.flip()
 
                     # TODO: Make this a rule and/or move inside agent
@@ -206,7 +193,7 @@ def game_loop(args : argparse.ArgumentParser):
                             if args.loop:
                                 # TODO: Rule / Action to define next waypoint
                                 agent.set_destination(random.choice(spawn_points).location)
-                                world.hud.notification("Target reached", seconds=4.0)
+                                world_model.hud.notification("Target reached", seconds=4.0)
                                 print("The target has been reached, searching for another target")
                             else:
                                 print("The target has been reached, stopping the simulation")
@@ -225,7 +212,7 @@ def game_loop(args : argparse.ArgumentParser):
 
                         agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
                         control.manual_gear_shift = False # TODO: turn into a rule
-                        world.player.apply_control(control)
+                        world_model.player.apply_control(control)
                         agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
                         
             agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
@@ -246,14 +233,14 @@ def game_loop(args : argparse.ArgumentParser):
 
     finally:
 
-        if world is not None:
-            settings = world.world.get_settings()
+        if world_model is not None:
+            settings = world_model.world.get_settings()
             settings.synchronous_mode = False
             settings.fixed_delta_seconds = None
-            world.world.apply_settings(settings)
+            world_model.world.apply_settings(settings)
             traffic_manager.set_synchronous_mode(True)
 
-            world.destroy()
+            world_model.destroy()
         try:
             ego.destroy()
         except:
