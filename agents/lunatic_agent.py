@@ -216,8 +216,15 @@ class LunaticAgent(BehaviorAgent):
         for p in rule.phases:
             self.rules[p].append(rule)
             self.rules[p].sort(key=lambda r: r.priority, reverse=True)
+            
+    def add_rules(self, rules : List[Rule]):
+        for rule in rules:
+            for phase in rule.phases:
+                self.rules[phase].append(rule)
+        for phase in rule.phases:
+            self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
         
-    def execute_phase(self, phase, *, prior_results, control:carla.VehicleControl=None):
+    def execute_phase(self, phase, *, prior_results, control:carla.VehicleControl=None) -> Context:
         """
         Sets the current phase of the agent and executes all rules that are associated with it.
         """
@@ -230,7 +237,8 @@ class LunaticAgent(BehaviorAgent):
         for rule in rules_to_check: # todo: maybe dict? grouped by phase?
             #todo check here for the phase instead of in the rule
             if self.current_phase in rule: # TODO remove:
-                rule(ctx, control=control, phase_results=prior_results)
+                rule(ctx)
+        return ctx
 
     def run_step(self, debug=False):
         """
