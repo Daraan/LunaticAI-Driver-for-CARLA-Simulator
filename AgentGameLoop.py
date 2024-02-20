@@ -205,7 +205,22 @@ def game_loop(args : argparse.ArgumentParser):
                         # Phase NONE - Before Running step
                         # ----------------------------
                         control = agent.run_step(debug=True)  # debug=True draws waypoints
-
+                    
+                        # ----------------------------
+                        # Phase RSS - Check RSS
+                        # ----------------------------
+                        control.manual_gear_shift = False # TODO: turn into a rule
+                        
+                        agent.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=control)
+                        rss_updated_controls = world_model.rss_check_control(control)
+                        # Todo: Remove
+                        assert rss_updated_controls is not control
+                        if rss_updated_controls and rss_updated_controls is not control:
+                            print("RSS updated controls")
+                            print(rss_updated_controls, "\n\nVs. OLD:\n", control)
+                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls, control=control) # NOTE: rss_updated_controls could be None
+                        control = ctx.control
+                        assert control is not None
                         # ----------------------------
                         # Phase 5 - Apply Control to Vehicle
                         # ----------------------------

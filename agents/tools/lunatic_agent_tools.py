@@ -53,6 +53,8 @@ class Phase(Flag):
     DETECT_CARS = auto()
     TAKE_NORMAL_STEP = auto()
 
+    RSS_EVALUATION = auto()
+
     EXECUTION = auto() # Out of loop
 
     # --- Special situations ---
@@ -104,12 +106,12 @@ class Phase(Flag):
             return Phase.BEGIN | Phase.UPDATE_INFORMATION
         #if self in (Phase.EXECUTION|Phase.END, Phase.DONE| Phase.END) : # End loop
         #    return Phase.NONE
-            
         if Phase.BEGIN in self:
             return (self & ~Phase.BEGIN) | Phase.END
         # Note these should all be END phases
         if Phase.EXCEPTIONS & self:
-            return Phase.EXECUTION | Phase.BEGIN
+            #return Phase.EXECUTION | Phase.BEGIN
+            return Phase.RSS_EVALUATION | Phase.BEGIN
         if Phase.TERMINATING in self:
             return Phase.NONE
         if Phase.END in self: # Safeguard
