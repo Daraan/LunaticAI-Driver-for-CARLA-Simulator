@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 
 class PassiveKeyboardControl(object):
     # COMMENT I think this only allows to end the script
-    def __init__(self, world):
+    def __init__(self, world : "WorldModel"):
         world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
 
     def parse_events(self):
@@ -67,22 +67,24 @@ class PassiveKeyboardControl(object):
         """Shortcut for quitting"""
         return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
 
-# todo: copy&paste interactive keyboard controls
 
 
 class RSSKeyboardControl(object):
+    """Class that handles keyboard input."""
 
     MOUSE_STEERING_RANGE = 200
     signal_received = False
 
-    """Class that handles keyboard input."""
+    # TODO: should be a toggle between None, Autopilot, Agent
 
-    def __init__(self, world : "WorldModel", start_in_autopilot : bool):
+    def __init__(self, world : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True):
+        if start_in_autopilot and agent_controlled:
+            raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
         self._autopilot_enabled = start_in_autopilot
+        self._agent_controlled = agent_controlled
         self._world_model = world
         self._control = carla.VehicleControl()
         self._lights = carla.VehicleLightState.NONE
-        world.player.set_autopilot(self._autopilot_enabled)
         self._restrictor = carla.RssRestrictor()
         self._vehicle_physics = world.player.get_physics_control()
         world.player.set_light_state(self._lights)
@@ -118,6 +120,10 @@ class RSSKeyboardControl(object):
                             ], line_width)
 
         world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
+
+    @property
+    def controlled_externally(self):
+        return self._autopilot_enabled or self._agent_controlled
 
     def render(self, display):
         if self._mouse_steering_center:
@@ -190,6 +196,7 @@ class RSSKeyboardControl(object):
                     if event.key == K_q:
                         self._control.gear = 1 if self._control.reverse else -1
                     elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
+                        # TODO: should be a toggle between None, Autopilot, Agent
                         self._autopilot_enabled = not self._autopilot_enabled
                         self._world_model.player.set_autopilot(self._autopilot_enabled)
                         self._world_model.hud.notification(
@@ -240,9 +247,9 @@ class RSSKeyboardControl(object):
             self._world_model.hud.restricted_vehicle_control = vehicle_control
 
             # limit speed to 30kmh
-            v = self._world_model.player.get_velocity()
-            if (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)) > 30.0:
-                self._control.throttle = 0
+            #v = self._world_model.player.get_velocity()
+            #if (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)) > 30.0:
+            #    self._control.throttle = 0
 
             # if self._world.rss_sensor and self._world.rss_sensor.ego_dynamics_on_route and not self._world.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
             #    print ("Not on route!" +  str(self._world.rss_sensor.ego_dynamics_on_route))

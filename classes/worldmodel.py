@@ -2,7 +2,7 @@
 # NOTE it might has to use synchonous_mode
 import os
 import sys
-from typing import List, Optional, cast as assure_type
+from typing import List, Optional, Union, cast as assure_type
 
 import pygame
 
@@ -54,8 +54,8 @@ class WorldModel(object):
         self.recording_frame_num = 0
         self.recording_dir_num = 0
         
-        assert self.player is not None or self.external_actor # Note: Former optional
         self.player = player
+        assert self.player is not None or self.external_actor # Note: Former optional
         self._lights = carla.VehicleLightState.NONE
 
         self.collision_sensor = None
@@ -103,8 +103,10 @@ class WorldModel(object):
         if not self._actor_filter.startswith("vehicle."):
             print('Error: RSS only supports vehicles as ego.')
             sys.exit(1)
+        self._restrictor = carla.RssRestrictor()
 
         self.restart(args) # # interactive without args
+        self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
 
     def toggle_pause(self):
@@ -318,6 +320,8 @@ class WorldModel(object):
                 actor.destroy()
         # TODO: Call destroy_sensors?
         
+        
+    # TODO: These semantically do not fit in here 
     def update_lights(self, vehicle_control : carla.VehicleControl):
         current_lights = self._lights
         if vehicle_control.brake:
@@ -332,4 +336,20 @@ class WorldModel(object):
             self._lights = current_lights
             self.player.set_light_state(carla.VehicleLightState(self._lights))
 
-
+    def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
+        self.hud.original_vehicle_control = vehicle_control
+        self.hud.restricted_vehicle_control = vehicle_control
+        
+        if self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
+            print("Not on route!" +  str(self.rss_sensor.ego_dynamics_on_route))
+        # Is there a proper response?
+        rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
+        if rss_proper_response:
+            # adjust the controls
+            vehicle_control = self._restrictor.restrict_vehicle_control(
+                            vehicle_control, rss_proper_response, self.rss_sensor.ego_dynamics_on_route, self._vehicle_physics)
+            assert vehicle_control is not self.hud.original_vehicle_control # todo remove, but assure they are different
+            self.hud.restricted_vehicle_control = vehicle_control
+            self.hud.allowed_steering_ranges = self.rss_sensor.get_steering_ranges()     
+            return vehicle_control
+        return None
