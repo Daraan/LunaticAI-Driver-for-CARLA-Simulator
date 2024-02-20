@@ -2,7 +2,7 @@
 # NOTE it might has to use synchonous_mode
 import os
 import sys
-from typing import List, Optional
+from typing import List, Optional, cast as assure_type
 
 import pygame
 
@@ -31,13 +31,13 @@ class WorldModel(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, carla_world : carla.World, hud :"HUD", args, player:Optional[carla.Vehicle]=None):
+    def __init__(self, carla_world : carla.World, hud :"HUD", args, player:carla.Vehicle=None):
         """Constructor method"""
         self._args = args
         self.world = carla_world
-        self.sync = args.sync
+        self.sync : bool = args.sync
         # TODO: must be added to arguments or removed
-        self.actor_role_name = args.rolename
+        self.actor_role_name : Optional[str] = args.rolename
         self.dim = (args.width, args.height)
         try:
             self.map = self.world.get_map()
@@ -50,10 +50,12 @@ class WorldModel(object):
 
         self.hud = hud # or HUD(args.width, args.height, carla_world)
         # TODO: Remove?
-        self.recording_frame_num = 0
         self.recording = False
+        self.recording_frame_num = 0
         self.recording_dir_num = 0
         
+        assert self.player is not None or self.external_actor # Note: Former optional
+        self.player = player
         self._lights = carla.VehicleLightState.NONE
 
         self.collision_sensor = None
@@ -62,17 +64,19 @@ class WorldModel(object):
         self.imu_sensor = None   # from interactive
         self.radar_sensor = None # from interactive
         self.camera_manager = None
+        
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
         self.weather = None
+        
         self._actor_filter = args.filter
         self._actor_generation = args.generation
         self._gamma = args.gamma
         self.recording_enabled = False
         self.recording_start = 0
         self.actors = []
-        if self.player is not None:
-            self.actors.append(self.player)
+        self.actors.append(self.player)
+        
         # From interactive:
         self.constant_velocity_enabled = False
         self.show_vehicle_telemetry = False
@@ -124,7 +128,7 @@ class WorldModel(object):
             # Check whether there is already an actor with defined role name
             for actor in self.world.get_actors():
                 if actor.attributes.get('role_name') == self.actor_role_name:
-                    self.player = actor
+                    self.player = assure_type(carla.Vehicle, actor)
         else:            
             # From interactive:
             #self.player_max_speed = 1.589
@@ -161,7 +165,7 @@ class WorldModel(object):
                 spawn_point.rotation.pitch = 0.0
                 if self.camera_manager is not None: # TODO: Validate, remove line
                     self.destroy()
-                    self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+                    self.player = assure_type(carla.Vehicle, self.world.try_spawn_actor(blueprint, spawn_point))
                 self.modify_vehicle_physics(self.player)
             while self.player is None:
                 if not self.map.get_spawn_points():
@@ -170,11 +174,13 @@ class WorldModel(object):
                     sys.exit(1)
                 spawn_points = self.map.get_spawn_points()
                 spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
-                self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+                self.player = assure_type(carla.Vehicle, self.world.try_spawn_actor(blueprint, spawn_point))
                 # From Interactive:
                 # See: https://carla.readthedocs.io/en/latest/tuto_G_control_vehicle_physics/            
                 self.show_vehicle_telemetry = False
                 self.modify_vehicle_physics(self.player)
+            assert isinstance(self.player, carla.Vehicle)
+
 
         if self.external_actor:
             ego_sensors = []
