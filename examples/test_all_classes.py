@@ -1,7 +1,7 @@
 import __allow_imports_from_root
 import carla
 from agents.lunatic_agent import LunaticAgent
-from agents.tools.lunatic_agent_tools import Phase
+from classes.constants import Phase
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 from classes.rule import Rule, EvaluationFunction, Context, always_execute
 

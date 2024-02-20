@@ -30,9 +30,9 @@ from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleD
 
 from agents import substep_managers
 import agents.tools.lunatic_agent_tools
-from agents.tools.lunatic_agent_tools import Hazard, Phase
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
 
+from classes.constants import Phase, Hazard
 from classes.rule import Context, Rule
 from conf.default_options.original_behavior import BasicAgentSettings
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings

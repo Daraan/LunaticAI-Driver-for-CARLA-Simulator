@@ -16,7 +16,7 @@ import threading
 import carla
 import numpy.random as random
 import pygame
-from agents.tools.lunatic_agent_tools import Phase
+from classes.constants import Phase
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
 import utils
@@ -26,7 +26,7 @@ from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # p
 
 from agents.lunatic_agent import LunaticAgent
 
-from classes.carla_originals.HUD import HUD
+from classes.HUD import HUD
 from classes.carla_originals.world import World
 from classes.vehicle import Vehicle
 from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl

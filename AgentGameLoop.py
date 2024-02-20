@@ -29,7 +29,7 @@ from classes.rule import Rule
 import utils
 from utils.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
-from agents.tools.lunatic_agent_tools import Phase
+from classes.constants import Phase
 from agents.navigation.basic_agent import BasicAgent  
 from agents.navigation.behavior_agent import BehaviorAgent 
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 

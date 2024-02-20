@@ -10,10 +10,10 @@ from omegaconf import DictConfig
 
 from utils.evaluation_function import EvaluationFunction
 
+from classes.constants import Phase
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
-    from agents.tools.lunatic_agent_tools import Phase
 
 class Context:
     """
@@ -24,6 +24,7 @@ class Context:
     evaluation_results : Dict["Phase", Hashable] # ambigious wording, which result? here evaluation result
     action_results : Dict["Phase", Any] 
     control : "carla.VehicleControl"
+    prior_result : Optional[Any]
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
@@ -220,7 +221,7 @@ class Rule(_CountdownRule):
             else:
                 phases = {phases}
         for p in phases:
-            if not isinstance(p, "Phase"):
+            if not isinstance(p, Phase):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
         super().__init__(cooldown_reset_value)
         self.priority : float | int | RulePriority = priority
