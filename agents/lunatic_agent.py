@@ -98,7 +98,9 @@ class LunaticAgent(BehaviorAgent):
         opt_dict = self._behavior.get_options()  # base options from templates
         opt_dict.update(overwrite_options)  # update by custom options
 
-        self.config = opt_dict # NOTE: This is the attribute we should use to access all information. 
+        self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
+        world_model._config = self.config # NOTE: copy
+        
         self.live_info : DictConfig = self.config.live_info
 
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
