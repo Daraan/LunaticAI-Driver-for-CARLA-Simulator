@@ -1,5 +1,6 @@
 import carla
 
+
 """
 carla.CollisionEvent
 
@@ -19,9 +20,18 @@ Instance Variables
     Normal impulse resulting of the collision.
 """
 
-def collision_manager(self, event: carla.CollisionEvent):
+from typing_extensions import TYPE_CHECKING
+if TYPE_CHECKING:
+    from agents.lunatic_agent import LunaticAgent
+
+PRINTED_WARNING = False
+
+def collision_manager(self : "LunaticAgent", event: carla.CollisionEvent):
     """
     What to do in case of a collision
     """
-    print("Collision detected!", event, "during", self.current_phase)
-    print("WARNING: Collision manager not implemented yet!")
+    global PRINTED_WARNING
+    if not PRINTED_WARNING:
+        PRINTED_WARNING = True
+        print("WARNING: Collision manager not implemented yet!")
+        print("Collision detected!", event, "during", self.current_phase)
