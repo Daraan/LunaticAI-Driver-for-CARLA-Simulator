@@ -31,8 +31,9 @@ class WorldModel(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, carla_world : carla.World, hud :"HUD", args, player:carla.Vehicle=None):
+    def __init__(self, config, carla_world : carla.World, hud :"HUD", args, player:carla.Vehicle=None):
         """Constructor method"""
+        self._config = config
         self._args = args
         self.world = carla_world
         self.sync : bool = args.sync
@@ -110,6 +111,7 @@ class WorldModel(object):
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
 
     def rss_set_road_boundaries_mode(self, road_boundaries_mode: Union[bool, carla.RssRoadBoundariesMode]):
+        self._config.rss.use_stay_on_road_feature = bool(road_boundaries_mode)
         if self.rss_sensor:
             self.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On if road_boundaries_mode else carla.RssRoadBoundariesMode.Off
         else:
