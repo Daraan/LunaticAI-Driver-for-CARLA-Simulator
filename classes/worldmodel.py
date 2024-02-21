@@ -4,6 +4,7 @@ import os
 import sys
 from typing import List, Optional, Union, cast as assure_type
 
+from omegaconf import DictConfig
 import pygame
 
 import carla
@@ -13,8 +14,8 @@ from classes.HUD import HUD
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 
-from classes.carla_originals.rss_sensor import RssSensor
-from classes.carla_originals.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
+from classes.rss_sensor import RssSensor
+from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
 
 from utils import get_actor_display_name
 from utils.blueprint_helpers import get_actor_blueprints
@@ -31,13 +32,12 @@ class WorldModel(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, config, carla_world : carla.World, hud :"HUD", args, player:carla.Vehicle=None):
+    def __init__(self, carla_world : carla.World, hud :"HUD", args, player : carla.Vehicle = None, config : DictConfig = None):
         """Constructor method"""
         self._config = config
         self._args = args
         self.world = carla_world
         self.sync : bool = args.sync
-        # TODO: must be added to arguments or removed
         self.actor_role_name : Optional[str] = args.rolename
         self.dim = (args.width, args.height)
         try:

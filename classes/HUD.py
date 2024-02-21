@@ -17,7 +17,7 @@ import carla
 
 from utils import get_actor_display_name
 
-from classes.carla_originals.rss_visualization import RssStateVisualizer
+from classes.rss_visualization import RssStateVisualizer
 
 FONT_SIZE = 20
 

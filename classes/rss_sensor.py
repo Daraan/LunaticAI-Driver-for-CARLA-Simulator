@@ -8,7 +8,7 @@ from typing import List, Tuple, cast as assure_type
 import inspect
 import carla
 from carla import ad
-from classes.carla_originals.rss_visualization import RssDebugVisualizer # pylint: disable=relative-import
+from classes.rss_visualization import RssDebugVisualizer # pylint: disable=relative-import
 
 
 # ==============================================================================
