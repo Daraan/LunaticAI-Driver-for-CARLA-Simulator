@@ -8,7 +8,7 @@ import numpy as np
 import pygame
 import weakref
 
-from typing import Tuple, cast as assure_type
+from typing import Tuple, Union, cast as assure_type
 
 import carla
 from carla import ad
@@ -211,8 +211,7 @@ class RssUnstructuredSceneVisualizer(object):
             weak_self = weakref.ref(self)
             self._camera.listen(lambda image: self._parse_image(weak_self, image))
 
-    def update_surface(self, cam_frame, rss_frame):
-        if self._mode == RssUnstructuredSceneVisualizerMode.disabled:
+    def update_surface(self, cam_frame : Union[int, None], rss_frame: Union[int, None]):
             return
         render = False
 
