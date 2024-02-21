@@ -98,10 +98,12 @@ class LunaticAgent(BehaviorAgent):
         opt_dict = self._behavior.get_options()  # base options from templates
         opt_dict.update(overwrite_options)  # update by custom options
 
-        self.config = opt_dict # NOTE: This is the attribute we should use to access all information. 
+        self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
+        world_model._config = self.config # NOTE: copy
+        
         self.live_info : DictConfig = self.config.live_info
 
-        self.current_phase = Phase.NONE # current phase of the agent inside the loop
+        self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
 
         # todo set a initial tailgaite counter here, either as instance variable or in live_info
         self.config.live_info.current_tailgate_counter : int = self.config.other.tailgate_counter # type: ignore
@@ -232,7 +234,7 @@ class LunaticAgent(BehaviorAgent):
         for phase in Phase.get_phases():
             self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
         
-    def execute_phase(self, phase, *, prior_results, control:carla.VehicleControl=None) -> Context:
+    def execute_phase(self, phase : Phase, *, prior_results, control:carla.VehicleControl=None) -> Context:
         """
         Sets the current phase of the agent and executes all rules that are associated with it.
         """
@@ -506,7 +508,7 @@ class LunaticAgent(BehaviorAgent):
         self.set_global_plan(path)
     
     #@override 
-    def set_target_speed(self, speed):
+    def set_target_speed(self, speed : float):
         """
         Changes the target speed of the agent
             :param speed (float): target speed in Km/h

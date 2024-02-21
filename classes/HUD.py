@@ -17,7 +17,11 @@ import carla
 
 from utils import get_actor_display_name
 
-from classes.carla_originals.rss_visualization import RssStateVisualizer
+from classes.rss_visualization import RssStateVisualizer
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from classes.worldmodel import WorldModel
 
 FONT_SIZE = 20
 
@@ -30,7 +34,7 @@ class HUD(object):
     """Class for HUD text"""
     default_font : ClassVar[str] = 'ubuntumono'
 
-    def __init__(self, width:int, height:int, world):
+    def __init__(self, width:int, height:int, world : carla.World):
         """Constructor method"""
         self.dim = (width, height)
         self._world = world
@@ -63,7 +67,7 @@ class HUD(object):
         self.frame = timestamp.frame
         self.simulation_time = timestamp.elapsed_seconds
 
-    def tick(self, world, clock):
+    def tick(self, world : "WorldModel", clock):
         """HUD method for every tick"""
         self._notifications.tick(clock)
         if not self._show_info:

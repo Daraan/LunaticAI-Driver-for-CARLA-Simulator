@@ -12,7 +12,6 @@ arule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN,
                                       description="Set speed to intersection speed")
 
 print(arule)
-arule(carla.Vehicle())
 
 
 behavior = LunaticBehaviorSettings()
@@ -20,7 +19,7 @@ options = behavior.get_options()
 print(behavior.get_options(yaml=True))
 
 print(options.speed.target_speed, options.speed.current_speed, options.live_info.current_speed_limit)
-behavior.export_options("config/lunatic_behavior_settings.yaml")
+behavior.export_options("conf/lunatic_behavior_settings.yaml")
 
 options.live_info.current_speed = 10
 options.live_info.current_speed_limit = 35

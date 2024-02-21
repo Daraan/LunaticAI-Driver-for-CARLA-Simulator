@@ -1,3 +1,5 @@
+from functools import partial
+
 import carla
 from agents.navigation.local_planner import RoadOption
 
@@ -15,6 +17,18 @@ if TYPE_CHECKING:
 #TODO: maybe create some omega conf dict creator that allows to create settings more easily
 # e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
 # QUESTION: How to merge more than one entry?
+
+def if_config_checker(ctx : "Context", config_path : str, value) -> bool:
+    """
+    Check if a value in the config is set to a certain value.
+    """
+    return ctx.config[config_path] == value
+
+def if_config(config_path, value):
+    """
+    Returns a partial function that checks if a value in the config is set to a certain value.
+    """
+    return partial(if_config_checker, config_path=config_path, value=value)
 
 # ------ Speed Rules ------
 
@@ -160,4 +174,9 @@ always_accept_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
                                      action=accept_rss_updates,
                                      description="Sets random waypoint when done")
 
-default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, set_random_waypoint_when_done, always_accept_rss_updates]
+config_based_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
+                                rule=if_config("rss.enabled", True),
+                                action=accept_rss_updates,
+                                description="Sets random waypoint when done")
+
+default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, set_random_waypoint_when_done, config_based_rss_updates]

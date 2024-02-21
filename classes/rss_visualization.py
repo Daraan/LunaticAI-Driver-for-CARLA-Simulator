@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # Copyright (c) 2020 Intel Corporation
 #
@@ -8,13 +7,16 @@ import math
 import numpy as np
 import pygame
 import weakref
+
+from typing import Tuple, Union, cast as assure_type
+
 import carla
 from carla import ad
 
 
 class RssStateVisualizer(object):
 
-    def __init__(self, display_dimensions, font, world):
+    def __init__(self, display_dimensions, font : pygame.font.Font, world):
         self._surface = None
         self._display_dimensions = display_dimensions
         self._font = font
@@ -108,6 +110,8 @@ class RssStateVisualizer(object):
     def render(self, display, v_offset):
         if self._surface:
             display.blit(self._surface, (0, v_offset))
+        else:
+            print("No RSS State Surface to render")
 
 
 def get_matrix(transform : carla.Transform):
@@ -155,8 +159,8 @@ class RssUnstructuredSceneVisualizer(object):
     def __init__(self, parent_actor, world, display_dimensions):
         self._last_rendered_frame = -1
         self._surface = None
-        self._current_rss_surface = None
-        self.current_camera_surface = (0, None)
+        self._current_rss_surface : Tuple[int, pygame.Surface] = None
+        self.current_camera_surface : Tuple[int, pygame.Surface] = (0, None)
         self._world : carla.World = world
         self._parent_actor = parent_actor
         self._display_dimensions = display_dimensions
@@ -198,17 +202,16 @@ class RssUnstructuredSceneVisualizer(object):
             bp.set_attribute('image_size_x', str(self._dim[0]))
             bp.set_attribute('image_size_y', str(self._dim[1]))
 
-            self._camera : carla.Sensor = self._world.spawn_actor(
+            self._camera : carla.Sensor = assure_type(carla.Sensor ,self._world.spawn_actor(
                 bp,
                 carla.Transform(carla.Location(x=7.5, z=10), carla.Rotation(pitch=-90)),
-                attach_to=self._parent_actor)
+                attach_to=self._parent_actor))
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
             weak_self = weakref.ref(self)
             self._camera.listen(lambda image: self._parse_image(weak_self, image))
 
-    def update_surface(self, cam_frame, rss_frame):
-        if self._mode == RssUnstructuredSceneVisualizerMode.disabled:
+    def update_surface(self, cam_frame : Union[int, None], rss_frame: Union[int, None]):
             return
         render = False
 
@@ -241,7 +244,7 @@ class RssUnstructuredSceneVisualizer(object):
             self.restart(RssUnstructuredSceneVisualizerMode.window)
 
     @staticmethod
-    def _parse_image(weak_self, image):
+    def _parse_image(weak_self : weakref.ReferenceType["RssUnstructuredSceneVisualizer"], image : carla.Image):
         self = weak_self()
         if not self:
             return
@@ -289,7 +292,6 @@ class RssUnstructuredSceneVisualizer(object):
 
             RssUnstructuredSceneVisualizer.draw_lines(surface, lines)
             RssUnstructuredSceneVisualizer.draw_polygons(surface, polygons)
-
         except RuntimeError as e:
             print("ERROR {}".format(e))
         self._current_rss_surface = (frame, surface)

@@ -73,3 +73,6 @@ emergency:
   - 0.25
   use_hand_brake: false
   hand_brake_modify_chance: 0.0
+rss:
+  enabled: true
+  use_stay_on_road_feature: true

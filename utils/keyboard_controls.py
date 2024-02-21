@@ -77,9 +77,10 @@ class RSSKeyboardControl(object):
 
     # TODO: should be a toggle between None, Autopilot, Agent
 
-    def __init__(self, world : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True):
+    def __init__(self, config, world : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True):
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
+        self._config = config
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         self._world_model = world
@@ -184,10 +185,10 @@ class RSSKeyboardControl(object):
                 elif event.key == K_b:
                     if self._world_model and self._world_model.rss_sensor:
                         if self._world_model.rss_sensor.sensor.road_boundaries_mode == carla.RssRoadBoundariesMode.Off:
-                            self._world_model.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On
+                            self._world_model.rss_set_road_boundaries_mode(carla.RssRoadBoundariesMode.On)
                             print("carla.RssRoadBoundariesMode.On")
                         else:
-                            self._world_model.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.Off
+                            self._world_model.rss_set_road_boundaries_mode(carla.RssRoadBoundariesMode.Off)
                             print("carla.RssRoadBoundariesMode.Off")
                 elif event.key == K_g:
                     if self._world_model and self._world_model.rss_sensor:
