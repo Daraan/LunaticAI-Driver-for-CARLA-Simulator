@@ -171,8 +171,6 @@ def game_loop(args : argparse.ArgumentParser):
                         controller.parse_events()
 
                     world_model.tick(clock)
-                    world_model.render(display)
-                    pygame.display.flip()
 
                     # TODO: Make this a rule and/or move inside agent
                     # TODO: make a Phases.DONE
@@ -231,6 +229,11 @@ def game_loop(args : argparse.ArgumentParser):
                         world_model.update_lights(final_control)
                         world_model.player.apply_control(planned_control)
                         agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=final_control)
+                        
+                        sim_world.debug.draw_point(destination, life_time=3)
+                        world_model.render(display)
+                        controller.render(display)
+                        pygame.display.flip()
                         
             agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
 
