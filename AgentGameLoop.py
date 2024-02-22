@@ -155,11 +155,11 @@ def game_loop(args : argparse.ArgumentParser):
             world_model.actors.append(v)
             v.actor.set_target_velocity(carla.Vector3D(-2, 0, 0))
             v.actor.set_autopilot(True)
-            print(v.actor)
+            print("Spawned", v.actor)
 
 
         def loop():
-
+            destination = agent._local_planner._waypoints_queue[-1][0].transform.location
             while True:
                 with Rule.CooldownFramework():
                     clock.tick()
@@ -180,13 +180,17 @@ def game_loop(args : argparse.ArgumentParser):
                         if agent.done():
                             # NOTE: Might be in NONE phase here.
                             agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
-                            if args.loop:
+                            if args.loop and agent.done():
                                 # TODO: Rule / Action to define next waypoint
                                 print("The target has been reached, searching for another target")
                                 world_model.hud.notification("Target reached", seconds=4.0)
-                                destination = random.choice(spawn_points).location
+                                wp = agent._current_waypoint.next(50)[-1]
+                                next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
+                                if next_wp is None:
+                                    next_wp = wp
+                                #destination = random.choice(spawn_points).location
+                                destination = next_wp.transform.location
                                 agent.set_destination(destination)
-                                #sim_world.debug.draw_string(destination, 'dest', life_time=10)
                             else:
                                 print("The target has been reached, stopping the simulation")
                                 agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
