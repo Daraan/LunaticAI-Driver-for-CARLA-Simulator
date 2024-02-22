@@ -179,17 +179,19 @@ def game_loop(args : argparse.ArgumentParser):
                     if not controller._autopilot_enabled:
                         if agent.done():
                             # NOTE: Might be in NONE phase here.
-                            agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
+                            agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
                             if args.loop:
                                 # TODO: Rule / Action to define next waypoint
-                                agent.set_destination(random.choice(spawn_points).location)
-                                world_model.hud.notification("Target reached", seconds=4.0)
                                 print("The target has been reached, searching for another target")
+                                world_model.hud.notification("Target reached", seconds=4.0)
+                                destination = random.choice(spawn_points).location
+                                agent.set_destination(destination)
+                                #sim_world.debug.draw_string(destination, 'dest', life_time=10)
                             else:
                                 print("The target has been reached, stopping the simulation")
                                 agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
                                 break
-                            agent.execute_phase(Phase.DONE| Phase.END, prior_results=None, control=control)
+                            agent.execute_phase(Phase.DONE| Phase.END, prior_results=None)
                         
                         # ----------------------------
                         # Phase NONE - Before Running step
