@@ -212,6 +212,7 @@ class RssUnstructuredSceneVisualizer(object):
             self._camera.listen(lambda image: self._parse_image(weak_self, image))
 
     def update_surface(self, cam_frame : Union[int, None], rss_frame: Union[int, None]):
+        if self._mode == RssUnstructuredSceneVisualizerMode.disabled:
             return
         render = False
 
