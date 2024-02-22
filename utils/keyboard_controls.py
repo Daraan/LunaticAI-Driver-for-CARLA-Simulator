@@ -84,7 +84,7 @@ class RSSKeyboardControl(object):
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         self._world_model = world_model
-        self._control = None
+        self._control : carla.VehicleControl = None
         #self._control = carla.VehicleControl()
         self._lights = carla.VehicleLightState.NONE
         #self._restrictor = carla.RssRestrictor() # Moved to worldmodel
@@ -274,14 +274,15 @@ class RSSKeyboardControl(object):
     def _parse_vehicle_keys(self, keys, milliseconds):
         if keys[K_UP] or keys[K_w]:
             self._control.throttle = min(self._control.throttle + 0.2, 1)
-        else:
-            self._control.throttle = max(self._control.throttle - 0.2, 0)
+        #else:
+        #    self._control.throttle = max(self._control.throttle - 0.2, 0)
 
         if keys[K_DOWN] or keys[K_s]:
             self._control.brake = min(self._control.brake + 0.2, 1)
-        else:
-            self._control.brake = max(self._control.brake - 0.2, 0)
+        #else:
+        #    self._control.brake = max(self._control.brake - 0.2, 0)
 
+        self._steer_cache = self._control.steer
         steer_increment = 5e-4 * milliseconds
         if keys[K_LEFT] or keys[K_a]:
             if self._steer_cache > 0:
@@ -297,8 +298,8 @@ class RSSKeyboardControl(object):
             self._steer_cache = max(self._steer_cache - steer_increment, 0.0)
         elif self._steer_cache < 0:
             self._steer_cache = min(self._steer_cache + steer_increment, 0.0)
-        else:
-            self._steer_cache = 0
+        #else:
+        #    self._steer_cache = 0
 
         self._steer_cache = min(1.0, max(-1.0, self._steer_cache))
         self._control.steer = round(self._steer_cache, 1)
