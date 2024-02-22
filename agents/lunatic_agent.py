@@ -30,7 +30,7 @@ from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleD
 
 from agents import substep_managers
 import agents.tools.lunatic_agent_tools
-from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, RoadOption
+from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss, RoadOption
 
 from classes.constants import Phase, Hazard
 from classes.rule import Context, Rule
@@ -68,10 +68,11 @@ class LunaticAgent(BehaviorAgent):
     # using a ClassVar which allows to define preset rules for a child class
     # NOTE: Use deepcopy to avoid shared state between instances
     rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
+    _world_model : WorldModel = None
     
     # todo: rename in the future
 
-    def __init__(self, world_model : "WorldModel", behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, vehicle : carla.Vehicle, world : carla.World, behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -94,18 +95,27 @@ class LunaticAgent(BehaviorAgent):
             self._behavior = behavior
         else:
             raise ValueError("Behavior must be a " + str(BasicAgentSettings))
+        self._vehicle : carla.Vehicle = vehicle
+        self._world : carla.World = world
+        if map_inst:
+            if isinstance(map_inst, carla.Map):
+                self._map = map_inst
+            else:
+                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
+                self._map = self._world.get_map()
+        else:
+            self._map = self._world.get_map()
 
         opt_dict = self._behavior.get_options()  # base options from templates
         opt_dict.update(overwrite_options)  # update by custom options
 
         self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
-        world_model._config = self.config # NOTE: copy
         
-        self.live_info : DictConfig = self.config.live_info
-
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
 
-        # todo set a initial tailgaite counter here, either as instance variable or in live_info
+        self.live_info : DictConfig = self.config.live_info
+
+        # TODO: Make this a rule countdown and remove
         self.config.live_info.current_tailgate_counter : int = self.config.other.tailgate_counter # type: ignore
         # Vehicle information
         self.live_info.speed = 0
@@ -116,18 +126,7 @@ class LunaticAgent(BehaviorAgent):
         #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
 
         # Original Setup ---------------------------------------------------------
-        self._vehicle : carla.Vehicle = world_model.player
-        self._world_model : WorldModel = world_model
-        self._world :carla.World = world_model.world
         
-        if map_inst:
-            if isinstance(map_inst, carla.Map):
-                self._map = map_inst
-            else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-                self._map = self._world.get_map()
-        else:
-            self._map = self._world.get_map()
         self._last_traffic_light = None  # Current red traffic light
 
         # TODO: No more hardcoded defaults / set them from opt_dict which must have all parameters; check which are parameters and which are set by other functions (e.g. _look_ahead_steps)
@@ -140,7 +139,7 @@ class LunaticAgent(BehaviorAgent):
         self._incoming_direction : RoadOption = None
 
         # Initialize the planners
-        self._local_planner = DynamicLocalPlanner(self._vehicle, opt_dict=opt_dict, map_inst=self._map, world=self._world if self._world else "MISSING")
+        self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=opt_dict, map_inst=self._map, world=self._world if self._world else "MISSING")
         if grp_inst:
             if isinstance(grp_inst, GlobalRoutePlanner):
                 self._global_planner = grp_inst
@@ -212,7 +211,8 @@ class LunaticAgent(BehaviorAgent):
         self.walkers_nearby : List[carla.Walker] = self._world.get_actors().filter("*walker.pedestrian*")
         
         # RSS
-        self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
+        # todo uncomment if agent is created after world model
+        #self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
         
 
     def is_taking_turn(self) -> bool:
@@ -254,7 +254,7 @@ class LunaticAgent(BehaviorAgent):
         """
         This is our main entry point that runs every tick.  
         """
-
+        self.debug = debug
         # ----------------------------
         # Phase 0 - Update Information
         # ----------------------------
@@ -336,7 +336,7 @@ class LunaticAgent(BehaviorAgent):
             # ----------------------------
 
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, prior_results=None)
-            control = self._local_planner.run_step()
+            control = self._local_planner.run_step(debug=debug)
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, control=control, prior_results=None)
             return control
 
@@ -346,7 +346,7 @@ class LunaticAgent(BehaviorAgent):
         
         # Normal behavior
         self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.BEGIN, prior_results=None)
-        control = self._local_planner.run_step()
+        control = self._local_planner.run_step(debug=debug)
         self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.END, prior_results=None, control=control)
 
         # Leave loop and apply controls outside 
@@ -427,15 +427,12 @@ class LunaticAgent(BehaviorAgent):
     # ------------------ Managers for Behaviour ------------------ #
 
     
-    @wraps(substep_managers.traffic_light_manager)
     def traffic_light_manager(self) -> TrafficLightDetectionResult:
         """
         This method is in charge of behaviors for red lights.
         """
-        tlight_detection_result = substep_managers.traffic_light_manager(self, self._lights_list)
-        return tlight_detection_result
+        return substep_managers.traffic_light_manager(self, self._lights_list)
     
-    @wraps(substep_managers.car_following_manager)
     def car_following_manager(self, vehicle, distance, debug=False) -> carla.VehicleControl:
         return substep_managers.car_following_manager(self, vehicle, distance, debug=debug)
     
@@ -451,7 +448,6 @@ class LunaticAgent(BehaviorAgent):
     # TODO: see if max_distance is currently still necessary
     # TODO: move angles to config
     #@override
-    @wraps(agents.tools.lunatic_agent_tools.detect_vehicles)
     def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, 
                                    up_angle_th=90, 
                                    low_angle_th=0,
@@ -582,7 +578,7 @@ class LunaticAgent(BehaviorAgent):
             :param end_location (carla.Location): final location of the route
             :param start_location (carla.Location): starting location of the route
         """
-
+        
     #def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
         """
         Adds a specific plan to the agent.

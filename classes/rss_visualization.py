@@ -110,8 +110,6 @@ class RssStateVisualizer(object):
     def render(self, display, v_offset):
         if self._surface:
             display.blit(self._surface, (0, v_offset))
-        else:
-            print("No RSS State Surface to render")
 
 
 def get_matrix(transform : carla.Transform):

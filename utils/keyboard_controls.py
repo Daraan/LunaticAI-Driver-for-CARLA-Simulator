@@ -77,18 +77,20 @@ class RSSKeyboardControl(object):
 
     # TODO: should be a toggle between None, Autopilot, Agent
 
-    def __init__(self, config, world : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True):
+    def __init__(self, config, world_model : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True):
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
         self._config = config
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
-        self._world_model = world
-        self._control = carla.VehicleControl()
+        self._world_model = world_model
+        self._control : carla.VehicleControl = None
+        #self._control = carla.VehicleControl()
         self._lights = carla.VehicleLightState.NONE
-        self._restrictor = carla.RssRestrictor()
-        self._vehicle_physics = world.player.get_physics_control()
-        world.player.set_light_state(self._lights)
+        #self._restrictor = carla.RssRestrictor() # Moved to worldmodel
+        self._restrictor = None
+        self._vehicle_physics = world_model.player.get_physics_control()
+        world_model.player.set_light_state(self._lights)
         self._steer_cache = 0.0
         self._mouse_steering_center = None
 
@@ -120,7 +122,7 @@ class RSSKeyboardControl(object):
                                 (self.MOUSE_STEERING_RANGE, self.MOUSE_STEERING_RANGE * 2)
                             ], line_width)
 
-        world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
+        world_model.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
 
     @property
     def controlled_externally(self):
@@ -136,7 +138,9 @@ class RSSKeyboardControl(object):
         print('\nReceived signal {}. Trigger stopping...'.format(signum))
         RSSKeyboardControl.signal_received = True
 
-    def parse_events(self, clock):
+    def parse_events(self, clock, control=None):
+        if control:
+            self._control = control
         if RSSKeyboardControl.signal_received:
             print('\nAccepted signal. Stopping loop...')
             return True
@@ -242,10 +246,10 @@ class RSSKeyboardControl(object):
             if pygame.mouse.get_pressed()[0]:
                 self._parse_mouse(pygame.mouse.get_pos())
             self._control.reverse = self._control.gear < 0
-
+            return
             vehicle_control = self._control
-            self._world_model.hud.original_vehicle_control = vehicle_control
-            self._world_model.hud.restricted_vehicle_control = vehicle_control
+            #self._world_model.hud.original_vehicle_control = vehicle_control
+            #self._world_model.hud.restricted_vehicle_control = vehicle_control
 
             # limit speed to 30kmh
             #v = self._world_model.player.get_velocity()
@@ -265,19 +269,20 @@ class RSSKeyboardControl(object):
                     if self._world_model.hud.original_vehicle_control.steer != self._world_model.hud.restricted_vehicle_control.steer:
                         self._steer_cache = prev_steer_cache
 
-            self._world_model.player.apply_control(vehicle_control)
+            #self._world_model.player.apply_control(vehicle_control)
 
     def _parse_vehicle_keys(self, keys, milliseconds):
         if keys[K_UP] or keys[K_w]:
             self._control.throttle = min(self._control.throttle + 0.2, 1)
-        else:
-            self._control.throttle = max(self._control.throttle - 0.2, 0)
+        #else:
+        #    self._control.throttle = max(self._control.throttle - 0.2, 0)
 
         if keys[K_DOWN] or keys[K_s]:
             self._control.brake = min(self._control.brake + 0.2, 1)
-        else:
-            self._control.brake = max(self._control.brake - 0.2, 0)
+        #else:
+        #    self._control.brake = max(self._control.brake - 0.2, 0)
 
+        self._steer_cache = self._control.steer
         steer_increment = 5e-4 * milliseconds
         if keys[K_LEFT] or keys[K_a]:
             if self._steer_cache > 0:
@@ -293,8 +298,8 @@ class RSSKeyboardControl(object):
             self._steer_cache = max(self._steer_cache - steer_increment, 0.0)
         elif self._steer_cache < 0:
             self._steer_cache = min(self._steer_cache + steer_increment, 0.0)
-        else:
-            self._steer_cache = 0
+        #else:
+        #    self._steer_cache = 0
 
         self._steer_cache = min(1.0, max(-1.0, self._steer_cache))
         self._control.steer = round(self._steer_cache, 1)

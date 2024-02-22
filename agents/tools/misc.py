@@ -25,7 +25,7 @@ class TrafficLightDetectionResult(NamedTuple):
     traffic_light_was_found : bool
     traffic_light : carla.TrafficLight
 
-def draw_waypoints(world, waypoints, z=0.5):
+def draw_waypoints(world : carla.World, waypoints, z=0.5, **kwargs):
     """
     Draw a list of waypoints at a certain height given in z.
 
@@ -38,7 +38,7 @@ def draw_waypoints(world, waypoints, z=0.5):
         begin = wpt_t.location + carla.Location(z=z)
         angle = math.radians(wpt_t.rotation.yaw)
         end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
-        world.debug.draw_arrow(begin, end, arrow_size=0.3, life_time=1.0)
+        world.debug.draw_arrow(begin, end, arrow_size=0.3, life_time=1.0, **kwargs)
 
 
 def get_speed(vehicle):

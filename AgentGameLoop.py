@@ -71,6 +71,7 @@ def game_loop(args : argparse.ArgumentParser):
         client.set_timeout(20.0)
 
         sim_world = client.get_world()
+        sim_map = sim_world.get_map()
         traffic_manager = client.get_trafficmanager()
 
         if args.sync:
@@ -102,8 +103,9 @@ def game_loop(args : argparse.ArgumentParser):
         start : carla.libcarla.Transform = spawn_points[0]
         ego.spawn(start)
 
-        world_model = WorldModel(client.get_world(), hud, args, player=ego.actor, config=None)
         #if True or args.agent == "Lunatic":
+        # TODO: # CRITICAL: This should be a dataclass->DictConfig and not its own class!
+        # TODO: if DictConfig then World and agent order can be reversed and World initialized with config
         behavior = LunaticBehaviorSettings({'distance':
             { "base_min_distance": 5.0,
             "min_proximity_threshold": 12.0,
@@ -116,17 +118,20 @@ def game_loop(args : argparse.ArgumentParser):
                         'follow_speed_limits' : False,
                         'speed_decrease' : 15,
                             'safety_time' : 7,
-                            'min_speed' : 0 }
+                            'min_speed' : 0 },
+            'rss': {'enabled': False, 
+                    'use_stay_on_road_feature': False},
         })
         print(OmegaConf.to_yaml(behavior.options))
         
-        agent = LunaticAgent(world_model, behavior)
+        agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
+        world_model = WorldModel(client.get_world(), hud, agent.config, args, player=ego.actor, map_inst=sim_map)
+        agent._local_planner._rss_sensor = world_model.rss_sensor # todo: remove later when we have a better ordering of init
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
         print("Lunatic Agent Rules")
         pprint(agent.rules)
-        
         
         wp_start = world_model.map.get_waypoint(start.location)
         all_spawn_points = world_model.map.get_spawn_points()
@@ -150,11 +155,10 @@ def game_loop(args : argparse.ArgumentParser):
             world_model.actors.append(v)
             v.actor.set_target_velocity(carla.Vector3D(-2, 0, 0))
             v.actor.set_autopilot(True)
-            print(v.actor)
-
+            print("Spawned", v.actor)
 
         def loop():
-
+            destination = agent._local_planner._waypoints_queue[-1][0].transform.location
             while True:
                 with Rule.CooldownFramework():
                     clock.tick()
@@ -162,64 +166,73 @@ def game_loop(args : argparse.ArgumentParser):
                         world_model.world.tick()
                     else:
                         world_model.world.wait_for_tick()
-                    if isinstance(controller, RSSKeyboardControl):
-                        if controller.parse_events(clock):
-                            return
-                    else:
+                    if not isinstance(controller, RSSKeyboardControl):
                         controller.parse_events()
 
                     world_model.tick(clock)
-                    world_model.render(display)
-                    pygame.display.flip()
 
                     # TODO: Make this a rule and/or move inside agent
                     # TODO: make a Phases.DONE
                     if not controller._autopilot_enabled:
                         if agent.done():
                             # NOTE: Might be in NONE phase here.
-                            agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None, control=control)
-                            if args.loop:
+                            agent.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
+                            if args.loop and agent.done():
                                 # TODO: Rule / Action to define next waypoint
-                                agent.set_destination(random.choice(spawn_points).location)
-                                world_model.hud.notification("Target reached", seconds=4.0)
                                 print("The target has been reached, searching for another target")
+                                world_model.hud.notification("Target reached", seconds=4.0)
+                                wp = agent._current_waypoint.next(50)[-1]
+                                next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
+                                if next_wp is None:
+                                    next_wp = wp
+                                #destination = random.choice(spawn_points).location
+                                destination = next_wp.transform.location
+                                agent.set_destination(destination)
                             else:
                                 print("The target has been reached, stopping the simulation")
                                 agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
                                 break
-                            agent.execute_phase(Phase.DONE| Phase.END, prior_results=None, control=control)
+                            agent.execute_phase(Phase.DONE| Phase.END, prior_results=None)
                         
                         # ----------------------------
                         # Phase NONE - Before Running step
                         # ----------------------------
-                        control = agent.run_step(debug=True)  # debug=True draws waypoints
-                    
+                        planned_control = agent.run_step(debug=True)  # debug=True draws waypoints
                         # ----------------------------
                         # Phase RSS - Check RSS
                         # ----------------------------
-                        control.manual_gear_shift = False # TODO: turn into a rule
+                        planned_control.manual_gear_shift = False # TODO: turn into a rule
                         
-                        agent.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=control)
-                        rss_updated_controls = world_model.rss_check_control(control)
+                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
+                        if isinstance(controller, RSSKeyboardControl):
+                            if controller.parse_events(clock, ctx.control):
+                                return
                         # Todo: Remove
-                        assert rss_updated_controls is not control
+                        assert rss_updated_controls is not planned_control
                         #if rss_updated_controls and rss_updated_controls is not control:
                             #if rss_updated_controls != control:
                                 #print("RSS updated controls\n"
                                 #     f"throttle: {control.throttle} -> {rss_updated_controls.throttle}, steer: {control.steer} -> {rss_updated_controls.steer}, brake: {control.brake} -> {rss_updated_controls.brake}")
                             
-                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls, control=control) # NOTE: rss_updated_controls could be None
-                        control = ctx.control
-                        assert control is not None
+                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls, control=ctx.control) # NOTE: rss_updated_controls could be None
                         # ----------------------------
                         # Phase 5 - Apply Control to Vehicle
                         # ----------------------------
 
-                        agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
+                        ctx = agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=ctx.control)
+                        final_control = ctx.control
+                        #if isinstance(controller, RSSKeyboardControl):
+                        #    if controller.parse_events(clock, final_control):
+                        #        return
                         # Set automatic control-related vehicle lights
-                        world_model.update_lights(control)
-                        world_model.player.apply_control(control)
-                        agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
+                        world_model.update_lights(final_control)
+                        world_model.player.apply_control(planned_control)
+                        agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=final_control)
+                        
+                        sim_world.debug.draw_point(destination, life_time=3)
+                        world_model.render(display)
+                        controller.render(display)
+                        pygame.display.flip()
                         
             agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
 
@@ -244,15 +257,13 @@ def game_loop(args : argparse.ArgumentParser):
             settings.synchronous_mode = False
             settings.fixed_delta_seconds = None
             world_model.world.apply_settings(settings)
+            traffic_manager.set_synchronous_mode(False)
+            world_model.destroy()
+        else:
             try:
-                traffic_manager.set_synchronous_mode(False)
+                ego.actor.destroy()
             except (NameError, AttributeError):
                 pass
-            world_model.destroy()
-        try:
-            ego.destroy()
-        except:
-            pass
 
         pygame.quit()
 

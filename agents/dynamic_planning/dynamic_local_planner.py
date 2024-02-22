@@ -9,7 +9,7 @@ import random
 from omegaconf import DictConfig
 import carla
 
-from typing import NamedTuple
+from typing import List, NamedTuple, Optional, Tuple
 
 from agents.navigation import local_planner 
 from agents.navigation.local_planner import LocalPlanner, RoadOption, PlannedWaypoint
@@ -17,6 +17,7 @@ from agents.navigation.local_planner import LocalPlanner, RoadOption, PlannedWay
 
 from agents.dynamic_planning.dynamic_controller import DynamicVehiclePIDController
 from agents.tools.misc import draw_waypoints, get_speed
+from classes.rss_sensor import RssSensor
 
 
 '''
@@ -48,6 +49,7 @@ class DynamicLocalPlanner(LocalPlanner):
     When multiple paths are available (intersections) this local planner makes a random choice,
     unless a given global plan has already been specified.
     """
+    _waypoints_queue : deque[Tuple[carla.Waypoint, RoadOption]]
 
     def __init__(self, vehicle, opt_dict : DictConfig, map_inst=None, world=None):
         """
@@ -187,3 +189,40 @@ class DynamicLocalPlanner(LocalPlanner):
 
 # def get_incoming_waypoint_and_direction(self, steps=3):
   
+class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
+    
+    def __init__(self, vehicle, opt_dict : DictConfig, map_inst=None, world=None, rss_sensor:Optional[RssSensor]=None):
+        super().__init__(vehicle, opt_dict, map_inst, world)
+        self._rss_sensor = rss_sensor
+        
+        
+    def set_global_plan(self, current_plan : List[Tuple[carla.Waypoint, RoadOption]], stop_waypoint_creation=True, clean_queue=True):
+        """
+        Adds a new plan to the local planner. A plan must be a list of [carla.Waypoint, RoadOption] pairs
+        The 'clean_queue` parameter erases the previous plan if True, otherwise, it adds it to the old one
+        The 'stop_waypoint_creation' flag stops the automatic creation of random waypoints
+
+        :param current_plan: list of (carla.Waypoint, RoadOption)
+        :param stop_waypoint_creation: bool
+        :param clean_queue: bool
+        :return:
+        """
+        if clean_queue:
+            self._waypoints_queue.clear()
+
+        # Remake the waypoints queue if the new plan has a higher length than the queue
+        new_plan_length = len(current_plan) + len(self._waypoints_queue)
+        if new_plan_length > self._waypoints_queue.maxlen:
+            new_waypoint_queue : deque[Tuple[carla.Waypoint, RoadOption]]= deque(maxlen=new_plan_length)
+            for wp in self._waypoints_queue:
+                new_waypoint_queue.append(wp)
+            self._waypoints_queue = new_waypoint_queue
+
+        if self._rss_sensor:
+            self._rss_sensor.sensor.reset_routing_targets()
+        for elem in current_plan:
+            self._waypoints_queue.append(elem)
+            if self._rss_sensor:
+                self._rss_sensor.sensor.append_routing_target(elem[0].transform)
+
+        self._stop_waypoint_creation = stop_waypoint_creation
