@@ -162,10 +162,7 @@ def game_loop(args : argparse.ArgumentParser):
                         world_model.world.tick()
                     else:
                         world_model.world.wait_for_tick()
-                    if isinstance(controller, RSSKeyboardControl):
-                        if controller.parse_events(clock):
-                            return
-                    else:
+                    if not isinstance(controller, RSSKeyboardControl):
                         controller.parse_events()
 
                     world_model.tick(clock)
@@ -192,30 +189,33 @@ def game_loop(args : argparse.ArgumentParser):
                         # ----------------------------
                         # Phase NONE - Before Running step
                         # ----------------------------
-                        control = agent.run_step(debug=True)  # debug=True draws waypoints
-                    
+                        planned_control = agent.run_step(debug=True)  # debug=True draws waypoints
                         # ----------------------------
                         # Phase RSS - Check RSS
                         # ----------------------------
-                        control.manual_gear_shift = False # TODO: turn into a rule
+                        planned_control.manual_gear_shift = False # TODO: turn into a rule
                         
-                        agent.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=control)
-                        rss_updated_controls = world_model.rss_check_control(control)
+                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
+                        if isinstance(controller, RSSKeyboardControl):
+                            if controller.parse_events(clock, ctx.control):
+                                return
                         # Todo: Remove
-                        assert rss_updated_controls is not control
+                        assert rss_updated_controls is not planned_control
                         #if rss_updated_controls and rss_updated_controls is not control:
                             #if rss_updated_controls != control:
                                 #print("RSS updated controls\n"
                                 #     f"throttle: {control.throttle} -> {rss_updated_controls.throttle}, steer: {control.steer} -> {rss_updated_controls.steer}, brake: {control.brake} -> {rss_updated_controls.brake}")
                             
-                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls, control=control) # NOTE: rss_updated_controls could be None
-                        control = ctx.control
-                        assert control is not None
+                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls, control=ctx.control) # NOTE: rss_updated_controls could be None
                         # ----------------------------
                         # Phase 5 - Apply Control to Vehicle
                         # ----------------------------
 
-                        agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=control)
+                        ctx = agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=ctx.control)
+                        final_control = ctx.control
+                        #if isinstance(controller, RSSKeyboardControl):
+                        #    if controller.parse_events(clock, final_control):
+                        #        return
                         # Set automatic control-related vehicle lights
                         world_model.update_lights(control)
                         world_model.player.apply_control(control)
