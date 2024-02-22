@@ -71,6 +71,7 @@ def game_loop(args : argparse.ArgumentParser):
         client.set_timeout(20.0)
 
         sim_world = client.get_world()
+        sim_map = sim_world.get_map()
         traffic_manager = client.get_trafficmanager()
 
         if args.sync:
@@ -102,8 +103,9 @@ def game_loop(args : argparse.ArgumentParser):
         start : carla.libcarla.Transform = spawn_points[0]
         ego.spawn(start)
 
-        world_model = WorldModel(client.get_world(), hud, args, player=ego.actor, config=None)
         #if True or args.agent == "Lunatic":
+        # TODO: # CRITICAL: This should be a dataclass->DictConfig and not its own class!
+        # TODO: if DictConfig then World and agent order can be reversed and World initialized with config
         behavior = LunaticBehaviorSettings({'distance':
             { "base_min_distance": 5.0,
             "min_proximity_threshold": 12.0,
@@ -120,13 +122,14 @@ def game_loop(args : argparse.ArgumentParser):
         })
         print(OmegaConf.to_yaml(behavior.options))
         
-        agent = LunaticAgent(world_model, behavior)
+        agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
+        world_model = WorldModel(client.get_world(), hud, agent.config, args, player=ego.actor, map_inst=sim_map)
+        agent._local_planner._rss_sensor = world_model.rss_sensor # todo: remove later when we have a better ordering of init
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
         print("Lunatic Agent Rules")
         pprint(agent.rules)
-        
         
         wp_start = world_model.map.get_waypoint(start.location)
         all_spawn_points = world_model.map.get_spawn_points()
@@ -217,9 +220,9 @@ def game_loop(args : argparse.ArgumentParser):
                         #    if controller.parse_events(clock, final_control):
                         #        return
                         # Set automatic control-related vehicle lights
-                        world_model.update_lights(control)
-                        world_model.player.apply_control(control)
-                        agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=control)
+                        world_model.update_lights(final_control)
+                        world_model.player.apply_control(planned_control)
+                        agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=final_control)
                         
             agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
 
@@ -244,15 +247,13 @@ def game_loop(args : argparse.ArgumentParser):
             settings.synchronous_mode = False
             settings.fixed_delta_seconds = None
             world_model.world.apply_settings(settings)
+            traffic_manager.set_synchronous_mode(False)
+            world_model.destroy()
+        else:
             try:
-                traffic_manager.set_synchronous_mode(False)
+                ego.actor.destroy()
             except (NameError, AttributeError):
                 pass
-            world_model.destroy()
-        try:
-            ego.destroy()
-        except:
-            pass
 
         pygame.quit()
 

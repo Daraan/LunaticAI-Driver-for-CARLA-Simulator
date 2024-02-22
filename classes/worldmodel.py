@@ -2,7 +2,7 @@
 # NOTE it might has to use synchonous_mode
 import os
 import sys
-from typing import List, Optional, Union, cast as assure_type
+from typing import List, Optional, Union, cast as assure_type, TYPE_CHECKING
 
 from omegaconf import DictConfig
 import pygame
@@ -16,6 +16,9 @@ from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSens
 
 from classes.rss_sensor import RssSensor
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
+
+if TYPE_CHECKING:
+    from agents.lunatic_agent import LunaticAgent
 
 from utils import get_actor_display_name
 from utils.blueprint_helpers import get_actor_blueprints
@@ -32,29 +35,47 @@ class WorldModel(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, carla_world : carla.World, hud :"HUD", args, player : carla.Vehicle = None, config : DictConfig = None):
+    def __init__(self, carla_world : carla.World, hud :"HUD", config : DictConfig, args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
+        self.world = carla_world
+        if map_inst:
+            if isinstance(map_inst, carla.Map):
+                self._map = map_inst
+            else:
+                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
+            self._map = None
+        if not map_inst or not self._map:
+            try:
+                if agent:
+                    self.map = agent._map
+                else:
+                    self.map = self.world.get_map()
+            except RuntimeError as error:
+                print('RuntimeError: {}'.format(error))
+                print('  The server could not send the OpenDRIVE (.xodr) file:')
+                print('  Make sure it exists, has the same name of your town, and is correct.')
+                sys.exit(1)
+        
         self._config = config
         self._args = args
-        self.world = carla_world
-        self.sync : bool = args.sync
-        self.actor_role_name : Optional[str] = args.rolename
-        self.dim = (args.width, args.height)
-        try:
-            self.map = self.world.get_map()
-        except RuntimeError as error:
-            print('RuntimeError: {}'.format(error))
-            print('  The server could not send the OpenDRIVE (.xodr) file:')
-            print('  Make sure it exists, has the same name of your town, and is correct.')
-            sys.exit(1)
-        self.external_actor = args.externalActor
-
         self.hud = hud # or HUD(args.width, args.height, carla_world)
+        self.sync : bool = args.sync
+        self.dim = (args.width, args.height)
+        self.external_actor : bool = args.externalActor
+        assert not self.external_actor
+        self.actor_role_name : Optional[str] = args.rolename
+
         # TODO: Remove?
         self.recording = False
         self.recording_frame_num = 0
         self.recording_dir_num = 0
         
+        if player is None:
+            if agent:
+                player = agent._vehicle
+            else:
+                player = self.world.get_actors().find(self.actor_role_name)
+            
         self.player = player
         assert self.player is not None or self.external_actor # Note: Former optional
         self._lights = carla.VehicleLightState.NONE
@@ -100,6 +121,7 @@ class WorldModel(object):
         self.rss_sensor = None
         self.rss_unstructured_scene_visualizer = None
         self.rss_bounding_box_visualizer = None
+        
         self._actor_filter = args.filter
         if not self._actor_filter.startswith("vehicle."):
             print('Error: RSS only supports vehicles as ego.')
@@ -110,8 +132,12 @@ class WorldModel(object):
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
 
-    def rss_set_road_boundaries_mode(self, road_boundaries_mode: Union[bool, carla.RssRoadBoundariesMode]):
-        self._config.rss.use_stay_on_road_feature = bool(road_boundaries_mode)
+    def rss_set_road_boundaries_mode(self, road_boundaries_mode: Optional[Union[bool, carla.RssRoadBoundariesMode]]=None):
+        # Called from KeyboardControl
+        if road_boundaries_mode is None:
+            road_boundaries_mode = self._config.rss.use_stay_on_road_feature
+        else:
+            self._config.rss.use_stay_on_road_feature = bool(road_boundaries_mode)
         if self.rss_sensor:
             self.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On if road_boundaries_mode else carla.RssRoadBoundariesMode.Off
         else:
@@ -217,6 +243,7 @@ class WorldModel(object):
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
         self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer)
+        self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
         if self.sync:
             self.world.tick()
         else:
@@ -306,8 +333,6 @@ class WorldModel(object):
             self.world.remove_on_tick(self.world_tick_id)
         if self.radar_sensor is not None:
             self.toggle_radar()
-        if self.rss_sensor:
-            self.rss_sensor.destroy()
         if self.rss_unstructured_scene_visualizer:
             self.rss_unstructured_scene_visualizer.destroy()
         actors : List[carla.Actor] = [
@@ -316,6 +341,7 @@ class WorldModel(object):
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
             self.imu_sensor.sensor,
+            self.rss_sensor.sensor,
             # self.player
         ]
         actors.extend(self.actors)
@@ -325,7 +351,11 @@ class WorldModel(object):
                     actor.stop()
                 except AttributeError:
                     pass
-                actor.destroy()
+                try:
+                    actor.destroy()
+                except RuntimeError:
+                    print("Warning: Could not destroy actor: " + str(actor))
+                    raise
         # TODO: Call destroy_sensors?
         
         
@@ -356,7 +386,6 @@ class WorldModel(object):
             # adjust the controls
             vehicle_control = self._restrictor.restrict_vehicle_control(
                             vehicle_control, rss_proper_response, self.rss_sensor.ego_dynamics_on_route, self._vehicle_physics)
-            assert vehicle_control is not self.hud.original_vehicle_control # todo remove, but assure they are different
             self.hud.restricted_vehicle_control = vehicle_control
             self.hud.allowed_steering_ranges = self.rss_sensor.get_steering_ranges()     
             return vehicle_control
