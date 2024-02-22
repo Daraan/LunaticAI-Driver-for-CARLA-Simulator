@@ -157,7 +157,6 @@ def game_loop(args : argparse.ArgumentParser):
             v.actor.set_autopilot(True)
             print("Spawned", v.actor)
 
-
         def loop():
             destination = agent._local_planner._waypoints_queue[-1][0].transform.location
             while True:

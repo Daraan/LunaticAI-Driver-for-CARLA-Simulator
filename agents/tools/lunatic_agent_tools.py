@@ -66,9 +66,6 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
 
         return Polygon(route_bb)
 
-
-    
-
     if not max_distance:
         max_distance = self.config.obstacles.base_vehicle_threshold
 
