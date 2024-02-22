@@ -55,7 +55,8 @@ emergency.hand_brake_modify_chance : float = 0.0 # to use hand brake with some c
 
 rss = new_config("rss")
 rss.enabled : bool = True
-rss.use_stay_on_road_feature : bool = True
+rss.use_stay_on_road_feature : bool = True # NOTE: This does not update based on settings, a call to rss_set_road_boundaries_mode is necessary
+rss.log_level : str = "info"
 
 class LunaticBehaviorSettings(AutopilotBehavior):
 

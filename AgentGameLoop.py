@@ -118,7 +118,9 @@ def game_loop(args : argparse.ArgumentParser):
                         'follow_speed_limits' : False,
                         'speed_decrease' : 15,
                             'safety_time' : 7,
-                            'min_speed' : 0 }
+                            'min_speed' : 0 },
+            'rss': {'enabled': False, 
+                    'use_stay_on_road_feature': False},
         })
         print(OmegaConf.to_yaml(behavior.options))
         
