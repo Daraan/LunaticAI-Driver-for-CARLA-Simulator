@@ -254,7 +254,7 @@ class LunaticAgent(BehaviorAgent):
         """
         This is our main entry point that runs every tick.  
         """
-
+        self.debug = debug
         # ----------------------------
         # Phase 0 - Update Information
         # ----------------------------
@@ -336,7 +336,7 @@ class LunaticAgent(BehaviorAgent):
             # ----------------------------
 
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, prior_results=None)
-            control = self._local_planner.run_step()
+            control = self._local_planner.run_step(debug=debug)
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, control=control, prior_results=None)
             return control
 
@@ -346,7 +346,7 @@ class LunaticAgent(BehaviorAgent):
         
         # Normal behavior
         self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.BEGIN, prior_results=None)
-        control = self._local_planner.run_step()
+        control = self._local_planner.run_step(debug=debug)
         self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.END, prior_results=None, control=control)
 
         # Leave loop and apply controls outside 

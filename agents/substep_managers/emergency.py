@@ -15,7 +15,7 @@ def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", r
     """
     print("Emergency stop", reason)
     if control is None:
-        control = self._local_planner.run_step()
+        control = self._local_planner.run_step(debug=self.debug)
 
     # TODO, future: Use rules here.
     if self.config.emergency.ignore_percentage > 0.0 and self.config.emergency.ignore_percentage / 100 > random.random():
