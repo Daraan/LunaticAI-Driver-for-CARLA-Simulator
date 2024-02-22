@@ -1,4 +1,5 @@
 from functools import partial
+import random
 
 import carla
 from agents.navigation.local_planner import RoadOption
@@ -141,11 +142,12 @@ def set_random_waypoint(ctx : "Context", waypoints : List[carla.Waypoint]=None):
     """
     Set a random waypoint as the next target.
     """
+    print("The target has been reached, searching for another target")
+    ctx.agent._world_model.hud.notification("Target reached", seconds=4.0)
     if waypoints is None:
         waypoints = ctx.agent._map.get_spawn_points()
-    import random
     ctx.agent.set_destination(random.choice(waypoints))
-
+    
 @EvaluationFunction
 def is_agent_done(ctx : Context) -> bool:
     """
@@ -157,6 +159,23 @@ set_random_waypoint_when_done = Rule(Phase.DONE | Phase.BEGIN,
                                      rule=is_agent_done,
                                      action=set_random_waypoint,
                                      description="Sets random waypoint when done")
+
+def set_next_waypoint_nearby(ctx : "Context"):
+    ctx.agent._world_model.hud.notification("Target reached", seconds=4.0)
+    wp = ctx.agent._current_waypoint.next(50)[-1]
+    next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
+    if next_wp is None:
+        next_wp = wp
+    #destination = random.choice(spawn_points).location
+    destination = next_wp.transform.location
+    ctx.agent.set_destination(destination)
+    
+set_close_waypoint_when_done = Rule(Phase.DONE | Phase.BEGIN,
+                                     rule=is_agent_done,
+                                     action=set_next_waypoint_nearby,
+                                     description="Sets random waypoint when done to a nearby point ahead")
+    
+    
 
 # ----------- RSS Rules -----------
 
@@ -179,4 +198,4 @@ config_based_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
                                 action=accept_rss_updates,
                                 description="Sets random waypoint when done")
 
-default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, set_random_waypoint_when_done, config_based_rss_updates]
+default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, set_close_waypoint_when_done, config_based_rss_updates]
