@@ -27,7 +27,7 @@ from omegaconf import OmegaConf
 #    from utils.egg_import import carla
 import carla 
     
-from classes.rule import Rule
+from classes.rule import Context, Rule
 
 import utils
 from utils.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
@@ -159,8 +159,10 @@ def game_loop(args : argparse.ArgumentParser):
 
         def loop():
             destination = agent._local_planner._waypoints_queue[-1][0].transform.location
+            ctx = None
             while True:
                 with Rule.CooldownFramework():
+                    ctx = agent.make_context(last_context=ctx)
                     clock.tick()
                     if args.sync:
                         world_model.world.tick()
@@ -198,6 +200,10 @@ def game_loop(args : argparse.ArgumentParser):
                         # Phase NONE - Before Running step
                         # ----------------------------
                         planned_control = agent.run_step(debug=True)  # debug=True draws waypoints
+                        # ----------------------------
+                        # No known Phase multiple exit points
+                        # ----------------------------
+                        
                         # ----------------------------
                         # Phase RSS - Check RSS
                         # ----------------------------

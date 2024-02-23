@@ -16,6 +16,7 @@ from copy import deepcopy
 from functools import wraps
 import random
 from typing import ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING
+import weakref
 
 from omegaconf import DictConfig
 
@@ -69,6 +70,7 @@ class LunaticAgent(BehaviorAgent):
     # NOTE: Use deepcopy to avoid shared state between instances
     rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
     _world_model : WorldModel = None
+    _ctx : weakref.ReferenceType["Context"] = None
     
     # todo: rename in the future
 
@@ -174,6 +176,17 @@ class LunaticAgent(BehaviorAgent):
         if self._collision_sensor:
             self._collision_sensor.destroy()
             self._collision_sensor = None
+            
+    @property
+    def ctx(self) -> Union[Context, None]:
+        return self._ctx() # might be None
+    
+    def make_context(self, last_context : Union[Context, None], **kwargs):
+        if last_context is not None:
+            del last_context.last_context
+        ctx = Context(agent=self, last_context=last_context, **kwargs)
+        self._ctx = weakref.ref(ctx)
+        return ctx
 
     # ------------------ Information functions ------------------ #
 
@@ -240,9 +253,11 @@ class LunaticAgent(BehaviorAgent):
         """
         normal_next = self.current_phase.next_phase()
         assert phase == normal_next or phase & Phase.EXCEPTIONS, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
-        
         self.current_phase = phase # set next phase
-        ctx = Context(agent=self, control=control, prior_results=prior_results)
+        ctx = self.ctx
+        if control is not None:
+            ctx.set_control(control)
+        ctx.prior_result = prior_results
         rules_to_check = self.rules[phase]
         for rule in rules_to_check: # todo: maybe dict? grouped by phase?
             #todo check here for the phase instead of in the rule
