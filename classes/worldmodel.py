@@ -35,7 +35,7 @@ class WorldModel(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, carla_world : carla.World, hud :"HUD", config : DictConfig, args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
+    def __init__(self, carla_world : carla.World, config : DictConfig, args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
         self.world = carla_world
         if map_inst:
@@ -58,7 +58,7 @@ class WorldModel(object):
         
         self._config = config
         self._args = args
-        self.hud = hud # or HUD(args.width, args.height, carla_world)
+        self.hud = HUD(args.width, args.height, carla_world)
         self.sync : bool = args.sync
         self.dim = (args.width, args.height)
         self.external_actor : bool = args.externalActor

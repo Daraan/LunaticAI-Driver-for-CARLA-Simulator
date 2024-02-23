@@ -5,6 +5,7 @@ import random
 from enum import IntEnum
 from typing import Any, ClassVar, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
 from weakref import WeakSet, WeakValueDictionary
+import weakref
 
 from omegaconf import DictConfig
 
@@ -23,12 +24,14 @@ class Context:
     config : DictConfig
     evaluation_results : Dict["Phase", Hashable] # ambigious wording, which result? here evaluation result
     action_results : Dict["Phase", Any] 
-    control : "carla.VehicleControl"
+    control : Optional["carla.VehicleControl"]
+    _control : Optional["carla.VehicleControl"]
     prior_result : Optional[Any]
+    last_context : Optional["Context"]
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
-        self.control = None
+        self._control = kwargs.pop("control", None)
         self._init_arguments = kwargs
         self.evaluation_results = {}
         self.action_results = {}
@@ -40,8 +43,18 @@ class Context:
     def current_phase(self) -> "Phase":
         return self.agent.current_phase
     
-    def set_control(self, control : "carla.VehicleControl"):
-        self.control = control
+    @property
+    def control(self) -> Union["carla.VehicleControl", None]:
+        return self._control
+    
+    @control.setter
+    def control(self, control : "carla.VehicleControl"):
+        if control is None:
+            raise ValueError("Context.control must not be None. To set it to None explicitly use set_control.")
+        self._control = control
+        
+    def set_control(self, control : Optional["carla.VehicleControl"]):
+        self._control = control
     
     def end_of_phase(self):
         self.last_phase_action_results = self.action_results.copy()
@@ -188,7 +201,7 @@ class _GroupRule(_CountdownRule):
         for instance in filter(cls.__filter_not_ready_instances, cls.instances):
             instance._cooldown -= 1
     
-class Rule(_CountdownRule):
+class Rule(_GroupRule):
     rule : EvaluationFunction
     actions : Dict[Any, Callable[[Context], Any]]
     description : str
@@ -225,11 +238,9 @@ class Rule(_CountdownRule):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
         if not isinstance(description, str):
             raise ValueError(f"description must be of type str, not {type(description)}")
-        super().__init__(cooldown_reset_value)
-        self.priority : float | int | RulePriority = priority
+        super().__init__(group or self.group, cooldown_reset_value) # or self.group for subclassing
+        self.priority : float | int | RulePriority = priority # used by agent.add_rule
 
-        self.group = group or self.group
-        
         self.phases = phases
         if isinstance(action, dict):
             self.actions = action
