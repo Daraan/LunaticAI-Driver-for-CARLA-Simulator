@@ -339,6 +339,8 @@ class WorldModel(object):
             self.world.remove_on_tick(self.world_tick_id)
         if self.radar_sensor is not None:
             self.toggle_radar()
+        if self.rss_sensor:
+            self.rss_sensor.destroy()
         if self.rss_unstructured_scene_visualizer:
             self.rss_unstructured_scene_visualizer.destroy()
         actors : List[carla.Actor] = [
@@ -347,7 +349,6 @@ class WorldModel(object):
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
             self.imu_sensor.sensor,
-            self.rss_sensor.sensor,
             # self.player
         ]
         actors.extend(self.actors)
