@@ -208,6 +208,7 @@ def game_loop(args : argparse.ArgumentParser):
                             if controller.parse_events(clock, ctx.control):
                                 return
                         # Todo: Remove
+                        rss_updated_controls = world_model.rss_check_control(ctx.control)
                         assert rss_updated_controls is not planned_control
                         #if rss_updated_controls and rss_updated_controls is not control:
                             #if rss_updated_controls != control:
