@@ -164,6 +164,7 @@ def generate_lane_change_path(waypoint, direction='left', distance_same_lane=10,
         distance += next_wp.transform.location.distance(plan[-1][0].transform.location)
         plan.append((next_wp, RoadOption.LANEFOLLOW))  # next waypoint to the path
 
+    assert direction in ('left', 'right') # TODO: # END: remove at end of project
     if direction == 'left':
         option = RoadOption.CHANGELANELEFT
     elif direction == 'right':
