@@ -188,7 +188,7 @@ class _GroupRule(_CountdownRule):
         for instance in filter(cls.__filter_not_ready_instances, cls.instances):
             instance._cooldown -= 1
     
-class Rule(_CountdownRule):
+class Rule(_GroupRule):
     rule : EvaluationFunction
     actions : Dict[Any, Callable[[Context], Any]]
     description : str
@@ -225,11 +225,9 @@ class Rule(_CountdownRule):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
         if not isinstance(description, str):
             raise ValueError(f"description must be of type str, not {type(description)}")
-        super().__init__(cooldown_reset_value)
-        self.priority : float | int | RulePriority = priority
+        super().__init__(group or self.group, cooldown_reset_value) # or self.group for subclassing
+        self.priority : float | int | RulePriority = priority # used by agent.add_rule
 
-        self.group = group or self.group
-        
         self.phases = phases
         if isinstance(action, dict):
             self.actions = action
