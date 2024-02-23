@@ -71,8 +71,6 @@ def game_loop(args : argparse.ArgumentParser):
         client.set_timeout(20.0)
 
         sim_world = client.get_world()
-        sim_map = sim_world.get_map()
-        traffic_manager = client.get_trafficmanager()
 
         if args.sync:
             logging.log(logging.DEBUG, "Using synchronous mode.")
@@ -81,17 +79,20 @@ def game_loop(args : argparse.ArgumentParser):
             settings.synchronous_mode = True
             settings.fixed_delta_seconds = 0.05
             sim_world.apply_settings(settings)
+            traffic_manager = client.get_trafficmanager()
             traffic_manager.set_synchronous_mode(True)
         else:
+            traffic_manager = client.get_trafficmanager()
             logging.log(logging.DEBUG, "Might be using asynchronous mode if not changed.")
 
+        sim_map = sim_world.get_map()
+        
         clock = pygame.time.Clock()
         display = pygame.display.set_mode(
             (args.width, args.height),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
-        hud = HUD(args.width, args.height, sim_world)
-
+        
         try:
             spawn_points = utils.general.csv_to_transformations("../examples/highway_example_car_positions.csv")
         except FileNotFoundError:
@@ -125,7 +126,7 @@ def game_loop(args : argparse.ArgumentParser):
         print(OmegaConf.to_yaml(behavior.options))
         
         agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
-        world_model = WorldModel(client.get_world(), hud, agent.config, args, player=ego.actor, map_inst=sim_map)
+        world_model = WorldModel(client.get_world(), agent.config, args, player=ego.actor, map_inst=sim_map)
         agent._local_planner._rss_sensor = world_model.rss_sensor # todo: remove later when we have a better ordering of init
         
         # Add Rules:
