@@ -28,9 +28,10 @@ from agents.navigation.behavior_agent import BehaviorAgent
 import agents.tools
 from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
                                compute_distance)
+import agents.tools.lunatic_agent_tools
+from agents.tools.lunatic_agent_tools import generate_lane_change_path
 
 from agents import substep_managers
-import agents.tools.lunatic_agent_tools
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss, RoadOption
 
 from classes.constants import Phase, Hazard
@@ -503,7 +504,7 @@ class LunaticAgent(BehaviorAgent):
         and the other 3 fine tune the maneuver
         """
         speed = self._vehicle.get_velocity().length()
-        path : list = agents.tools.generate_lane_change_path(
+        path : list = generate_lane_change_path(
             self._map.get_waypoint(self._vehicle.get_location()), # get current waypoint
             direction,
             same_lane_time * speed, # get direction in meters t*V
