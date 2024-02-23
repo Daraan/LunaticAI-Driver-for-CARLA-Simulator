@@ -11,7 +11,12 @@ import weakref
 from typing import Tuple, Union, cast as assure_type
 
 import carla
-from carla import ad
+try:
+    from carla import ad
+    AD_RSS_AVAILABLE = True
+except ImportError:
+    AD_RSS_AVAILABLE = False
+
 
 
 class RssStateVisualizer(object):
@@ -243,7 +248,7 @@ class RssUnstructuredSceneVisualizer(object):
             self.restart(RssUnstructuredSceneVisualizerMode.window)
 
     @staticmethod
-    def _parse_image(weak_self : weakref.ReferenceType["RssUnstructuredSceneVisualizer"], image : carla.Image):
+    def _parse_image(weak_self : "weakref.ReferenceType[RssUnstructuredSceneVisualizer]", image : carla.Image):
         self = weak_self()
         if not self:
             return

@@ -49,7 +49,7 @@ class DynamicLocalPlanner(LocalPlanner):
     When multiple paths are available (intersections) this local planner makes a random choice,
     unless a given global plan has already been specified.
     """
-    _waypoints_queue : deque[Tuple[carla.Waypoint, RoadOption]]
+    _waypoints_queue : "deque[Tuple[carla.Waypoint, RoadOption]]"
 
     def __init__(self, vehicle, opt_dict : DictConfig, map_inst=None, world=None):
         """

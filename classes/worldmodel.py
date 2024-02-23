@@ -14,7 +14,7 @@ from classes.HUD import HUD
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 
-from classes.rss_sensor import RssSensor
+from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
 
 if TYPE_CHECKING:
@@ -126,13 +126,16 @@ class WorldModel(object):
         if not self._actor_filter.startswith("vehicle."):
             print('Error: RSS only supports vehicles as ego.')
             sys.exit(1)
-        self._restrictor = carla.RssRestrictor()
+        if AD_RSS_AVAILABLE:
+            self._restrictor = carla.RssRestrictor()
+        else:
+            self._restrictor = None
 
         self.restart(args) # # interactive without args
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
 
-    def rss_set_road_boundaries_mode(self, road_boundaries_mode: Optional[Union[bool, carla.RssRoadBoundariesMode]]=None):
+    def rss_set_road_boundaries_mode(self, road_boundaries_mode: Optional[Union[bool, "carla.RssRoadBoundariesMode"]]=None):
         # Called from KeyboardControl
         if road_boundaries_mode is None:
             road_boundaries_mode = self._config.rss.use_stay_on_road_feature
@@ -241,8 +244,11 @@ class WorldModel(object):
         
         self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim)
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
-        self.rss_sensor = RssSensor(self.player, self.world,
+        if AD_RSS_AVAILABLE:
+            self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer)
+        else: 
+            self.rss_sensor = None
         self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
         if self.sync:
             self.world.tick()
@@ -377,6 +383,8 @@ class WorldModel(object):
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control
         self.hud.restricted_vehicle_control = vehicle_control
+        if not AD_RSS_AVAILABLE:
+            return None
         
         if self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
             print("Not on route!" +  str(self.rss_sensor.ego_dynamics_on_route))

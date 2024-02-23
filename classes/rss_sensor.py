@@ -7,7 +7,11 @@ from typing import List, Tuple, cast as assure_type
 
 import inspect
 import carla
-from carla import ad
+try:
+    from carla import ad
+    AD_RSS_AVAILABLE = True
+except ImportError:
+    AD_RSS_AVAILABLE = False
 from classes.rss_visualization import RssDebugVisualizer # pylint: disable=relative-import
 
 
@@ -125,7 +129,7 @@ class RssSensor(object):
             for target in routing_targets:
                 self.sensor.append_routing_target(target)
 
-    def _on_actor_constellation_request(self, actor_constellation_data : carla.RssActorConstellationData):
+    def _on_actor_constellation_request(self, actor_constellation_data : "carla.RssActorConstellationData"):
         # print("_on_actor_constellation_request: ", str(actor_constellation_data))
 
         actor_constellation_result = carla.RssActorConstellationResult()
@@ -327,7 +331,7 @@ class RssSensor(object):
         self.sensor.drop_route()
 
     @staticmethod
-    def get_default_parameters() -> ad.rss.world.RssDynamics:
+    def get_default_parameters() -> "ad.rss.world.RssDynamics":
         ego_dynamics = ad.rss.world.RssDynamics()
         ego_dynamics.alphaLon.accelMax = 5
         ego_dynamics.alphaLon.brakeMax = -8
@@ -360,7 +364,7 @@ class RssSensor(object):
         self.current_vehicle_parameters = self.get_default_parameters()
 
     @staticmethod
-    def get_pedestrian_parameters() -> ad.rss.world.RssDynamics:
+    def get_pedestrian_parameters() -> "ad.rss.world.RssDynamics":
         pedestrian_dynamics = ad.rss.world.RssDynamics()
         pedestrian_dynamics.alphaLon.accelMax = 2.0
         pedestrian_dynamics.alphaLon.brakeMax = -2.0
@@ -399,7 +403,7 @@ class RssSensor(object):
             )
         return ranges
 
-    def _on_rss_response(self, response : carla.RssResponse):
+    def _on_rss_response(self, response : "carla.RssResponse"):
         if not self or not response:
             return
         delta_time = 0.1

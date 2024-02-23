@@ -34,7 +34,7 @@ from utils.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from classes.constants import Phase
 from classes.HUD import HUD
-from classes.worldmodel import WorldModel
+from classes.worldmodel import WorldModel, AD_RSS_AVAILABLE
 from classes.vehicle import Vehicle
 
 from agents.navigation.basic_agent import BasicAgent  
@@ -215,7 +215,10 @@ def game_loop(args : argparse.ArgumentParser):
                             if controller.parse_events(clock, ctx.control):
                                 return
                         # Todo: Remove
-                        rss_updated_controls = world_model.rss_check_control(ctx.control)
+                        if AD_RSS_AVAILABLE:
+                            rss_updated_controls = world_model.rss_check_control(ctx.control)
+                        else:
+                            rss_updated_controls = None
                         assert rss_updated_controls is not planned_control
                         #if rss_updated_controls and rss_updated_controls is not control:
                             #if rss_updated_controls != control:
