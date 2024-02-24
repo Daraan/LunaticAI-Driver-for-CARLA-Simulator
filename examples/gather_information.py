@@ -76,7 +76,7 @@ def main():
             matrix = create_city_matrix(ego_location, road_lane_ids, world_map)
 
             if matrix:
-                matrix, _ = detect_surronding_cars(
+                matrix, _ = detect_surrounding_cars(
                     ego_location, ego_vehicle, matrix, road_lane_ids, world, radius, ego_on_highway, highway_shape
                 )
 

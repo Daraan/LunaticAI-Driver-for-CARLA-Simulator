@@ -5,7 +5,7 @@ from DataGathering.informationUtils import *
 
 def wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids,
                                 radius=100, highway_shape=None):
-    from DataGathering.informationUtils import check_ego_on_highway, create_city_matrix, detect_surronding_cars
+    from DataGathering.informationUtils import check_ego_on_highway, create_city_matrix, detect_surrounding_cars
 
     matrix = []
     ego_location = ego_vehicle.get_location()
