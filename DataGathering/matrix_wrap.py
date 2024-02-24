@@ -1,11 +1,9 @@
-from copy import deepcopy
+import carla
 
-from DataGathering.informationUtils import *
+from DataGathering.informationUtils import check_ego_on_highway, create_city_matrix, detect_surrounding_cars, log
 
-
-def wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids,
+def wrap_matrix_functionalities(ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids,
                                 radius=100, highway_shape=None):
-    from DataGathering.informationUtils import check_ego_on_highway, create_city_matrix, detect_surrounding_cars
 
     matrix = []
     ego_location = ego_vehicle.get_location()
@@ -34,7 +32,7 @@ def wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids,
         new_matrix[i] = matrix[lane]
         i += 1
     matrix = new_matrix
-    log(street_type.__str__())
+    log(str(street_type))
     return matrix
 
 
