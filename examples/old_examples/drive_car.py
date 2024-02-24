@@ -245,7 +245,7 @@ if __name__ == "__main__":
                     matrix = create_city_matrix(ego_location, road_lane_ids, world_map, False,
                                                 ego_on_bad_highway_street)
                 if matrix:
-                    matrix, cars_on_entryExit = detect_surronding_cars(
+                    matrix, cars_on_entryExit = detect_surrounding_cars(
                         ego_location, ego_vehicle, matrix, road_lane_ids, world, radius, ego_on_highway, highway_shape
                     )
                     if not highway_shape is None and (highway_shape[0] != "normal_highway" or wrong_shape):
@@ -286,7 +286,7 @@ if __name__ == "__main__":
 
                 matrix = create_city_matrix(middle_location, road_lane_ids, world_map, ghost=True)
                 if matrix:
-                    matrix, cars_on_entryExit = detect_surronding_cars(
+                    matrix, cars_on_entryExit = detect_surrounding_cars(
                         middle_location, ego_vehicle, matrix, road_lane_ids, world, radius, True, highway_shape,
                         ghost=True
                     )
@@ -323,7 +323,7 @@ if __name__ == "__main__":
 
                 matrix = create_city_matrix(middle_location, road_lane_ids, world_map, ghost=True)
                 if matrix:
-                    matrix, cars_on_entryExit = detect_surronding_cars(
+                    matrix, cars_on_entryExit = detect_surrounding_cars(
                         middle_location, ego_vehicle, matrix, road_lane_ids, world, radius, True, highway_shape,
                         ghost=True
                     )
@@ -358,7 +358,7 @@ if __name__ == "__main__":
                          matrix.items()])
 
                 if matrix:
-                    matrix, _ = detect_surronding_cars(
+                    matrix, _ = detect_surrounding_cars(
                         ego_location, ego_vehicle, matrix, road_lane_ids, world, radius, ego_on_highway, highway_shape
                     )
 

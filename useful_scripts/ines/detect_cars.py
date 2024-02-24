@@ -161,7 +161,7 @@ if __name__ == "__main__":
                 matrix = create_city_matrix(ego_vehicle, road_lane_ids, world_map)
 
                 if matrix:
-                    matrix, _ = detect_surronding_cars(
+                    matrix, _ = detect_surrounding_cars(
                         ego_vehicle, matrix, road_lane_ids, world, radius
                     )
                     for key, value in matrix.items():
