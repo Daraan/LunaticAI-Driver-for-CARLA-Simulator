@@ -138,8 +138,7 @@ detect_vehicles_in_front = partial(detect_vehicles, up_angle_th=90, low_angle_th
 detect_vehicles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th=160)
 
 
-
-def generate_lane_change_path(waypoint, direction='left', distance_same_lane=10,
+def generate_lane_change_path(waypoint : carla.Waypoint, direction='left', distance_same_lane=10,
                                    distance_other_lane=25, lane_change_distance=25,
                                    check=True, lane_changes=1, step_distance=2):
     """
