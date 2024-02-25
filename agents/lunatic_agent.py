@@ -252,10 +252,12 @@ class LunaticAgent(BehaviorAgent):
         """
         Sets the current phase of the agent and executes all rules that are associated with it.
         """
-        normal_next = self.current_phase.next_phase()
+        normal_next = self.current_phase.next_phase() # sanity checking if everything is correct
         assert phase == normal_next or phase & Phase.EXCEPTIONS, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
+        
         self.current_phase = phase # set next phase
         ctx = self.ctx
+        
         if control is not None:
             ctx.set_control(control)
         ctx.prior_result = prior_results
@@ -408,7 +410,9 @@ class LunaticAgent(BehaviorAgent):
         # TODO: PRIORITY: let execute_phase handle end_loop
         self.execute_phase(Phase.EMERGENCY | Phase.BEGIN, prior_results=hazard_detected)
         control = self.add_emergency_stop(control)
+        # TODO: Let a rule decide if the loop should end
         self.execute_phase(Phase.EMERGENCY | Phase.END, control=control, prior_results=hazard_detected)
+        # self.ctx.end_loop = True # TODO: ³ IDEA: work in
         print("Emergency controls", control)
         return control, end_loop
     
