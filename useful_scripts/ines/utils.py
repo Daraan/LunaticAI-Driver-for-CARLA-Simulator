@@ -49,6 +49,22 @@ def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
 
 
 def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
+    """
+    Check if the ego vehicle is on a highway based on its location. The function considers the ego vehicle to be on a highway if:
+        - it's on a road that has at least six lanes 
+        - or if it's on a road with a set of lanes with consecutive lane identifiers (e.g., 1, 2, 3) and contains at least three lanes 
+          because a city road with more than three lanes is missing lane_id=0 (e.g., -2, -1, 1, 2)
+
+    Args:
+        ego_vehicle_location (carla.Location): The current location of the ego vehicle.
+        road_lane_ids (list): A list of all road-lane identifiers of the map, where each identifier is a string
+            in the format "roadId_laneId". For example, ["1_2", "2_1", "3_2"].
+        world_map (carla.Map): A carla object representing the map of the world.
+
+    Returns:
+        bool: True if the ego vehicle is on a highway, False otherwise.
+    """
+    # get waypoints of ego and its left and right lanes
     waypoints = []
     ego_waypoint = world_map.get_waypoint(ego_vehicle_location)
     waypoints.append(ego_waypoint)
@@ -56,6 +72,16 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
         waypoints.append(ego_waypoint.get_left_lane())
     if ego_waypoint.get_right_lane() is not None:
         waypoints.append(ego_waypoint.get_right_lane())
+    
+    # check for all waypoints if they are on a highway, in case they have different road_id's
+    for wp in waypoints:
+        ego_vehilce_road_id = wp.road_id
+        # get all lanes of the respective road
+        lanes = []
+        for id in road_lane_ids:
+            if str(ego_vehilce_road_id) == id.split("_")[0]:
+                lanes.append(id.split("_")[1])
+        # cast lane_id's to int and check for highway condition
     for wp in waypoints:
         ego_vehilce_road_id = wp.road_id
         lanes = []
@@ -72,6 +98,23 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
 
 
 def get_all_road_lane_ids(world_map):
+    """
+    Retrieve a set of unique road and lane identifiers in the format "roadId_laneId" from the given world map.
+
+    Args:
+        world_map (carla.Map): The map of the world from which road and lane identifiers are obtained.
+
+    Returns:
+        set: A set containing unique road and lane identifiers in the format "roadId_laneId".
+    """
+    road_lane_ids = set()
+
+    # iterate through all waypoints in the world map
+    for waypoint in world_map.generate_waypoints(1.0):
+        # extract lane and road id's 
+        lane_id = waypoint.lane_id
+        road_id = waypoint.road_id
+        # add road and lane identifiers to set
     road_lane_ids = set()
 
     for waypoint in world_map.generate_waypoints(1.0):
@@ -81,9 +124,16 @@ def get_all_road_lane_ids(world_map):
 
     return road_lane_ids
 
-
-# Define a function to calculate the distance between two points
 def distance(p1, p2):
+    """Define a function to calculate the distance between two points (carla Location objects).
+
+    Args:
+        p1 (carla.Location): First location object.
+        p2 (carla.Location): Second location object.
+
+    Returns:
+        float: Distance between point 1 and 2. 
+    """
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2 + (p1.z - p2.z) ** 2)
 
 
@@ -178,29 +228,42 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
     Create a matrix representing the lanes around the ego vehicle.
 
     Parameters:
-        ego_vehicle (Vehicle): The ego vehicle for which to create the city matrix.
-        road_lane_ids (list of str): List of road and lane IDs in the world map.
-        world_map (WorldMap): The map representing the environment.
+        ego_vehicle_location (carla.Location): The location object of ego vehicle for which to create the city matrix.
+        road_lane_ids (list): A list of all road-lane identifiers of the map, where each identifier is a string in the format "roadId_laneId". 
+            Format: ["1_2", "2_1", "3_2"].
+        world_map (carla.Map): The map representing the environment.
+        ghost (bool): Ghost mode when ego is exiting/entrying a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
+        ego_on_bad_highway_street (bool): Indicates that ego is on the right lane of a highway that is an exit/entry and accounts as another road_id
 
     Returns:
-        collections.OrderedDict: An ordered dictionary representing the city matrix.
-                                 The keys are lane IDs in the format "road_id_lane_id".
-                                 The values are lists of integers indicating lane directions:
-                                     0 - Lane in the same direction as ego vehicle's lane.
-                                     1 - Ego vehicle's lane.
-                                     3 - Empty lane (no traffic).
+        collections.OrderedDict: An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id". 
+            For non-existing lanes different placeholder exist, e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction
+            The values indicate whether a vehicle is present: 0 - No vehicle, 1 - Ego vehicle, 3 - No road.
+            Format example: {
+                "left_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "left_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "1_2": [0, 0, 0, 0, 0, 0, 0, 0],
+                "1_1": [0, 0, 0, 0, 0, 0, 0, 0],
+                "1_-1": [0, 0, 0, 0, 0, 0, 0, 0],
+                "1_-2": [0, 0, 0, 0, 0, 0, 0, 0],
+                "right_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+            }
     """
-    # Get lane id for ego_vehicle
+    # Get lane & road id for ego_vehicle
     ego_vehilce_waypoint = world_map.get_waypoint(ego_vehicle_location)
     ego_vehilce_lane_id = str(ego_vehilce_waypoint.lane_id)
     ego_vehilce_road_id = str(ego_vehilce_waypoint.road_id)
 
+    # get all lanes of ego's road
     lanes = []
     for id in road_lane_ids:
         if ego_vehilce_road_id == id.split("_")[0]:
             lanes.append(id.split("_")[1])
     lanes.sort()
     lanes = [int(id) for id in lanes]
+    
+    # split lanes into directions & sort, e.g. [-2,-1,1,2] -> [[-2,-1],[2,1]]
     lanes_splitted = []
     z = 0
     for i in range(1, len(lanes)):
@@ -219,12 +282,15 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
     key_value_pairs = None
     other_direction = []
     ego_direction = []
+    # Identify list of lanes of ego's direction and opposite direction
     for direction in lanes_splitted:
         if int(ego_vehilce_lane_id) in direction:
             ego_direction = direction
         else:
             other_direction = direction
-    if len(ego_direction) >= 4:
+    
+    if len(ego_direction) >= 4: 
+        # ego is on a highway with 4 or more lanes
         key_value_pairs = [
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -247,7 +313,9 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("right_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
         ]
+    
     elif len(ego_direction) == 3:
+        # ego is on highway with 3 lanes, i.e. the 4th lane is most likely an exit/entry
         key_value_pairs = [
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -269,6 +337,7 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
         ]
 
     elif len(ego_direction) == 2 and len(other_direction) == 2:
+        # ego is on normal city road with 2 lanes in each direction
         key_value_pairs = [
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -291,7 +360,9 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("right_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
         ]
+        
     elif len(ego_direction) == 2 and len(other_direction) == 0:
+        # ego is on road with 2 lanes in one direction and no lanes in the other direction
         key_value_pairs = [
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -308,7 +379,9 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("right_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
         ]
+        
     elif len(ego_direction) == 1 and len(other_direction) == 1:
+        # ego is on normal road with 1 lane in each direction
         key_value_pairs = [
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -325,7 +398,9 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("right_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
         ]
+        
     elif len(ego_direction) == 1 and len(other_direction) == 0:
+        # ego is on road with 1 lane in one direction and no lanes in the other direction
         key_value_pairs = [
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -365,11 +440,28 @@ def detect_surronding_cars(
     Detect surrounding cars and update the city matrix accordingly.
 
     Parameters:
-        ego_vehicle (Vehicle): The ego vehicle for which to detect surrounding cars.
-        matrix (collections.OrderedDict): The city matrix representing the lanes around the ego vehicle.
-        road_lanes_ids (list of str): List of road and lane IDs in the world map.
+        ego_location (carla.Location): The location object of the ego vehicle.
+        ego_vehicle (carla.Vehicle): The ego vehicle for which to detect surrounding cars.
+        matrix (collections.OrderedDict): An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id". 
+            For non-existing lanes different placeholder exist, e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction.
+            The values indicate whether a vehicle is present: 0 - No vehicle, 1 - Ego vehicle, 3 - No road.
+            Format example: {
+                "left_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "left_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "1_2": [0, 0, 0, 0, 0, 0, 0, 0],
+                "1_1": [0, 0, 0, 0, 0, 0, 0, 0],
+                "1_-1": [0, 0, 0, 1, 0, 0, 0, 0],
+                "1_-2": [0, 0, 0, 0, 0, 0, 0, 0],
+                "right_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3]}
+        road_lane_ids (list): A list of all road-lane identifiers of the map, where each identifier is a string in the format "roadId_laneId". 
+            Format: ["1_2", "2_1", "3_2"].
         world (carla.World): The game world where the simulation is running.
-        radius (float): The radius within which to detect surrounding cars.
+        radius (int): The radius within which to detect surrounding cars.
+        on_highway (bool): True if the ego vehicle is on a highway, False otherwise.
+        highway_shape (tuple): Tuple containing highway_type, number of straight highway lanes, entry waypoint tuple and/ exit waypoint tuple.
+            Format: (highway_type: string, straight_lanes: int, entry_wps: ([wp,..], [wp,..]), exit_wps: ([wp,..], [wp,..]))
+        ghost (bool): Ghost mode when ego is exiting/entrying a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
 
     Returns:
         collections.OrderedDict: The updated city matrix with detected surrounding cars.
@@ -406,6 +498,7 @@ def detect_surronding_cars(
             if distance_to_actor <= radius:
                 surrounding_cars.append(actor)
 
+    # check if road id changes before/behind ego vehicle, if yes get list of lane_id's of next/previous road
     _, next_lanes = check_road_change(ego_location, road_lane_ids, True, world_map)
     _, prev_lanes = check_road_change(ego_location, road_lane_ids, False, world_map)
     lanes_exist_futher = False
@@ -432,31 +525,32 @@ def detect_surronding_cars(
     except IndexError:
         pass
 
-    # in the following, ignore cars that are on highway exit/entry lanes
+    # in the following, ignore cars that are on highway exit/entry lanes bc. they are captured in update_matrix()
     if not highway_shape is None:
-        entry_wps = highway_shape[2]
-        exit_wps = highway_shape[3]
+        entry_wps = highway_shape[2] # Tuple with start and end waypoint of the entry: ([start_wp, start_wp..], [end_wp, end_wp..])
+        exit_wps = highway_shape[3] # Tuple with start and end waypoint of the exit: ([start_wp, start_wp..], [end_wp, end_wp..])
 
+        # get all road id's of entry and exit and previous/next road
         entry_road_id = []
         exit_road_id = []
-        entry_city_road = []
-        exit_city_road = []
-        entry_highway_road = []
-        exit_highway_road = []
+        entry_city_road = [] # road before an entry in city
+        exit_city_road = [] # road after an exit in city
+        entry_highway_road = [] # road after an entry on highway
+        exit_highway_road = [] # road before an exit on highway
         if entry_wps:
-            for entry_wp in entry_wps[0]:
+            for entry_wp in entry_wps[0]: # entry_wps[0] contains all start waypoints of entry
                 entry_city_road.append(entry_wp.previous(3)[0].road_id)
                 entry_road_id.append(entry_wp.road_id)
-            for entry_wp in entry_wps[1]:
+            for entry_wp in entry_wps[1]: # entry_wps[1] contains all end waypoints of entry
                 entry_highway_road.append(entry_wp.next(3)[0].road_id)
             if entry_wp.next(3)[0] and entry_wp.next(3)[0].get_left_lane() and entry_wp.next(3)[0].road_id == \
                     entry_wp.next(3)[0].get_left_lane().road_id:
                 entry_highway_road = []
         if exit_wps:
-            for exit_wp in exit_wps[1]:
+            for exit_wp in exit_wps[1]: # exit_wps[1] contains all end waypoints of exit
                 exit_city_road.append(exit_wp.next(3)[0].road_id)
                 exit_road_id.append(exit_wp.road_id)
-            for exit_wp in exit_wps[0]:
+            for exit_wp in exit_wps[0]: # exit_wps[0] contains all start waypoints of exit
                 exit_highway_road.append(exit_wp.previous(3)[0].road_id)
             if exit_wp.next(3)[0] and exit_wp.next(3)[0].get_left_lane() and exit_wp.next(3)[0].road_id == \
                     exit_wp.next(3)[0].get_left_lane().road_id:
@@ -464,9 +558,9 @@ def detect_surronding_cars(
 
     # Update matrix based on the lane and position/distance to ego vehicle of other car
     if (
-            on_highway
-            and (not highway_shape is None)
-            and (
+        on_highway
+        and (not highway_shape is None)
+        and (
             ego_vehicle_road_id
             in entry_road_id
             + entry_city_road
@@ -474,10 +568,11 @@ def detect_surronding_cars(
             + exit_city_road
             + exit_highway_road
             + entry_highway_road
-    )
+        )
     ):
         surrounding_cars_on_highway_entryExit.append(ego_vehicle)
-
+    
+    # Update matrix based on the lane and position/distance to ego vehicle of other car
     for car in surrounding_cars:
         # Get road and lane_id of other car
         other_car_waypoint = world_map.get_waypoint(car.get_location())
@@ -485,11 +580,11 @@ def detect_surronding_cars(
         other_car_road_id = other_car_waypoint.road_id
         other_car_road_lane_id = str(other_car_road_id) + "_" + str(other_car_lane_id)
 
-        # ignore car on highway entry / Exit
+        # ignore car on highway entry / Exit bc. considered in update_matrix()
         if (
-                on_highway
-                and (not highway_shape is None)
-                and (
+            on_highway
+            and (not highway_shape is None)
+            and (
                 other_car_road_id
                 in entry_road_id
                 + entry_city_road
@@ -510,6 +605,21 @@ def detect_surronding_cars(
             ego_vehicle.get_velocity(),
             ghost,
         )
+        
+        if col is None:
+            continue
+        
+        # insert car in matrix
+        if matrix:
+            # if road id & lane id of other exist already in matrix (normal case, w/o other car on different road_id in front/behind)
+            if other_car_road_lane_id in matrix.keys():
+                if car.id == ego_vehicle.id:
+                    matrix[other_car_road_lane_id][col] = 1
+                else:
+                    matrix[other_car_road_lane_id][col] = 2
+                continue
+            
+            # elif road id changes in front / behind then place other car based on lane id 
         if col is None:
             continue
         if matrix:
@@ -536,7 +646,7 @@ def detect_surronding_cars(
 
 def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
     """
-    Calculate the distance between point B (other vehicle) and point C (parallel right/left of ego) in a right-angled triangle.
+    Calculate the distance between point B (other vehicle) and point C (parallel point right/left of ego on lane of other vehicle) in a right-angled triangle.
 
     Parameters:
         distance_ego_other (float): The distance between points A (ego) and B (other) => the hypotenuse.
@@ -559,6 +669,12 @@ def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
 
     other_lane_id = other_waypoint.lane_id
 
+    
+    # get perpendicular waypoint (either ego_waypoint or waypoint on left/right lane of ego_waypoint), which is on same lane as other car
+    left_lane_wp, right_lane_wp = ego_waypoint, ego_waypoint
+    old_left_lane_wps, old_right_lane_wps = [], []
+    while True:
+        # termination condition: perpendicular waypoint not found, return straight distance
     left_lane_wp, right_lane_wp = ego_waypoint, ego_waypoint
     old_left_lane_wps, old_right_lane_wps = [], []
     while True:
@@ -566,6 +682,12 @@ def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
                 not right_lane_wp or right_lane_wp.id in old_right_lane_wps
         ):
             return distance_ego_other
+        
+        # if ego is on same lane as other then we can use straight distance calculation
+        if ego_waypoint.lane_id == other_lane_id:
+            return distance_ego_other
+        
+        # check if one waypoint to the left is on same lane as other car
         if ego_waypoint.lane_id == other_lane_id:
             return distance_ego_other
         if left_lane_wp:
@@ -575,6 +697,8 @@ def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
                 if left_lane_wp.lane_id == other_lane_id:
                     perpendicular_wp = left_lane_wp
                     break
+        
+        # check if one waypoint to the right is on same lane as other car        
         if right_lane_wp:
             old_right_lane_wps.append(right_lane_wp.id)
             right_lane_wp = right_lane_wp.get_right_lane()
@@ -583,6 +707,8 @@ def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
                     perpendicular_wp = right_lane_wp
                     break
 
+
+    # calculate distance between ego and perpendicular waypoint (i.e. distance we go left/right in parallel to street)
     distance_opposite = ego_vehicle_location.distance(
         perpendicular_wp.transform.location
     )
@@ -617,6 +743,23 @@ def calculate_position_in_matrix(
     Only determines the column, not the row since that is based on the lane_id of the other car.
 
     Parameters:
+        ego_location (carla.Location): The location object of the ego vehicle.
+        ego_vehicle (carla.Vehicle): The ego vehicle for reference.
+        other_car (carla.Vehicle): The other car whose position is to be determined.
+        matrix (collections.OrderedDict): An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id". 
+            For non-existing lanes different placeholder exist, e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction.
+            The values indicate whether a vehicle is present: 0 - No vehicle, 1 - Ego vehicle, 3 - No road.
+            Format example: {
+                "left_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "left_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "1_2": [0, 0, 0, 0, 0, 0, 0, 0],
+                "1_1": [0, 0, 0, 0, 0, 0, 0, 0],
+                "1_-1": [0, 0, 0, 1, 0, 0, 0, 0],
+                "1_-2": [0, 0, 0, 0, 0, 0, 0, 0],
+                "right_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+        world_map (carla.WorldMap): The map representing the environment.
+        ghost (bool): Ghost mode when ego is exiting/entrying a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
         ego_vehicle (carla.Vehicle): The ego vehicle for reference.
         other_car (carla.Vehicle): The other car whose position is to be determined.
         matrix (collections.OrderedDict): The city matrix representing the lanes around the ego vehicle.
@@ -650,14 +793,14 @@ def calculate_position_in_matrix(
 
     # Get ego vehicle rotation and location
     if ghost:
-        rotation = other_car.get_transform().rotation
+        rotation = other_car.get_transform().rotation # for simplicity use other actors rotation when in ghost mode
     else:
         rotation = ego_vehicle.get_transform().rotation
 
     # Get other car vehicle location
     other_location = other_car.get_transform().location
 
-    # Calculate new distance
+    # Calculate new distance: ego to other car
     new_distance = get_forward_vector_distance(ego_location, other_car, world_map)
 
     # Get distance between ego_vehicle and other car
@@ -683,6 +826,8 @@ def calculate_position_in_matrix(
             3.6 * (velocity.x ** 2 + velocity.y ** 2 + velocity.z ** 2) ** 0.5
     )  # Convert m/s to km/h
     road_lane_ids = get_all_road_lane_ids(world_map)
+    
+    # if ego is on highway use different speed factor --> we look further ahead/behind on highway
     if check_ego_on_highway(ego_location, road_lane_ids, world_map):
         speed_factor = 2.0
     else:
@@ -785,7 +930,7 @@ def get_steering_angle(ego_vehicle):
 
 def is_junction_ahead(ego_waypoint, distance):
     """
-    Check if a junction is ahead of the ego vehicle within a specified distance.
+    Check if a junction is ahead of the ego vehicle within a specified distance, starting from the ego vehicle's current waypoint and incrementing by 1m till specified distance.
 
     Parameters:
         ego_waypoint (carla.Waypoint): The current waypoint of the ego vehicle.
@@ -798,12 +943,32 @@ def is_junction_ahead(ego_waypoint, distance):
     for x in list(range(1, distance + 1)):
         if ego_waypoint.next(x)[0].is_junction:
             return True
+    if ego_waypoint.is_junction:
+        return True
     return False
 
+def is_junction_behind(ego_waypoint, distance):
+    """
+    Check if a junction is behind the ego vehicle within a specified distance, starting from the ego vehicle's current waypoint and incrementing by 1m till specified distance.
+
+    Parameters:
+        ego_waypoint (carla.Waypoint): The current waypoint of the ego vehicle.
+        distance (int): The maximum distance (in meters) to search for a junction behind.
+
+    Returns:
+        bool: True if a junction is found behind within the specified distance, False otherwise.
+    """
+    # return True if junction is ahead of ego in <= distance meter, start checking at 1m ahead and increment by 1 every loop
+    for x in list(range(1, distance + 1)):
+        if ego_waypoint.previous(x)[0].is_junction:
+            return True
+    if ego_waypoint.is_junction:
+        return True
+    return False
 
 def get_junction_ahead(ego_waypoint, distance):
     """
-    Get the junction ahead of the ego vehicle within a specified distance.
+    Get the junction ahead of the ego vehicle within a specified distance, starting from the ego vehicle's current waypoint and incrementing by 1m till specified distance.
 
     Parameters:
         ego_waypoint (carla.Waypoint): The current waypoint of the ego vehicle.
@@ -813,33 +978,60 @@ def get_junction_ahead(ego_waypoint, distance):
         carla.Junction or None: The carla.Junction object representing the junction ahead if found within
                                  the specified distance. Returns None if no junction is found.
     """
+
     for x in list(range(1, distance + 1)):
         if ego_waypoint.next(x)[0].is_junction:
             return ego_waypoint.next(x)[0].get_junction()
+    if ego_waypoint.is_junction:
+        return ego_waypoint.get_junction()
     return None
-
 
 def get_junction_behind(ego_waypoint, distance):
     """
-    Get the junction ahead of the ego vehicle within a specified distance.
+    Get the junction behind the ego vehicle within a specified distance, starting from the ego vehicle's current waypoint and incrementing by 1m till specified distance.
 
     Parameters:
         ego_waypoint (carla.Waypoint): The current waypoint of the ego vehicle.
-        distance (int): The maximum distance (in meters) to search for a junction ahead.
+        distance (int): The maximum distance (in meters) to search for a junction behind.
 
     Returns:
-        carla.Junction or None: The carla.Junction object representing the junction ahead if found within
+        carla.Junction or None: The carla.Junction object representing the junction behind if found within
                                  the specified distance. Returns None if no junction is found.
     """
     for x in list(range(1, distance + 1)):
         if ego_waypoint.previous(x)[0].is_junction:
             return ego_waypoint.previous(x)[0].get_junction()
+    if ego_waypoint.is_junction:
+        return ego_waypoint.get_junction()
     return None
 
+def get_distance_junction_start(wp):
+    """Get distance from waypoint until the first junction wp behind. 
 
-def is_junction_behind(ego_waypoint, distance):
+    Args:
+        wp (carla.Waypoint): Initial waypoint to look back.
+
+    Returns:
+        int: Distance in meters from waypoint until the first junction wp behind.
     """
-    Check if a junction is behind the ego vehicle within a specified distance.
+    x = 1
+    while wp.previous(x)[0].is_junction:
+        x = x + 1
+    return x
+
+def get_distance_junction_end(wp):
+    """Get distance from waypoint until the first junction wp in front. 
+
+    Args:
+        wp (carla.Waypoint): Initial waypoint to look in front.
+
+    Returns:
+        int: Distance in meters from waypoint until the first junction wp in front.
+    """
+    x = 1
+    while wp.next(x)[0].is_junction:
+        x = x + 1
+    return x
 
     Parameters:
         ego_waypoint (carla.Waypoint): The current waypoint of the ego vehicle.
@@ -923,7 +1115,7 @@ def detect_ego_before_junction(
         key_value_pairs, junction_roads, lanes_all, lane_id_ego, ego_wp, distance_to_junc
 ):
     """
-    Update the city matrix to detect the position of the ego vehicle relative to a junction.
+    Update the city matrix:detect the position of the ego vehicle relative to a junction and insert into matrix.
 
     Parameters:
         key_value_pairs (list of tuples): A list of tuples representing the city matrix.
