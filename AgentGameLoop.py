@@ -27,6 +27,7 @@ from omegaconf import OmegaConf
 #    from utils.egg_import import carla
 import carla 
     
+from agents.tools.misc import draw_waypoints
 from classes.rule import Context, Rule
 
 import utils
@@ -46,7 +47,12 @@ from agents import behaviour_templates
 
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
+# ==============================================================================
+# TEMP # Remove
+import classes.worldmodel
+classes.worldmodel.AD_RSS_AVAILABLE = False
 
+PRINT_RULES = False
 
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
@@ -85,6 +91,7 @@ def game_loop(args : argparse.ArgumentParser):
         else:
             traffic_manager = client.get_trafficmanager()
             logging.log(logging.DEBUG, "Might be using asynchronous mode if not changed.")
+            world_settings = sim_world.get_settings()
         print("World Settings:", world_settings)
 
         sim_map = sim_world.get_map()
@@ -94,7 +101,6 @@ def game_loop(args : argparse.ArgumentParser):
             (args.width, args.height),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
-        
         try:
             spawn_points = utils.general.csv_to_transformations("../examples/highway_example_car_positions.csv")
         except FileNotFoundError:
@@ -128,25 +134,36 @@ def game_loop(args : argparse.ArgumentParser):
         print(OmegaConf.to_yaml(behavior.options))
         
         agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
-        world_model = WorldModel(sim_world, agent.config, args, player=ego.actor, map_inst=sim_map)
+        draw_waypoints(sim_world, [agent._local_planner.target_waypoint], life_time=10.0, arrow_size=2, color=(0, 220, 0)) # Grün
+        world_model = WorldModel(sim_world, agent.config, args, player=ego.actor, map_inst=sim_map) # NOTE: # CRITICAL: Here an important tick happens that should be before the local planner initialization
         agent._local_planner._rss_sensor = world_model.rss_sensor # todo: remove later when we have a better ordering of init
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
-        print("Lunatic Agent Rules")
-        pprint(agent.rules)
+        if PRINT_RULES: # TEMP
+            print("Lunatic Agent Rules")
+            pprint(agent.rules)
         
         wp_start = world_model.map.get_waypoint(start.location)
         all_spawn_points = world_model.map.get_spawn_points()
 
-        next_wps: List[carla.Waypoint] = wp_start.next(45)
+        next_wps: List[carla.Waypoint] = wp_start.next(25)
         last = next_wps[-1]
         left = last.get_left_lane()
+        draw_waypoints(sim_world, [*next_wps, left, sim_map.get_waypoint(left.transform.location)], life_time=22.0, arrow_size=0.4, color=(255, 255, 0))
+        print(left, sim_map.get_waypoint(left.transform.location))
         # destination = random.choice(all_spawn_points).location
         destination = left.transform.location
         
-        agent.set_destination(destination)
-        agent.set_target_speed(33.0)
+        print("Ego location", ego.actor.get_location())
+        print("Target Waypoint", agent._local_planner.target_waypoint, agent._local_planner.target_waypoint.transform.location)
+        
+        draw_waypoints(sim_world, [sim_map.get_waypoint(ego.actor.get_location())], life_time=22.0, color=(0, 0, 0))
+        draw_waypoints(sim_world, [agent._local_planner.target_waypoint], life_time=10.0, arrow_size=2, color=(0, 220, 0)) # Grün
+        agent.set_destination(left, True)
+        draw_waypoints(sim_world, [*[pw[0] for pw in agent._local_planner._waypoints_queue], agent._local_planner.target_waypoint], life_time=15, color=(0, 0, 220)) # Blau
+
+        #agent.set_target_speed(33.0)
         #agent.ignore_vehicles(agent._behavior.ignore_vehicles)
         
         controller = RSSKeyboardControl(agent.config, world_model, start_in_autopilot=False)
@@ -163,6 +180,10 @@ def game_loop(args : argparse.ArgumentParser):
         def loop():
             destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
             agent._road_matrix_updater.start()  # TODO find a nicer way
+            
+            # TEMP
+            agent._road_matrix_updater.stop()
+            
             ctx : Context = None
             while True:
                 with Rule.CooldownFramework():
@@ -203,6 +224,8 @@ def game_loop(args : argparse.ArgumentParser):
                         # Phase NONE - Before Running step
                         # ----------------------------
                         planned_control = agent.run_step(debug=True)  # debug=True draws waypoints
+                        #print("Planned  Control", planned_control)
+                        assert planned_control is agent.ctx.control
                         # ----------------------------
                         # No known Phase multiple exit points
                         # ----------------------------
@@ -234,7 +257,7 @@ def game_loop(args : argparse.ArgumentParser):
 
                         ctx = agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=rss_updated_controls)
                         final_control = ctx.control
-                        #if isinstance(controller, RSSKeyboardControl):
+                        assert final_control is planned_control
                         if isinstance(controller, RSSKeyboardControl):
                             if controller.parse_events(clock, final_control):
                                 return
@@ -243,11 +266,15 @@ def game_loop(args : argparse.ArgumentParser):
                         world_model.player.apply_control(final_control)
                         agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=final_control)
                         
-                        sim_world.debug.draw_point(destination, life_time=3)
+                        sim_world.debug.draw_point(destination, life_time=0.5)
                         world_model.tick(clock) # TODO # CRITICAL maybe has to tick later
                         world_model.render(display)
                         controller.render(display)
                         pygame.display.flip()
+                        
+                        matrix = agent.road_matrix  # TEMP
+                        if matrix is not None:
+                            pprint(matrix) # TEMP   
                         
             agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None) # final phase of agents lifetime
 
