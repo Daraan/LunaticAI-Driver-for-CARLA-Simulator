@@ -38,6 +38,11 @@ class WorldModel(object):
     def __init__(self, carla_world : carla.World, config : DictConfig, args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
         self.world = carla_world
+        self.world_settings = self.world.get_settings()
+        # TEMP:
+        if agent:
+            agent._world_model = self
+        
         if map_inst:
             if isinstance(map_inst, carla.Map):
                 self._map = map_inst

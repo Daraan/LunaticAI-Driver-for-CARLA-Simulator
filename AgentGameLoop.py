@@ -129,7 +129,7 @@ def game_loop(args : argparse.ArgumentParser):
         if args.sync:
             sim_world.tick()
         agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
-        world_model = WorldModel(client.get_world(), agent.config, args, player=ego.actor, map_inst=sim_map)
+        world_model = WorldModel(sim_world, agent.config, args, player=ego.actor, map_inst=sim_map, agent=agent) # NOTE: # CRITICAL: Here an important tick happens that should be before the local planner initialization
         agent._local_planner._rss_sensor = world_model.rss_sensor # todo: remove later when we have a better ordering of init
         
         # Add Rules:
@@ -194,9 +194,9 @@ def game_loop(args : argparse.ArgumentParser):
                                 #destination = random.choice(spawn_points).location
                                 destination = next_wp.transform.location
                                 agent.set_destination(destination)
-                            else:
+                            elif agent.done():
                                 print("The target has been reached, stopping the simulation")
-                                agent.execute_phase(Phase.TERMINATING | Phase.BEGIN)
+                                agent.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
                                 break
                             agent.execute_phase(Phase.DONE| Phase.END, prior_results=None)
                         

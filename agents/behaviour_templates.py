@@ -1,11 +1,14 @@
 from functools import partial
 import random
 
+from omegaconf._impl import select_node
+
 import carla
+import numpy as np
 from agents.navigation.local_planner import RoadOption
 
 from classes.constants import Phase
-from classes.rule import Rule, EvaluationFunction, Context, always_execute
+from classes.rule import Rule, EvaluationFunction, Context, RulePriority, always_execute
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
 
@@ -19,17 +22,24 @@ if TYPE_CHECKING:
 # e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
 # QUESTION: How to merge more than one entry?
 
-def if_config_checker(ctx : "Context", config_path : str, value) -> bool:
+# ------ Rule Helpers ------
+
+def _if_config_checker(ctx : "Context", config_path : str, value) -> bool:
     """
     Check if a value in the config is set to a certain value.
     """
-    return ctx.config[config_path] == value
+    return select_node(ctx.config, config_path, absolute_key=True) == value
 
 def if_config(config_path, value):
     """
     Returns a partial function that checks if a value in the config is set to a certain value.
     """
-    return partial(if_config_checker, config_path=config_path, value=value)
+    return partial(_if_config_checker, config_path=config_path, value=value)
+
+# ---
+
+# Make random based on probabilistic config
+ 
 
 # ------ Speed Rules ------
 
@@ -69,19 +79,19 @@ normal_speed_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
 
 # ----------- Avoid Beeing tailgated -----------
 
-def avoid_tailgator(agent : "LunaticAgent"):
+def avoid_tailgator(ctx : "Context"):
     """
     If a tailgator is detected, move to the left/right lane if possible
 
         :param waypoint: current waypoint of the agent
         :param vehicle_list: list of all the nearby vehicles
     """
-    vehicle_list = agent.nearby_vehicles
-    waypoint = agent._current_waypoint # todo use a getter
+    vehicle_list = ctx.agent.vehicles_nearby
+    waypoint = ctx.agent._current_waypoint # todo use a getter
 
-    behind_vehicle_state, behind_vehicle, _ = detect_vehicles(vehicle_list, max(
-        agent.config.distance.min_proximity_threshold, agent.config.live_info.current_speed_limit / 2), up_angle_th=180, low_angle_th=160)
-    if behind_vehicle_state and agent.config.live_info.current_speed < get_speed(behind_vehicle):
+    behind_vehicle_state, behind_vehicle, _ = detect_vehicles(ctx.agent, vehicle_list, max(
+        ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, low_angle_th=160)
+    if behind_vehicle_state and ctx.agent.config.live_info.current_speed < get_speed(behind_vehicle):
         # There is a faster car behind us
 
         left_turn = waypoint.left_lane_marking.lane_change
@@ -94,23 +104,23 @@ def avoid_tailgator(agent : "LunaticAgent"):
             carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
             
             detection_result = detect_vehicles(vehicle_list, max(
-                agent.config.distance.min_proximity_threshold, agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=1)
+                ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=1)
             if not detection_result.obstacle_was_found:
                 print("Tailgating, moving to the right!")
-                end_waypoint = agent._local_planner.target_waypoint
-                agent.config.other.tailgate_counter = 200
-                agent.set_destination(end_waypoint.transform.location,
+                end_waypoint = ctx.agent._local_planner.target_waypoint
+                ctx.agent.config.other.tailgate_counter = 200
+                ctx.agent.set_destination(end_waypoint.transform.location,
                                         right_wpt.transform.location)
         
         elif left_turn == carla.LaneChange.Left and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
             detection_result = detect_vehicles(vehicle_list, max(
-                agent.config.distance.min_proximity_threshold, agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=-1)
+                ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=-1)
             
             if  not detection_result.obstacle_was_found:
                 print("Tailgating, moving to the left!")
-                end_waypoint = agent._local_planner.target_waypoint
-                agent.config.other.tailgate_counter = 200  # TODO: Hardcoded
-                agent.set_destination(end_waypoint.transform.location,
+                end_waypoint = ctx.agent._local_planner.target_waypoint
+                ctx.agent.config.other.tailgate_counter = 200  # TODO: Hardcoded
+                ctx.agent.set_destination(end_waypoint.transform.location,
                                         left_wpt.transform.location)
 
 @EvaluationFunction            
@@ -162,7 +172,7 @@ set_random_waypoint_when_done = Rule(Phase.DONE | Phase.BEGIN,
 
 def set_next_waypoint_nearby(ctx : "Context"):
     ctx.agent._world_model.hud.notification("Target reached", seconds=4.0)
-    wp = ctx.agent._current_waypoint.next(50)[-1]
+    wp = ctx.agent._current_waypoint.next(150)[-1]
     next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
     if next_wp is None:
         next_wp = wp
