@@ -2,6 +2,9 @@ import asyncio
 import threading
 import time
 
+import carla
+
+from DataGathering.informationUtils import get_all_road_lane_ids
 from DataGathering.matrix_wrap import wrap_matrix_functionalities
 
 
@@ -75,28 +78,56 @@ async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_q
 #     def __del__(self):
 #         self.worker_thread.join()
 
+
 class DataMatrix:
-    def __init__(self, ego_vehicle, world, world_map, road_lane_ids):
+    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids=None):
         self.ego_vehicle = ego_vehicle
         self.world = world
         self.world_map = world_map
-        self.road_lane_ids = road_lane_ids
+        self.road_lane_ids = road_lane_ids or get_all_road_lane_ids(world_map=world_map)
         self.matrix = None
         self.running = True
+
+    def _calculate_update(self):
+        return wrap_matrix_functionalities(self.ego_vehicle, self.world, self.world_map,
+                                                         self.road_lane_ids)
+    
+    def update(self):
+        self.matrix = self._calculate_update()
+        return self.matrix
+
+    def getMatrix(self):
+        return self.matrix
+
+    def stop(self):
+        self.running = False
+
+    def __del__(self):
+        self.stop()
+
+class AsyncDataMatrix(DataMatrix):
+    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids=None, *, sleep_time=0.1):
+        super().__init__(ego_vehicle, world, world_map, road_lane_ids)
+        self.sleep_time = sleep_time
         self.lock = threading.Lock()
         self.worker_thread = threading.Thread(target=self._worker)
         self.worker_thread.start()
+    
+    def update(self):
+        new_matrix = self._calculate_update()
+        with self.lock:
+            self.matrix = new_matrix
+        return self.matrix
 
     def _worker(self):
         while self.running:
             try:
-                new_matrix = wrap_matrix_functionalities(self.ego_vehicle, self.world, self.world_map,
-                                                         self.road_lane_ids)
-                with self.lock:
-                    self.matrix = new_matrix
+                self.update()
+            except (RuntimeError, OSError):
+                raise
             except Exception as e:
                 print(f"Error in matrix calculation: {e}")
-            time.sleep(0.1)
+            time.sleep(self.sleep_time)
 
     def getMatrix(self):
         with self.lock:
