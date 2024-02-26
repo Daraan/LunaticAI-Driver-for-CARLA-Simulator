@@ -153,7 +153,7 @@ class _GroupRule(_CountdownRule):
     @property
     def cooldown(self) -> int:
         if self.group:
-            return _GroupRule.instances[self.group][0]
+            return _GroupRule.group_instances[self.group][0]
         return super().cooldown
     
     def is_ready(self) -> bool:
@@ -167,7 +167,7 @@ class _GroupRule(_CountdownRule):
     @cooldown.setter
     def cooldown(self, value):
         if self.group:
-            _GroupRule.instances[self.group][0] = value
+            _GroupRule.group_instances[self.group][0] = value
             return
         super().cooldown = value
     

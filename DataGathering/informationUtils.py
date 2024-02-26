@@ -999,11 +999,11 @@ def get_all_lanes(ego_vehicle, ego_wp, junction_waypoints, road_lane_ids, direct
 
         # get direction from ego perspective
         # catch special case of gas station junction objects
-        if (road_id_end_wp != road_id_ego and str(end_wp.next(10)[0].road_id) != road_id_ego) 
+        if ((road_id_end_wp != road_id_ego and str(end_wp.next(10)[0].road_id) != road_id_ego) 
             and (   not ((int(road_id_end_wp) in [2, 3] and int(road_id_ego) in [467, 468, 477]) 
                         or int(road_id_ego) in [12, 13, 879, 880, 886]) 
                  or not ((int(road_id_end_wp) in [12, 13] and int(road_id_ego) in [12, 13, 879, 880, 886]) 
-                        or int(road_id_ego) in [467, 468, 477])):
+                        or int(road_id_ego) in [467, 468, 477]))):
             end_wps[2].append(
                 get_waypoint_direction(
                     ego_vehicle, closest_start_wp, end_wp, direction_angle #  TODO: comments
