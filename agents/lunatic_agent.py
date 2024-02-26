@@ -275,7 +275,23 @@ class LunaticAgent(BehaviorAgent):
             assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
             rule(ctx)
         return ctx
+    
+    @staticmethod
+    def result_to_context(key):
+        """
+        Decorator to insert the result into the context object
+        """
+        def decorator(func):
+            @wraps(func)
+            def wrapper(self : LunaticAgent, *args, **kwargs):
+                result = func(self, *args, **kwargs)
+                setattr(self.ctx, key, result)
+                return result
+            return wrapper
+            
+        return decorator
 
+    @result_to_context("control")
     def run_step(self, debug=False):
         """
         This is our main entry point that runs every tick.  
