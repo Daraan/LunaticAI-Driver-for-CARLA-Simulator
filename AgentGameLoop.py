@@ -125,6 +125,9 @@ def game_loop(args : argparse.ArgumentParser):
         })
         print(OmegaConf.to_yaml(behavior.options))
         
+        # TODO: Remove when order is reversed
+        if args.sync:
+            sim_world.tick()
         agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
         world_model = WorldModel(client.get_world(), agent.config, args, player=ego.actor, map_inst=sim_map)
         agent._local_planner._rss_sensor = world_model.rss_sensor # todo: remove later when we have a better ordering of init
