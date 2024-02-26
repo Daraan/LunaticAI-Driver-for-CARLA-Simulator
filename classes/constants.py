@@ -1,4 +1,4 @@
-from enum import Enum, Flag, auto
+from enum import Enum, Flag, IntEnum, auto
 from functools import lru_cache
 from typing import Union
 
@@ -11,6 +11,17 @@ class StreetType(str, Enum):
     JUNCTION_AHEAD = "Junction ahead"
     HIGHWAY_TRAFFIC_LIGHT = "Highway traffic light"
     HIGHWAY_WITH_ENTRY_AND_EXIT = "Highway with entry/exit"
+    
+class StreetOccupation(IntEnum):
+    NO_CAR = 0
+    EGO = 1
+    CAR = 2
+    NO_ROAD = 3
+    
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f"{s:^7}" # center the word
+        
 
 class Phase(Flag):
     """
