@@ -39,6 +39,10 @@ class WorldModel(object):
         """Constructor method"""
         self.world = carla_world
         self.world_settings = self.world.get_settings()
+        # TEMP:
+        if agent:
+            agent._world_model = self
+        
         if map_inst:
             if isinstance(map_inst, carla.Map):
                 self._map = map_inst
