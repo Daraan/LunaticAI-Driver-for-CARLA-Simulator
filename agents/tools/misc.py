@@ -33,12 +33,16 @@ def draw_waypoints(world : carla.World, waypoints, z=0.5, **kwargs):
         :param waypoints: list or iterable container with the waypoints to draw
         :param z: height in meters
     """
+    color = kwargs.pop('color', (255, 0, 0))
+    if not isinstance(color, carla.Color):
+        color = carla.Color(*color)
+    kwargs.setdefault('life_time', 1.0)
     for wpt in waypoints:
         wpt_t = wpt.transform
         begin = wpt_t.location + carla.Location(z=z)
         angle = math.radians(wpt_t.rotation.yaw)
         end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
-        world.debug.draw_arrow(begin, end, arrow_size=0.3, life_time=1.0, **kwargs)
+        world.debug.draw_arrow(begin, end, arrow_size=0.3, color=color, **kwargs)
 
 
 def get_speed(vehicle):
