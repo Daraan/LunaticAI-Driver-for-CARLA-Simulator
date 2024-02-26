@@ -106,6 +106,15 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     planner.longitudinal_control_dict = {'K_P': 1.0, 'K_I': 0.05, 'K_D': 0, 'dt': "${..dt}"} # Note: ${..dt} points to planner.dt, similar to a directory
     planner.args_longitudinal_dict = "${.longitudinal_control_dict}" # points to the variable above
 
+    # --------------------------
+    # Extras
+    # --------------------------
+    
+    lane_change.same_lane_time : float = 0.0
+    lane_change.other_lane_time : float = 0.0
+    lane_change.lane_change_time : float = 2.0
+
+
     # ---------------------
     # End of settings
     # ---------------------
