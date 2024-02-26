@@ -118,7 +118,6 @@ def get_all_road_lane_ids(world_map : carla.Map):
 
     return road_lane_ids
 
-
 def distance(p1, p2):
     """Define a function to calculate the distance between two points (carla Location objects).
 
@@ -512,8 +511,9 @@ def detect_surrounding_cars(
                 entry_road_id.append(entry_wp.road_id)
             for entry_wp in entry_wps[1]: # entry_wps[1] contains all end waypoints of entry
                 entry_highway_road.append(entry_wp.next(3)[0].road_id)
-            if entry_wp.next(3)[0] and entry_wp.next(3)[0].get_left_lane() and entry_wp.next(3)[0].road_id == \
-                    entry_wp.next(3)[0].get_left_lane().road_id:
+            # TODO: Check if all cars on highway entry are captured: especially on road after entry on highway
+            if (entry_wp.next(3)[0] and entry_wp.next(3)[0].get_left_lane() 
+                    and entry_wp.next(3)[0].road_id == entry_wp.next(3)[0].get_left_lane().road_id):
                 entry_highway_road = []
         if exit_wps:
             for exit_wp in exit_wps[1]: # exit_wps[1] contains all end waypoints of exit
@@ -521,8 +521,9 @@ def detect_surrounding_cars(
                 exit_road_id.append(exit_wp.road_id)
             for exit_wp in exit_wps[0]: # exit_wps[0] contains all start waypoints of exit
                 exit_highway_road.append(exit_wp.previous(3)[0].road_id)
-            if exit_wp.next(3)[0] and exit_wp.next(3)[0].get_left_lane() and exit_wp.next(3)[0].road_id == \
-                    exit_wp.next(3)[0].get_left_lane().road_id:
+            # TODO: Check if all cars on highway exit are captured: especially on road before exit on highway
+            if (exit_wp.next(3)[0] and exit_wp.next(3)[0].get_left_lane() 
+                    and exit_wp.next(3)[0].road_id == exit_wp.next(3)[0].get_left_lane().road_id):
                 exit_highway_road = []
 
     # Update matrix based on the lane and position/distance to ego vehicle of other car
@@ -566,7 +567,7 @@ def detect_surrounding_cars(
             surrounding_cars_on_highway_entryExit.append(car)
             continue
         
-        # get column in matrix of other car 
+        # get column in matrix of other car
         col = calculate_position_in_matrix(
             ego_location,
             ego_vehicle,
@@ -998,14 +999,11 @@ def get_all_lanes(ego_vehicle, ego_wp, junction_waypoints, road_lane_ids, direct
 
         # get direction from ego perspective
         # catch special case of gas station junction objects
-        if (road_id_end_wp != road_id_ego and str(end_wp.next(10)[0].road_id) != road_id_ego) \
-                and (not (
-                (int(road_id_end_wp) in [2, 3] and int(road_id_ego) in [467, 468, 477]) or int(road_id_ego) in [12, 13,
-                                                                                                                879,
-                                                                                                                880,
-                                                                                                                886]) \
-                     or not ((int(road_id_end_wp) in [12, 13] and int(road_id_ego) in [12, 13, 879, 880, 886]) or int(
-                    road_id_ego) in [467, 468, 477])):
+        if (road_id_end_wp != road_id_ego and str(end_wp.next(10)[0].road_id) != road_id_ego) 
+            and (   not ((int(road_id_end_wp) in [2, 3] and int(road_id_ego) in [467, 468, 477]) 
+                        or int(road_id_ego) in [12, 13, 879, 880, 886]) 
+                 or not ((int(road_id_end_wp) in [12, 13] and int(road_id_ego) in [12, 13, 879, 880, 886]) 
+                        or int(road_id_ego) in [467, 468, 477])):
             end_wps[2].append(
                 get_waypoint_direction(
                     ego_vehicle, closest_start_wp, end_wp, direction_angle #  TODO: comments
