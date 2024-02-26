@@ -10,43 +10,6 @@ from copy import deepcopy
 
 from utils.logging import log
 
-
-def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
-    ego_vehicle_waypoint = world_map.get_waypoint(ego_vehicle_location)
-    if front:
-        for i in range(1, 60, 5):
-            next_waypoint = ego_vehicle_waypoint.next(i)[0]
-            if next_waypoint.road_id != ego_vehicle_waypoint.road_id:
-                break
-    else:
-        for i in range(1, 60, 5):
-            next_waypoint = ego_vehicle_waypoint.previous(i)[0]
-            if next_waypoint.road_id != ego_vehicle_waypoint.road_id:
-                break
-
-    next_lanes = None
-    next_road_id = None
-    if next_waypoint.road_id != ego_vehicle_waypoint.road_id:
-        next_road_id = str(next_waypoint.road_id)
-        next_lanes = [
-            id.split("_")[1]
-            for id in road_lane_ids
-            if next_road_id == id.split("_")[0]
-        ]
-    our_lanes = [
-        id.split("_")[1]
-        for id in road_lane_ids
-        if str(ego_vehicle_waypoint.road_id) == id.split("_")[0]
-    ]
-    if next_lanes:
-        next_lanes.sort()
-        our_lanes.sort()
-    if next_lanes == our_lanes:
-        return next_road_id, next_lanes
-    else:
-        return None, None
-
-
 def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
     """
     Check if the ego vehicle is on a highway based on its location. The function considers the ego vehicle to be on a highway if:
@@ -336,6 +299,66 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             matrix[str(ego_vehilce_road_id) + "_" + str(ego_vehilce_lane_id)][3] = 1
     return matrix
 
+# NOTE: sub function of detect_surrounding_cars
+def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
+    """
+    Determine if the ego vehicle is about to change to a different road (in next/previous 60m).
+
+    Parameters:
+        ego_vehicle_location (carla.Location): The location of the ego vehicle for which we want to check the road change.
+        road_lane_ids (list): A list of all road-lane identifiers of the map, where each identifier is a string in the format "roadId_laneId". 
+            Format: ["1_2", "2_1", "3_2"].
+        front (bool): If True, check the road change in the front direction of the ego vehicle,
+                      otherwise check in the rear direction.
+        world_map (carla.Map): The map representing the environment.
+
+    Returns:
+        tuple: A tuple containing two elements:
+            - next_road_id (str): The ID of the next/previous road if the ego vehicle is about to change
+                                 to a different road, otherwise None.
+            - next_lanes (list of str): A list of lane IDs of the next/previous road if the ego vehicle is
+                                        about to change to a different road, otherwise None.
+    """
+    ego_vehicle_waypoint = world_map.get_waypoint(ego_vehicle_location)
+    
+    # get first waypoint infront of / behind ego vehicle that is not on the same road id
+    if front: # look in front of ego vehicle
+        for i in range(1, 60, 5):
+            next_waypoint = ego_vehicle_waypoint.next(i)[0]
+            if next_waypoint.road_id != ego_vehicle_waypoint.road_id:
+                break
+    else: # look behind ego vehicle
+        for i in range(1, 60, 5):
+            next_waypoint = ego_vehicle_waypoint.previous(i)[0]
+            if next_waypoint.road_id != ego_vehicle_waypoint.road_id:
+                break
+
+    # get road_id and lanes of road in front of / behind ego vehicle
+    next_lanes = None
+    next_road_id = None
+    if next_waypoint.road_id != ego_vehicle_waypoint.road_id:
+        next_road_id = str(next_waypoint.road_id)
+        next_lanes = [
+            id.split("_")[1]
+            for id in road_lane_ids
+            if next_road_id == id.split("_")[0]
+        ]
+        
+    # get lanes of ego vehicle's road
+    our_lanes = [
+        id.split("_")[1]
+        for id in road_lane_ids
+        if str(ego_vehicle_waypoint.road_id) == id.split("_")[0]
+    ]
+    
+    # return next_road_id and next_lanes if they exist, otherwise return None
+    if next_lanes:
+        next_lanes.sort()
+        our_lanes.sort()
+    if next_lanes == our_lanes:
+        return (next_road_id, next_lanes) # TODO: add semantics
+    else:
+        return (None, None)
 
 def detect_surrounding_cars(
     ego_location,
