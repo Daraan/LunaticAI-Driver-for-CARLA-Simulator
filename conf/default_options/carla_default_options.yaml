@@ -20,6 +20,9 @@ distance:
   braking_distance: 6
   distance_to_leading_vehicle: 5.0
 lane_change:
+  same_lane_time: 0.0
+  other_lane_time: 0.0
+  lane_change_time: 2.0
   auto_lane_change: true
   random_left_lanechange_percentage: 0.1
   random_right_lanechange_percentage: 0.1

@@ -10,7 +10,10 @@ speed:
 distance:
   base_min_distance: 3.0
   distance_ratio: 0.5
-lane_change: {}
+lane_change:
+  same_lane_time: 0.0
+  other_lane_time: 0.0
+  lane_change_time: 2.0
 obstacles:
   ignore_vehicles: false
   ignore_traffic_lights: false
