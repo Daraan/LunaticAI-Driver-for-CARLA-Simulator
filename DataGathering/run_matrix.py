@@ -1,6 +1,7 @@
 import asyncio
 import threading
 import time
+from typing import Dict, List
 
 import carla
 
@@ -85,7 +86,7 @@ class DataMatrix:
         self.world = world
         self.world_map = world_map
         self.road_lane_ids = road_lane_ids or get_all_road_lane_ids(world_map=world_map)
-        self.matrix = None
+        self.matrix : Dict[int, List[int]] = None
         self.running = True
 
     def _calculate_update(self):
@@ -93,11 +94,15 @@ class DataMatrix:
                                                          self.road_lane_ids)
     
     def update(self):
-        self.matrix = self._calculate_update()
-        return self.matrix
+        if self.running:
+            self.matrix = self._calculate_update()
+            return self.matrix
 
     def getMatrix(self):
         return self.matrix
+
+    def start(self):
+        self.running = True
 
     def stop(self):
         self.running = False
@@ -111,18 +116,17 @@ class AsyncDataMatrix(DataMatrix):
         self.sleep_time = sleep_time
         self.lock = threading.Lock()
         self.worker_thread = threading.Thread(target=self._worker)
-        self.worker_thread.start()
     
     def update(self):
-        new_matrix = self._calculate_update()
-        with self.lock:
-            self.matrix = new_matrix
-        return self.matrix
+        NotImplemented
 
     def _worker(self):
         while self.running:
             try:
-                self.update()
+                new_matrix = self._calculate_update()
+                with self.lock:
+                    self.matrix = new_matrix
+                return self.matrix
             except (RuntimeError, OSError):
                 raise
             except Exception as e:
@@ -132,6 +136,10 @@ class AsyncDataMatrix(DataMatrix):
     def getMatrix(self):
         with self.lock:
             return self.matrix
+
+    def start(self):
+        self.running = True
+        self.worker_thread.start() # NOTE: This does not allow restart
 
     def stop(self):
         self.running = False

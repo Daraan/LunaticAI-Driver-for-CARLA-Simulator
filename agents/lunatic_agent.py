@@ -166,10 +166,15 @@ class LunaticAgent(BehaviorAgent):
         self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
         
         # Data Matrix
-        if self._world_model.world_settings.synchronous_mode:
-            self.road_matrix = DataMatrix(self._vehicle, world, map_inst)
+        world_settings = self._world_model.world_settings if self._world_model is not None else self._world.get_settings() # TODO: change when creation order can be reversed.
+        if world_settings.synchronous_mode:
+            self._road_matrix_updater = DataMatrix(self._vehicle, world, map_inst)
         else:
-            self.road_matrix = AsyncDataMatrix(self._vehicle, world, map_inst)
+            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, world, map_inst)
+            
+    @property
+    def road_matrix(self):
+        return self._road_matrix_updater.getMatrix()
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
@@ -235,6 +240,9 @@ class LunaticAgent(BehaviorAgent):
         # RSS
         # todo uncomment if agent is created after world model
         #self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
+        
+        # Data Matrix
+        self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated in the background.
         
 
     def is_taking_turn(self) -> bool:
