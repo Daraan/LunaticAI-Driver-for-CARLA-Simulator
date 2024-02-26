@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Set
 import carla
 import math
 import itertools
@@ -96,8 +96,7 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
 
     return False
 
-
-def get_all_road_lane_ids(world_map):
+def get_all_road_lane_ids(world_map : carla.Map):
     """
     Retrieve a set of unique road and lane identifiers in the format "roadId_laneId" from the given world map.
 
@@ -107,7 +106,7 @@ def get_all_road_lane_ids(world_map):
     Returns:
         set: A set containing unique road and lane identifiers in the format "roadId_laneId".
     """
-    road_lane_ids = set()
+    road_lane_ids : Set[str] = set()
 
     # iterate through all waypoints in the world map
     for waypoint in world_map.generate_waypoints(1.0):
@@ -405,8 +404,8 @@ def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
         return (None, None)
 
 def detect_surrounding_cars(
-    ego_location,
-    ego_vehicle,
+    ego_location : carla.Location,
+    ego_vehicle :  carla.Actor,
     matrix,
     road_lane_ids,
     world,
