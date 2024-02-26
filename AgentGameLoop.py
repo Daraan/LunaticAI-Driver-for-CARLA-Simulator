@@ -133,6 +133,9 @@ def game_loop(args : argparse.ArgumentParser):
         })
         print(OmegaConf.to_yaml(behavior.options))
         
+        # TODO: Remove when order is reversed
+        if args.sync:
+            sim_world.tick()
         agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
         draw_waypoints(sim_world, [agent._local_planner.target_waypoint], life_time=10.0, arrow_size=2, color=(0, 220, 0)) # Grün
         world_model = WorldModel(sim_world, agent.config, args, player=ego.actor, map_inst=sim_map) # NOTE: # CRITICAL: Here an important tick happens that should be before the local planner initialization
