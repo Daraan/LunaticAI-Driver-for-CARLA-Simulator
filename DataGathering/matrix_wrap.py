@@ -1,6 +1,7 @@
 import carla
 
 from DataGathering.informationUtils import check_ego_on_highway, create_city_matrix, detect_surrounding_cars, log
+from classes.constants import StreetType
 
 def wrap_matrix_functionalities(ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids,
                                 radius=100, highway_shape=None):
@@ -17,9 +18,9 @@ def wrap_matrix_functionalities(ego_vehicle : carla.Actor, world : carla.World, 
 
     # Normal Road
     if ego_on_highway:
-        street_type = "On highway"
+        street_type = StreetType.ON_HIGHWAY
     else:
-        street_type = "Non highway street"
+        street_type = StreetType.NON_HIGHWAY_STREET
     matrix = create_city_matrix(ego_location, road_lane_ids, world_map)
 
     if matrix:

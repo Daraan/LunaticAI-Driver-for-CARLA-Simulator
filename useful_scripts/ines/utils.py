@@ -8,6 +8,8 @@ import numpy as np
 import random
 from copy import deepcopy
 
+from classes.constants import StreetType
+
 #########################################
 # general help functions:
 #########################################
@@ -3780,7 +3782,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
     # and catch special case traffic light junction on highway: 1368 -> treated as city junction
     if (ego_waypoint.is_junction and not highway_junction and get_junction_ahead(ego_waypoint, distance_to_junc) and ("Town04" in world_map.name and (get_junction_ahead(ego_waypoint, distance_to_junc).id not in [459, 870] or ego_waypoint.get_junction().id in [483, 870, 1249]))) \
         or ("Town04" in world_map.name and ego_waypoint.is_junction and junction and junction.id == 1368): 
-        street_type = "On junction"
+        street_type = StreetType.ON_JUNCTION
         print("Street type:", street_type)
         
         # if junction_shape already detected (should be when ego was before junction), detect other cars
@@ -3815,7 +3817,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
     elif (junction and not highway_junction and get_junction_ahead(ego_waypoint, distance_to_junc) and get_junction_ahead(ego_waypoint, distance_to_junc).id not in [459, 870]) \
         or ("Town04" in world_map.name and ego_waypoint.road_id in [2, 593, 3, 12, 13, 879, 880, 886, 467, 477, 468] and get_junction_ahead(ego_waypoint.next(20)[0], distance_to_junc) and get_junction_ahead(ego_waypoint.next(20)[0], distance_to_junc).id not in [459, 870] and not highway_junction) \
             or ("Town04" in world_map.name and junction and junction.id == 1368 and is_junction_ahead(ego_waypoint, distance_to_junc)):
-        street_type = "Junction ahead"
+        street_type = StreetType.JUNCTION_AHEAD
         #print("Street type:", street_type)
         # special case: gas station junctions --> if junction ahead is 459 or 870 update junction bc. the junction objects are too close due to gas station
         if "Town04" in world_map.name and get_junction_ahead(ego_waypoint, distance_to_junc) and get_junction_ahead(ego_waypoint, distance_to_junc).id in [459, 870]:
@@ -3828,7 +3830,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
         
         # special case: traffic light junction on highway logic
         if "Town04" in world_map.name and junction.id == 1368: 
-            street_type = "Highway traffic light"
+            street_type = StreetType.HIGHWAY_TRAFFIC_LIGHT
             # ego already on highway, approaching traffic light junction 
             if ego_on_highway: 
                 # remove unnecessary waypoints from junction bc. other lane direction on highway junctions is not relevant
@@ -3844,7 +3846,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
                 initial_wp = starting_wp.previous(5)[0] # simulated position
         # Every other normal junction
         else: 
-            street_type = "Junction ahead"
+            street_type = StreetType.JUNCTION_AHEAD
             initial_wp = ego_waypoint
 
         # get junction shape and useful variables, see documentation in utils.py
@@ -3885,8 +3887,8 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
 
 
     # 3. Highway entry/exit in front or behind
-    elif (is_junction_ahead(ego_waypoint, 80) or (is_junction_behind(ego_waypoint, 40) and street_type == "Highway with entry/exit")) and not on_entry and highway_junction and ego_on_highway and junction_id_skip != junction.id and not check_ego_exit_highway(ego_vehicle, ego_waypoint, highway_forward_vector, highway_shape, current_lanes):
-        street_type = "Highway with entry/exit"
+    elif (is_junction_ahead(ego_waypoint, 80) or (is_junction_behind(ego_waypoint, 40) and street_type == StreetType.HIGHWAY_WITH_ENTRY_AND_EXIT)) and not on_entry and highway_junction and ego_on_highway and junction_id_skip != junction.id and not check_ego_exit_highway(ego_vehicle, ego_waypoint, highway_forward_vector, highway_shape, current_lanes):
+        street_type = StreetType.HIGHWAY_WITH_ENTRY_AND_EXIT
         #print("Street type:", street_type)
         
         # Save ego forward vector for checking if ego is exiting highway: exiting if deviation from forward vector too high
@@ -3939,7 +3941,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
         
     # 4. ego exiting Highway
     elif check_ego_exit_highway(ego_vehicle, ego_waypoint, highway_forward_vector, highway_shape, current_lanes) and not exit_over:
-        street_type = "On highway exit"
+        street_type = StreetType.ON_HIGHWAY_EXIT
         #print("Street type:", street_type)
         
         # reset forward vector
@@ -3985,8 +3987,8 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
 
 
     # 5. Highway entry
-    elif (is_junction_ahead(ego_waypoint, 20) or (len(current_lanes) <= 1 and ego_waypoint.is_junction)) and highway_junction and street_type in  ["Non highway street", "On junction", "On highway entry", "On highway exit"]:
-        street_type = "On highway entry"
+    elif (is_junction_ahead(ego_waypoint, 20) or (len(current_lanes) <= 1 and ego_waypoint.is_junction)) and highway_junction and street_type in [StreetType.NON_HIGHWAY_STREET, StreetType.ON_JUNCTION, StreetType.ON_HIGHWAY_ENTRY, StreetType.ON_HIGHWAY_EXIT]:
+        street_type = StreetType.ON_HIGHWAY_ENTRY
         #print("Street type:", street_type)
         on_entry = True
         
@@ -4029,9 +4031,9 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
         same_junction = False
         
         if ego_on_highway:
-            street_type = "On highway"
+            street_type = StreetType.ON_HIGHWAY
         else:
-            street_type = "Non highway street"
+            street_type = StreetType.NON_HIGHWAY_STREET
         #print("Street type:", street_type)
         
         matrix = create_basic_matrix(ego_location, road_lane_ids, world_map)

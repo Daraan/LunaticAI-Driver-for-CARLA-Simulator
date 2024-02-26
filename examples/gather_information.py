@@ -1,5 +1,6 @@
 import time
 
+from classes.constants import StreetType
 import utils
 from DataGathering.informationUtils import *
 from classes.carla_service import CarlaService
@@ -70,9 +71,9 @@ def main():
 
             # Normal Road
             if ego_on_highway:
-                street_type = "On highway"
+                street_type = StreetType.ON_HIGHWAY
             else:
-                street_type = "Non highway street"
+                street_type = StreetType.NON_HIGHWAY_STREET
             matrix = create_city_matrix(ego_location, road_lane_ids, world_map)
 
             if matrix:

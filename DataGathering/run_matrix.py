@@ -45,9 +45,9 @@ async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_q
 #
 #                 # Normal Road
 #                 if ego_on_highway:
-#                     street_type = "On highway"
+#                     street_type = StreetType.ON_HIGHWAY
 #                 else:
-#                     street_type = "Non highway street"
+#                     street_type = StreetType.NON_HIGHWAY_STREET
 #                 matrix = create_city_matrix(ego_location, road_lane_ids, world_map)
 #
 #                 if matrix:

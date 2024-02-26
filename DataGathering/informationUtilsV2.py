@@ -8,6 +8,7 @@ import numpy as np
 import random
 from copy import deepcopy
 
+from classes.constants import StreetType
 from utils.logging import log
 
 #########################################
@@ -3995,9 +3996,9 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
         same_junction = False
         
         if ego_on_highway:
-            street_type = "On highway"
+            street_type = StreetType.ON_HIGHWAY
         else:
-            street_type = "Non highway street"
+            street_type = StreetType.NON_HIGHWAY_STREET
         #print("Street type:", street_type)
         
         matrix = create_basic_matrix(ego_location, road_lane_ids, world_map)
