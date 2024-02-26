@@ -145,7 +145,7 @@ class BasicAgent(object):
         If no starting location is passed, the vehicle local planner's target location is chosen,
         which corresponds (by default), to a location about 5 meters in front of the vehicle.
 
-            :param end_location (carla.Location): final location of the route
+            :param end_location (carla.Location | carla.Waypoint): final location of the route
             :param start_location (carla.Location): starting location of the route
         """
         if not start_location:
@@ -156,7 +156,7 @@ class BasicAgent(object):
             clean_queue = False
 
         start_waypoint = self._map.get_waypoint(start_location)
-        end_waypoint = self._map.get_waypoint(end_location)
+        end_waypoint = self._map.get_waypoint(end_location) if isinstance(end_location, carla.Location) else end_location
 
         route_trace = self.trace_route(start_waypoint, end_waypoint)
         self._local_planner.set_global_plan(route_trace, clean_queue=clean_queue)
@@ -179,12 +179,10 @@ class BasicAgent(object):
         """
         Calculates the shortest route between a starting and ending waypoint.
 
-            :param start_waypoint (carla.Waypoint): initial waypoint
-            :param end_waypoint (carla.Waypoint): final waypoint
+            :param start_waypoint (carla.Waypoint | carla.Location): initial waypoint
+            :param end_waypoint (carla.Waypoint | carla.Location): final waypoint
         """
-        start_location = start_waypoint.transform.location
-        end_location = end_waypoint.transform.location
-        return self._global_planner.trace_route(start_location, end_location)
+        return self._global_planner.trace_route(start_waypoint, end_waypoint)
 
     def run_step(self):
         """Execute one step of navigation."""
