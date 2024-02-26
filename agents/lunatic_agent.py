@@ -22,6 +22,7 @@ from omegaconf import DictConfig
 
 import carla
 
+from DataGathering.run_matrix import AsyncDataMatrix, DataMatrix
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
@@ -163,6 +164,12 @@ class LunaticAgent(BehaviorAgent):
 
         #Rule Framework
         self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
+        
+        # Data Matrix
+        if self._world_model.world_settings.synchronous_mode:
+            self.road_matrix = DataMatrix(self._vehicle, world, map_inst)
+        else:
+            self.road_matrix = AsyncDataMatrix(self._vehicle, world, map_inst)
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
