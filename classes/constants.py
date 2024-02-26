@@ -1,7 +1,16 @@
-from enum import Flag, auto
+from enum import Enum, Flag, auto
 from functools import lru_cache
 from typing import Union
 
+class StreetType(str, Enum):
+    ON_HIGHWAY = "On highway"
+    NON_HIGHWAY_STREET = "Non highway street"
+    ON_JUNCTION = "On junction"
+    ON_HIGHWAY_ENTRY = "On highway entry"
+    ON_HIGHWAY_EXIT = "On highway exit"
+    JUNCTION_AHEAD = "Junction ahead"
+    HIGHWAY_TRAFFIC_LIGHT = "Highway traffic light"
+    HIGHWAY_WITH_ENTRY_AND_EXIT = "Highway with entry/exit"
 
 class Phase(Flag):
     """
@@ -74,7 +83,7 @@ class Phase(Flag):
     PHASE_4 = TAKE_NORMAL_STEP # alias
     PHASE_5 = EXECUTION # out of loop
 
-    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE
+    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE | TERMINATING
 
     NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP
     IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
@@ -157,13 +166,13 @@ class Hazard(Flag):
 
     # Severity
     WARNING = auto() # Level 1
-    _IS_CRITICAL = auto()
-    _IS_EMERGENCY = auto()
+    CRITICAL_ONLY = auto()
+    EMERGENCY_ONLY = auto()
 
     COLLISION = auto()
 
     # Aliases
-    CRITICAL = WARNING | _IS_CRITICAL # Level 2
-    EMERGENCY = CRITICAL | _IS_EMERGENCY # Level 3
+    CRITICAL = WARNING | CRITICAL_ONLY # Level 2
+    EMERGENCY = CRITICAL | EMERGENCY_ONLY # Level 3
 
     OBSTACLE = PEDESTRIAN | CAR

@@ -2,6 +2,8 @@ import time
 import warnings
 from copy import deepcopy
 
+from classes.constants import StreetType
+
 warnings.filterwarnings("ignore")
 from DataGathering.informationUtils import *
 
@@ -342,9 +344,9 @@ if __name__ == "__main__":
                 on_entry = False
                 same_junction = False
                 if ego_on_highway:
-                    street_type = "On highway"
+                    street_type = StreetType.ON_HIGHWAY
                 else:
-                    street_type = "Non highway street"
+                    street_type = StreetType.NON_HIGHWAY_STREET
                 matrix = create_city_matrix(ego_location, road_lane_ids, world_map)
 
                 # special road (gas station)
