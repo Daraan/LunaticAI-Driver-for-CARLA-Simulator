@@ -10,6 +10,50 @@ from copy import deepcopy
 
 from utils.logging import log
 
+# NOTE: TODO: double definition
+def get_row(matrix):
+    row_data = {}
+
+    keys = [0, 1, 2, 3, 4, 5, 6, 7]
+    counter = 0
+    for key, values in matrix.items():
+        column_names = [f"{keys[counter]}_{i}" for i in range(0, 8)]
+        row_data.update(dict(zip(column_names, values)))
+        counter += 1
+
+    return row_data
+
+def get_row(matrix : collections.OrderedDict) -> Dict:
+    """
+    Convert the city matrix into a row of data in the DataFrame.
+
+    Parameters:
+        matrix (collections.OrderedDict): The city matrix representing the lanes around the ego vehicle.
+
+    Returns:
+        dict: A dictionary representing a row of data to be added to the DataFrame.
+    """
+    row_data = {}
+
+    keys = [0, 1, 2, 3, 4, 5, 6, 7]
+    counter = 0
+    if matrix:
+        # Iterate over the data dictionary
+        for key, values in matrix.items():
+            # Get the column names based on the key
+            column_names = [f"{keys[counter]}_{i}" for i in range(0, 8)]
+            # Create a dictionary with column names as keys and values from data as values
+            row_data.update(dict(zip(column_names, values)))
+            counter += 1
+    else:
+        # If no data is available, fill the row with None values
+        for i in range(0, 8):
+            column_names = [f"{keys[counter]}_{i}" for i in range(0, 8)]
+            row_data.update(dict(zip(column_names, [None] * 8)))
+            counter += 1
+
+    return row_data
+
 def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
     """
     Check if the ego vehicle is on a highway based on its location. The function considers the ego vehicle to be on a highway if:
