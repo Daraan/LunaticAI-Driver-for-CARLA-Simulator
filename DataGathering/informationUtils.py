@@ -810,35 +810,65 @@ def calculate_position_in_matrix(
             col = 0
     return col
 
+#########################################
+# help functions for junctions:
+#########################################
 
-def get_row(matrix):
-    row_data = {}
+##### General #####
 
-    keys = [0, 1, 2, 3, 4, 5, 6, 7]
-    counter = 0
-    for key, values in matrix.items():
-        column_names = [f"{keys[counter]}_{i}" for i in range(0, 8)]
-        row_data.update(dict(zip(column_names, values)))
-        counter += 1
+def is_highway_junction(ego_vehicle, ego_wp, junction, road_lane_ids, direction_angle):
+    """This function checks if the junction is a highway junction.
 
-    return row_data
+    Args:
+        ego_vehicle (carla.Vehicle): The vehicle object of the ego vehicle.
+        ego_wp (carla.Waypoint): Waypoint object of ego vehicle.
+        junction (carla.Junction): Junction object to be tested if it is on highway.
+        road_lane_ids (list): A list of all road-lane identifiers of the map, where each identifier is a string in the format "roadId_laneId". 
+            Format: ["1_2", "2_1", "3_2"].
+        direction_angle (float): The angle used to determine directions from the ego vehicle.
+        world_map (carla.Map): The map representing the environment.
 
+    Returns:
+        bool: Boolean indicating if the considered junction is a highway junction.
+    """
+    lanes_all, junction_roads = get_all_lanes(
+        ego_vehicle, ego_wp, junction.get_waypoints(carla.LaneType().Driving), road_lane_ids, direction_angle
+    )
 
-def get_speed(ego_vehicle):
-    velocity = ego_vehicle.get_velocity()
-    ego_speed = (
-            3.6 * (velocity.x ** 2 + velocity.y ** 2 + velocity.z ** 2) ** 0.5
-    )  # Convert m/s to km/h
+    highway_junction = False
+    for _, lanes in lanes_all.items():
+        if len(lanes) >= 8:
+            highway_junction = True
+            break
+    return highway_junction
 
-    return ego_speed
+def get_distance_junction_start(wp):
+    """Get distance from waypoint until the first junction wp behind. 
 
+    Args:
+        wp (carla.Waypoint): Initial waypoint to look back.
 
-def get_steering_angle(ego_vehicle):
-    control = ego_vehicle.get_control()
-    steering_angle = math.radians(control.steer)
-    return steering_angle
+    Returns:
+        int: Distance in meters from waypoint until the first junction wp behind.
+    """
+    x = 1
+    while wp.previous(x)[0].is_junction:
+        x = x + 1
+    return x
 
+def get_distance_junction_end(wp):
+    """Get distance from waypoint until the first junction wp in front. 
 
+    Args:
+        wp (carla.Waypoint): Initial waypoint to look in front.
+
+    Returns:
+        int: Distance in meters from waypoint until the first junction wp in front.
+    """
+    x = 1
+    while wp.next(x)[0].is_junction:
+        x = x + 1
+    return x
 def get_waypoint_direction(
     ego_vehicle, closest_start_wp, junction_waypoint, direction_angle
 ):
@@ -1093,19 +1123,25 @@ def rotate_grid(grid, yaw):
         # Rotate 90 degrees to the right
         return transpose_2d_array(transpose_2d_array(transpose_2d_array(grid)))
 
-
-def check_flipping_rows_and_columns(ego_vehicle):
-    ego_transform = ego_vehicle.get_transform()
-    ego_rotation = ego_transform.rotation
-    yaw = ego_rotation.yaw
-
-    if (yaw >= -45 and yaw <= 45) or (
-            (yaw >= -180 and yaw < -135) or (yaw >= 135 and yaw <= 180)
-    ):
-        return True
-
-
+# NOTE: sub function of detect_cars_inside_junction
 def get_grid_corners(junction_shape):
+    """
+    Find the corner coordinates of the inner junction in the given grid representation.
+
+    Parameters:
+        key_value_pairs (list): A list of key-value pairs representing the city matrix.
+            Format: [("1", [0, 0, 0, 0, 0, 0, 0, 0]), ("2", [0, 0, 0, 0, 0, 0, 0, 0]), ...].
+
+    Returns:
+        list: A list containing the coordinates of the four corners of the inner junction.
+            Format: [[row, column], [row, column], [row, column], [row, column]] in the grid format.
+
+    Notes:
+        - The grid representation must be a 2D list with 8 rows and 8 columns.
+        - The function handles the possibility of a 90-degree rotation in the grid,
+          ensuring correct corner identification regardless of the junction's orientation.
+    """
+    # get top y coordinate: y1
     global x_1, x_2, y_2
     y_1 = None
     for i in range(8):
@@ -1138,34 +1174,7 @@ def get_grid_corners(junction_shape):
 
     return [[y_1, x_1], [y_1, x_2], [y_2, x_1], [y_2, x_2]]
 
-
-def is_highway_junction(ego_vehicle, ego_wp, junction, road_lane_ids, direction_angle):
-    lanes_all, junction_roads = get_all_lanes(
-        ego_vehicle, ego_wp, junction.get_waypoints(carla.LaneType().Driving), road_lane_ids, direction_angle
-    )
-
-    highway_junction = False
-    for _, lanes in lanes_all.items():
-        if len(lanes) >= 8:
-            highway_junction = True
-            break
-    return highway_junction
-
-
-def get_distance_junction_start(wp):
-    x = 1
-    while wp.previous(x)[0].is_junction:
-        x = x + 1
-    return x
-
-
-def get_distance_junction_end(wp):
-    x = 1
-    while wp.next(x)[0].is_junction:
-        x = x + 1
-    return x
-
-
+# NOTE: sub function update_matrix
 def insert_in_matrix(matrix, car, ego_vehicle, col, row):
     if car.id == ego_vehicle.id:
         matrix[row][1][col] = 1
@@ -1280,6 +1289,29 @@ def get_ego_direction_lanes(ego_vehicle, road_lane_ids, world_map):
             other_direction = direction
 
     return ego_direction, other_direction
+
+
+def check_flipping_rows_and_columns(ego_vehicle):
+    """
+    Check ego vehicle direction: if north or south, return True.
+
+    Args:
+        ego_vehicle (carla.Vehicle): Ego vehicle object to get ego direction.
+
+    Returns:
+        bool: Return True if ego vehicle is driving north or south.
+    """
+    ego_transform = ego_vehicle.get_transform()
+    ego_rotation = ego_transform.rotation
+    yaw = ego_rotation.yaw
+
+    # check in which direction of world ego is driving: if yaw is between -45 and 45 (=north) or between -180 and -135 or between 135 and 180 (south)
+    if (yaw >= -45 and yaw <= 45) or (
+        (yaw >= -180 and yaw < -135) or (yaw >= 135 and yaw <= 180)
+    ):
+        return True
+    else:
+        return False
 
 def get_road(lane_start):
     waypoints = [lane_start]
