@@ -9,6 +9,7 @@ This module provides GlobalRoutePlanner implementation.
 """
 
 import math
+from typing import Union
 
 import carla
 import networkx as nx
@@ -40,7 +41,7 @@ class GlobalRoutePlanner(object):
         self._find_loose_ends()
         self._lane_change_link()
 
-    def trace_route(self, origin, destination):
+    def trace_route(self, origin : Union[carla.Location, carla.Waypoint], destination : Union[carla.Location, carla.Waypoint]):
         """
         This method returns list of (carla.Waypoint, RoadOption)
         from origin to destination
@@ -273,7 +274,7 @@ class GlobalRoutePlanner(object):
                 if left_found and right_found:
                     break
 
-    def _localize(self, location):
+    def _localize(self, location : carla.Waypoint):
         """
         This function finds the road segment that a given location
         is part of, returning the edge it belongs to
@@ -298,7 +299,7 @@ class GlobalRoutePlanner(object):
         l2 = np.array(self._graph.nodes[n2]['vertex'])
         return np.linalg.norm(l1 - l2)
 
-    def _path_search(self, origin, destination):
+    def _path_search(self, origin : Union[carla.Location, carla.Waypoint], destination : Union[carla.Location, carla.Waypoint]):
         """
         This function finds the shortest path connecting origin and destination
         using A* search with distance heuristic.
