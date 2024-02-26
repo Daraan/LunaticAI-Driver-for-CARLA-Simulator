@@ -58,6 +58,7 @@ def game_loop(args : argparse.ArgumentParser):
     ticking the agent and, if needed, the world.
     """
     world_model : WorldModel = None # Set for finally block
+    agent : LunaticAgent = None # Set for finally block
 
     if args.seed:
         random.seed(args.seed)
@@ -160,8 +161,9 @@ def game_loop(args : argparse.ArgumentParser):
             print("Spawned", v.actor)
 
         def loop():
-            destination = agent._local_planner._waypoints_queue[-1][0].transform.location
-            ctx = None
+            destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
+            agent._road_matrix_updater.start()  # TODO find a nicer way
+            ctx : Context = None
             while True:
                 with Rule.CooldownFramework():
                     clock.tick()
@@ -170,10 +172,9 @@ def game_loop(args : argparse.ArgumentParser):
                     else:
                         world_model.world.wait_for_tick()
                     ctx = agent.make_context(last_context=ctx)
+                    
                     if not isinstance(controller, RSSKeyboardControl):
                         controller.parse_events()
-
-                    world_model.tick(clock) # TODO # CRITICAL maybe has to tick later
 
                     # TODO: Make this a rule and/or move inside agent
                     # TODO: make a Phases.DONE
@@ -212,9 +213,9 @@ def game_loop(args : argparse.ArgumentParser):
                         planned_control.manual_gear_shift = False # TODO: turn into a rule
                         
                         ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
-                        if isinstance(controller, RSSKeyboardControl):
-                            if controller.parse_events(clock, ctx.control):
-                                return
+                        #if isinstance(controller, RSSKeyboardControl):
+                        #    if controller.parse_events(clock, ctx.control):
+                        #        return
                         # Todo: Remove
                         if AD_RSS_AVAILABLE:
                             rss_updated_controls = world_model.rss_check_control(ctx.control)
@@ -226,22 +227,24 @@ def game_loop(args : argparse.ArgumentParser):
                                 #print("RSS updated controls\n"
                                 #     f"throttle: {control.throttle} -> {rss_updated_controls.throttle}, steer: {control.steer} -> {rss_updated_controls.steer}, brake: {control.brake} -> {rss_updated_controls.brake}")
                             
-                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls, control=ctx.control) # NOTE: rss_updated_controls could be None
+                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls) # NOTE: rss_updated_controls could be None
                         # ----------------------------
                         # Phase 5 - Apply Control to Vehicle
                         # ----------------------------
 
-                        ctx = agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=None, control=ctx.control)
+                        ctx = agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=rss_updated_controls)
                         final_control = ctx.control
                         #if isinstance(controller, RSSKeyboardControl):
-                        #    if controller.parse_events(clock, final_control):
-                        #        return
+                        if isinstance(controller, RSSKeyboardControl):
+                            if controller.parse_events(clock, final_control):
+                                return
                         # Set automatic control-related vehicle lights
                         world_model.update_lights(final_control)
-                        world_model.player.apply_control(planned_control)
+                        world_model.player.apply_control(final_control)
                         agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=final_control)
                         
                         sim_world.debug.draw_point(destination, life_time=3)
+                        world_model.tick(clock) # TODO # CRITICAL maybe has to tick later
                         world_model.render(display)
                         controller.render(display)
                         pygame.display.flip()
@@ -261,9 +264,10 @@ def game_loop(args : argparse.ArgumentParser):
         else:
             loop()
 
-
     finally:
-
+        print("Quitting. - Destroying actors and stopping world.")
+        if agent is not None:
+            agent._road_matrix_updater.stop()
         if world_model is not None:
             world_settings = world_model.world.get_settings()
             world_settings.synchronous_mode = False

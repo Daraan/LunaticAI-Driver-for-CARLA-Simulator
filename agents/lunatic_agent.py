@@ -272,17 +272,16 @@ class LunaticAgent(BehaviorAgent):
         assert phase == normal_next or phase & Phase.EXCEPTIONS, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
         
         self.current_phase = phase # set next phase
-        ctx = self.ctx
         
         if control is not None:
-            ctx.set_control(control)
-        ctx.prior_result = prior_results
+            self.ctx.set_control(control)
+        self.ctx.prior_result = prior_results
         rules_to_check = self.rules[phase]
         for rule in rules_to_check: # todo: maybe dict? grouped by phase?
             #todo check here for the phase instead of in the rule
             assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
-            rule(ctx)
-        return ctx
+            rule(self.ctx)
+        return self.ctx
     
     @staticmethod
     def result_to_context(key):
@@ -520,7 +519,6 @@ class LunaticAgent(BehaviorAgent):
 
     #@override
     # TODO: Port this to a rule that is used during emergencies.
-    @wraps(substep_managers.emergency_manager)
     def add_emergency_stop(self, control, reason:str=None) -> carla.VehicleControl:
         """
         Modifies the control values to perform an emergency stop.
