@@ -15,7 +15,7 @@ from __future__ import annotations
 from copy import deepcopy
 from functools import wraps
 import random
-from typing import ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING
+from typing import ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
 import weakref
 
 from omegaconf import DictConfig
@@ -162,13 +162,14 @@ class LunaticAgent(BehaviorAgent):
         self._set_collision_sensor()
 
         #Rule Framework
-        self.rules = deepcopy(self.rules) # Copies the ClassVar to the instance
+        self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
         # and https://carla.readthedocs.io/en/latest/python_api/#carla.Sensor.listen
         blueprint = self._world.get_blueprint_library().find('sensor.other.collision')
-        self._collision_sensor : carla.Sensor = self._world.spawn_actor(blueprint, carla.Transform(), attach_to=self._vehicle)
+        self._collision_sensor : carla.Sensor = assure_type(carla.Sensor, 
+                                                     self._world.spawn_actor(blueprint, carla.Transform(), attach_to=self._vehicle))
         def collision_callback(event : carla.SensorData):
             self._collision_event(event)
         self._collision_sensor.listen(self._collision_event)

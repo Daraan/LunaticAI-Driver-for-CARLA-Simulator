@@ -75,15 +75,16 @@ def game_loop(args : argparse.ArgumentParser):
         if args.sync:
             logging.log(logging.DEBUG, "Using synchronous mode.")
             # apply synchronous mode if wanted
-            settings = sim_world.get_settings()
-            settings.synchronous_mode = True
-            settings.fixed_delta_seconds = 0.05
-            sim_world.apply_settings(settings)
+            world_settings = sim_world.get_settings()
+            world_settings.synchronous_mode = True
+            world_settings.fixed_delta_seconds = 0.05
+            sim_world.apply_settings(world_settings)
             traffic_manager = client.get_trafficmanager()
             traffic_manager.set_synchronous_mode(True)
         else:
             traffic_manager = client.get_trafficmanager()
             logging.log(logging.DEBUG, "Might be using asynchronous mode if not changed.")
+        print("World Settings:", world_settings)
 
         sim_map = sim_world.get_map()
         
@@ -126,7 +127,7 @@ def game_loop(args : argparse.ArgumentParser):
         print(OmegaConf.to_yaml(behavior.options))
         
         agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
-        world_model = WorldModel(client.get_world(), agent.config, args, player=ego.actor, map_inst=sim_map)
+        world_model = WorldModel(sim_world, agent.config, args, player=ego.actor, map_inst=sim_map)
         agent._local_planner._rss_sensor = world_model.rss_sensor # todo: remove later when we have a better ordering of init
         
         # Add Rules:
@@ -163,16 +164,16 @@ def game_loop(args : argparse.ArgumentParser):
             ctx = None
             while True:
                 with Rule.CooldownFramework():
-                    ctx = agent.make_context(last_context=ctx)
                     clock.tick()
                     if args.sync:
                         world_model.world.tick()
                     else:
                         world_model.world.wait_for_tick()
+                    ctx = agent.make_context(last_context=ctx)
                     if not isinstance(controller, RSSKeyboardControl):
                         controller.parse_events()
 
-                    world_model.tick(clock)
+                    world_model.tick(clock) # TODO # CRITICAL maybe has to tick later
 
                     # TODO: Make this a rule and/or move inside agent
                     # TODO: make a Phases.DONE
@@ -245,7 +246,7 @@ def game_loop(args : argparse.ArgumentParser):
                         controller.render(display)
                         pygame.display.flip()
                         
-            agent.execute_phase(Phase.TERMINATING | Phase.END) # final phase of agents lifetime
+            agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None) # final phase of agents lifetime
 
         # Interactive
         if "-I" in sys.argv:
@@ -264,16 +265,18 @@ def game_loop(args : argparse.ArgumentParser):
     finally:
 
         if world_model is not None:
-            settings = world_model.world.get_settings()
-            settings.synchronous_mode = False
-            settings.fixed_delta_seconds = None
-            world_model.world.apply_settings(settings)
+            world_settings = world_model.world.get_settings()
+            world_settings.synchronous_mode = False
+            world_settings.fixed_delta_seconds = None
+            world_model.world.apply_settings(world_settings)
             traffic_manager.set_synchronous_mode(False)
             world_model.destroy()
         else:
             try:
-                ego.actor.destroy()
-            except (NameError, AttributeError):
+                if ego.actor is not None:
+                    ego.actor.destroy()
+            except (NameError, AttributeError) as e:
+                print("Ego actor not found", e)
                 pass
 
         pygame.quit()
