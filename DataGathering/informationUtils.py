@@ -609,7 +609,34 @@ def detect_surrounding_cars(
 
     return matrix, surrounding_cars_on_highway_entryExit
 
+def check_car_in_front_or_behind(ego_location, other_location, rotation):
+    """
+    Chek if other car is in front or behind ego vehicle.
 
+    Args:
+        ego_location (carla.Location): The location object of the ego vehicle.
+        other_location (carla.Location): The location object of the other car.
+        rotation (carla.Rotation): The rotation object of the ego vehicle.
+
+    Returns:
+        float: The dot_product between forward vectors (similarity between the vectors): dot_product > 0 ==> in front, dot_product < 0 ==> behind
+    """
+    # Get ego to other vector location
+    ego_to_other_vector = other_location - ego_location
+
+    # Calculate forward vector of ego
+    ego_forward_vector = carla.Vector3D(
+        math.cos(math.radians(rotation.yaw)),
+        math.sin(math.radians(rotation.yaw)),
+        0,
+    )
+
+    # Calculate dot_product (similarity between the vectors): dot_product > 0 ==> in front, dot_product < 0 ==> behind
+    dot_product = (
+        ego_forward_vector.x * ego_to_other_vector.x
+        + ego_forward_vector.y * ego_to_other_vector.y
+    )
+    return dot_product
 def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
     """
     Calculate the distance between point B (other vehicle) and point C (parallel point right/left of ego on lane of other vehicle) in a right-angled triangle.
@@ -677,28 +704,40 @@ def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
     # return distance between perpendicular_wp and other car in right-angled triangle
     return math.sqrt(abs(distance_ego_other**2 - distance_opposite**2))
 
-def check_car_in_front_or_behind(ego_location, other_location, rotation):
-    # Get ego to other vector
-    ego_to_other_vector = other_location - ego_location
-
-    # Calculate forward vector
-    ego_forward_vector = carla.Vector3D(
-        math.cos(math.radians(rotation.yaw)),
-        math.sin(math.radians(rotation.yaw)),
-        0,
-    )
-
-    # Calculate dot_product (similarity between the vectors)
-    dot_product = (
-            ego_forward_vector.x * ego_to_other_vector.x
-            + ego_forward_vector.y * ego_to_other_vector.y
-    )
-    return dot_product
-
-
 def calculate_position_in_matrix(
         ego_location, ego_vehicle, other_car, matrix, world_map, velocity, ghost=False
 ):
+    """
+    Calculate the position of the other car in the city matrix based on its relative location and distance from the ego vehicle.
+    Only determines the column, not the row since that is based on the lane_id of the other car.
+
+    Parameters:
+        ego_location (carla.Location): The location object of the ego vehicle.
+        ego_vehicle (carla.Vehicle): The ego vehicle for reference.
+        other_car (carla.Vehicle): The other car whose position is to be determined.
+        matrix (collections.OrderedDict): An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id". 
+            For non-existing lanes different placeholder exist, e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction.
+            The values indicate whether a vehicle is present: 0 - No vehicle, 1 - Ego vehicle, 3 - No road.
+            Format example: {
+                "left_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "left_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "1_2": [0, 0, 0, 0, 0, 0, 0, 0],
+                "1_1": [0, 0, 0, 0, 0, 0, 0, 0],
+                "1_-1": [0, 0, 0, 1, 0, 0, 0, 0],
+                "1_-2": [0, 0, 0, 0, 0, 0, 0, 0],
+                "right_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+        world_map (carla.WorldMap): The map representing the environment.
+        ghost (bool): Ghost mode when ego is exiting/entrying a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
+
+    Returns:
+        int or None: The column index in the city matrix representing the column in the city matrix of the other car,
+                    or None if the other car is not within the specified distance range.
+
+    Note:
+        The city matrix should be pre-generated using the 'create_basic_matrix' function. Other cars are detected using the detect_surronding cars func.
+    """
+
     # Get ego vehicle rotation and location
     if ghost:
         rotation = other_car.get_transform().rotation # for simplicity use other actors rotation when in ghost mode
@@ -1186,6 +1225,61 @@ def angle_between_vectors(a, b):
     cos_theta = dot / (mag_a * mag_b)
     theta = math.acos(cos_theta)
     return math.degrees(theta)
+
+#####################
+# Functions not in use
+#####################
+
+def get_ego_direction_lanes(ego_vehicle, road_lane_ids, world_map):
+    """
+    Determine the lanes in the same and opposite direction as the ego vehicle.
+
+    Parameters:
+        ego_vehicle (Vehicle): The ego vehicle for which to determine the lane directions.
+        road_lane_ids (list of str): List of road and lane IDs in the world map.
+        world_map (WorldMap): The map representing the environment.
+
+    Returns:
+        tuple: A tuple containing two lists:
+            - ego_direction (list of int): A list of lane IDs that are in the same direction as
+                                           the ego vehicle's current lane.
+            - other_direction (list of int): A list of lane IDs that are in the opposite direction
+                                             to the ego vehicle's current lane.
+    """
+    ego_vehicle_location = ego_vehicle.get_location()
+    ego_vehicle_waypoint = world_map.get_waypoint(ego_vehicle_location)
+    ego_vehicle_lane_id = str(ego_vehicle_waypoint.lane_id)
+    ego_vehicle_road_id = str(ego_vehicle_waypoint.road_id)
+
+    lanes = []
+    for id in road_lane_ids:
+        if ego_vehicle_road_id == id.split("_")[0]:
+            lanes.append(id.split("_")[1])
+    lanes.sort()
+    lanes = [int(id) for id in lanes]
+    lanes_splitted = []
+    z = 0
+    for i in range(1, len(lanes)):
+        if lanes[i] == lanes[i - 1] - 1 or lanes[i] == lanes[i - 1] + 1:
+            continue
+        else:
+            lanes_splitted.append(lanes[z:i])
+            z = i
+    lanes_splitted.append(lanes[z:])
+    lanes_splitted = [
+        sorted(direction, key=abs, reverse=True) for direction in lanes_splitted
+    ]
+
+    # Initialize matrix and key_value_pairs
+    other_direction = []
+    ego_direction = []
+    for direction in lanes_splitted:
+        if int(ego_vehicle_lane_id) in direction:
+            ego_direction = direction
+        else:
+            other_direction = direction
+
+    return ego_direction, other_direction
 
 def get_road(lane_start):
     waypoints = [lane_start]
