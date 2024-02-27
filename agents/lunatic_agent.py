@@ -119,8 +119,6 @@ class LunaticAgent(BehaviorAgent):
 
         self.live_info : DictConfig = self.config.live_info
 
-        # TODO: Make this a rule countdown and remove
-        self.config.live_info.current_tailgate_counter : int = self.config.other.tailgate_counter # type: ignore
         # Vehicle information
         self.live_info.speed = 0
         self.live_info.speed_limit = 0
@@ -210,8 +208,6 @@ class LunaticAgent(BehaviorAgent):
         This method updates the information regarding the ego
         vehicle based on the surrounding world.
         """
-        self.config.other.tailgate_counter = max(0, self.config.other.tailgate_counter - 1)
-
         self.live_info.current_speed = get_speed(self._vehicle)
         self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
         # planner has access to config

@@ -108,7 +108,6 @@ def avoid_tailgator(ctx : "Context"):
             if not detection_result.obstacle_was_found:
                 print("Tailgating, moving to the right!")
                 end_waypoint = ctx.agent._local_planner.target_waypoint
-                ctx.agent.config.other.tailgate_counter = 200
                 ctx.agent.set_destination(end_waypoint.transform.location,
                                         right_wpt.transform.location)
         
@@ -119,7 +118,6 @@ def avoid_tailgator(ctx : "Context"):
             if  not detection_result.obstacle_was_found:
                 print("Tailgating, moving to the left!")
                 end_waypoint = ctx.agent._local_planner.target_waypoint
-                ctx.agent.config.other.tailgate_counter = 200  # TODO: Hardcoded
                 ctx.agent.set_destination(end_waypoint.transform.location,
                                         left_wpt.transform.location)
 
@@ -137,12 +135,14 @@ def avoid_tailgator_check(ctx : "Context") -> bool:
 
     return (ctx.agent.config.live_info.direction == RoadOption.LANEFOLLOW \
             and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10  #TODO Hardcoded
-            and ctx.agent.config.other.tailgate_counter == 0 # Counter to not change lane too often
             )
 
 avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,
                             rule=avoid_tailgator_check,
                             action=avoid_tailgator,
+                            cooldown_reset_value=200,
+                            group="lane_change",
+                            priority=RulePriority.HIGH,
                             description="Avoid tailgating when followed by a faster car that is quite close.")
 
 
