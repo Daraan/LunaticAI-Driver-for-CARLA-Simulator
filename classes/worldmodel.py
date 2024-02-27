@@ -123,7 +123,7 @@ class WorldModel(object):
             carla.MapLayer.All
         ]
         # RSS
-        self.rss_sensor = None
+        self.rss_sensor = None # set in restart
         self.rss_unstructured_scene_visualizer = None
         self.rss_bounding_box_visualizer = None
         
@@ -227,7 +227,7 @@ class WorldModel(object):
 
 
         if self.external_actor:
-            ego_sensors = []
+            ego_sensors : List[carla.Actor] = []
             for actor in self.world.get_actors():
                 if actor.parent == self.player:
                     ego_sensors.append(actor)
@@ -252,9 +252,9 @@ class WorldModel(object):
         if AD_RSS_AVAILABLE:
             self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer)
+            self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
         else: 
             self.rss_sensor = None
-        self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
         if self.sync:
             self.world.tick()
         else:
@@ -354,7 +354,7 @@ class WorldModel(object):
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
             self.imu_sensor.sensor,
-            # self.player
+            #self.player
         ]
         actors.extend(self.actors)
         for actor in actors:
@@ -393,7 +393,7 @@ class WorldModel(object):
             return None
         
         if self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
-            print("Not on route!" +  str(self.rss_sensor.ego_dynamics_on_route))
+            print("Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route))
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:

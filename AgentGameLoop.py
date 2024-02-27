@@ -120,9 +120,13 @@ def game_loop(args : argparse.ArgumentParser):
                         'speed_decrease' : 15,
                             'safety_time' : 7,
                             'min_speed' : 0 },
-            'rss': {'enabled': False, 
+            'rss': {'enabled': True, 
                     'use_stay_on_road_feature': False},
         })
+        # TEMP
+        import classes.worldmodel
+        classes.worldmodel.AD_RSS_AVAILABLE = behavior.options.rss.enabled
+        
         print(OmegaConf.to_yaml(behavior.options))
         
         # TODO: Remove when order is reversed
@@ -240,7 +244,7 @@ def game_loop(args : argparse.ArgumentParser):
                         #        return
                         # Set automatic control-related vehicle lights
                         world_model.update_lights(final_control)
-                        world_model.player.apply_control(planned_control)
+                        world_model.player.apply_control(final_control)
                         agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=final_control)
                         
                         sim_world.debug.draw_point(destination, life_time=3)
