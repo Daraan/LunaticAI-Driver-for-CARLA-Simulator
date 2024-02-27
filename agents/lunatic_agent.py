@@ -140,6 +140,7 @@ class LunaticAgent(BehaviorAgent):
 
         self._incoming_waypoint : carla.Waypoint = None
         self._look_ahead_steps = 0  # updated in _update_information used for local_planner.get_incoming_waypoint_and_direction
+        self._previous_direction : Optional[RoadOption] = None
         self._incoming_direction : RoadOption = None
 
         # Initialize the planners
@@ -222,6 +223,7 @@ class LunaticAgent(BehaviorAgent):
 
         self._look_ahead_steps = int((self.live_info.speed_limit) / 10)
 
+        self._previous_direction = self._incoming_direction
         self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
             steps=self._look_ahead_steps)
         if self._incoming_direction is None:
