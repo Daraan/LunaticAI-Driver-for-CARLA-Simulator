@@ -128,7 +128,7 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
             :param debug: boolean for debugging
             :return: throttle control
         """
-        current_speed = self.config.live_info.speed
+        current_speed = self.config.live_info.current_speed
         if debug:
             print('Current speed = {}'.format(current_speed))
 
