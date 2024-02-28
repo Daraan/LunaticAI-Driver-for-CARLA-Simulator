@@ -1,5 +1,5 @@
 from shapely.geometry import Polygon
-from functools import partial
+from functools import partial, wraps
 
 import carla
 from agents.navigation.local_planner import RoadOption
@@ -213,3 +213,18 @@ def generate_lane_change_path(waypoint : carla.Waypoint, direction='left', dista
         plan.append((next_wp, RoadOption.LANEFOLLOW))
 
     return plan
+
+    
+def result_to_context(key):
+    """
+    Decorator to insert the result into the context object
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self : "LunaticAgent", *args, **kwargs):
+            result = func(self, *args, **kwargs)
+            setattr(self.ctx, key, result)
+            return result
+        return wrapper
+        
+    return decorator

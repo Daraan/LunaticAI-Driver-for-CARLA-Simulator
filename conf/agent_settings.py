@@ -678,9 +678,13 @@ class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
 
 # Boost.Python.enum cannot be used as annotations for omegaconf, replacing them by real enums,
 # Functional API is easier to create but cannot be used as type hints
-RssLogLevel = Enum("RssLogLevel", {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)
-RssRoadBoundariesMode = Enum("RssRoadBoundariesMode", {str(name):value for value, name in carla.RssRoadBoundariesMode.values.items()}, module=__name__)
-
+from classes.rss_sensor import AD_RSS_AVAILABLE
+if AD_RSS_AVAILABLE:
+    RssLogLevel = Enum("RssLogLevel", {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)
+    RssRoadBoundariesMode = Enum("RssRoadBoundariesMode", {str(name):value for value, name in carla.RssRoadBoundariesMode.values.items()}, module=__name__)
+else:
+    RssLogLevel = int
+    RssRoadBoundariesMode = int
     
 @dataclass
 class RssSettings(AgentConfig):
@@ -692,17 +696,27 @@ class RssSettings(AgentConfig):
     If RSS is not available (no ad-rss library) this will be set to False.
     """
     
-    use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On  # type: ignore
-    """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
-    
-    log_level : RssLogLevel = carla.RssLogLevel.info  # type: ignore
-    """Set the initial log level of the RSSSensor"""
+    if AD_RSS_AVAILABLE:
+        use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On  if AD_RSS_AVAILABLE else 1 # type: ignore
+        """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
+        
+        log_level : RssLogLevel = carla.RssLogLevel.info  # type: ignore
+        """Set the initial log level of the RSSSensor"""
+    else:
+        use_stay_on_road_feature : Union[int, str, bool] = True
+        """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
+        
+        log_level : Union[int, str] = "info"
+        """Set the initial log level of the RSSSensor"""
+        
+        
     
     def _clean_options(self):
         if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesMode):
             self.use_stay_on_road_feature = int(self.use_stay_on_road_feature)
-        if not isinstance(self.log_level, RssLogLevel):
-            self.log_level = int(self.log_level)
+        if AD_RSS_AVAILABLE:
+            if not isinstance(self.log_level, RssLogLevel):
+                self.log_level = int(self.log_level)
     
 
 # ---------------------

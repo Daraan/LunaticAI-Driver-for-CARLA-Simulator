@@ -32,7 +32,7 @@ import agents.tools
 from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
                                compute_distance)
 import agents.tools.lunatic_agent_tools
-from agents.tools.lunatic_agent_tools import generate_lane_change_path
+from agents.tools.lunatic_agent_tools import generate_lane_change_path, result_to_context
 
 from agents import substep_managers
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss, RoadOption
@@ -294,21 +294,6 @@ class LunaticAgent(BehaviorAgent):
             print("WARNING: A action likely tried to change `ctx.config` which is non-permanent. Use `ctx.agent.config.` instead.")
             raise
         return self.ctx
-    
-    @staticmethod
-    def result_to_context(key):
-        """
-        Decorator to insert the result into the context object
-        """
-        def decorator(func):
-            @wraps(func)
-            def wrapper(self : LunaticAgent, *args, **kwargs):
-                result = func(self, *args, **kwargs)
-                setattr(self.ctx, key, result)
-                return result
-            return wrapper
-            
-        return decorator
 
     @result_to_context("control")
     def run_step(self, debug=False):
