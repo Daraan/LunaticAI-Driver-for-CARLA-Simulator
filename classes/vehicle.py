@@ -42,12 +42,11 @@ class VehicleBase:
             client.apply_batch([carla.command.DestroyActor(cls.instances.pop().actor)])
 
     def __eq__(self, other):
-        # comment: are there by chance other ways? some (Unreal)id?
-        return not (
-                self.getLocation().x != other.getLocation().x
-                or self.getLocation().y != other.getLocation().y
-                or self.getLocation().z != other.getLocation().z
-        )
+        if isinstance(other, VehicleBase):
+            return self.actor.id == other.actor.id
+        if isinstance(other, carla.Vehicle):
+            return self.actor.id == other.id
+        return False
 
     def spawn(self, transform):
         self.actor: carla.Vehicle = self.world.spawn_actor(self.actorBlueprint, transform)
