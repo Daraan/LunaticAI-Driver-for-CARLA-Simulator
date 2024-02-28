@@ -1,45 +1,190 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Dict, List, Tuple, Union
-from omegaconf import DictConfig, MISSING, SI, II, OmegaConf
+from typing import Dict, List, Optional, Tuple, Union
+import typing
+from omegaconf import DictConfig, MISSING, SI, II, OmegaConf, SCMode
 
 #import attr
 import carla
 
 # NOTE:
 """
+# For type hints when interpolating
+
 II : Equivalent to ${interpolation}
 SI Use this for String interpolation, for example "http://${host}:${port}"
-
-:param interpolation:
-:return: input ${node} with type Any
-
 """
 
 from agents.navigation.local_planner import RoadOption
+from omegaconf.errors import InterpolationToMissingValueError
 
+from functools import partial, wraps
 
-class Config:
-    pass
+class class_or_instance_method:
+    """Transform a method into both a regular and class method"""
+    def __init__(self, call):
+        self.__wrapped__ = call
 
+    def __get__(self, instance, owner):
+        if instance is None:  # called on class
+            return wraps(self.__wrapped__ )(partial(self.__wrapped__, owner))
+        else:                 # called on instance
+            return wraps(self.__wrapped__ )(partial(self.__wrapped__, instance))
+
+class AgentConfig:
+    overwrites : Optional[Dict[str, dict]] = None
+    
+    @classmethod
+    def get_defaults(cls) -> "AgentConfig":
+        """Returns the global default options."""
+        return cls
+    
+    @class_or_instance_method
+    def export_options(cls_or_self, path, category=None, resolve=False) -> None:
+        """Exports the options to a yaml file."""
+        if category is None:
+            options = cls_or_self
+        else:
+            options = cls_or_self[category]
+        OmegaConf.save(options, path, resolve=resolve)
+        
+    @class_or_instance_method
+    def simplify_options(cls_or_self, category=None, *, resolve, yaml=False, **kwargs):
+        """
+        Returns a dictionary of all options or a string in yaml format.
+        
+        :param category: The category of options to retrieve. If None, retrieves all options.
+        :param resolve: Whether to resolve and interpolate values.
+        :param yaml: Whether to return the options as YAML formatted string
+        :param kwargs: Additional keyword arguments to pass to OmegaConf.to_container or OmegaConf.to_yaml.
+        
+        :return: The dictionary or str of options.
+        """
+        if category is None:
+            options = cls_or_self
+        else:
+            options = getattr(cls_or_self, category)
+        if not isinstance(options, DictConfig) and not resolve:
+            return asdict(options)
+        if not isinstance(options, DictConfig):
+            options = OmegaConf.structured(options)
+        if yaml:
+            return OmegaConf.to_yaml(options, resolve=resolve, **kwargs)
+        return OmegaConf.to_container(options, resolve=resolve, **kwargs)
+    
+    @class_or_instance_method
+    def to_yaml(cls_or_self, resolve=False):
+        return cls_or_self.simplify_options(resolve=resolve, yaml=True)
+    
+    @class_or_instance_method
+    def get_options(cls, category=None) -> "AgentConfig":
+        """Returns a dictionary of all options."""
+        if category is None:
+            options = cls
+        else:
+            options = getattr(cls, category)
+        return OmegaConf.structured(options, flags={"allow_objects": True})
+    
+    @staticmethod
+    def _flatten_dict(source : DictConfig, target):
+        for k, v in source.items():
+            if isinstance(v, dict):
+                AgentConfig._flatten_dict(v, target)
+            else:
+                target[k] = v
+    
+    @class_or_instance_method
+    def get_flat_options(cls_or_self, *, resolve=True) -> dict:
+        """
+        Note these return a copy of the data but in a flat hierarchy.
+        Also note interpolations are replaced by default.
+        E.g. target_speed and max_speed are two different references.
+        """
+        try:
+            resolved = OmegaConf.to_container(OmegaConf.create(cls_or_self), resolve=resolve, throw_on_missing=False)
+        except InterpolationToMissingValueError:
+            print("Resolving has failed because a missing value has been accessed. Fill all missing values before calling this function or set `resolve=False`.")
+            # NOTE: alternatively call again with resolve=False
+            raise
+        options = {}
+        cls_or_self._flatten_dict(resolved, options)
+        return options
+    
+    def update(self, options : dict, clean=True):
+        """Updates the options with a new dictionary."""
+        print("updating on", self.__class__.__name__, options)
+        for k, v in options.items():
+            print("updating", k, v) 
+            if isinstance(getattr(self, k), AgentConfig):
+                getattr(self, k).update(v)
+            else:
+                setattr(self, k, v)
+        if clean:
+            self._clean_options()
+
+    def _clean_options(self):
+        """Postprocessing of possibly wrong values"""
+        NotImplemented
+
+    def __post_init__(self):
+        # NOTE: for dataclasses
+        """Assures that if a dict is passed the values overwrite the defaults."""
+        self._clean_options()
+        if self.overwrites is None:
+            return
+        for key, value in self.overwrites.items():
+            if key in self.__annotations__:
+                print("updating", key, value)
+                if issubclass(self.__annotations__[key], AgentConfig):
+                    getattr(self, key).update(value)
+                else:
+                    print("is not a Config")
+                    setattr(self, key, value)
+            else:
+                print(f"Key {key} not found in {self.__class__.__name__} options.")
+        return 
+        for name, _type in self.__annotations__.items(): # NOTE: AttributeError: if an attribute error points here type hints might have been forgotten.
+            if isinstance(_type, typing._GenericAlias):
+                continue
+            if issubclass(_type, AgentConfig) \
+                and not isinstance(getattr(self, name), _type):
+                    setattr(self, name, _type.get_defaults()(**getattr(self, name)))
+
+# ---------------------
+# Live Info
+# ---------------------
 
 @dataclass
-class LiveInfo(Config):
+class LiveInfo(AgentConfig):
     current_speed : float = MISSING
     current_speed_limit : float = MISSING
+    velocity_vector : carla.Vector3D = MISSING
     direction : RoadOption = MISSING
     
+    # NOTE: Not ported to OmegaConf
+    @property
+    def speed(self):
+        return self.current_speed
+
+    @property
+    def speed_limit(self):
+        return self.current_speed_limit
+    
+    # NOTE: not wr
+    #current_speed : float = II(".speed") # alias for convenience
+    #current_speed_limit : float = II(".speed_limit")
+
 # ---------------------
 # Speed
 # ---------------------    
     
     
 @dataclass
-class BasicAgentSpeedSettings(Config):
-    current_speed: float = II("live_info.current_speed")
+class BasicAgentSpeedSettings(AgentConfig):
+    current_speed: float = II("live_info.speed")
     """This is a reference to live_info.speed, which is updated by the agent"""
     
-    current_speed_limit: float = II("live_info.current_speed_limit")
+    current_speed_limit: float = II("live_info.speed_limit")
     """This is a reference to live_info.speed_limit, which is updated by the agent"""
     
     target_speed: float = 20
@@ -96,7 +241,7 @@ class BehaviorAgentSpeedSettings(BasicAgentSpeedSettings):
     
     
 @dataclass
-class AutopilotSpeedSettings(Config):
+class AutopilotSpeedSettings(AgentConfig):
     vehicle_percentage_speed_difference : float = 30 # in percent
     """
     Sets the difference the vehicle's intended speed and its current speed limit. 
@@ -128,7 +273,7 @@ class LunaticAgentSpeedSettings(AutopilotSpeedSettings, BehaviorAgentSpeedSettin
 
 
 @dataclass
-class BasicAgentDistanceSettings(Config):
+class BasicAgentDistanceSettings(AgentConfig):
     """
     Calculation of the minimum distance for # XXX
     min_distance = base_min_distance + distance_ratio * vehicle_speed 
@@ -164,7 +309,7 @@ class BehaviorAgentDistanceSettings(BasicAgentDistanceSettings):
     
 
 @dataclass
-class AutopilotDistanceSettings(Config):
+class AutopilotDistanceSettings(AgentConfig):
     distance_to_leading_vehicle : float = 5.0
     """
     Sets the minimum distance in meters that a vehicle has to keep with the others. 
@@ -172,7 +317,7 @@ class AutopilotDistanceSettings(Config):
     """
 
 @dataclass
-class LunaticAgent_Distance(AutopilotDistanceSettings, BehaviorAgentDistanceSettings):
+class LunaticAgentDistanceSettings(AutopilotDistanceSettings, BehaviorAgentDistanceSettings):
     distance_to_leading_vehicle : float = MISSING # 5.0
     """
     PORT from TrafficManager # TODO:
@@ -186,7 +331,7 @@ class LunaticAgent_Distance(AutopilotDistanceSettings, BehaviorAgentDistanceSett
 # ---------------------
 
 @dataclass
-class BasicAgentLaneChangeSettings(Config):
+class BasicAgentLaneChangeSettings(AgentConfig):
     """
     XXX
     
@@ -201,7 +346,7 @@ class BehaviorAgentLaneChangeSettings(BasicAgentLaneChangeSettings):
     pass
 
 @dataclass
-class AutopilotLaneChangeSettings(Config):
+class AutopilotLaneChangeSettings(AgentConfig):
     auto_lane_change: bool = True
     """Turns on or off lane changing behavior for a vehicle."""
     
@@ -240,7 +385,7 @@ class LunaticAgentLaneChangeSettings(AutopilotLaneChangeSettings, BasicAgentLane
 # ---------------------
 
 @dataclass
-class BasicAgentObstacleSettings(Config):
+class BasicAgentObstacleSettings(AgentConfig):
     """
     --------------------------
     Agent Level
@@ -300,7 +445,7 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
     pass
 
 @dataclass
-class AutopilotObstacleSettings(Config):
+class AutopilotObstacleSettings(AgentConfig):
     ignore_lights_percentage : float = 0.0
     ignore_signs_percentage : float = 0.0
     ignore_walkers_percentage : float = 0.0
@@ -327,7 +472,7 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
 # ---------------------
 
 @dataclass
-class BasicAgentControllerSettings(Config):
+class BasicAgentControllerSettings(AgentConfig):
     """PIDController Level (called from planner)"""
     
     max_brake : float = 0.5
@@ -357,7 +502,7 @@ class BehaviorAgentControllerSettings(BasicAgentControllerSettings):
     pass
 
 @dataclass
-class AutopilotControllerSettings(Config):
+class AutopilotControllerSettings(AgentConfig):
     vehicle_lane_offset : float = 0
     """
     Sets a lane offset displacement from the center line. Positive values imply a right offset while negative ones mean a left one.
@@ -374,7 +519,7 @@ class LunaticAgentControllerSettings(AutopilotControllerSettings, BehaviorAgentC
 # ---------------------
 
 @dataclass
-class BasicAgentPlannerSettings(Config):
+class BasicAgentPlannerSettings(AgentConfig):
     """
     PID controller using the following semantics:
             K_P -- Proportional term
@@ -452,10 +597,10 @@ class LunaticAgentPlannerSettings(BehaviorAgentPlannerSettings):
 # ---------------------
     
 @dataclass
-class BasicAgentEmergencySettings(Config):
-    throttle = 0.0
-    brake = II("controls.max_brake")
-    hand_brake = False
+class BasicAgentEmergencySettings(AgentConfig):
+    throttle : float = 0.0
+    brake : float = II("controls.max_brake")
+    hand_brake : bool = False
     
     
 @dataclass
@@ -481,8 +626,14 @@ class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
 # RSS
 # --------------------- 
 
+# Boost.Python.enum cannot be used as annotations for omegaconf, replacing them by real enums,
+# Functional API is easier to create but cannot be used as type hints
+RssLogLevel = Enum("RssLogLevel", {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)
+RssRoadBoundariesMode = Enum("RssRoadBoundariesMode", {str(name):value for value, name in carla.RssRoadBoundariesMode.values.items()}, module=__name__)
+
+    
 @dataclass
-class RSSSettings(Config):
+class RssSettings(AgentConfig):
     enabled : bool = True
     """
     Use the RSS sensor.
@@ -491,17 +642,23 @@ class RSSSettings(Config):
     If RSS is not available (no ad-rss library) this will be set to False.
     """
     
-    use_stay_on_road_feature : carla.RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On
+    use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On  # type: ignore
     """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
     
-    log_level : carla.RssLogLevel = carla.RssLogLevel.info
+    log_level : RssLogLevel = carla.RssLogLevel.info  # type: ignore
     """Set the initial log level of the RSSSensor"""
+    
+    def _clean_options(self):
+        if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesMode):
+            self.use_stay_on_road_feature = int(self.use_stay_on_road_feature)
+        if not isinstance(self.log_level, RssLogLevel):
+            self.log_level = int(self.log_level)
     
 
 # ---------------------
 
 @dataclass
-class AutopilotBehavior(Config):
+class AutopilotBehavior(AgentConfig):
     """
     These are settings from the autopilot carla.TrafficManager which are not exposed or not used by the original carla agents.
     NOTE: That default values do not exist for most settings; we should set it to something reasonable.
@@ -558,8 +715,6 @@ class AutopilotBehavior(Config):
     update_vehicle_lights : bool = False
     """Sets if the Traffic Manager is responsible of updating the vehicle lights, or not."""
     
-from pprint import pprint
-pprint(LunaticAgentObstacleSettings())
 
 @dataclass
 class SimpleBasicAgentSettings(LiveInfo, BasicAgentSpeedSettings, BasicAgentDistanceSettings, BasicAgentLaneChangeSettings, BasicAgentObstacleSettings, BasicAgentControllerSettings, BasicAgentPlannerSettings, BasicAgentEmergencySettings):
@@ -574,53 +729,53 @@ class SimpleAutopilotAgentSettings(AutopilotSpeedSettings, AutopilotDistanceSett
     pass
 
 @dataclass
-class SimpleLunaticAgentSettings(LiveInfo, LunaticAgentSpeedSettings, LunaticAgent_Distance, LunaticAgentLaneChangeSettings, LunaticAgentObstacleSettings, LunaticAgentControllerSettings, LunaticAgentPlannerSettings, LunaticAgentEmergencySettings, RSSSettings):
+class SimpleLunaticAgentSettings(LiveInfo, LunaticAgentSpeedSettings, LunaticAgentDistanceSettings, LunaticAgentLaneChangeSettings, LunaticAgentObstacleSettings, LunaticAgentControllerSettings, LunaticAgentPlannerSettings, LunaticAgentEmergencySettings, RssSettings):
     pass
 
 
 @dataclass
-class BasicAgentSettings(Config):
-    live_info : LiveInfo = field(default_factory=LiveInfo)
-    speed : BasicAgentSpeedSettings = field(default_factory=BasicAgentSpeedSettings)
-    distance : BasicAgentDistanceSettings = field(default_factory=BasicAgentDistanceSettings)
-    lane_change : BasicAgentLaneChangeSettings = field(default_factory=BasicAgentLaneChangeSettings)
-    obstacles : BasicAgentObstacleSettings = field(default_factory=BasicAgentObstacleSettings)
-    controls : BasicAgentControllerSettings = field(default_factory=BasicAgentControllerSettings)
-    planner : BasicAgentPlannerSettings = field(default_factory=BasicAgentPlannerSettings)
-    emergency : BasicAgentEmergencySettings = field(default_factory=BasicAgentEmergencySettings)
+class BasicAgentSettings(AgentConfig):
+    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
+    live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
+    speed : BasicAgentSpeedSettings = field(default_factory=BasicAgentSpeedSettings, init=False)
+    distance : BasicAgentDistanceSettings = field(default_factory=BasicAgentDistanceSettings, init=False)
+    lane_change : BasicAgentLaneChangeSettings = field(default_factory=BasicAgentLaneChangeSettings, init=False)
+    obstacles : BasicAgentObstacleSettings = field(default_factory=BasicAgentObstacleSettings, init=False)
+    controls : BasicAgentControllerSettings = field(default_factory=BasicAgentControllerSettings, init=False)
+    planner : BasicAgentPlannerSettings = field(default_factory=BasicAgentPlannerSettings, init=False)
+    emergency : BasicAgentEmergencySettings = field(default_factory=BasicAgentEmergencySettings, init=False)
+        
     
 @dataclass
-class BehaviorAgentSettings(Config):
-    speed : BehaviorAgentSpeedSettings = field(default_factory=BehaviorAgentSpeedSettings)
-    distance : BehaviorAgentDistanceSettings = field(default_factory=BehaviorAgentDistanceSettings)
-    lane_change : BehaviorAgentLaneChangeSettings = field(default_factory=BehaviorAgentLaneChangeSettings)
-    obstacles : BehaviorAgentObstacleSettings = field(default_factory=BehaviorAgentObstacleSettings)
-    controls : BehaviorAgentControllerSettings = field(default_factory=BehaviorAgentControllerSettings)
-    planner : BehaviorAgentPlannerSettings = field(default_factory=BehaviorAgentPlannerSettings)
-    emergency : BehaviorAgentEmergencySettings = field(default_factory=BehaviorAgentEmergencySettings)
+class BehaviorAgentSettings(AgentConfig):
+    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
+    live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
+    speed : BehaviorAgentSpeedSettings = field(default_factory=BehaviorAgentSpeedSettings, init=False)
+    distance : BehaviorAgentDistanceSettings = field(default_factory=BehaviorAgentDistanceSettings, init=False)
+    lane_change : BehaviorAgentLaneChangeSettings = field(default_factory=BehaviorAgentLaneChangeSettings, init=False)
+    obstacles : BehaviorAgentObstacleSettings = field(default_factory=BehaviorAgentObstacleSettings, init=False)
+    controls : BehaviorAgentControllerSettings = field(default_factory=BehaviorAgentControllerSettings, init=False)
+    planner : BehaviorAgentPlannerSettings = field(default_factory=BehaviorAgentPlannerSettings, init=False)
+    emergency : BehaviorAgentEmergencySettings = field(default_factory=BehaviorAgentEmergencySettings, init=False)
     
 @dataclass
-class LunaticAgentSettings(Config):
-    live_info : LiveInfo = field(default_factory=LiveInfo)
-    speed : LunaticAgentSpeedSettings = field(default_factory=LunaticAgentSpeedSettings)
-    distance : LunaticAgent_Distance = field(default_factory=LunaticAgent_Distance)
-    lane_change : LunaticAgentLaneChangeSettings = field(default_factory=LunaticAgentLaneChangeSettings)
-    obstacles : LunaticAgentObstacleSettings = field(default_factory=LunaticAgentObstacleSettings)
-    controls : LunaticAgentControllerSettings = field(default_factory=LunaticAgentControllerSettings)
-    planner : LunaticAgentPlannerSettings = field(default_factory=LunaticAgentPlannerSettings)
-    emergency : LunaticAgentEmergencySettings = field(default_factory=LunaticAgentEmergencySettings)
-    rss : RSSSettings = field(default_factory=RSSSettings)
+class LunaticAgentSettings(AgentConfig):
+    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
+    live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
+    speed : LunaticAgentSpeedSettings = field(default_factory=LunaticAgentSpeedSettings, init=False)
+    distance : LunaticAgentDistanceSettings = field(default_factory=LunaticAgentDistanceSettings, init=False)
+    lane_change : LunaticAgentLaneChangeSettings = field(default_factory=LunaticAgentLaneChangeSettings, init=False)
+    obstacles : LunaticAgentObstacleSettings = field(default_factory=LunaticAgentObstacleSettings, init=False)
+    controls : LunaticAgentControllerSettings = field(default_factory=LunaticAgentControllerSettings, init=False)
+    planner : LunaticAgentPlannerSettings = field(default_factory=LunaticAgentPlannerSettings, init=False)
+    emergency : LunaticAgentEmergencySettings = field(default_factory=LunaticAgentEmergencySettings, init=False)
+    rss : RssSettings = field(default_factory=RssSettings, init=False)
     
-    
-basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
-behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
-lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags=dict(allow_objects=True))
 
-#  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
+if __name__ == "__main__":
+    #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
+    #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
+    lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags={"allow_objects": True})
 
-"""
-class Test(Enum):
-    a = 1
-    b = 2
-    c = "hmm"
-"""
+    #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
+
