@@ -13,14 +13,16 @@ traffic signs, and has different possible configurations. """
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import is_dataclass
 from functools import wraps
 import random
 from typing import ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
 import weakref
 
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 import carla
+import omegaconf
 
 from DataGathering.run_matrix import AsyncDataMatrix, DataMatrix
 from agents.navigation.global_route_planner import GlobalRoutePlanner
@@ -37,6 +39,7 @@ from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, D
 
 from classes.constants import Phase, Hazard
 from classes.rule import Context, Rule
+from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
 from conf.default_options.original_behavior import BasicAgentSettings
 from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
@@ -76,7 +79,7 @@ class LunaticAgent(BehaviorAgent):
     
     # todo: rename in the future
 
-    def __init__(self, vehicle : carla.Vehicle, world : carla.World, behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, vehicle : carla.Vehicle, world : carla.World, behavior : LunaticAgentSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -95,10 +98,23 @@ class LunaticAgent(BehaviorAgent):
 
         # Settings ---------------------------------------------------------------
         print("Behavior of Agent", behavior)
-        if isinstance(behavior, BasicAgentSettings):
-            self._behavior = behavior
+        self._behavior = behavior
+        if isinstance(behavior, AgentConfig):
+            print("Is valid config")
+            opt_dict : LunaticAgentSettings = self._behavior.get_options()  # base options from templates
+            opt_dict.update(overwrite_options)  # update by custom options
+        elif isinstance(behavior, DictConfig):
+            opt_dict = OmegaConf.merge(behavior, overwrite_options) # UNTESTED
+        elif not overwrite_options:
+            print("Warning: Settings are not a supported Config class")
+            opt_dict = behavior  # assume the user passed something appropriate
         else:
-            raise ValueError("Behavior must be a " + str(BasicAgentSettings))
+            raise ValueError("Behavior must be a " + str(AgentConfig))
+        self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
+        
+        print("\n\nAgent config is", OmegaConf.to_yaml(self.config))
+        
+        print("Type of vehicle", type(vehicle))
         self._vehicle : carla.Vehicle = vehicle
         self._world : carla.World = world
         if map_inst:
@@ -109,23 +125,14 @@ class LunaticAgent(BehaviorAgent):
                 self._map = self._world.get_map()
         else:
             self._map = self._world.get_map()
-
-        opt_dict = self._behavior.get_options()  # base options from templates
-        opt_dict.update(overwrite_options)  # update by custom options
-
-        self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
         
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
 
-        self.live_info : DictConfig = self.config.live_info
+        self.live_info : LiveInfo = self.config.live_info
 
-        # Vehicle information
-        self.live_info.speed = 0
-        self.live_info.speed_limit = 0
-        self.live_info.direction = None
         #config.speed.min_speed = 5
         self.config.speed.min_speed
-        #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
+        #config.planner.sampling_resolution = 4.5  # NOTE also set in behaviors
 
         # Original Setup ---------------------------------------------------------
         
@@ -148,9 +155,9 @@ class LunaticAgent(BehaviorAgent):
                 self._global_planner = grp_inst
             else:
                 print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-                self._global_planner = GlobalRoutePlanner(self._map, self.config.unknown.sampling_resolution)
+                self._global_planner = GlobalRoutePlanner(self._map, self.config.planner.sampling_resolution)
         else:
-            self._global_planner = GlobalRoutePlanner(self._map, self.config.unknown.sampling_resolution)
+            self._global_planner = GlobalRoutePlanner(self._map, self.config.planner.sampling_resolution)
 
         # Get the static elements of the scene
         # TODO: This could be done globally and not for each instance :/
@@ -170,6 +177,11 @@ class LunaticAgent(BehaviorAgent):
             self._road_matrix_updater = DataMatrix(self._vehicle, world, map_inst)
         else:
             self._road_matrix_updater = AsyncDataMatrix(self._vehicle, world, map_inst)
+        # Vehicle information
+        self.live_info.current_speed = 0
+        self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
+        self.live_info.velocity_vector = self._vehicle.get_velocity()
+        self.live_info.direction = self._local_planner.target_road_option
             
     @property
     def road_matrix(self):
@@ -211,13 +223,13 @@ class LunaticAgent(BehaviorAgent):
         self.live_info.current_speed = get_speed(self._vehicle)
         self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
         # planner has access to config
-        #self._local_planner.set_speed(self.live_info.speed_limit)            # <-- Adjusts Planner
+        #self._local_planner.set_speed(self.live_info.current_speed_limit)            # <-- Adjusts Planner
         
         self.live_info.direction : RoadOption = self._local_planner.target_road_option # type: ignore
         if self.live_info.direction is None:
             self.live_info.direction = RoadOption.LANEFOLLOW
 
-        self._look_ahead_steps = int((self.live_info.speed_limit) / 10)
+        self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10)
 
         self._previous_direction = self._incoming_direction
         self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
@@ -275,10 +287,14 @@ class LunaticAgent(BehaviorAgent):
             self.ctx.set_control(control)
         self.ctx.prior_result = prior_results
         rules_to_check = self.rules[phase]
-        for rule in rules_to_check: # todo: maybe dict? grouped by phase?
-            #todo check here for the phase instead of in the rule
-            assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
-            rule(self.ctx)
+        try:
+            for rule in rules_to_check: # todo: maybe dict? grouped by phase?
+                #todo check here for the phase instead of in the rule
+                assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
+                rule(self.ctx)
+        except omegaconf.ReadonlyConfigError:
+            print("WARNING: A action likely tried to change `ctx.config` which is non-permanent. Use `ctx.agent.config.` instead.")
+            raise
         return self.ctx
     
     @staticmethod
@@ -544,7 +560,7 @@ class LunaticAgent(BehaviorAgent):
             lane_change_time * speed,
             check=False,        # TODO: Explanation of this parameter? Make use of it and & how? Could mean that it is checked if there is a left lane
             lane_changes=1,     # changes only one lane
-            step_distance= self.config.unknown.sampling_resolution
+            step_distance= self.config.planner.sampling_resolution
         )
         if not path:
             print("WARNING: Ignoring the lane change as no path was found")

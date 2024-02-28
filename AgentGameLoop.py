@@ -30,6 +30,7 @@ import carla
 from agents.tools.misc import draw_waypoints
 from classes.rule import Context, Rule
 
+from conf.agent_settings import LunaticAgentSettings
 import utils
 from utils.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
@@ -116,11 +117,12 @@ def game_loop(args : argparse.ArgumentParser):
         #if True or args.agent == "Lunatic":
         # TODO: # CRITICAL: This should be a dataclass->DictConfig and not its own class!
         # TODO: if DictConfig then World and agent order can be reversed and World initialized with config
-        behavior = LunaticBehaviorSettings({'distance':
-            { "base_min_distance": 5.0,
-            "min_proximity_threshold": 12.0,
-            "braking_distance": 6.0,
-            "distance_to_leading_vehicle": 8.0},
+        behavior = LunaticAgentSettings(
+            {'distance':
+                { "base_min_distance": 5.0,
+                "min_proximity_threshold": 12.0,
+                "braking_distance": 6.0,
+                "distance_to_leading_vehicle": 8.0},
             'controls':{ "max_brake" : 1.0, 
                         'max_steering' : 0.25},
             'speed': {'target_speed': 33.0,
@@ -129,20 +131,31 @@ def game_loop(args : argparse.ArgumentParser):
                         'speed_decrease' : 15,
                             'safety_time' : 7,
                             'min_speed' : 0 },
-            'rss': {'enabled': True, 
+            'lane_change' : {
+                "random_left_lanechange_percentage": 0.45,
+                "random_right_lanechange_percentage": 0.45,
+            },
+            'rss': {'enabled': False, 
                     'use_stay_on_road_feature': False},
-        })
+            "planner": {
+                "dt" : world_settings.fixed_delta_seconds or 1/20,
+             }
+            })
+        print("Set dt to", world_settings.fixed_delta_seconds)
         if PRINT_CONFIG:
-            print(OmegaConf.to_yaml(behavior.options))
+            print("    \n\n\n")
+            pprint(behavior)
+            print(behavior.to_yaml())
         
         # TEMP
         import classes.worldmodel
-        classes.worldmodel.AD_RSS_AVAILABLE = behavior.options.rss.enabled
+        classes.worldmodel.AD_RSS_AVAILABLE = behavior.rss.enabled
         # TODO: Remove when order is reversed
         if args.sync:
             sim_world.tick()
         
         agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
+        print("DT is", agent.config.planner.dt)
         world_model = WorldModel(sim_world, agent.config, args, player=ego.actor, map_inst=sim_map, agent=agent) # NOTE: # CRITICAL: Here an important tick happens that should be before the local planner initialization
         agent._local_planner._rss_sensor = world_model.rss_sensor # todo: remove later when we have a better ordering of init
         
@@ -179,6 +192,12 @@ def game_loop(args : argparse.ArgumentParser):
             print("Spawned", v.actor)
 
         def loop():
+            if args.sync:
+                # Assure that dt is set
+                OmegaConf.select(agent.config,
+                    "planner.dt",
+                    throw_on_missing=True
+                )
             destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
             agent._road_matrix_updater.start()  # TODO find a nicer way
             
