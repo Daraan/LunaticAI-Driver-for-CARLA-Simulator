@@ -40,8 +40,6 @@ from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, D
 from classes.constants import Phase, Hazard
 from classes.rule import Context, Rule
 from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
-from conf.default_options.original_behavior import BasicAgentSettings
-from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
 if TYPE_CHECKING:
     from classes.worldmodel import WorldModel

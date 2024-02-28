@@ -46,8 +46,6 @@ from agents.navigation.constant_velocity_agent import ConstantVelocityAgent
 from agents.lunatic_agent import LunaticAgent
 from agents import behaviour_templates
 
-from conf.lunatic_behavior_settings import LunaticBehaviorSettings
-
 # ==============================================================================
 # TEMP # Remove
 
