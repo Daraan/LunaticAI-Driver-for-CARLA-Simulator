@@ -102,7 +102,6 @@ class WorldModel(object):
         self.recording_enabled = False
         self.recording_start = 0
         self.actors = []
-        self.actors.append(self.player)
         
         # From interactive:
         self.constant_velocity_enabled = False
@@ -354,19 +353,25 @@ class WorldModel(object):
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
             self.imu_sensor.sensor,
-            #self.player
         ]
         actors.extend(self.actors)
+        if not self.player in actors:
+            actors.append(self.player)
+        print("to destroy", actors)
         for actor in actors:
             if actor is not None:
+                print("destroying actor: " + str(actor), end=" destroyed=")
                 try:
-                    actor.stop()
+                    if hasattr(actor, 'stop'):
+                        actor.stop()
                 except AttributeError:
                     pass
-                try:
-                    actor.destroy()
-                except RuntimeError:
-                    print("Warning: Could not destroy actor: " + str(actor))
+                #try:
+                x = actor.destroy()
+                print(x)
+                #except RuntimeError:
+                #    raise
+                #    print("Warning: Could not destroy actor: " + str(actor))
         # TODO: Call destroy_sensors?
         
         

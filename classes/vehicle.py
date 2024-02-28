@@ -34,7 +34,7 @@ class VehicleBase:
             self.actorBlueprint: carla.ActorBlueprint = make
         else:
             self.actorBlueprint: carla.ActorBlueprint = blueprint_library.filter(make)[0]
-        Vehicle.instances.append(self)  # access all instances over the class
+        #Vehicle.instances.append(self)  # access all instances over the class
 
     @classmethod
     def destroy_all(cls, client):

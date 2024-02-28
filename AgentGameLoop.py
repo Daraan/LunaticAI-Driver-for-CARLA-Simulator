@@ -322,13 +322,14 @@ def game_loop(args : argparse.ArgumentParser):
             world_model.world.apply_settings(world_settings)
             traffic_manager.set_synchronous_mode(False)
             world_model.destroy()
-        else:
-            try:
-                if ego.actor is not None:
-                    ego.actor.destroy()
-            except (NameError, AttributeError) as e:
-                print("Ego actor not found", e)
-                pass
+            ego = None
+        
+        try:
+            if ego is not None and ego.actor is not None:
+                ego.actor.destroy()
+        except (NameError, AttributeError) as e:
+            print("Ego actor not found", e)
+            pass
 
         pygame.quit()
 
