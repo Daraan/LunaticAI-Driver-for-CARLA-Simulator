@@ -134,7 +134,7 @@ class LunaticAgent(BehaviorAgent):
 
         # Original Setup ---------------------------------------------------------
         
-        self._last_traffic_light = None  # Current red traffic light
+        self._last_traffic_light : carla.TrafficLight = None  # Current red traffic light
 
         # TODO: No more hardcoded defaults / set them from opt_dict which must have all parameters; check which are parameters and which are set by other functions (e.g. _look_ahead_steps)
 

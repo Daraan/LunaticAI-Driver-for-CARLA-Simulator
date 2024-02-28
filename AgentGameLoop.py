@@ -184,7 +184,7 @@ def game_loop(args : argparse.ArgumentParser):
         for sp in spawn_points[1:4]:
             v = Vehicle(world_model, car_bp)
             v.spawn(sp)
-            world_model.actors.append(v)
+            world_model.actors.append(v.actor)
             v.actor.set_target_velocity(carla.Vector3D(-2, 0, 0))
             v.actor.set_autopilot(True)
             print("Spawned", v.actor)

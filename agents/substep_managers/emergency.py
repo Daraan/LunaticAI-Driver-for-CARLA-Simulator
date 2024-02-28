@@ -24,9 +24,9 @@ def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", r
     control.throttle = 0.0
     # negate the chosen default setting
     if self.config.emergency.hand_brake_modify_chance > 0.0 and self.config.emergency.hand_brake_modify_chance / 100 > random.random():
-        control.hand_brake = not self.config.emergency.use_hand_brake
+        control.hand_brake = not self.config.emergency.hand_brake
     else:
-        control.hand_brake = self.config.emergency.use_hand_brake
+        control.hand_brake = self.config.emergency.hand_brake
 
     # Enable random steering if flagged
     if self.config.emergency.do_random_steering:
