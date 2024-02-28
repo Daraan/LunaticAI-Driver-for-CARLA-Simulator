@@ -1,7 +1,7 @@
 from omegaconf import DictConfig, OmegaConf 
 
 import carla 
-from conf.settings_base_class import new_config, obstacles, speed
+from to_be_trashed.settings_base_class import new_config, obstacles, speed, lane_change
 from conf.default_options.original_behavior import BehaviorAgentSettings
 from conf.default_options.original_autopilot_behavior import AutopilotBehavior
 
@@ -32,6 +32,8 @@ detection_angles.cars_adjust_angle =[20, -50]
 
 
 # Implemented -----
+
+lane_change.random_lane_change_interval : int = 200
 
 speed.intersection_speed_decrease = 5.0
 OmegaConf.register_new_resolver("sum", lambda x, y: x + y)

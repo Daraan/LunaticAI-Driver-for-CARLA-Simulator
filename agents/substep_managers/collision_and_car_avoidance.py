@@ -36,17 +36,17 @@ def collision_detection_manager(self : "LunaticAgent", waypoint: carla.Waypoint)
             detection_result : ObstacleDetectionResult = detect_vehicles(self, vehicle_list, 
                                                                 max(self.config.distance.min_proximity_threshold, 
                                                                     self.config.live_info.current_speed_limit / 2), 
-                                                                up_angle_th=180, 
+                                                                up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1], 
                                                                 lane_offset=-1)
         elif self.config.live_info.direction == RoadOption.CHANGELANERIGHT:
             detection_result : ObstacleDetectionResult = detect_vehicles(self, vehicle_list,
                                                                 max(self.config.distance.min_proximity_threshold, 
                                                                     self.config.live_info.current_speed_limit / 2), 
-                                                                up_angle_th=180, 
+                                                                up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1], 
                                                                 lane_offset=1)
         else: 
             detection_result : ObstacleDetectionResult = detect_vehicles(self, vehicle_list, 
                                                                 max(self.config.distance.min_proximity_threshold, 
                                                                     self.config.live_info.current_speed_limit / 3), 
-                                                                up_angle_th=30)
+                                                                up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],)
         return detection_result

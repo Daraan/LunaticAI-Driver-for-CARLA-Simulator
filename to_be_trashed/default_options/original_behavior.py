@@ -8,7 +8,7 @@ from typing import Dict, TYPE_CHECKING
 
 import conf.settings_base_class
 from conf.settings_base_class import BaseCategories, _AnnotationChecker
-from conf.settings_base_class import live_info, speed, distance, lane_change, obstacles, controls, planner, other, unknown
+from conf.settings_base_class import live_info, speed, distance, lane_change, obstacles, vehicle_control_constraints, planner, other, unknown
 
 if TYPE_CHECKING:
     from agents.navigation.local_planner import RoadOption
@@ -21,13 +21,21 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     used by the default CARLA agents, local planner and PIDController (via planner)
     """
 
-    #invalid_attribute = True
-
-    # TODO: Explain unclear parameters
-    unknown.use_bbs_detection : bool = False  # Bounding BoxeS # Likely more sophisticated detection of obstacles. # TODO understand better
-    unknown.sampling_resolution : int = 2.0  # TODO: What is this? # BasicAgent uses 2.0 Behavior ones 4.5 Sampling of waypoints related
-                                # Used as step_distance in basic_agent's lane change: next_wps = plan[-1][0].next(step_distance)
-    planner.sampling_radius : float = 2.0  # TODO: What is this? Used by local_planner.py¨
+    # Used as step_distance in basic_agent's lane change: next_wps = plan[-1][0].next(step_distance)
+    planner.sampling_resolution : int = 2.0
+    """
+    Distance between waypoints in `BasicAgent._generate_lane_change_path`
+    and GlobalRoutePlanner to build the topology and path planning.
+    
+    Used with the Waypoint.next(sampling_radius)
+    """
+    
+    planner.sampling_radius : float = 2.0
+    """
+    Distance between waypoints when planning a path in `local_planner._compute_next_waypoints`
+    
+    Used with Waypoint.next(sampling_radius)
+    """
 
     # --------------------------
     # Live Information, updated from different sources, e.g. from vehicle current speed limit.
@@ -45,6 +53,9 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     obstacles.ignore_vehicles : bool = False
     obstacles.ignore_traffic_lights : bool = False
     obstacles.ignore_stop_signs : bool = False  # NOTE: Not implemented by default agent
+    obstacles.use_bbs_detection : bool = False  # Bounding BoxeS
+    """ If true uses more sophisticated detection of obstacles."""
+
 
     # Distance to traffic lights or vehicles to check if they affect the vehicle
     obstacles.base_tlight_threshold : float = 5.0
@@ -81,10 +92,10 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     # --------------------------
     # PIDController Level (called from planner)
     # --------------------------
-    controls.max_brake : float = 0.5  # vehicle control how strong the brake is used, # NOTE: Also used in emergency stop
-    controls.max_throttle : float = 0.75  # maximum throttle applied to the vehicle
-    controls.max_steering : float = 0.8  # maximum steering applied to the vehicle
-    controls.offset : float = 0  # distance between the route waypoints and the center of the lane
+    vehicle_control_constraints.max_brake : float = 0.5  # vehicle control how strong the brake is used, # NOTE: Also used in emergency stop
+    vehicle_control_constraints.max_throttle : float = 0.75  # maximum throttle applied to the vehicle
+    vehicle_control_constraints.max_steering : float = 0.8  # maximum steering applied to the vehicle
+    vehicle_control_constraints.offset : float = 0  # distance between the route waypoints and the center of the lane
 
     planner.dt : float = 1.0 / 20.0  # time between simulation steps. # TODO: Should set from main script. Maybe set this to None
     
@@ -105,6 +116,15 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     # values of the longitudinal PID controller
     planner.longitudinal_control_dict = {'K_P': 1.0, 'K_I': 0.05, 'K_D': 0, 'dt': "${..dt}"} # Note: ${..dt} points to planner.dt, similar to a directory
     planner.args_longitudinal_dict = "${.longitudinal_control_dict}" # points to the variable above
+
+    # --------------------------
+    # Extras
+    # --------------------------
+    
+    lane_change.same_lane_time : float = 0.0
+    lane_change.other_lane_time : float = 0.0
+    lane_change.lane_change_time : float = 2.0
+
 
     # ---------------------
     # End of settings
@@ -146,7 +166,7 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
 
     @property
     def step_distance(self):
-        return self.unknown.sampling_resolution # TODO:update
+        return self.planner.sampling_resolution # TODO:update
     
 
 basic_options = BasicAgentSettings()
@@ -180,7 +200,7 @@ class BehaviorAgentSettings(BasicAgentSettings):
     #                 self._behavior.max_speed,
     #                 self._speed_limit - self._behavior.speed_lim_dist])
 
-    speed.max_speed = 50 # from normal behavior. This superseeds the target_speed when following the BehaviorAgent logic
+    speed.max_speed : float = 50 # from normal behavior. This supersedes the target_speed when following the BehaviorAgent logic
 
     # CASE A
     """How quickly in km/h your vehicle will slow down when approaching a slower vehicle ahead."""

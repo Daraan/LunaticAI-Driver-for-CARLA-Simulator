@@ -2,7 +2,7 @@ import __allow_imports_from_root
 import carla
 from agents.lunatic_agent import LunaticAgent
 from classes.constants import Phase
-from conf.lunatic_behavior_settings import LunaticBehaviorSettings
+from to_be_trashed.lunatic_behavior_settings import LunaticBehaviorSettings
 from classes.rule import Rule, EvaluationFunction, Context, always_execute
 
 arule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 

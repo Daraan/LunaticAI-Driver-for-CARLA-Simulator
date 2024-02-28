@@ -51,7 +51,7 @@ class DynamicLocalPlanner(LocalPlanner):
     """
     _waypoints_queue : "deque[Tuple[carla.Waypoint, RoadOption]]"
 
-    def __init__(self, vehicle, opt_dict : DictConfig, map_inst=None, world=None):
+    def __init__(self, vehicle : carla.Actor, opt_dict : DictConfig, map_inst : carla.Map = None, world:carla.World = None):
         """
         :param vehicle: actor to apply to local planner logic onto
         :param opt_dict: dictionary of arguments with different parameters:

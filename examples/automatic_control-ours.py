@@ -17,8 +17,8 @@ import carla
 import numpy.random as random
 import pygame
 from classes.constants import Phase
-from conf.lunatic_behavior_settings import LunaticBehaviorSettings
 
+from conf.agent_settings import LunaticAgentSettings
 import utils
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
@@ -108,7 +108,7 @@ def game_loop(args):
         args.agent = "Lunatic"
 
         if True or args.agent == "Lunatic":
-            behavior = LunaticBehaviorSettings({'distance':
+            behavior = LunaticAgentSettings({'distance':
                { "base_min_distance": 5.0,
                 "min_proximity_threshold": 12.0,
                 "braking_distance": 6.0,
@@ -124,7 +124,7 @@ def game_loop(args):
             } 
                 )
             from omegaconf import OmegaConf
-            print(OmegaConf.to_yaml(behavior.options))
+            print(behavior.to_yaml())
             agent = LunaticAgent(world.player, behavior)
         elif args.agent == "Basic":
             agent = BasicAgent(world.player, 30)

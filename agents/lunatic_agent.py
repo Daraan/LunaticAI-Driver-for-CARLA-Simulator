@@ -13,15 +13,18 @@ traffic signs, and has different possible configurations. """
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import is_dataclass
 from functools import wraps
 import random
-from typing import ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING
+from typing import ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
 import weakref
 
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 import carla
+import omegaconf
 
+from DataGathering.run_matrix import AsyncDataMatrix, DataMatrix
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
@@ -29,15 +32,14 @@ import agents.tools
 from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
                                compute_distance)
 import agents.tools.lunatic_agent_tools
-from agents.tools.lunatic_agent_tools import generate_lane_change_path
+from agents.tools.lunatic_agent_tools import generate_lane_change_path, result_to_context
 
 from agents import substep_managers
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss, RoadOption
 
 from classes.constants import Phase, Hazard
 from classes.rule import Context, Rule
-from conf.default_options.original_behavior import BasicAgentSettings
-from conf.lunatic_behavior_settings import LunaticBehaviorSettings
+from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
 
 if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
@@ -75,7 +77,7 @@ class LunaticAgent(BehaviorAgent):
     
     # todo: rename in the future
 
-    def __init__(self, vehicle : carla.Vehicle, world : carla.World, behavior : LunaticBehaviorSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, vehicle : carla.Vehicle, world : carla.World, behavior : LunaticAgentSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -94,10 +96,23 @@ class LunaticAgent(BehaviorAgent):
 
         # Settings ---------------------------------------------------------------
         print("Behavior of Agent", behavior)
-        if isinstance(behavior, BasicAgentSettings):
-            self._behavior = behavior
+        self._behavior = behavior
+        if isinstance(behavior, AgentConfig):
+            print("Is valid config")
+            opt_dict : LunaticAgentSettings = self._behavior.get_options()  # base options from templates
+            opt_dict.update(overwrite_options)  # update by custom options
+        elif isinstance(behavior, DictConfig):
+            opt_dict = OmegaConf.merge(behavior, overwrite_options) # UNTESTED
+        elif not overwrite_options:
+            print("Warning: Settings are not a supported Config class")
+            opt_dict = behavior  # assume the user passed something appropriate
         else:
-            raise ValueError("Behavior must be a " + str(BasicAgentSettings))
+            raise ValueError("Behavior must be a " + str(AgentConfig))
+        self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
+        
+        print("\n\nAgent config is", OmegaConf.to_yaml(self.config))
+        
+        print("Type of vehicle", type(vehicle))
         self._vehicle : carla.Vehicle = vehicle
         self._world : carla.World = world
         if map_inst:
@@ -108,29 +123,18 @@ class LunaticAgent(BehaviorAgent):
                 self._map = self._world.get_map()
         else:
             self._map = self._world.get_map()
-
-        opt_dict = self._behavior.get_options()  # base options from templates
-        opt_dict.update(overwrite_options)  # update by custom options
-
-        self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
         
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
 
-        self.live_info : DictConfig = self.config.live_info
+        self.live_info : LiveInfo = self.config.live_info
 
-        # TODO: Make this a rule countdown and remove
-        self.config.live_info.current_tailgate_counter : int = self.config.other.tailgate_counter # type: ignore
-        # Vehicle information
-        self.live_info.speed = 0
-        self.live_info.speed_limit = 0
-        self.live_info.direction = None
         #config.speed.min_speed = 5
         self.config.speed.min_speed
-        #config.unknown.sampling_resolution = 4.5  # NOTE also set in behaviors
+        #config.planner.sampling_resolution = 4.5  # NOTE also set in behaviors
 
         # Original Setup ---------------------------------------------------------
         
-        self._last_traffic_light = None  # Current red traffic light
+        self._last_traffic_light : carla.TrafficLight = None  # Current red traffic light
 
         # TODO: No more hardcoded defaults / set them from opt_dict which must have all parameters; check which are parameters and which are set by other functions (e.g. _look_ahead_steps)
 
@@ -139,6 +143,7 @@ class LunaticAgent(BehaviorAgent):
 
         self._incoming_waypoint : carla.Waypoint = None
         self._look_ahead_steps = 0  # updated in _update_information used for local_planner.get_incoming_waypoint_and_direction
+        self._previous_direction : Optional[RoadOption] = None
         self._incoming_direction : RoadOption = None
 
         # Initialize the planners
@@ -148,9 +153,9 @@ class LunaticAgent(BehaviorAgent):
                 self._global_planner = grp_inst
             else:
                 print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-                self._global_planner = GlobalRoutePlanner(self._map, self.config.unknown.sampling_resolution)
+                self._global_planner = GlobalRoutePlanner(self._map, self.config.planner.sampling_resolution)
         else:
-            self._global_planner = GlobalRoutePlanner(self._map, self.config.unknown.sampling_resolution)
+            self._global_planner = GlobalRoutePlanner(self._map, self.config.planner.sampling_resolution)
 
         # Get the static elements of the scene
         # TODO: This could be done globally and not for each instance :/
@@ -162,13 +167,30 @@ class LunaticAgent(BehaviorAgent):
         self._set_collision_sensor()
 
         #Rule Framework
-        self.rules = deepcopy(self.rules) # Copies the ClassVar to the instance
+        self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
+        
+        # Data Matrix
+        world_settings = self._world_model.world_settings if self._world_model is not None else self._world.get_settings() # TODO: change when creation order can be reversed.
+        if world_settings.synchronous_mode:
+            self._road_matrix_updater = DataMatrix(self._vehicle, world, map_inst)
+        else:
+            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, world, map_inst)
+        # Vehicle information
+        self.live_info.current_speed = 0
+        self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
+        self.live_info.velocity_vector = self._vehicle.get_velocity()
+        self.live_info.direction = self._local_planner.target_road_option
+            
+    @property
+    def road_matrix(self):
+        return self._road_matrix_updater.getMatrix()
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
         # and https://carla.readthedocs.io/en/latest/python_api/#carla.Sensor.listen
         blueprint = self._world.get_blueprint_library().find('sensor.other.collision')
-        self._collision_sensor : carla.Sensor = self._world.spawn_actor(blueprint, carla.Transform(), attach_to=self._vehicle)
+        self._collision_sensor : carla.Sensor = assure_type(carla.Sensor, 
+                                                     self._world.spawn_actor(blueprint, carla.Transform(), attach_to=self._vehicle))
         def collision_callback(event : carla.SensorData):
             self._collision_event(event)
         self._collision_sensor.listen(self._collision_event)
@@ -196,19 +218,18 @@ class LunaticAgent(BehaviorAgent):
         This method updates the information regarding the ego
         vehicle based on the surrounding world.
         """
-        self.config.other.tailgate_counter = max(0, self.config.other.tailgate_counter - 1)
-
         self.live_info.current_speed = get_speed(self._vehicle)
         self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
         # planner has access to config
-        #self._local_planner.set_speed(self.live_info.speed_limit)            # <-- Adjusts Planner
+        #self._local_planner.set_speed(self.live_info.current_speed_limit)            # <-- Adjusts Planner
         
         self.live_info.direction : RoadOption = self._local_planner.target_road_option # type: ignore
         if self.live_info.direction is None:
             self.live_info.direction = RoadOption.LANEFOLLOW
 
-        self._look_ahead_steps = int((self.live_info.speed_limit) / 10)
+        self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10)
 
+        self._previous_direction = self._incoming_direction
         self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
             steps=self._look_ahead_steps)
         if self._incoming_direction is None:
@@ -227,6 +248,9 @@ class LunaticAgent(BehaviorAgent):
         # RSS
         # todo uncomment if agent is created after world model
         #self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
+        
+        # Data Matrix
+        self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated in the background.
         
 
     def is_taking_turn(self) -> bool:
@@ -256,18 +280,22 @@ class LunaticAgent(BehaviorAgent):
         assert phase == normal_next or phase & Phase.EXCEPTIONS, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
         
         self.current_phase = phase # set next phase
-        ctx = self.ctx
         
         if control is not None:
-            ctx.set_control(control)
-        ctx.prior_result = prior_results
+            self.ctx.set_control(control)
+        self.ctx.prior_result = prior_results
         rules_to_check = self.rules[phase]
-        for rule in rules_to_check: # todo: maybe dict? grouped by phase?
-            #todo check here for the phase instead of in the rule
-            assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
-            rule(ctx)
-        return ctx
+        try:
+            for rule in rules_to_check: # todo: maybe dict? grouped by phase?
+                #todo check here for the phase instead of in the rule
+                assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
+                rule(self.ctx)
+        except omegaconf.ReadonlyConfigError:
+            print("WARNING: A action likely tried to change `ctx.config` which is non-permanent. Use `ctx.agent.config.` instead.")
+            raise
+        return self.ctx
 
+    @result_to_context("control")
     def run_step(self, debug=False):
         """
         This is our main entry point that runs every tick.  
@@ -488,7 +516,6 @@ class LunaticAgent(BehaviorAgent):
 
     #@override
     # TODO: Port this to a rule that is used during emergencies.
-    @wraps(substep_managers.emergency_manager)
     def add_emergency_stop(self, control, reason:str=None) -> carla.VehicleControl:
         """
         Modifies the control values to perform an emergency stop.
@@ -516,7 +543,7 @@ class LunaticAgent(BehaviorAgent):
             lane_change_time * speed,
             check=False,        # TODO: Explanation of this parameter? Make use of it and & how? Could mean that it is checked if there is a left lane
             lane_changes=1,     # changes only one lane
-            step_distance= self.config.unknown.sampling_resolution
+            step_distance= self.config.planner.sampling_resolution
         )
         if not path:
             print("WARNING: Ignoring the lane change as no path was found")

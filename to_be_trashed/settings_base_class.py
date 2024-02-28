@@ -32,7 +32,7 @@ speed : DictConfig=  new_config("speed")
 distance : DictConfig = new_config("distance")
 lane_change : DictConfig = new_config("lane_change")
 obstacles : DictConfig = new_config("obstacles")
-controls : DictConfig = new_config("controls")
+vehicle_control_constraints : DictConfig = new_config("controls")
 
 planner : DictConfig = new_config("planner")
 

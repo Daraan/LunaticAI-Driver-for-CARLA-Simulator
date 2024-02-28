@@ -23,14 +23,19 @@ distance:
   braking_distance: 6
   distance_to_leading_vehicle: 5.0
 lane_change:
+  same_lane_time: 0.0
+  other_lane_time: 0.0
+  lane_change_time: 2.0
   auto_lane_change: true
   random_left_lanechange_percentage: 0.1
   random_right_lanechange_percentage: 0.1
   keep_right_rule_percentage: 0.7
+  random_lane_change_interval: 200
 obstacles:
   ignore_vehicles: false
   ignore_traffic_lights: false
   ignore_stop_signs: false
+  use_bbs_detection: false
   base_tlight_threshold: 5.0
   base_vehicle_threshold: 5.0
   detection_speed_ratio: 1.0
@@ -44,6 +49,7 @@ controls:
   max_steering: 0.8
   offset: 0
 planner:
+  sampling_resolution: 2.0
   sampling_radius: 2.0
   dt: 0.05
   lateral_control_dict:
@@ -62,9 +68,7 @@ other:
   tailgate_counter: 0
   vehicle_lane_offset: ${controls.offset}
   update_vehicle_lights: false
-unknown:
-  use_bbs_detection: false
-  sampling_resolution: 2.0
+unknown: {}
 emergency:
   ignore_percentage: 0.0
   do_random_steering: false
@@ -76,3 +80,4 @@ emergency:
 rss:
   enabled: true
   use_stay_on_road_feature: true
+  log_level: info

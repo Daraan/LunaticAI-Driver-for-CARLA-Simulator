@@ -9,6 +9,7 @@ This module provides GlobalRoutePlanner implementation.
 """
 
 import math
+from typing import Union
 
 import carla
 import networkx as nx
@@ -40,15 +41,22 @@ class GlobalRoutePlanner(object):
         self._find_loose_ends()
         self._lane_change_link()
 
-    def trace_route(self, origin, destination):
+    def trace_route(self, origin : Union[carla.Location, carla.Waypoint], destination : Union[carla.Location, carla.Waypoint]):
         """
         This method returns list of (carla.Waypoint, RoadOption)
         from origin to destination
         """
         route_trace = []
         route = self._path_search(origin, destination)
-        current_waypoint = self._wmap.get_waypoint(origin)
-        destination_waypoint = self._wmap.get_waypoint(destination)
+        if not isinstance(origin, carla.Waypoint):
+            current_waypoint = self._wmap.get_waypoint(origin)
+        else:
+            current_waypoint = origin
+        if not isinstance(destination, carla.Waypoint):
+            destination_waypoint = self._wmap.get_waypoint(destination)
+        else:
+            destination_waypoint = destination
+            destination : carla.Location = destination_waypoint.transform.location
 
         for i in range(len(route) - 1):
             road_option = self._turn_decision(i, route)
@@ -266,12 +274,15 @@ class GlobalRoutePlanner(object):
                 if left_found and right_found:
                     break
 
-    def _localize(self, location):
+    def _localize(self, location : carla.Waypoint):
         """
         This function finds the road segment that a given location
         is part of, returning the edge it belongs to
         """
-        waypoint = self._wmap.get_waypoint(location)
+        if isinstance(location, carla.Location):
+            waypoint = self._wmap.get_waypoint(location)
+        else:
+            waypoint = location
         edge = None
         try:
             edge = self._road_id_to_edge[waypoint.road_id][waypoint.section_id][waypoint.lane_id]
@@ -288,7 +299,7 @@ class GlobalRoutePlanner(object):
         l2 = np.array(self._graph.nodes[n2]['vertex'])
         return np.linalg.norm(l1 - l2)
 
-    def _path_search(self, origin, destination):
+    def _path_search(self, origin : Union[carla.Location, carla.Waypoint], destination : Union[carla.Location, carla.Waypoint]):
         """
         This function finds the shortest path connecting origin and destination
         using A* search with distance heuristic.

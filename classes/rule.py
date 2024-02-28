@@ -4,29 +4,33 @@ from itertools import accumulate
 import random
 from enum import IntEnum
 from typing import Any, ClassVar, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
-from weakref import WeakSet, WeakValueDictionary
-import weakref
+from weakref import WeakSet
 
-from omegaconf import DictConfig
-
-from utils.evaluation_function import EvaluationFunction
+from omegaconf import DictConfig, OmegaConf
 
 from classes.constants import Phase
+from utils.evaluation_function import EvaluationFunction
+
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
+    from conf.agent_settings import LunaticAgentSettings
 
 class Context:
     """
     Object to be passed as the first argument (instead of self) to rules, actions and evaluation functions.
     """
     agent : "LunaticAgent"
-    config : DictConfig
+    config : "LunaticAgentSettings"
+    
     evaluation_results : Dict["Phase", Hashable] # ambigious wording, which result? here evaluation result
     action_results : Dict["Phase", Any] 
+    
     control : Optional["carla.VehicleControl"]
     _control : Optional["carla.VehicleControl"]
+    
     prior_result : Optional[Any]
+    
     last_context : Optional["Context"]
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
@@ -85,7 +89,7 @@ class _CountdownRule:
     # TODO: low prio: make cooldown dependant of tickrate or add a conversion from seconds to ticks OR make time-based
     tickrate : ClassVar[int] = NotImplemented
 
-    DEFAULT_COOLDOWN_RESET : int = 50
+    DEFAULT_COOLDOWN_RESET : int = 0
     _cooldown : int # if 0 the rule can be executed
 
     # Keep track of all instances for the cooldowns
@@ -133,7 +137,7 @@ class _CountdownRule:
         def __exit__(_, exc_type, exc_value, traceback):
             # Exit the context
             if exc_type is None:
-                _CountdownRule.update_all_cooldowns()
+                Rule.update_all_cooldowns()
 
 class _GroupRule(_CountdownRule):
     group : Optional[str] = None # group of rules that share a cooldown
@@ -148,7 +152,7 @@ class _GroupRule(_CountdownRule):
             return
         if group not in self.group_instances:
             self.group_instances[group] = [0, self.max_cooldown, WeakSet()]
-        self.group_instances[group][2].add(self)
+        self.group_instances[group][2].add(self) # add to weak set
 
     @property
     def cooldown(self) -> int:
@@ -195,7 +199,7 @@ class _GroupRule(_CountdownRule):
     @classmethod
     def update_all_cooldowns(cls):
         # Update Groups
-        for instance_data in cls.instances.values():
+        for instance_data in cls.group_instances.values():
             if instance_data[0] > 0:
                 instance_data[0] -= 1
         for instance in filter(cls.__filter_not_ready_instances, cls.instances):
@@ -258,12 +262,14 @@ class Rule(_GroupRule):
         self.overwrite_settings = overwrite_settings or {}
 
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable]:
-        settings = self.overwrite_settings.copy()
-        if overwrite is not None:
+        settings = self.overwrite_settings.copy()   
+        if overwrite:
+            settings = self.overwrite_settings.copy()
             settings.update(overwrite)
-        ctx.config = ctx.agent.config.copy()
-        ctx.config.update(settings)
-        result = self.rule(ctx, settings)
+        ctx.config = OmegaConf.merge(ctx.agent.config, settings)
+        OmegaConf.set_readonly(ctx.config, True) # only the original agent.config can be modified. Make clear that these have no permanent effect.
+        #ctx.config.update(settings)
+        result = self.rule(ctx)
         return result
     
     def evaluate_children(self, ctx : Context):
@@ -274,19 +280,20 @@ class Rule(_GroupRule):
         assert ctx.agent.current_phase in self.phases
         if not self.is_ready() and not ignore_cooldown:
             return self.NOT_APPLICABLE
-        if not ignore_phase or ctx.agent.current_phase not in self.phases:
+        if not ignore_phase and ctx.agent.current_phase not in self.phases:
             return self.NOT_APPLICABLE # not applicable for this phase
         result = self.evaluate(ctx, overwrite)
         ctx.evaluation_results[ctx.agent.current_phase] = result
         if result in self.actions:
-            action_result = self.actions[result](ctx, overwrite) #todo allow priority, random chance
+            
+            action_result = self.actions[result](ctx) #todo allow priority, random chance
             ctx.action_results[ctx.agent.current_phase] = action_result
             self._cooldown = self.max_cooldown
             return action_result
         return self.NOT_APPLICABLE # No action was executed
     
     def __str__(self) -> str:
-        return self.__class__.__name__ + f"(description={self.description}, phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, rule={self.rule})" 
+        return self.__class__.__name__ + f"(description={self.description}, phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, rule={self.rule}, cooldown={self.cooldown})" 
 
     def __repr__(self) -> str:
         return str(self)
