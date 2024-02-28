@@ -39,9 +39,10 @@ def wrap_matrix_functionalities(ego_vehicle : carla.Actor, world : carla.World, 
 
 def get_car_coords(matrix):
     (i_car, j_car) = (0, 0)
-    for lane in matrix:
-        for i in range(len(matrix[lane])):
-            if matrix[lane][i] == 1:
-                (i_car, j_car) = (lane, i)
-
+    for lane, occupations in matrix.items():
+        try:
+            return (lane, occupations.index(1))
+        except ValueError:
+            continue
+    
     return i_car, j_car

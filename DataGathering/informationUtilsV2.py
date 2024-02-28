@@ -473,6 +473,7 @@ def detect_surrounding_cars(
                 "1_-2": [0, 0, 0, 0, 0, 0, 0, 0],
                 "right_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
                 "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                }
 
     """
     world_map = world.get_map()

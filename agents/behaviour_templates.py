@@ -43,16 +43,16 @@ def if_config(config_path, value):
 
 # ------ Speed Rules ------
 
-def set_default_intersection_speed(agent):
+def set_default_intersection_speed(ctx : "Context"):
     """
     Slow down the car when turning at a junction.
     """
     target_speed = min([
-            agent.config.speed.max_speed,
-            agent.config.live_info.current_speed_limit - agent.config.speed.intersection_speed_decrease]
+            ctx.config.speed.max_speed,
+            ctx.config.live_info.current_speed_limit - ctx.config.speed.intersection_speed_decrease]
             ) 
     # NOTE: could interpolate this in omega conf
-    agent.config.speed.target_speed = target_speed
+    ctx.agent.config.speed.target_speed = target_speed
     
 normal_intersection_speed_rule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
                                       rule=always_execute, 
@@ -62,15 +62,17 @@ normal_intersection_speed_rule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN,
 
 # -----
 
-def set_default_speed(agent):
+def set_default_speed(ctx : "Context"):
     """
     Speed to apply when the car drives under normal circumstances, 
     i.e. no junctions, no obstacles, etc. detected.
     """
+    # Read from config
     target_speed = min([
-            agent.config.speed.max_speed,
-            agent.config.live_info.current_speed_limit - agent.config.speed.speed_lim_dist])
-    agent.config.speed.target_speed = target_speed
+            ctx.config.speed.max_speed,
+            ctx.config.live_info.current_speed_limit - ctx.config.speed.speed_lim_dist])
+    # Set on Agent
+    ctx.agent.config.speed.target_speed = target_speed
 
 normal_speed_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
                         rule=always_execute,
@@ -108,7 +110,6 @@ def avoid_tailgator(ctx : "Context"):
             if not detection_result.obstacle_was_found:
                 print("Tailgating, moving to the right!")
                 end_waypoint = ctx.agent._local_planner.target_waypoint
-                ctx.agent.config.other.tailgate_counter = 200
                 ctx.agent.set_destination(end_waypoint.transform.location,
                                         right_wpt.transform.location)
         
@@ -119,7 +120,6 @@ def avoid_tailgator(ctx : "Context"):
             if  not detection_result.obstacle_was_found:
                 print("Tailgating, moving to the left!")
                 end_waypoint = ctx.agent._local_planner.target_waypoint
-                ctx.agent.config.other.tailgate_counter = 200  # TODO: Hardcoded
                 ctx.agent.set_destination(end_waypoint.transform.location,
                                         left_wpt.transform.location)
 
@@ -137,12 +137,14 @@ def avoid_tailgator_check(ctx : "Context") -> bool:
 
     return (ctx.agent.config.live_info.direction == RoadOption.LANEFOLLOW \
             and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10  #TODO Hardcoded
-            and ctx.agent.config.other.tailgate_counter == 0 # Counter to not change lane too often
             )
 
 avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,
                             rule=avoid_tailgator_check,
                             action=avoid_tailgator,
+                            cooldown_reset_value=200,
+                            group="lane_change",
+                            priority=RulePriority.HIGH,
                             description="Avoid tailgating when followed by a faster car that is quite close.")
 
 

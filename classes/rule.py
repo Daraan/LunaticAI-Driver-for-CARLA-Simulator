@@ -4,29 +4,33 @@ from itertools import accumulate
 import random
 from enum import IntEnum
 from typing import Any, ClassVar, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
-from weakref import WeakSet, WeakValueDictionary
-import weakref
+from weakref import WeakSet
 
-from omegaconf import DictConfig
-
-from utils.evaluation_function import EvaluationFunction
+from omegaconf import DictConfig, OmegaConf
 
 from classes.constants import Phase
+from utils.evaluation_function import EvaluationFunction
+
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
+    from conf.agent_settings import LunaticAgentSettings
 
 class Context:
     """
     Object to be passed as the first argument (instead of self) to rules, actions and evaluation functions.
     """
     agent : "LunaticAgent"
-    config : DictConfig
+    config : "LunaticAgentSettings"
+    
     evaluation_results : Dict["Phase", Hashable] # ambigious wording, which result? here evaluation result
     action_results : Dict["Phase", Any] 
+    
     control : Optional["carla.VehicleControl"]
     _control : Optional["carla.VehicleControl"]
+    
     prior_result : Optional[Any]
+    
     last_context : Optional["Context"]
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
@@ -148,7 +152,7 @@ class _GroupRule(_CountdownRule):
             return
         if group not in self.group_instances:
             self.group_instances[group] = [0, self.max_cooldown, WeakSet()]
-        self.group_instances[group][2].add(self)
+        self.group_instances[group][2].add(self) # add to weak set
 
     @property
     def cooldown(self) -> int:
@@ -258,11 +262,13 @@ class Rule(_GroupRule):
         self.overwrite_settings = overwrite_settings or {}
 
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable]:
-        settings = self.overwrite_settings.copy()
-        if overwrite is not None:
+        settings = self.overwrite_settings.copy()   
+        if overwrite:
+            settings = self.overwrite_settings.copy()
             settings.update(overwrite)
-        ctx.config = ctx.agent.config.copy()
-        ctx.config.update(settings)
+        ctx.config = OmegaConf.merge(ctx.agent.config, settings)
+        OmegaConf.set_readonly(ctx.config, True) # only the original agent.config can be modified. Make clear that these have no permanent effect.
+        #ctx.config.update(settings)
         result = self.rule(ctx)
         return result
     
