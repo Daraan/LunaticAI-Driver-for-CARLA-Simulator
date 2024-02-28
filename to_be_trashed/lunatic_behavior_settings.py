@@ -1,7 +1,7 @@
 from omegaconf import DictConfig, OmegaConf 
 
 import carla 
-from conf.settings_base_class import new_config, obstacles, speed, lane_change
+from to_be_trashed.settings_base_class import new_config, obstacles, speed, lane_change
 from conf.default_options.original_behavior import BehaviorAgentSettings
 from conf.default_options.original_autopilot_behavior import AutopilotBehavior
 
