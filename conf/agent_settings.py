@@ -385,6 +385,28 @@ class LunaticAgentLaneChangeSettings(AutopilotLaneChangeSettings, BasicAgentLane
 # ---------------------
 
 @dataclass
+class BasicAgentObstacleDetectionAngles(AgentConfig):
+    """
+    Detection Angles for the BasicAgent used in the `BasicAgent._vehicle_obstacle_detected` method.
+    
+    The angle between the location and reference object.
+    Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
+    low_angle_th < angle < up_angle_th.
+    """
+    
+    walkers_lane_change : Tuple[float, float] = (0., 90.)
+    """Detection angle of walkers when staying in the same lane"""
+    
+    walkers_same_lane : Tuple[float, float] = (0., 60.)
+    """Detection angle of walkers when changing lanes"""
+    
+    cars_lane_change : Tuple[float, float] = (0., 180.)
+    """Detection angle of cars when staying in the same lane"""
+    
+    cars_same_lane : Tuple[float, float] = (0., 30.)
+    """Detection angle of cars when changing lanes"""
+    
+@dataclass
 class BasicAgentObstacleSettings(AgentConfig):
     """
     --------------------------
@@ -394,6 +416,7 @@ class BasicAgentObstacleSettings(AgentConfig):
     Agents is aware of the vehicles and traffic lights within its distance parameters
     optionally can always ignore them.
     """
+    
     ignore_vehicles : bool = False
     """Whether the agent should ignore vehicles"""
     
@@ -439,6 +462,8 @@ class BasicAgentObstacleSettings(AgentConfig):
     USAGE: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
     USAGE: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
+    
+    detection_angles : BasicAgentObstacleDetectionAngles = field(default_factory=BasicAgentObstacleDetectionAngles)
 
 @dataclass
 class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
@@ -453,6 +478,31 @@ class AutopilotObstacleSettings(AgentConfig):
     Percentage of time to ignore traffic lights, signs and pedestrians
     """
     
+@dataclass
+class LunaticAgentObstacleDetectionAngles(BasicAgentObstacleDetectionAngles):
+    """
+    Detection Angles for the BasicAgent used in the `BasicAgent._vehicle_obstacle_detected` method.
+    
+    The angle between the location and reference object.
+    Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
+    low_angle_th < angle < up_angle_th.
+    
+    NotImplemented
+    """
+    
+    walkers_angle_adjust_chance : float = 0.0
+    """Chance that the detection angle for walkers is adjusted"""
+    
+    walkers_adjust_angle : Tuple[float, float] = (20, -20)
+    """XXX"""
+    
+    cars_angle_adjust_chance : float = 0.0
+    """Chance that the detection angle for vehicles is adjusted"""
+    
+    cars_adjust_angle : Tuple[float, float] = (20, -50)
+    """XXX"""
+    
+
 @dataclass
 class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObstacleSettings):
     dynamic_threshold_by_speed : bool = True
