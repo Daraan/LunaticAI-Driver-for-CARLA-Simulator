@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union
 import typing
-from omegaconf import DictConfig, MISSING, SI, II, OmegaConf, SCMode
+from typing import Dict, List, Optional, Tuple, Union
 
 #import attr
-import carla
 
+from functools import partial, wraps
+from omegaconf import DictConfig, MISSING, SI, II, OmegaConf, SCMode
+from omegaconf.errors import InterpolationToMissingValueError
 # NOTE:
 """
 # For type hints when interpolating
@@ -15,10 +16,12 @@ II : Equivalent to ${interpolation}
 SI Use this for String interpolation, for example "http://${host}:${port}"
 """
 
-from agents.navigation.local_planner import RoadOption
-from omegaconf.errors import InterpolationToMissingValueError
+OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
+OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
+OmegaConf.register_new_resolver("min", lambda *els: min(els))
+import carla
 
-from functools import partial, wraps
+from agents.navigation.local_planner import RoadOption
 
 class class_or_instance_method:
     """Transform a method into both a regular and class method"""
@@ -837,8 +840,8 @@ class LunaticAgentSettings(AgentConfig):
     
 
 if __name__ == "__main__":
-    #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
-    #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
+    basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
+    behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
     lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags={"allow_objects": True})
 
     #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
