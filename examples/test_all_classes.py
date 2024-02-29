@@ -1,10 +1,11 @@
+from pprint import pprint
 import __allow_imports_from_root
 import carla
 from agents.lunatic_agent import LunaticAgent
 from classes.constants import Phase
 
 from classes.rule import Rule, EvaluationFunction, Context, always_execute
-from conf.agent_settings import LunaticAgentSettings
+from conf.agent_settings import LunaticAgentSettings, LunaticAgentSpeedSettings
 
 arule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
                                       rule=always_execute, 
@@ -18,10 +19,13 @@ print(arule)
 behavior = LunaticAgentSettings()
 options : LunaticAgentSettings
 options : LunaticAgentSettings = behavior.get_options()
-print(behavior.speed.to_yaml())
+y = behavior.speed.to_yaml()
+print(y)
 
-print(options.speed.target_speed, options.live_info)
-behavior.speed.export_options("conf/lunatic_behavior_settings.yaml", resolve=False)
+behavior.export_options("../conf/lunatic_behavior_settings.yaml", resolve=False)
+loaded = LunaticAgentSettings.from_yaml("../conf/lunatic_behavior_settings.yaml")
+
+assert loaded == behavior
 
 options.live_info.current_speed = 10
 options.live_info.current_speed_limit = 35
@@ -29,8 +33,7 @@ options.live_info.current_speed_limit = 35
 from omegaconf import OmegaConf
 print(OmegaConf.to_yaml(options, resolve=False))
 
-print(behavior.speed.current_speed, behavior.live_info.current_speed)
+print(options.speed.current_speed, options.live_info.current_speed)
 
-print(OmegaConf.to_yaml(options, resolve=True))
 
-assert behavior.speed.current_speed is behavior.live_info.current_speed
+assert options.speed.current_speed is options.live_info.current_speed

@@ -89,6 +89,8 @@ class AgentConfig:
             options = cls_or_self
         else:
             options = cls_or_self[category]
+        if not isinstance(options, DictConfig):
+            options = OmegaConf.create(options, flags={"allow_objects": True})
         OmegaConf.save(options, path, resolve=resolve)
         
     @class_or_instance_method
@@ -107,7 +109,7 @@ class AgentConfig:
             options = cls_or_self
         else:
             options = getattr(cls_or_self, category)
-        if not isinstance(options, DictConfig) and not resolve:
+        if not isinstance(options, DictConfig) and not resolve and not yaml:
             return asdict(options)
         if not isinstance(options, DictConfig):
             options = OmegaConf.structured(options)
@@ -123,7 +125,7 @@ class AgentConfig:
     def from_yaml(cls, path, category : Optional[str]=None, *, merge=True):
         """Loads the options from a yaml file."""
         if merge:
-            options : cls = OmegaConf.merge(cls(), OmegaConf.load(path))
+            options : cls = OmegaConf.merge(OmegaConf.create(cls, flags={"allow_objects":True}), OmegaConf.load(path))
         else:
             options : cls = OmegaConf.load(path)
         if category is None:
