@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 import typing
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, TypeAlias
 
 #import attr
 
@@ -22,6 +22,7 @@ OmegaConf.register_new_resolver("min", lambda *els: min(els))
 import carla
 
 from agents.navigation.local_planner import RoadOption
+from classes.rss_sensor import AD_RSS_AVAILABLE
 
 class class_or_instance_method:
     """Transform a method into both a regular and class method"""
@@ -681,13 +682,12 @@ class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
 
 # Boost.Python.enum cannot be used as annotations for omegaconf, replacing them by real enums,
 # Functional API is easier to create but cannot be used as type hints
-from classes.rss_sensor import AD_RSS_AVAILABLE
 if AD_RSS_AVAILABLE:
-    RssLogLevel = Enum("RssLogLevel", {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)
     RssRoadBoundariesMode = Enum("RssRoadBoundariesMode", {str(name):value for value, name in carla.RssRoadBoundariesMode.values.items()}, module=__name__)
+    RssLogLevel = Enum("RssLogLevel", {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)
 else:
-    RssLogLevel = int
-    RssRoadBoundariesMode = int
+    RssLogLevel : TypeAlias = Union[int, str]
+    RssRoadBoundariesMode : TypeAlias = Union[int, str, bool]
     
 @dataclass
 class RssSettings(AgentConfig):
@@ -700,17 +700,18 @@ class RssSettings(AgentConfig):
     """
     
     if AD_RSS_AVAILABLE:
-        use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On  if AD_RSS_AVAILABLE else 1 # type: ignore
+        use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On  # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
         log_level : RssLogLevel = carla.RssLogLevel.info  # type: ignore
         """Set the initial log level of the RSSSensor"""
     else:
-        use_stay_on_road_feature : Union[int, str, bool] = True
+        use_stay_on_road_feature : RssRoadBoundariesMode = True
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : Union[int, str] = "info"
+        log_level : RssLogLevel = "info"
         """Set the initial log level of the RSSSensor"""
+        
         
         
     
@@ -720,6 +721,9 @@ class RssSettings(AgentConfig):
         if AD_RSS_AVAILABLE:
             if not isinstance(self.log_level, RssLogLevel):
                 self.log_level = int(self.log_level)
+        else:
+            if not isinstance(self.use_stay_on_road_feature, (bool, str)):
+                self.log_level = bool(self.use_stay_on_road_feature)
     
 
 # ---------------------
