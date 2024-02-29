@@ -16,13 +16,12 @@ II : Equivalent to ${interpolation}
 SI Use this for String interpolation, for example "http://${host}:${port}"
 """
 
-OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
-OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
-OmegaConf.register_new_resolver("min", lambda *els: min(els))
 import carla
 
 from agents.navigation.local_planner import RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
+
+# Helper methods
 
 class class_or_instance_method:
     """Transform a method into both a regular and class method"""
@@ -34,6 +33,31 @@ class class_or_instance_method:
             return wraps(self.__wrapped__ )(partial(self.__wrapped__, owner))
         else:                 # called on instance
             return wraps(self.__wrapped__ )(partial(self.__wrapped__, instance))
+
+OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
+OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
+OmegaConf.register_new_resolver("min", lambda *els: min(els))
+
+def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
+    """
+    Sets all interpolations to readonly.
+    
+    See: https://github.com/omry/omegaconf/issues/1161
+    """
+    if conf._is_interpolation():
+        OmegaConf.set_readonly(conf, True)
+    elif isinstance(conf, DictConfig):
+        for key in conf:
+            set_readonly_interpolations(conf._get_node(key))
+    elif isinstance(conf, ListConfig):
+        for key in range(len(conf)):
+            set_readonly_interpolations(conf._get_node(key))
+            
+def set_readonly_keys(conf : Union[DictConfig, ListConfig], keys : List[str]):
+    for key in keys:
+        OmegaConf.set_readonly(conf._get_node(key), True)
+
+# Configs
 
 class AgentConfig:
     overwrites : Optional[Dict[str, dict]] = None
