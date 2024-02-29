@@ -1,3 +1,5 @@
+# DO NOT USE from __future__ import annotations !
+
 import sys
 if __name__ == "__main__": # TEMP clean at the end, only here for testing
     import os
@@ -224,7 +226,7 @@ class AgentConfig:
 class LiveInfo(AgentConfig):
     current_speed : float = MISSING
     current_speed_limit : float = MISSING
-    velocity_vector : carla.Vector3D = MISSING
+    velocity_vector : "carla.Vector3D" = MISSING
     direction : RoadOption = MISSING
     
     # NOTE: Not ported to OmegaConf

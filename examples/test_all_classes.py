@@ -2,8 +2,9 @@ import __allow_imports_from_root
 import carla
 from agents.lunatic_agent import LunaticAgent
 from classes.constants import Phase
-from to_be_trashed.lunatic_behavior_settings import LunaticBehaviorSettings
+
 from classes.rule import Rule, EvaluationFunction, Context, always_execute
+from conf.agent_settings import LunaticAgentSettings
 
 arule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
                                       rule=always_execute, 
@@ -14,12 +15,13 @@ arule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN,
 print(arule)
 
 
-behavior = LunaticBehaviorSettings()
-options = behavior.get_options()
-print(behavior.get_options(yaml=True))
+behavior = LunaticAgentSettings()
+options : LunaticAgentSettings
+options : LunaticAgentSettings = behavior.get_options()
+print(behavior.speed.to_yaml())
 
-print(options.speed.target_speed, options.speed.current_speed, options.live_info.current_speed_limit)
-behavior.export_options("conf/lunatic_behavior_settings.yaml")
+print(options.speed.target_speed, options.live_info)
+behavior.speed.export_options("conf/lunatic_behavior_settings.yaml", resolve=False)
 
 options.live_info.current_speed = 10
 options.live_info.current_speed_limit = 35
