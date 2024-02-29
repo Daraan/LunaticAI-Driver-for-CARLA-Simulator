@@ -178,9 +178,7 @@ class AgentConfig:
     
     def update(self, options : dict, clean=True):
         """Updates the options with a new dictionary."""
-        print("updating on", self.__class__.__name__, options)
         for k, v in options.items():
-            print("updating", k, v) 
             if isinstance(getattr(self, k), AgentConfig):
                 getattr(self, k).update(v)
             else:
@@ -193,14 +191,16 @@ class AgentConfig:
         NotImplemented
 
     def __post_init__(self):
-        # NOTE: for dataclasses
-        """Assures that if a dict is passed the values overwrite the defaults."""
+        """
+        Assures that if a dict is passed the values overwrite the defaults.
+        
+        # NOTE: Will be used for dataclass derived children
+        """
         self._clean_options()
         if self.overwrites is None:
             return
         for key, value in self.overwrites.items():
             if key in self.__annotations__:
-                print("updating", key, value)
                 if issubclass(self.__annotations__[key], AgentConfig):
                     getattr(self, key).update(value)
                 else:
@@ -247,11 +247,11 @@ class LiveInfo(AgentConfig):
     
 @dataclass
 class BasicAgentSpeedSettings(AgentConfig):
-    current_speed: float = II("live_info.speed")
-    """This is a reference to live_info.speed, which is updated by the agent"""
+    current_speed: float = II("live_info.current_speed")
+    """This is a reference to live_info.current_speed, which is updated by the agent"""
     
-    current_speed_limit: float = II("live_info.speed_limit")
-    """This is a reference to live_info.speed_limit, which is updated by the agent"""
+    current_speed_limit: float = II("live_info.current_speed_limit")
+    """This is a reference to live_info.current_speed_limit, which is updated by the agent"""
     
     target_speed: float = 20
     """desired cruise speed in Km/h; overwritten by SpeedLimit if follow_speed_limit is True"""
@@ -747,9 +747,13 @@ class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
 if AD_RSS_AVAILABLE:
     RssRoadBoundariesMode = Enum("RssRoadBoundariesMode", {str(name):value for value, name in carla.RssRoadBoundariesMode.values.items()}, module=__name__)
     RssLogLevel = Enum("RssLogLevel", {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)
-else:
+elif TYPE_CHECKING and sys.version_info >= (3, 10):
+    from typing import TypeAlias
     RssLogLevel : TypeAlias = Union[int, str]
     RssRoadBoundariesMode : TypeAlias = Union[int, str, bool]
+else:
+    RssLogLevel = Union[int, str]
+    RssRoadBoundariesMode = Union[int, str, bool]
     
 @dataclass
 class RssSettings(AgentConfig):
@@ -762,25 +766,25 @@ class RssSettings(AgentConfig):
     """
     
     if AD_RSS_AVAILABLE:
-        use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On  # type: ignore
+        use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : RssLogLevel = carla.RssLogLevel.info  # type: ignore
+        log_level : RssLogLevel = carla.RssLogLevel.info # type: ignore
         """Set the initial log level of the RSSSensor"""
     else:
-        use_stay_on_road_feature : RssRoadBoundariesMode = True
+        use_stay_on_road_feature : "RssRoadBoundariesMode" = True # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : RssLogLevel = "info"
+        log_level : "RssLogLevel" = "info" # type: ignore
         """Set the initial log level of the RSSSensor"""
         
         
         
     
     def _clean_options(self):
-        if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesMode):
-            self.use_stay_on_road_feature = int(self.use_stay_on_road_feature)
         if AD_RSS_AVAILABLE:
+            if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesMode):
+                self.use_stay_on_road_feature = int(self.use_stay_on_road_feature)
             if not isinstance(self.log_level, RssLogLevel):
                 self.log_level = int(self.log_level)
         else:
@@ -906,9 +910,16 @@ class LunaticAgentSettings(AgentConfig):
     
 
 if __name__ == "__main__":
-    basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
-    behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
+    #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
+    #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
     lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags={"allow_objects": True})
-
+    
+    c : LunaticAgentSettings = LunaticAgentSettings().get_options()
+    d : LunaticAgentSettings = LunaticAgentSettings.get_options()
+    try:
+        c.rss.log_level = "asda"
+        raise TypeError("Should only raise if AD_RSS_AVAILABLE is False")
+    except ValueError as e:
+        print("Correct ValueError", e)
+        pass
     #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
-

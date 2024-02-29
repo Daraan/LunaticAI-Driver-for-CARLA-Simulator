@@ -77,8 +77,8 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     # --------------------------
     # Planner Level
     # --------------------------
-    speed.current_speed = "${live_info.current_speed}" # This is a reference to live_info.speed, which is updated by the agent
-    speed.current_speed_limit = "${live_info.current_speed_limit}" # This is a reference to live_info.speed_limit, which is updated by the agent
+    speed.current_speed = "${live_info.current_speed}" # This is a reference to live_info.current_speed, which is updated by the agent
+    speed.current_speed_limit = "${live_info.current_speed_limit}" # This is a reference to live_info.current_speed_limit, which is updated by the agent
     
     speed.target_speed : float = 20  # desired cruise speed in Km/h; overwritten by SpeedLimit if follow_speed_limit is True
     speed.follow_speed_limits : bool = False  # NOTE: SpeedLimit overwrites target_speed if True (local_planner.py)

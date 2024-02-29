@@ -12,7 +12,10 @@ import carla
 from agents.tools.misc import get_speed
 
 from agents.navigation.controller import VehiclePIDController, PIDLongitudinalController, PIDLateralController
-from conf.agent_settings import LunaticAgentSettings
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from conf.agent_settings import LunaticAgentSettings
 
 STEERING_UPDATE_SPEED = 0.1
 
@@ -106,7 +109,7 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
     PIDLongitudinalController implements longitudinal control using a PID.
     """
 
-    def __init__(self, vehicle, config : LunaticAgentSettings):
+    def __init__(self, vehicle, config : "LunaticAgentSettings"):
         """
         Constructor method.
 
