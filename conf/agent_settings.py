@@ -1,12 +1,22 @@
-from dataclasses import dataclass, field, asdict
+import sys
+if __name__ == "__main__": # TEMP clean at the end, only here for testing
+    import os
+    sys.path.append(os.path.abspath("../"))
+
 from enum import Enum
+from functools import partial, wraps
+from dataclasses import dataclass, field, asdict
 import typing
-from typing import Dict, List, Optional, Tuple, Union, TypeAlias
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Type, Union, cast
+
+# from typing import ParamSpec, Concatenate, TypeAlias
+#Param = ParamSpec("Param")
+ConfigType = typing.TypeVar("ConfigType", bound="AgentConfig")
+ReturnType = typing.TypeVar("ReturnType")
 
 #import attr
 
-from functools import partial, wraps
-from omegaconf import DictConfig, MISSING, SI, II, OmegaConf, SCMode
+from omegaconf import DictConfig, MISSING, SI, II, ListConfig, OmegaConf, SCMode
 from omegaconf.errors import InterpolationToMissingValueError
 # NOTE:
 """
@@ -24,15 +34,18 @@ from classes.rss_sensor import AD_RSS_AVAILABLE
 # Helper methods
 
 class class_or_instance_method:
-    """Transform a method into both a regular and class method"""
+    """Decorator to transform a method into both a regular and class method"""
+    
     def __init__(self, call):
         self.__wrapped__ = call
+        self._wrapper = lambda x : x
 
-    def __get__(self, instance, owner):
-        if instance is None:  # called on class
-            return wraps(self.__wrapped__ )(partial(self.__wrapped__, owner))
-        else:                 # called on instance
-            return wraps(self.__wrapped__ )(partial(self.__wrapped__, instance))
+    def __get__(self, instance : Union[None,"AgentConfig"], owner : Type["AgentConfig"]):
+        if instance is None:  # called on class 
+            return self._wrapper(partial(self.__wrapped__, owner))
+        #if isinstance(instance, AgentConfig):  # called on instance
+        return self._wrapper(partial(self.__wrapped__, instance))
+
 
 OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
 OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
@@ -101,17 +114,29 @@ class AgentConfig:
         return OmegaConf.to_container(options, resolve=resolve, **kwargs)
     
     @class_or_instance_method
-    def to_yaml(cls_or_self, resolve=False):
+    def to_yaml(cls_or_self, resolve=False) ->  str:
         return cls_or_self.simplify_options(resolve=resolve, yaml=True)
     
     @class_or_instance_method
-    def get_options(cls, category=None) -> "AgentConfig":
-        """Returns a dictionary of all options."""
+    def get_options(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations=True, lock_fields:Optional[List[str]]=None) -> ConfigType:
+        """
+        Returns a dictionary of all options.
+        
+        Interpolations will be locked to prevent them from being overwritten.
+        E.g. speed.current_speed does cannot diverge from live_info.current_speed.
+        """
         if category is None:
-            options = cls
+            options = cls_or_self
         else:
-            options = getattr(cls, category)
-        return OmegaConf.structured(options, flags={"allow_objects": True})
+            options = getattr(cls_or_self, category)
+        conf : ConfigType = OmegaConf.structured(options, flags={"allow_objects": True})
+        # This pre
+        if lock_interpolations:
+            set_readonly_interpolations(conf)
+        if lock_fields:
+            set_readonly_keys(conf, lock_fields)
+        return conf
+    
     
     @staticmethod
     def _flatten_dict(source : DictConfig, target):
