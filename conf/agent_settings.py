@@ -117,6 +117,19 @@ class AgentConfig:
     def to_yaml(cls_or_self, resolve=False) ->  str:
         return cls_or_self.simplify_options(resolve=resolve, yaml=True)
     
+    @classmethod
+    def from_yaml(cls, path, category : Optional[str]=None, *, merge=True):
+        """Loads the options from a yaml file."""
+        if merge:
+            options : cls = OmegaConf.merge(cls(), OmegaConf.load(path))
+        else:
+            options : cls = OmegaConf.load(path)
+        if category is None:
+            return options
+        r : DictConfig = cast(AgentConfig, options[category])
+        return r
+    
+
     @class_or_instance_method
     def get_options(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations=True, lock_fields:Optional[List[str]]=None) -> ConfigType:
         """

@@ -77,7 +77,7 @@ class LunaticAgent(BehaviorAgent):
     
     # todo: rename in the future
 
-    def __init__(self, vehicle : carla.Vehicle, world : carla.World, behavior : LunaticAgentSettings, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, vehicle : carla.Vehicle, world : carla.World, behavior : Union[str, LunaticAgentSettings], map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -93,21 +93,23 @@ class LunaticAgent(BehaviorAgent):
         # low prio todo: update description.
 
         # OURS: Fusing behavior
-
         # Settings ---------------------------------------------------------------
         print("Behavior of Agent", behavior)
-        self._behavior = behavior
-        if isinstance(behavior, AgentConfig):
+        opt_dict : LunaticAgentSettings
+        if isinstance(behavior, str):
+            opt_dict : LunaticAgentSettings = LunaticAgentSettings.from_yaml(behavior)
+        elif isinstance(behavior, AgentConfig):
             print("Is valid config")
-            opt_dict : LunaticAgentSettings = self._behavior.get_options()  # base options from templates
+            opt_dict  = assure_type(behavior.__class__, behavior.get_options())  # base options from templates
             opt_dict.update(overwrite_options)  # update by custom options
         elif isinstance(behavior, DictConfig):
-            opt_dict = OmegaConf.merge(behavior, overwrite_options) # UNTESTED
+            opt_dict : LunaticAgentSettings = OmegaConf.merge(behavior, overwrite_options) # UNTESTED
         elif not overwrite_options:
             print("Warning: Settings are not a supported Config class")
-            opt_dict = behavior  # assume the user passed something appropriate
+            opt_dict  = behavior  # assume the user passed something appropriate
         else:
-            raise ValueError("Behavior must be a " + str(AgentConfig))
+                raise ValueError("Behavior must be a " + str(AgentConfig))
+        self._behavior = behavior
         self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
         
         print("\n\nAgent config is", OmegaConf.to_yaml(self.config))
