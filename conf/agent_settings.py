@@ -1,4 +1,4 @@
-# DO NOT USE from __future__ import annotations !
+# DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
 
 import sys
 if __name__ == "__main__": # TEMP clean at the end, only here for testing
@@ -9,7 +9,7 @@ from enum import Enum
 from functools import partial, wraps
 from dataclasses import dataclass, field, asdict
 import typing
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Callable, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast
 
 # from typing import ParamSpec, Concatenate, TypeAlias
 #Param = ParamSpec("Param")
@@ -33,20 +33,34 @@ import carla
 from agents.navigation.local_planner import RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
+__all__ = ["AgentConfig", 
+           "SimpleConfig", 
+           "BasicAgentSettings", 
+           "BehaviorAgentSettings", 
+           "SimpleBasicAgentSettings", 
+           "SimpleBehaviorAgentSettings"
+           "LunaticAgentSettings",
+           "SimpleLunaticAgentSettings",
+           "AutopilotBehavior",
+        ]
+
+MISSING = "???"
+
+# ---------------------
 # Helper methods
+# ---------------------
 
 class class_or_instance_method:
     """Decorator to transform a method into both a regular and class method"""
     
     def __init__(self, call):
         self.__wrapped__ = call
-        self._wrapper = lambda x : x
+        self._wrapper = lambda x : x # TODO: functools.partial and functools.wraps shadow the signature, this reveals it again.
 
-    def __get__(self, instance : Union[None,"AgentConfig"], owner : Type["AgentConfig"]):
+    def __get__(self, instance : Union[None, "AgentConfig"], owner : Type["AgentConfig"]):
         if instance is None:  # called on class 
             return self._wrapper(partial(self.__wrapped__, owner))
-        #if isinstance(instance, AgentConfig):  # called on instance
-        return self._wrapper(partial(self.__wrapped__, instance))
+        return self._wrapper(partial(self.__wrapped__, instance)) # called on instance
 
 
 OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
@@ -72,10 +86,18 @@ def set_readonly_keys(conf : Union[DictConfig, ListConfig], keys : List[str]):
     for key in keys:
         OmegaConf.set_readonly(conf._get_node(key), True)
 
-# Configs
+# ---------------------
+# Base Classes
+# ---------------------
 
 class AgentConfig:
-    overwrites : Optional[Dict[str, dict]] = None
+    """
+    Base interface for the agent settings. 
+    
+    Handling the initialization from a nested dataclass and merges in the changes
+    from the overwrites options.
+    """
+    overwrites: "Optional[Dict[str, Union[dict, AgentConfig]]]" = None
     
     @classmethod
     def get_defaults(cls) -> "AgentConfig":
@@ -89,9 +111,10 @@ class AgentConfig:
             options = cls_or_self
         else:
             options = cls_or_self[category]
-        if not isinstance(options, DictConfig):
+        if not isinstance(options, DictConfig): 
+            # TODO: look how we can do this directly from dataclass
             options = OmegaConf.create(options, flags={"allow_objects": True})
-        OmegaConf.save(options, path, resolve=resolve)
+        OmegaConf.save(options, path, resolve=resolve) # NOTE: This might raise if options is structured, for export structured this is actually not necessary.
         
     @class_or_instance_method
     def simplify_options(cls_or_self, category=None, *, resolve, yaml=False, **kwargs):
@@ -180,9 +203,13 @@ class AgentConfig:
         cls_or_self._flatten_dict(resolved, options)
         return options
     
-    def update(self, options : dict, clean=True):
+    def update(self, options : "Union[dict, AgentConfig]", clean=True):
         """Updates the options with a new dictionary."""
-        for k, v in options.items():
+        if isinstance(options, AgentConfig):
+            key_values = options.__dataclass_fields__.items()
+        else:
+            key_values = options.items()
+        for k, v in key_values:
             if isinstance(getattr(self, k), AgentConfig):
                 getattr(self, k).update(v)
             else:
@@ -203,6 +230,7 @@ class AgentConfig:
         self._clean_options()
         if self.overwrites is None:
             return
+        # Merge the overwrite dict into the correct ones.
         for key, value in self.overwrites.items():
             if key in self.__annotations__:
                 if issubclass(self.__annotations__[key], AgentConfig):
@@ -211,14 +239,75 @@ class AgentConfig:
                     print("is not a Config")
                     setattr(self, key, value)
             else:
-                print(f"Key {key} not found in {self.__class__.__name__} options.")
-        return 
-        for name, _type in self.__annotations__.items(): # NOTE: AttributeError: if an attribute error points here type hints might have been forgotten.
-            if isinstance(_type, typing._GenericAlias):
+                print(f"Warning: Key '{key}' not found in {self.__class__.__name__} default options. Consider updating or creating a new class to avoid this message.")
+
+
+class SimpleConfig(object):
+    """
+    A class that allows a more simple way to initialize settings.
+    Initializing an instance changes the type the the given base class, defined via `_base_settings`.
+    
+    :param _base_settings: The base class to port the settings to.
+    
+    TODO: NOTE: This class assumes that there are NO DUPLICATE keys in the underlying base
+    """
+    
+    _base_settings: ClassVar["AgentConfig"] = None
+    
+    def __new__(cls, overwrites:Optional[Dict[str, Union[dict, AgentConfig]]]=None) -> "AgentConfig":
+        """
+        Transforms a SimpleConfig class into the given _base_settings
+        
+        :param overwrites: That allow overwrites during initialization.
+        """
+        if cls._base_settings is None:
+            raise TypeError("{cls.__name__} must have a class set in the `_base_settings` to initialize to.")
+        if cls is SimpleConfig:
+            raise TypeError("SimpleConfig class may not be instantiated")
+        simple_settings = {k:v for k,v  in cls.__dict__.items() if not k.startswith("_") } # Removes all private attributes
+        if overwrites:
+            simple_settings.update(overwrites) 
+        return super().__new__(cls).to_nested_config(simple_settings) # call from a pseudo instance.
+    
+    @class_or_instance_method
+    def to_nested_config(self, simple_overwrites:dict=None) -> AgentConfig:
+        """
+        Initializes the _base_settings with the given overwrites.
+        
+        Maps the keys of simple_overwrites to the base settings.
+        
+        More specifically builds a overwrites dict that is compatible with the nested configuration versions.
+        
+        NOTE: Assumes unique keys over all settings!
+        # TODO: add a warning if a non-unique key is found in the overwrites.
+        """
+        if isinstance(self, type): # called on class
+            return self()
+        keys = set(simple_overwrites.keys())
+        removed_keys = set() # to check for duplicated keys that cannot be set via SimpleConfig unambiguously
+        overwrites = {}
+        for name, base in self._base_settings.__annotations__.items():
+            if not isinstance(base, type) or not issubclass(base, AgentConfig): # First out non AgentConfig attributes
+                if name in keys:
+                    overwrites[name] = simple_overwrites[name] # if updating a top level attribute
+                    keys.remove(name)
+                    removed_keys.add(name)
                 continue
-            if issubclass(_type, AgentConfig) \
-                and not isinstance(getattr(self, name), _type):
-                    setattr(self, name, _type.get_defaults()(**getattr(self, name)))
+            matching = keys.intersection(base.__dataclass_fields__.keys()) # keys that match from the simple config to the real nested config
+            if len(matching) > 0:
+                if removed_keys.intersection(matching):
+                    print("WARNING: Ambiguous key", removed_keys.intersection(matching), "in the SimpleConfig", str(self), "that occurs multiple times in its given base", self._base_settings.__name__+".", "Encountered at", name, base) # TODO: remove later, left here for testing.")
+                overwrites[name] = {k: getattr(self, k) for k in matching}
+                keys -= matching
+                removed_keys.update(matching)
+        if len(keys) != 0:
+            overwrites.update({k: v for k,v in simple_overwrites.items() if k in keys}) # Add them to the top level
+            print("Warning: Unmatched keys", keys, "in", self.__class__.__name__, "not contained in base", self._base_settings.__name__+".", "Adding them to the top-level of the settings.") # TODO: remove later, left here for testing.
+        return self._base_settings(overwrites=overwrites)
+        # TODO: could add new keys after post-processing.
+        
+        
+# ---------------------
 
 # ---------------------
 # Live Info
@@ -228,8 +317,8 @@ class AgentConfig:
 class LiveInfo(AgentConfig):
     current_speed : float = MISSING
     current_speed_limit : float = MISSING
-    velocity_vector : "carla.Vector3D" = MISSING
     direction : RoadOption = MISSING
+    velocity_vector : "carla.Vector3D" = MISSING
     
     # NOTE: Not ported to OmegaConf
     @property
@@ -247,8 +336,7 @@ class LiveInfo(AgentConfig):
 # ---------------------
 # Speed
 # ---------------------    
-    
-    
+
 @dataclass
 class BasicAgentSpeedSettings(AgentConfig):
     current_speed: float = II("live_info.current_speed")
@@ -289,7 +377,7 @@ class BehaviorAgentSpeedSettings(BasicAgentSpeedSettings):
     From normal behavior. This supersedes the target_speed when following the BehaviorAgent logic."""
     
     # CASE A
-    speed_decrease : float = 12
+    speed_decrease : float = 10
     """other_vehicle_speed"""
     
     safety_time : float = 3
@@ -300,7 +388,7 @@ class BehaviorAgentSpeedSettings(BasicAgentSpeedSettings):
     """Implement als variable, currently hard_coded"""
 
     # All Cases
-    speed_lim_dist : float = 6
+    speed_lim_dist : float = 3
     """
     Difference to speed limit.
     NOTE: For negative values the car drives above speed limit
@@ -344,37 +432,24 @@ class LunaticAgentSpeedSettings(AutopilotSpeedSettings, BehaviorAgentSpeedSettin
 
 @dataclass
 class BasicAgentDistanceSettings(AgentConfig):
-    """
-    Calculation of the minimum distance for # XXX
-    min_distance = base_min_distance + distance_ratio * vehicle_speed 
-    
-    see local_planner.py `run_step`
-    """
-    
-    base_min_distance : float = 3.0
-    """
-    Base value of the distance to keep
-    """
-    
-    distance_ratio : float = 0.5
-    """Increases minimum distance multiplied by speed"""
+    pass
     
 
 @dataclass
 class BehaviorAgentDistanceSettings(BasicAgentDistanceSettings):
     """
-    Collision Avoidance -----
+    Collision Avoidance
+    -------------------
 
-    Distance in which for vehicles are checked
-    max(min_proximity_threshold, self._speed_limit / (2 if LANE CHANGE else 3 ) )
-    TODO: The secondary speed limit is hardcoded, make adjustable and optional
-    automatic_proximity_threshold = {RoadOption.CHANGELANELEFT: 2, "same_lane" : 3, "right_lane" : 2}
+    Distance in which for vehicles are checked.
+    
+    Usage: max_distance = max(min_proximity_threshold, self._speed_limit / (2 if <LANE CHANGE> else 3 ) )
     """
     
-    min_proximity_threshold : float = 12
+    min_proximity_threshold : float = 10
     """Range in which cars are detected. NOTE: Speed limit overwrites"""
     
-    braking_distance : float = 6
+    emergency_braking_distance : float = 5
     """Emergency Stop Distance Trigger"""
     
 
@@ -403,9 +478,9 @@ class LunaticAgentDistanceSettings(AutopilotDistanceSettings, BehaviorAgentDista
 @dataclass
 class BasicAgentLaneChangeSettings(AgentConfig):
     """
-    XXX
+    Timings in seconds to finetune the lane change behavior.
     
-    see: `BasicAgent.lane_change` and `BasicAgent._generate_lane_change_path`
+    NOTE: see: `BasicAgent.lane_change` and `BasicAgent._generate_lane_change_path`
     """
     same_lane_time : float = 0.0
     other_lane_time : float = 0.0
@@ -425,6 +500,7 @@ class AutopilotLaneChangeSettings(AgentConfig):
     Adjust probability that in each timestep the actor will perform a left/right lane change, 
     dependent on lane change availability.
     """
+    
     random_right_lanechange_percentage : float = 0.1
     """
     Adjust probability that in each timestep the actor will perform a left/right lane change, 
@@ -513,27 +589,38 @@ class BasicAgentObstacleSettings(AgentConfig):
     """
     Base distance to traffic lights to check if they affect the vehicle
         
-    USAGE: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
-    USAGE: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+    Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
+    Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
     
     base_vehicle_threshold : float = 5.0
     """
     Base distance to vehicles to check if they affect the vehicle
             
-    USAGE: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
-    USAGE: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+    Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
+    Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
 
     detection_speed_ratio : float = 1.0
     """
     Increases detection range based on speed
     
-    USAGE: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
-    USAGE: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+    Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
+    Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+    """
+    
+    use_dynamic_speed_threshold : bool = True
+    """
+    Whether to add a dynamic threshold based on the vehicle speed to the base threshold.
+    
+    Usage: base_threshold + detection_speed_ratio * vehicle_speed
+    
+    #NOTE: Currently only applied to traffic lights
     """
     
     detection_angles : BasicAgentObstacleDetectionAngles = field(default_factory=BasicAgentObstacleDetectionAngles)
+    """Defines detection angles used when checking for obstacles."""
+    
 
 @dataclass
 class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
@@ -542,10 +629,18 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
 @dataclass
 class AutopilotObstacleSettings(AgentConfig):
     ignore_lights_percentage : float = 0.0
+    """
+    Percentage of time to ignore traffic lights
+    """
+    
     ignore_signs_percentage : float = 0.0
+    """
+    Percentage of time to ignore stop signs
+    """
+    
     ignore_walkers_percentage : float = 0.0
     """
-    Percentage of time to ignore traffic lights, signs and pedestrians
+    Percentage of time to ignore pedestrians
     """
     
 @dataclass
@@ -587,13 +682,12 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
 # ---------------------
 
 # ---------------------
-# Controller
-# TODO: Maybe a different name
+# ControllerSettings
 # ---------------------
 
 @dataclass
 class BasicAgentControllerSettings(AgentConfig):
-    """PIDController Level (called from planner)"""
+    """Limitations of the controls used one the PIDController Level"""
     
     max_brake : float = 0.5
     """
@@ -605,8 +699,6 @@ class BasicAgentControllerSettings(AgentConfig):
     """maximum throttle applied to the vehicle"""
     max_steering : float = 0.8
     """maximum steering applied to the vehicle"""
-    offset : float = 0
-    """distance between the route waypoints and the center of the lane"""
     
     # Aliases used:
     @property
@@ -631,12 +723,28 @@ class AutopilotControllerSettings(AgentConfig):
     
 @dataclass
 class LunaticAgentControllerSettings(AutopilotControllerSettings, BehaviorAgentControllerSettings):
-    vehicle_lane_offset : float = II("controls.offset")
+    vehicle_lane_offset : float = II("planner.offset")
     """distance between the route waypoints and the center of the lane"""
 
 # ---------------------
 # PlannerSettings
 # ---------------------
+
+@dataclass
+class PIDControllerDict:
+    """
+    PID controller using the following semantics:
+        K_P -- Proportional term
+        K_D -- Differential term
+        K_I -- Integral term
+        dt -- time differential in seconds
+    """
+            
+    K_P : float = MISSING
+    K_D : float = MISSING
+    K_I : float = 0.05
+    dt : float = 1.0 / 20.0
+    """time differential in seconds"""
 
 @dataclass
 class BasicAgentPlannerSettings(AgentConfig):
@@ -645,6 +753,7 @@ class BasicAgentPlannerSettings(AgentConfig):
             K_P -- Proportional term
             K_D -- Differential term
             K_I -- Integral term
+            dt -- time differential in seconds
     offset: If different than zero, the vehicle will drive displaced from the center line.
     Positive values imply a right offset while negative ones mean a left one. 
     Numbers high enough to cause the vehicle to drive through other lanes might break the controller.
@@ -657,7 +766,24 @@ class BasicAgentPlannerSettings(AgentConfig):
     """
     
     dt : float = 1.0 / 20.0
-    """time between simulation steps."""
+    """time differential in seconds"""
+    
+    # NOTE: two variables because originally used with two different names in different places
+    #lateral_control_dict : PIDControllerDict = field(default_factory=partial(PIDControllerDict, **{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2}))
+    lateral_control_dict : PIDControllerDict = field(default_factory=lambda:PIDControllerDict(**{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2}))
+    """values of the lateral PID controller"""
+
+    # NOTE: two variables because originally used with two different names in different places
+    longitudinal_control_dict : PIDControllerDict  = field(default_factory=lambda:PIDControllerDict(**{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0}))
+    """values of the longitudinal PID controller"""
+    
+    offset : float = 0.0
+    """
+    If different than zero, the vehicle will drive displaced from the center line.
+    
+    Positive values imply a right offset while negative ones mean a left one. Numbers high enough
+    to cause the vehicle to drive through other lanes might break the controller.
+    """
     
     sampling_radius : float = 2.0
     """
@@ -673,25 +799,22 @@ class BasicAgentPlannerSettings(AgentConfig):
     
     Used with the Waypoint.next(sampling_radius) and distance between waypoints.
     """
+    
+    min_distance_next_waypoint : float = 3.0
+    """
+    Removes waypoints from the queue that are too close to the vehicle.
+    
+    Usage: min_distance = min_distance_next_waypoint + next_waypoint_distance_ratio * vehicle_speed 
+    """
+    
+    next_waypoint_distance_ratio : float = 0.5
+    """Increases the minimum distance to the next waypoint based on the vehicles speed."""
+    
     # Alias
-    #step_distance : float = II(".sampling_resolution")
     @property
     def step_distance(self):
-        return self.sampling_resolution # TODO:update
-    
-    # NOTE: two variables because originally used with two different names in different places
-    lateral_control_dict : Dict[str, float] = field(default_factory=lambda:{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2, 'dt': II("..dt")})
-    """values of the lateral PID controller"""
-    args_lateral_dict : Dict[str, float] = II("${.lateral_control_dict}")
-    """values of the lateral PID controller"""
+        return self.sampling_resolution
 
-    # NOTE: two variables because originally used with two different names in different places
-    longitudinal_control_dict : Dict[str, float]  = field(default_factory=lambda:{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0, 'dt': II("..dt")}) # Note: ${..dt} points to planner.dt, similar to a directory
-    """values of the longitudinal PID controller"""
-    args_longitudinal_dict : Dict[str, float] = II("${.longitudinal_control_dict}") # points to the variable above
-    """values of the longitudinal PID controller"""
-    
-    
 
 @dataclass
 class BehaviorAgentPlannerSettings(BasicAgentPlannerSettings):
@@ -703,14 +826,24 @@ class BehaviorAgentPlannerSettings(BasicAgentPlannerSettings):
     Used with the Waypoint.next(sampling_radius)
     """
     
+
+
 @dataclass
 class LunaticAgentPlannerSettings(BehaviorAgentPlannerSettings):
     dt : float = MISSING # 1.0 / 20.0 # Note: Set this from main script and do not assume it.
     """
-    Time between simulation steps.
+    time differential in seconds
     
     NOTE: Should set from main script.
     """
+    
+    # NOTE: two variables because originally used with two different names in different places
+    lateral_control_dict : PIDControllerDict = field(default_factory=partial(PIDControllerDict, **{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2, 'dt': II("${..dt}")}))
+    """values of the lateral PID controller"""
+
+    # NOTE: two variables because originally used with two different names in different places
+    longitudinal_control_dict : PIDControllerDict  = field(default_factory=partial(PIDControllerDict, **{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0, 'dt': II("${..dt}")}))
+    """values of the longitudinal PID controller"""
 
 # ---------------------
 # Emergency
@@ -719,7 +852,7 @@ class LunaticAgentPlannerSettings(BehaviorAgentPlannerSettings):
 @dataclass
 class BasicAgentEmergencySettings(AgentConfig):
     throttle : float = 0.0
-    brake : float = II("controls.max_brake")
+    max_emergency_brake : float = II("controls.max_brake")
     hand_brake : bool = False
     
     
@@ -781,9 +914,6 @@ class RssSettings(AgentConfig):
         
         log_level : "RssLogLevel" = "info" # type: ignore
         """Set the initial log level of the RSSSensor"""
-        
-        
-        
     
     def _clean_options(self):
         if AD_RSS_AVAILABLE:
@@ -797,6 +927,8 @@ class RssSettings(AgentConfig):
     
 
 # ---------------------
+# Final Settings
+# ---------------------
 
 @dataclass
 class AutopilotBehavior(AgentConfig):
@@ -808,7 +940,7 @@ class AutopilotBehavior(AgentConfig):
     auto_lane_change: bool = True
     """Turns on or off lane changing behavior for a vehicle."""
     
-    vehicle_lane_offset : str = II("controls.offset")
+    vehicle_lane_offset : float = 0
     """
     Sets a lane offset displacement from the center line.
     
@@ -843,10 +975,12 @@ class AutopilotBehavior(AgentConfig):
 
     vehicle_percentage_speed_difference : float = 30 # in percent
     """
-    NOTE: in percent.
     Sets the difference the vehicle's intended speed and its current speed limit. 
-    Speed limits can be exceeded by setting the perc to a negative value. 
-    Default is 30. Exceeding a speed limit can be done using negative percentages.
+    Speed limits can be exceeded by setting the percentage to a negative value. 
+    Exceeding a speed limit can be done using negative percentages.
+    
+    NOTE: unit is in percent.
+    Default is 30. 
     """
     
     ignore_lights_percentage : float = 0.0
@@ -855,28 +989,10 @@ class AutopilotBehavior(AgentConfig):
 
     update_vehicle_lights : bool = False
     """Sets if the Traffic Manager is responsible of updating the vehicle lights, or not."""
-    
-
-@dataclass
-class SimpleBasicAgentSettings(LiveInfo, BasicAgentSpeedSettings, BasicAgentDistanceSettings, BasicAgentLaneChangeSettings, BasicAgentObstacleSettings, BasicAgentControllerSettings, BasicAgentPlannerSettings, BasicAgentEmergencySettings):
-    pass
-
-@dataclass
-class SimpleBehaviorAgentSettings(LiveInfo, BehaviorAgentSpeedSettings, BehaviorAgentDistanceSettings, BehaviorAgentLaneChangeSettings, BehaviorAgentObstacleSettings, BehaviorAgentControllerSettings, BehaviorAgentPlannerSettings, BehaviorAgentEmergencySettings):
-    pass
-
-@dataclass
-class SimpleAutopilotAgentSettings(AutopilotSpeedSettings, AutopilotDistanceSettings, AutopilotLaneChangeSettings, AutopilotObstacleSettings, AutopilotControllerSettings):
-    pass
-
-@dataclass
-class SimpleLunaticAgentSettings(LiveInfo, LunaticAgentSpeedSettings, LunaticAgentDistanceSettings, LunaticAgentLaneChangeSettings, LunaticAgentObstacleSettings, LunaticAgentControllerSettings, LunaticAgentPlannerSettings, LunaticAgentEmergencySettings, RssSettings):
-    pass
-
-
+ 
 @dataclass
 class BasicAgentSettings(AgentConfig):
-    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
+    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False) # type: Optional[Dict[str, Union[dict|AgentConfig]]]
     live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
     speed : BasicAgentSpeedSettings = field(default_factory=BasicAgentSpeedSettings, init=False)
     distance : BasicAgentDistanceSettings = field(default_factory=BasicAgentDistanceSettings, init=False)
@@ -889,7 +1005,7 @@ class BasicAgentSettings(AgentConfig):
     
 @dataclass
 class BehaviorAgentSettings(AgentConfig):
-    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
+    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False) # type: Optional[Dict[str, Union[dict|AgentConfig]]]
     live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
     speed : BehaviorAgentSpeedSettings = field(default_factory=BehaviorAgentSpeedSettings, init=False)
     distance : BehaviorAgentDistanceSettings = field(default_factory=BehaviorAgentDistanceSettings, init=False)
@@ -898,7 +1014,8 @@ class BehaviorAgentSettings(AgentConfig):
     controls : BehaviorAgentControllerSettings = field(default_factory=BehaviorAgentControllerSettings, init=False)
     planner : BehaviorAgentPlannerSettings = field(default_factory=BehaviorAgentPlannerSettings, init=False)
     emergency : BehaviorAgentEmergencySettings = field(default_factory=BehaviorAgentEmergencySettings, init=False)
-    
+    avoid_tailgators : bool = True
+
 @dataclass
 class LunaticAgentSettings(AgentConfig):
     overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
@@ -913,6 +1030,23 @@ class LunaticAgentSettings(AgentConfig):
     rss : RssSettings = field(default_factory=RssSettings, init=False)
     
 
+@dataclass
+class SimpleBasicAgentSettings(SimpleConfig, LiveInfo, BasicAgentSpeedSettings, BasicAgentDistanceSettings, BasicAgentLaneChangeSettings, BasicAgentObstacleSettings, BasicAgentControllerSettings, BasicAgentPlannerSettings, BasicAgentEmergencySettings):
+    _base_settings :ClassVar[BasicAgentSettings] = BasicAgentSettings
+
+@dataclass
+class SimpleBehaviorAgentSettings(SimpleConfig, LiveInfo, BehaviorAgentSpeedSettings, BehaviorAgentDistanceSettings, BehaviorAgentLaneChangeSettings, BehaviorAgentObstacleSettings, BehaviorAgentControllerSettings, BehaviorAgentPlannerSettings, BehaviorAgentEmergencySettings):
+    _base_settings :ClassVar[BehaviorAgentSettings] = BehaviorAgentSettings
+
+
+@dataclass
+class SimpleLunaticAgentSettings(SimpleConfig, LiveInfo, LunaticAgentSpeedSettings, LunaticAgentDistanceSettings, LunaticAgentLaneChangeSettings, LunaticAgentObstacleSettings, LunaticAgentControllerSettings, LunaticAgentPlannerSettings, LunaticAgentEmergencySettings, RssSettings):
+    _base_settings :ClassVar[BehaviorAgentSettings] = LunaticAgentSettings
+
+@dataclass
+class SimpleAutopilotAgentSettings(SimpleConfig, AutopilotSpeedSettings, AutopilotDistanceSettings, AutopilotLaneChangeSettings, AutopilotObstacleSettings, AutopilotControllerSettings):
+    base_settings :ClassVar[AutopilotBehavior] = AutopilotBehavior
+
 if __name__ == "__main__":
     #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
     #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
@@ -925,5 +1059,7 @@ if __name__ == "__main__":
         raise TypeError("Should only raise if AD_RSS_AVAILABLE is False")
     except ValueError as e:
         print("Correct ValueError", e)
+        print("Correctly raised")
         pass
     #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
+    LunaticAgentSettings.export_options("lunatic_agent_settings.yaml")

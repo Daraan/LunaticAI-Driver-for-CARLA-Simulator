@@ -117,9 +117,9 @@ def game_loop(args : argparse.ArgumentParser):
         # TODO: if DictConfig then World and agent order can be reversed and World initialized with config
         behavior = LunaticAgentSettings(
             {'distance':
-                { "base_min_distance": 5.0,
+                {
                 "min_proximity_threshold": 12.0,
-                "braking_distance": 6.0,
+                "emergency_braking_distance": 6.0,
                 "distance_to_leading_vehicle": 8.0},
             'controls':{ "max_brake" : 1.0, 
                         'max_steering' : 0.25},
@@ -137,6 +137,8 @@ def game_loop(args : argparse.ArgumentParser):
                     'use_stay_on_road_feature': False},
             "planner": {
                 "dt" : world_settings.fixed_delta_seconds or 1/20,
+                "min_distance_next_waypoint" : 2.0,
+                
              }
             })
         print("Set dt to", world_settings.fixed_delta_seconds)

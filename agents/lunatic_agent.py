@@ -458,7 +458,7 @@ class LunaticAgent(BehaviorAgent):
                                                  detection_result.obstacle.bounding_box.extent.x)
                                            - max(self._vehicle.bounding_box.extent.y, 
                                                  self._vehicle.bounding_box.extent.x)
-            < self.config.distance.braking_distance)):
+            < self.config.distance.emergency_braking_distance)):
             print("Detected walker", detection_result.obstacle)
             return True, detection_result
         # TODO detected but not stopping -> ADD avoidance behavior
@@ -468,7 +468,7 @@ class LunaticAgent(BehaviorAgent):
         exact_distance = distance - max(vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
             self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
 
-        if exact_distance < self.config.distance.braking_distance:
+        if exact_distance < self.config.distance.emergency_braking_distance:
             controls, end_loop = self.react_to_hazard(control=None, hazard_detected={Hazard.CAR})
         else:
             controls = self.car_following_manager(vehicle, exact_distance)
