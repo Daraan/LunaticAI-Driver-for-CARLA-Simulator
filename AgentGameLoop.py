@@ -116,12 +116,7 @@ def game_loop(args : argparse.ArgumentParser):
         # TODO: # CRITICAL: This should be a dataclass->DictConfig and not its own class!
         # TODO: if DictConfig then World and agent order can be reversed and World initialized with config
         behavior = LunaticAgentSettings(
-            {'distance':
-                {
-                "min_proximity_threshold": 12.0,
-                "emergency_braking_distance": 6.0,
-                "distance_to_leading_vehicle": 8.0},
-            'controls':{ "max_brake" : 1.0, 
+            {'controls':{ "max_brake" : 1.0, 
                         'max_steering' : 0.25},
             'speed': {'target_speed': 33.0,
                         'max_speed' : 50,
@@ -160,20 +155,16 @@ def game_loop(args : argparse.ArgumentParser):
                 "min_proximity_threshold": 12.0,
                 "emergency_braking_distance": 6.0,
                 "distance_to_leading_vehicle": 8.0},})
-        print("Set dt to", world_settings.fixed_delta_seconds)
-        if PRINT_CONFIG:
-            print("    \n\n\n")
-            pprint(behavior)
-            print(behavior.to_yaml())
+        del config
+        del agent
+        del world_model
+        # Test 2
+        agent, world_model, global_planner = LunaticAgent.create_world_and_agent(ego.actor, sim_world, args, map_inst=sim_map, overwrites={'distance':{
+                "min_proximity_threshold": 12.0,
+                "emergency_braking_distance": 6.0,
+                "distance_to_leading_vehicle": 8.0},})
+        config = agent.config
         
-        # TEMP
-        import classes.worldmodel
-        classes.worldmodel.AD_RSS_AVAILABLE = behavior.rss.enabled
-        # TODO: Remove when order is reversed
-        if args.sync:
-            sim_world.tick()
-        
-        agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
         print("DT is", agent.config.planner.dt)
         
         # Add Rules:
