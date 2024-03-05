@@ -18,6 +18,7 @@ from agents.navigation.local_planner import LocalPlanner, RoadOption, PlannedWay
 from agents.dynamic_planning.dynamic_controller import DynamicVehiclePIDController
 from agents.tools.misc import draw_waypoints, get_speed
 from classes.rss_sensor import RssSensor
+from conf.agent_settings import BasicAgentSettings
 
 
 '''
@@ -51,7 +52,7 @@ class DynamicLocalPlanner(LocalPlanner):
     """
     _waypoints_queue : "deque[Tuple[carla.Waypoint, RoadOption]]"
 
-    def __init__(self, vehicle : carla.Actor, opt_dict : DictConfig, map_inst : carla.Map = None, world:carla.World = None):
+    def __init__(self, vehicle : carla.Vehicle, opt_dict : BasicAgentSettings, map_inst : carla.Map = None, world:carla.World = None):
         """
         :param vehicle: actor to apply to local planner logic onto
         :param opt_dict: dictionary of arguments with different parameters:
@@ -151,7 +152,7 @@ class DynamicLocalPlanner(LocalPlanner):
         # Purge the queue of obsolete waypoints
         veh_location = self._vehicle.get_location()
         vehicle_speed = get_speed(self._vehicle) / 3.6
-        self._min_distance = self.config.distance.base_min_distance + self.config.distance.distance_ratio * vehicle_speed
+        self._min_distance = self.config.planner.min_distance_next_waypoint + self.config.planner.next_waypoint_distance_ratio * vehicle_speed
 
         num_waypoint_removed = 0
         for waypoint, _ in self._waypoints_queue:

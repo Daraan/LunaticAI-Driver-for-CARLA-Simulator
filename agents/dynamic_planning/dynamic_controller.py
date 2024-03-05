@@ -14,8 +14,9 @@ from agents.tools.misc import get_speed
 from agents.navigation.controller import VehiclePIDController, PIDLongitudinalController, PIDLateralController
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from conf.agent_settings import LunaticAgentSettings
+    from conf.agent_settings import BasicAgentSettings
 
 STEERING_UPDATE_SPEED = 0.1
 
@@ -26,7 +27,7 @@ class DynamicVehiclePIDController(VehiclePIDController):
     low level control a vehicle from client side
     """
 
-    def __init__(self, vehicle, config):
+    def __init__(self, vehicle: carla.Vehicle, config: "BasicAgentSettings"):
         """
         Constructor method.
 
@@ -100,8 +101,8 @@ class DynamicVehiclePIDController(VehiclePIDController):
         self._lon_controller.change_parameters(**args_longitudinal)
 
     def change_lateral_PID(self, args_lateral):
-        """Changes the parameters of the PIDLongitudinalController"""
-        self._lon_controller.change_parameters(**args_lateral)
+        """Changes the parameters of the PIDLateralController"""
+        self._lat_controller.change_parameters(**args_lateral)
 
 
 class DynamicPIDLongitudinalController(PIDLongitudinalController):
@@ -109,7 +110,7 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
     PIDLongitudinalController implements longitudinal control using a PID.
     """
 
-    def __init__(self, vehicle, config : "LunaticAgentSettings"):
+    def __init__(self, vehicle, config: "BasicAgentSettings"):
         """
         Constructor method.
 
@@ -172,7 +173,7 @@ class DynamicPIDLateralController(PIDLateralController):
     PIDLateralController implements lateral control using a PID.
     """
 
-    def __init__(self, vehicle, config):
+    def __init__(self, vehicle : carla.Vehicle, config: "BasicAgentSettings"):
         """
         Constructor method.
 
@@ -188,7 +189,7 @@ class DynamicPIDLateralController(PIDLateralController):
         self.config = config
         self._e_buffer = deque(maxlen=10)
 
-    def _pid_control(self, waypoint, vehicle_transform):
+    def _pid_control(self, waypoint : carla.Waypoint, vehicle_transform : carla.Transform):
         """
         Estimate the steering angle of the vehicle based on the PID equations
 
@@ -202,12 +203,12 @@ class DynamicPIDLateralController(PIDLateralController):
         v_vec = np.array([v_vec.x, v_vec.y, 0.0])
 
         # Get the vector vehicle-target_wp
-        if self.config.controls.offset != 0:
+        if self.config.planner.offset != 0:
             # Displace the wp to the side
             w_tran = waypoint.transform
             r_vec = w_tran.get_right_vector()
-            w_loc = w_tran.location + carla.Location(x=self.config.controls.offset*r_vec.x,
-                                                     y=self.config.controls.offset*r_vec.y)
+            w_loc = w_tran.location + carla.Location(x=self.config.planner.offset*r_vec.x,
+                                                     y=self.config.planner.offset*r_vec.y)
         else:
             w_loc = waypoint.transform.location
 
