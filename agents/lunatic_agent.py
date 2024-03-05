@@ -16,7 +16,7 @@ from copy import deepcopy
 from dataclasses import is_dataclass
 from functools import wraps
 import random
-from typing import ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
+from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
 import weakref
 
 from omegaconf import DictConfig, OmegaConf
@@ -41,8 +41,7 @@ from classes.constants import Phase, Hazard
 from classes.rule import Context, Rule
 from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
 
-if TYPE_CHECKING:
-    from classes.worldmodel import WorldModel
+from classes.worldmodel import WorldModel
 
 # As Reference:
 '''
@@ -71,13 +70,34 @@ class LunaticAgent(BehaviorAgent):
 
     # using a ClassVar which allows to define preset rules for a child class
     # NOTE: Use deepcopy to avoid shared state between instances
+    _base_settings : "ClassVar[type[AgentConfig]]" = LunaticAgentSettings
+    
     rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
     _world_model : WorldModel = None
     _ctx : weakref.ReferenceType["Context"] = None
     
     # todo: rename in the future
+    
+    @classmethod
+    def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args, settings_archtype: "Optional[type[AgentConfig]]"=None, overwrites: Dict[str, Any]={}, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None):
+        
+        config : LunaticAgentSettings
+        if settings_archtype is not None and not isinstance(settings_archtype, type):
+            # is an instance; assuming user passes appropriate config
+            config = settings_archtype
+        elif settings_archtype is not None:
+            behavior = settings_archtype(overwrites)
+            config = behavior.make_config()
+        else:
+            config = cls._base_settings.make_config()
+        
+        world_model = WorldModel(sim_world, config, args, player=vehicle, map_inst=map_inst)
+        config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/20
+        
+        agent = cls(vehicle, world_model, config, map_inst=map_inst, grp_inst=grp_inst)
+        return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, vehicle : carla.Vehicle, world : carla.World, behavior : Union[str, LunaticAgentSettings], map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, vehicle : carla.Vehicle, world_model : WorldModel, behavior : Union[str, LunaticAgentSettings], map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
