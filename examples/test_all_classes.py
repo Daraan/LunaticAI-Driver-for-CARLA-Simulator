@@ -18,7 +18,7 @@ print(arule)
 
 behavior = LunaticAgentSettings()
 options : LunaticAgentSettings
-options : LunaticAgentSettings = behavior.get_options()
+options : LunaticAgentSettings = behavior.make_config()
 y = behavior.speed.to_yaml()
 print(y)
 

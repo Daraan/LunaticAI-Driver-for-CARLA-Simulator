@@ -158,7 +158,7 @@ class AgentConfig:
     
 
     @class_or_instance_method
-    def get_options(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations=True, lock_fields:Optional[List[str]]=None) -> ConfigType:
+    def make_config(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations=True, lock_fields:Optional[List[str]]=None) -> ConfigType:
         """
         Returns a dictionary of all options.
         
@@ -1052,8 +1052,8 @@ if __name__ == "__main__":
     #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
     lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags={"allow_objects": True})
     
-    c : LunaticAgentSettings = LunaticAgentSettings().get_options()
-    d : LunaticAgentSettings = LunaticAgentSettings.get_options()
+    c : LunaticAgentSettings = LunaticAgentSettings().make_config()
+    d : LunaticAgentSettings = LunaticAgentSettings.make_config()
     try:
         c.rss.log_level = "asda"
         raise TypeError("Should only raise if AD_RSS_AVAILABLE is False")
