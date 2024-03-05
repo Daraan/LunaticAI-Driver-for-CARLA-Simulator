@@ -605,8 +605,6 @@ class BasicAgentControllerSettings(AgentConfig):
     """maximum throttle applied to the vehicle"""
     max_steering : float = 0.8
     """maximum steering applied to the vehicle"""
-    offset : float = 0
-    """distance between the route waypoints and the center of the lane"""
     
     # Aliases used:
     @property
@@ -631,7 +629,7 @@ class AutopilotControllerSettings(AgentConfig):
     
 @dataclass
 class LunaticAgentControllerSettings(AutopilotControllerSettings, BehaviorAgentControllerSettings):
-    vehicle_lane_offset : float = II("controls.offset")
+    vehicle_lane_offset : float = II("planner.offset")
     """distance between the route waypoints and the center of the lane"""
 
 # ---------------------
@@ -658,6 +656,13 @@ class BasicAgentPlannerSettings(AgentConfig):
     
     dt : float = 1.0 / 20.0
     """time between simulation steps."""
+    offset : float = 0.0
+    """
+    If different than zero, the vehicle will drive displaced from the center line.
+    
+    Positive values imply a right offset while negative ones mean a left one. Numbers high enough
+    to cause the vehicle to drive through other lanes might break the controller.
+    """
     
     sampling_radius : float = 2.0
     """

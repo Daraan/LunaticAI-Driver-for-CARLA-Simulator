@@ -63,7 +63,7 @@ controls:
   max_throttle: 0.75
   max_steering: 0.8
   offset: 0.0
-  vehicle_lane_offset: ${controls.offset}
+  vehicle_lane_offset: ${planner.offset}
 planner:
   dt: ???
   sampling_radius: 2.0

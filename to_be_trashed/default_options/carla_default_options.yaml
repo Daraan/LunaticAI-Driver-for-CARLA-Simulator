@@ -61,6 +61,6 @@ planner:
   args_longitudinal_dict: ${.longitudinal_control_dict}
 other:
   tailgate_counter: 0
-  vehicle_lane_offset: ${controls.offset}
+  vehicle_lane_offset: ${planner.offset}
   update_vehicle_lights: false
 unknown: {}

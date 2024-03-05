@@ -44,8 +44,8 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
         # Note nested functions can access variables from the outer scope
         route_bb = []
         extent_y = self._vehicle.bounding_box.extent.y
-        r_ext = extent_y + self.config.controls.offset
-        l_ext = -extent_y + self.config.controls.offset
+        r_ext = extent_y + self.config.planner.offset
+        l_ext = -extent_y + self.config.planner.offset
         r_vec = ego_transform.get_right_vector()
         p1 = ego_location + carla.Location(r_ext * r_vec.x, r_ext * r_vec.y)
         p2 = ego_location + carla.Location(l_ext * r_vec.x, l_ext * r_vec.y)
@@ -82,7 +82,7 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
     ego_front_transform.location += carla.Location(
         self._vehicle.bounding_box.extent.x * ego_transform.get_forward_vector())
 
-    opposite_invasion = abs(self.config.controls.offset) + self._vehicle.bounding_box.extent.y > ego_wpt.lane_width / 2
+    opposite_invasion = abs(self.config.planner.offset) + self._vehicle.bounding_box.extent.y > ego_wpt.lane_width / 2
     use_bbs = self.config.obstacles.use_bbs_detection or opposite_invasion or ego_wpt.is_junction
 
     # Get the route bounding box
