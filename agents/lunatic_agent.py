@@ -96,19 +96,27 @@ class LunaticAgent(BehaviorAgent):
         # Settings ---------------------------------------------------------------
         print("Behavior of Agent", behavior)
         opt_dict : LunaticAgentSettings
-        if isinstance(behavior, str):
+        if behavior is None and world_model._config is not None:
+            opt_dict = world_model._config
+        elif behavior is None:
+            raise ValueError("Must pass a valid config as behavior or a world model with a set config.")
+        elif isinstance(behavior, str): # Assuming Path
             opt_dict : LunaticAgentSettings = LunaticAgentSettings.from_yaml(behavior)
         elif isinstance(behavior, AgentConfig):
             print("Is valid config")
-            opt_dict  = assure_type(behavior.__class__, behavior.get_options())  # base options from templates
-            opt_dict.update(overwrite_options)  # update by custom options
+            opt_dict  = assure_type(behavior.__class__, behavior.make_config())  # base options from templates
+            opt_dict.update(overwrite_options) # Note uses DictConfig.update
         elif isinstance(behavior, DictConfig):
-            opt_dict : LunaticAgentSettings = OmegaConf.merge(behavior, overwrite_options) # UNTESTED
+            opt_dict : LunaticAgentSettings = behavior
+            for k, v in overwrite_options.items():
+                OmegaConf.update(opt_dict, k, v)
         elif not overwrite_options:
             print("Warning: Settings are not a supported Config class")
-            opt_dict  = behavior  # assume the user passed something appropriate
+            opt_dict = behavior  # assume the user passed something appropriate
         else:
-                raise ValueError("Behavior must be a " + str(AgentConfig))
+            print("Warning: Settings are not a supported Config class. Trying to apply overwrite options.")
+            behavior.update(overwrite_options) 
+            opt_dict = behavior  # assume the user passed something appropriate
         self._behavior = behavior
         self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
         
@@ -116,10 +124,11 @@ class LunaticAgent(BehaviorAgent):
         
         print("Type of vehicle", type(vehicle))
         self._vehicle : carla.Vehicle = vehicle
-        self._world : carla.World = world
+        self._world_model : WorldModel = world_model
+        self._world : carla.World = world_model.world
         if map_inst:
-            if isinstance(map_inst, carla.Map):
-                self._map = map_inst
+            if isinstance( (map_inst or world_model.map), carla.Map):
+                self._map = map_inst or world_model.map
             else:
                 print("Warning: Ignoring the given map as it is not a 'carla.Map'")
                 self._map = self._world.get_map()
@@ -149,7 +158,7 @@ class LunaticAgent(BehaviorAgent):
         self._incoming_direction : RoadOption = None
 
         # Initialize the planners
-        self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=opt_dict, map_inst=self._map, world=self._world if self._world else "MISSING")
+        self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=opt_dict, map_inst=self._map, world=self._world if self._world else "MISSING", rss_sensor=world_model.rss_sensor)
         if grp_inst:
             if isinstance(grp_inst, GlobalRoutePlanner):
                 self._global_planner = grp_inst
@@ -174,9 +183,10 @@ class LunaticAgent(BehaviorAgent):
         # Data Matrix
         world_settings = self._world_model.world_settings if self._world_model is not None else self._world.get_settings() # TODO: change when creation order can be reversed.
         if world_settings.synchronous_mode:
-            self._road_matrix_updater = DataMatrix(self._vehicle, world, map_inst)
+            self._road_matrix_updater = DataMatrix(self._vehicle, self._world , map_inst)
         else:
-            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, world, map_inst)
+            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world, map_inst)
+        
         # Vehicle information
         self.live_info.current_speed = 0
         self.live_info.current_speed_limit = self._vehicle.get_speed_limit()

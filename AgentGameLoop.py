@@ -141,6 +141,25 @@ def game_loop(args : argparse.ArgumentParser):
                 
              }
             })
+        # TEMP
+        import classes.worldmodel
+        classes.worldmodel.AD_RSS_AVAILABLE = behavior.rss.enabled
+        
+        print("Set dt to", world_settings.fixed_delta_seconds)
+        if PRINT_CONFIG:
+            print("    \n\n\n")
+            pprint(behavior)
+            print(behavior.to_yaml())
+        
+            
+        config = behavior.make_config()
+        # Test 1
+        world_model = WorldModel(sim_world, config, args, player=ego.actor, map_inst=sim_map, agent=agent) # NOTE: # CRITICAL: Here an important tick happens that should be before the local planner initialization
+        
+        agent = LunaticAgent(ego.actor, world_model, config, map_inst=sim_map, overwrite_options={'distance':{
+                "min_proximity_threshold": 12.0,
+                "emergency_braking_distance": 6.0,
+                "distance_to_leading_vehicle": 8.0},})
         print("Set dt to", world_settings.fixed_delta_seconds)
         if PRINT_CONFIG:
             print("    \n\n\n")
@@ -156,8 +175,6 @@ def game_loop(args : argparse.ArgumentParser):
         
         agent = LunaticAgent(ego.actor, sim_world, behavior, map_inst=sim_map)
         print("DT is", agent.config.planner.dt)
-        world_model = WorldModel(sim_world, agent.config, args, player=ego.actor, map_inst=sim_map, agent=agent) # NOTE: # CRITICAL: Here an important tick happens that should be before the local planner initialization
-        agent._local_planner._rss_sensor = world_model.rss_sensor # todo: remove later when we have a better ordering of init
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
