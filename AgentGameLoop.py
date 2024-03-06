@@ -293,11 +293,13 @@ def game_loop(args : argparse.ArgumentParser):
                         world_model.tick(clock) # TODO # CRITICAL maybe has to tick later
                         world_model.render(display)
                         controller.render(display)
-                        pygame.display.flip()
                         
                         matrix = agent.road_matrix  # TEMP
                         if matrix is not None:
                             pprint(matrix) # TEMP   
+                        agent._road_matrix_updater.render(display) # TEMP
+                        
+                        pygame.display.flip()
                         
             agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None) # final phase of agents lifetime
 
