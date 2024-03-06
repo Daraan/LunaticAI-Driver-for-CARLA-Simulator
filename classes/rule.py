@@ -286,9 +286,9 @@ class Rule(_GroupRule):
         ctx.evaluation_results[ctx.agent.current_phase] = result
         if result in self.actions:
             
+            self._cooldown = self.max_cooldown
             action_result = self.actions[result](ctx) #todo allow priority, random chance
             ctx.action_results[ctx.agent.current_phase] = action_result
-            self._cooldown = self.max_cooldown
             return action_result
         return self.NOT_APPLICABLE # No action was executed
     
