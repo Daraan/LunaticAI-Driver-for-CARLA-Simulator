@@ -59,7 +59,7 @@ class HUD(object):
         self.allowed_steering_ranges = []
         self.rss_state_visualizer = RssStateVisualizer(self.dim, self._font_mono, self._world)
 
-    def on_world_tick(self, timestamp):
+    def on_world_tick(self, timestamp : carla.Timestamp):
         """Gets informations from the world at every tick"""
         self._server_clock.tick()
         self.server_fps = self._server_clock.get_fps()
