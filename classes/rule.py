@@ -1,5 +1,6 @@
 from __future__ import annotations 
-from functools import wraps
+from collections.abc import Mapping
+from functools import singledispatchmethod, wraps
 from itertools import accumulate
 import random
 from enum import IntEnum
@@ -231,6 +232,17 @@ class Rule(_GroupRule):
     # i.e.  rule(ctx) in actions was False 
     NOT_APPLICABLE : ClassVar = object()
 
+    def clone(self):
+        """
+        Create a new instance of the rule with the same settings.
+        
+        Note: 
+            * The current cooldown is not taken into account.
+            * The current enabled state is taken into account.
+        """
+        return self.__class__(self) # Make use over overloaded __init__
+
+    @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
                  rule : Callable[[Context], Hashable], 
@@ -280,6 +292,17 @@ class Rule(_GroupRule):
         self.rule = rule
         self.description = description
         self.overwrite_settings = overwrite_settings or {}
+        
+    @__init__.register(_CountdownRule)
+    @__init__.register(type)
+    def __init_by_decorating_class(self, cls):
+        phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
+        cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
+        self.__init__(phases, cls.rule, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
+    
+    @__init__.register
+    def __init_from_mapping(self, cls:Mapping):
+        self.__init__(cls.get("phases", cls.get("phase")), cls["rule"], cls.get("action"), cls.get("false_action"), actions=cls.get("actions"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True))        
 
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable]:
         settings = self.overwrite_settings.copy()   
@@ -331,6 +354,7 @@ class MultiRule(Rule):
             return result, results
         return wrapper
 
+    @singledispatchmethod
     def __init__(self, 
                  phases: Union["Phase", Iterable], 
                  rules: List[Rule], 
@@ -381,6 +405,19 @@ class MultiRule(Rule):
                              priority=priority, 
                              cooldown_reset_value=cooldown_reset_value,
                              enabled=enabled)
+            
+    @__init__.register(_CountdownRule) # For Rule(some_rule), easier cloning
+    @__init__.register(type) # For @Rule class MyRule: ...
+    def __init_by_decorating_class(self, cls):
+        phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
+        cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
+        
+        self.__init__(phases, cls.rules, cls.rule, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), sort_rules_by_priority=getattr(cls, "sort_rules_by_priority", True), execute_all_rules=getattr(cls, "execute_all_rules", False), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
+    
+    @__init__.register(Mapping)
+    def __init_from_mapping(self, cls:Mapping):
+        self.__init__(cls.get("phases", cls.get("phase")), cls["rules"], cls.get("rule"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
+
     
     def evaluate_children(self, ctx : Context) -> Union[List[Any], Any]:
         """
@@ -403,6 +440,7 @@ class MultiRule(Rule):
 
 class RandomRule(MultiRule):
 
+    @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable], 
                  rules : Union[Dict[Rule, float], List[Rule]], 
@@ -432,6 +470,19 @@ class RandomRule(MultiRule):
             self.rules = rules
         self.repeat_if_not_applicable = repeat_if_not_applicable
         super().__init__(phases, rule=rule, prior_action=prior_action, description=description, priority=priority, ignore_phase=ignore_phase, overwrite_settings=overwrite_settings, cooldown_reset_value=cooldown_reset_value, enabled=enabled, group=group)
+
+    @__init__.register(_CountdownRule)
+    @__init__.register(type)
+    def __init_by_decorating_class(self, cls):
+        phases = getattr(cls, "phases", getattr(cls, "phase", None))
+        cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
+        
+        self.__init__(phases, cls.rules, repeat_if_not_applicable=cls.repeat_if_not_applicable, rule=cls.rule, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
+    
+    @__init__.register(Mapping)
+    def __init_from_mapping(self, cls:Mapping):
+        self.__init__(cls.get("phases"), cls["rules"], repeat_if_not_applicable=cls.get("repeat_if_not_applicable", True), rule=cls.get("rule"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
+
 
     def evaluate_children(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
         if self.repeat_if_not_applicable:
