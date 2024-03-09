@@ -141,6 +141,7 @@ class DataMatrix:
         surf = pygame.image.fromstring(raw_data, size, "RGB")
         
         display.blit(surf, (220, display.get_height() - surf.get_height()- 40 ))
+        pylab.close(fig)
 
         
 
@@ -160,8 +161,8 @@ class AsyncDataMatrix(DataMatrix):
                 new_matrix = self._calculate_update()
                 with self.lock:
                     self.matrix = new_matrix
-                return self.matrix
-            except (RuntimeError, OSError):
+            except (RuntimeError, OSError) as e:
+                print(f"Error in matrix calculation: {e}")
                 raise
             except Exception as e:
                 print(f"Error in matrix calculation: {e}")
