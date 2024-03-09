@@ -16,9 +16,12 @@ if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     from conf.agent_settings import LunaticAgentSettings
 
+
 class Context:
     """
     Object to be passed as the first argument (instead of self) to rules, actions and evaluation functions.
+    
+    NOTE: That Context.config are the read-only settings for the given rule and actions with potential overwrites.
     """
     agent : "LunaticAgent"
     config : "LunaticAgentSettings"
@@ -213,7 +216,8 @@ class _GroupRule(_CountdownRule):
                 instance_data[0] -= 1
         for instance in filter(cls.__filter_not_ready_instances, cls.instances):
             instance._cooldown -= 1
-    
+
+
 class Rule(_GroupRule):
     rule : EvaluationFunction
     actions : Dict[Any, Callable[[Context], Any]]
@@ -230,10 +234,10 @@ class Rule(_GroupRule):
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
                  rule : Callable[[Context], Hashable], 
-                 action: Union[Callable[[Context], Any], Dict[Any, Callable]] = None, 
-                 false_action = None,
+                 action: Optional[Union[Callable[[Context], Any], Dict[Any, Callable]]] = None,
+                 false_action: Optional[Callable[[Context], Any]] = None,
                  *, 
-                 actions : Dict[Any, Callable[[Context], Any]] = None,
+                 actions : Optional[Dict[Any, Callable[[Context], Any]]] = None,
                  description: str = "What does this rule do?",
                  overwrite_settings: Optional[Dict[str, Any]] = None,
                  priority: RulePriority = RulePriority.NORMAL,
@@ -242,6 +246,10 @@ class Rule(_GroupRule):
                  enabled: bool = True,
                  ignore_chance = NotImplemented,
                  ) -> None:
+        if action is not None and actions is not None:
+            raise ValueError("Only one of 'action' and 'actions' can be set.")
+        if not phases:
+            raise ValueError("phases must not be empty or None")
         if not isinstance(phases, set):
             if isinstance(phases, Iterable):
                 phases = set(phases)
@@ -256,7 +264,9 @@ class Rule(_GroupRule):
         self.priority : float | int | RulePriority = priority # used by agent.add_rule
 
         self.phases = phases
-        if isinstance(action, dict):
+        if action is None:
+            self.actions = actions
+        elif isinstance(action, dict):
             self.actions = action
             if false_action is not None or actions is not None:
                 raise ValueError("When passing a dict to action, false_action and actions must be None")
@@ -334,6 +344,8 @@ class MultiRule(Rule):
                  ignore_phase : bool = True,
                  overwrite_settings: Optional[Dict[str, Any]] = None,
                  cooldown_reset_value : Optional[int] = None,
+                 group : Optional[str] = None,
+                 enabled: bool = True,
                  ):
             """
             Initializes a Rule object.
@@ -361,13 +373,14 @@ class MultiRule(Rule):
                 prior_action = self._wrap_action(prior_action)
             else:
                 prior_action = self.evaluate_children
-            super().__init__(phases, rule=rule, 
+            super().__init__(phases, 
+                             rule=rule, 
                              action=prior_action, 
                              description=description, 
                              overwrite_settings=overwrite_settings,
                              priority=priority, 
-                             ignore_phase=ignore_phase,
-                             cooldown_reset_value=cooldown_reset_value,)
+                             cooldown_reset_value=cooldown_reset_value,
+                             enabled=enabled)
     
     def evaluate_children(self, ctx : Context) -> Union[List[Any], Any]:
         """
@@ -400,7 +413,12 @@ class RandomRule(MultiRule):
                  ignore_phase = True,
                  priority: RulePriority = RulePriority.NORMAL, 
                  description: str = "If its own rule is true calls one or more random rule from the passed rules.", 
-                 weights: List[float] = None):
+                 overwrite_settings: Optional[Dict[str, Any]] = None,
+                 cooldown_reset_value : Optional[int] = None,
+                 group : Optional[str] = None,
+                 enabled: bool = True,
+                 weights: List[float] = None
+                 ):
         #if amount < 1:
         #    raise ValueError("Amount must be at least 1")
         #self.amount = amount 
@@ -413,7 +431,7 @@ class RandomRule(MultiRule):
             self.weights = weights or list(accumulate(r.priority.value for r in rules))
             self.rules = rules
         self.repeat_if_not_applicable = repeat_if_not_applicable
-        super().__init__(phases, rule=rule, prior_action=prior_action, description=description, priority=priority, ignore_phase=ignore_phase)
+        super().__init__(phases, rule=rule, prior_action=prior_action, description=description, priority=priority, ignore_phase=ignore_phase, overwrite_settings=overwrite_settings, cooldown_reset_value=cooldown_reset_value, enabled=enabled, group=group)
 
     def evaluate_children(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
         if self.repeat_if_not_applicable:
