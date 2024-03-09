@@ -1,6 +1,19 @@
 from __future__ import annotations 
 from collections.abc import Mapping
-from functools import singledispatchmethod, wraps
+from functools import wraps
+try: # Python 3.8+
+    from functools import singledispatchmethod
+except ImportError:
+    from functools import singledispatch, update_wrapper
+
+    def singledispatchmethod(func):
+        dispatcher = singledispatch(func)
+        def wrapper(*args, **kw):
+            return dispatcher.dispatch(args[1].__class__)(*args, **kw)
+        wrapper.register = dispatcher.register
+        update_wrapper(wrapper, func)
+        return wrapper
+    
 from itertools import accumulate
 import random
 from enum import IntEnum
