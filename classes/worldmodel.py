@@ -35,6 +35,19 @@ class WorldModel(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
+    @staticmethod
+    def init_carla_client(worldName=None, ip="localhost", port=2000, timeout=10.0, worker_threads:int=0):
+        client = carla.Client(ip, port, worker_threads)
+        client.set_timeout(timeout)
+        sim_world = client.get_world()
+        sim_map = sim_world.get_map()
+        if worldName and sim_map.name != "Carla/Maps/" + worldName:
+            client.load_world(worldName)
+        else:
+            pass
+            #log("skipped loading world, already loaded")
+        return client, sim_world, sim_map
+
     def __init__(self, carla_world : carla.World, config : DictConfig, args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
         self.world = carla_world
