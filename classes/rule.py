@@ -89,19 +89,21 @@ class _CountdownRule:
     # TODO: low prio: make cooldown dependant of tickrate or add a conversion from seconds to ticks OR make time-based
     tickrate : ClassVar[int] = NotImplemented
 
-    DEFAULT_COOLDOWN_RESET : int = 0
+    DEFAULT_COOLDOWN_RESET : ClassVar[int] = 0
     _cooldown : int # if 0 the rule can be executed
 
     # Keep track of all instances for the cooldowns
     instances : ClassVar[WeakSet["_CountdownRule"]] = WeakSet()
 
-    def __init__(self, cooldown_reset_value : Optional[int] = None):
+    def __init__(self, cooldown_reset_value : Optional[int] = None, enabled: bool = True):
         self.instances.add(self)
         self._cooldown = 0
         self.max_cooldown = cooldown_reset_value or self.DEFAULT_COOLDOWN_RESET
+        self._enabled = enabled
 
     def is_ready(self) -> bool:
-        return self._cooldown == 0
+        """Group aware check if a rule is ready."""
+        return self.enabled and self.cooldown == 0 # Note: uses property getters. Group aware for GroupRules
     
     def reset_cooldown(self, value:Optional[int]=None):
         if value is None:
@@ -127,17 +129,28 @@ class _CountdownRule:
     def update_all_cooldowns(cls):
         for instance in cls.instances:
             instance.update_cooldown()
+            
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+    
+    @enabled.setter
+    def enabled(self, value: bool):
+        self._enabled = value
+    
+    def set_active(self, value: bool):
+        self._enabled = value
     
     class CooldownFramework:
+        """Context manager to reduce all cooldowns from a with statement."""
 
         def __enter__(self):
-            # Enter the context
             return self
 
         def __exit__(_, exc_type, exc_value, traceback):
-            # Exit the context
             if exc_type is None:
                 Rule.update_all_cooldowns()
+
 
 class _GroupRule(_CountdownRule):
     group : Optional[str] = None # group of rules that share a cooldown
@@ -145,8 +158,8 @@ class _GroupRule(_CountdownRule):
     # first two values in the list are current and max cooldown, the third is a set of all instances
     group_instances : ClassVar[Dict[str, List[int, int, WeakSet["_GroupRule"]]]] = {}
     
-    def __init__(self, group :Optional[str]=None, cooldown_reset_value : Optional[int] = None):
-        super().__init__(cooldown_reset_value)
+    def __init__(self, group :Optional[str]=None, cooldown_reset_value : Optional[int] = None, enabled: bool = True):
+        super().__init__(cooldown_reset_value, enabled)
         self.group = group
         if group is None:
             return
@@ -159,10 +172,6 @@ class _GroupRule(_CountdownRule):
         if self.group:
             return _GroupRule.group_instances[self.group][0]
         return super().cooldown
-    
-    def is_ready(self) -> bool:
-        """Group aware check if a rule is ready."""
-        return self.cooldown == 0 
     
     @property
     def has_group(self) -> bool:
@@ -230,6 +239,7 @@ class Rule(_GroupRule):
                  priority: RulePriority = RulePriority.NORMAL,
                  cooldown_reset_value : Optional[int] = None,
                  group : Optional[str] = None,
+                 enabled: bool = True,
                  ignore_chance = NotImplemented,
                  ) -> None:
         if not isinstance(phases, set):
@@ -242,7 +252,7 @@ class Rule(_GroupRule):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
         if not isinstance(description, str):
             raise ValueError(f"description must be of type str, not {type(description)}")
-        super().__init__(group or self.group, cooldown_reset_value) # or self.group for subclassing
+        super().__init__(group or self.group, cooldown_reset_value, enabled) # or self.group for subclassing
         self.priority : float | int | RulePriority = priority # used by agent.add_rule
 
         self.phases = phases
