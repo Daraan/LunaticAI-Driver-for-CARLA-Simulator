@@ -71,37 +71,11 @@ def game_loop(args : argparse.ArgumentParser):
         random.seed(args.seed)
         np.random.seed(args.seed)
 
-    pygame.init()
-    pygame.font.init()
-
     try:
-        client = carla.Client(args.host, args.port)
-        client.set_timeout(20.0)
-
-        sim_world = client.get_world()
-
-        if args.sync:
-            logging.log(logging.DEBUG, "Using synchronous mode.")
-            # apply synchronous mode if wanted
-            world_settings = sim_world.get_settings()
-            world_settings.synchronous_mode = True
-            world_settings.fixed_delta_seconds = 0.05
-            sim_world.apply_settings(world_settings)
-            traffic_manager = client.get_trafficmanager()
-            traffic_manager.set_synchronous_mode(True)
-        else:
-            traffic_manager = client.get_trafficmanager()
-            logging.log(logging.DEBUG, "Using asynchronous mode.")
-            world_settings = sim_world.get_settings()
-        print("World Settings:", world_settings)
-
-        sim_map = sim_world.get_map()
+        clock, display = WorldModel.init_pygame(args)
+        client, sim_world, sim_map, world_settings = WorldModel.init_carla(args, timeout=10.0)
+        traffic_manager = WorldModel.init_traffic_manager(client, args.sync)
         
-        clock = pygame.time.Clock()
-        display = pygame.display.set_mode(
-            (args.width, args.height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
-
         try:
             spawn_points = utils.general.csv_to_transformations("../examples/highway_example_car_positions.csv")
         except FileNotFoundError:
@@ -129,7 +103,7 @@ def game_loop(args : argparse.ArgumentParser):
             'rss': {'enabled': False, 
                     'use_stay_on_road_feature': False},
             "planner": {
-                "dt" : world_settings.fixed_delta_seconds or 1/20,
+                "dt" : world_settings.fixed_delta_seconds or 1/args.fps,
                 "min_distance_next_waypoint" : 2.0,
              }
             })
