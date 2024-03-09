@@ -299,8 +299,10 @@ class RssSensor(object):
             print("Deleting Scene Visualizer")
             self.unstructured_scene_visualizer = None
             print("Destroying RSS sensor")
-            self.sensor.destroy()
-            print("Destroyed RSS sensor")
+            if self.sensor.destroy():
+                print("Destroyed RSS sensor")
+            else:
+                print("Destroying RSS sensor not successful")
 
     def toggle_debug_visualization_mode(self):
         self.debug_visualizer.toggleMode()

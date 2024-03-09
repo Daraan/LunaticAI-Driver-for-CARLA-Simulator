@@ -224,7 +224,6 @@ class WorldModel(object):
                 self.modify_vehicle_physics(self.player)
             assert isinstance(self.player, carla.Vehicle)
 
-
         if self.external_actor:
             ego_sensors : List[carla.Actor] = []
             for actor in self.world.get_actors():
@@ -343,12 +342,9 @@ class WorldModel(object):
             self.world.remove_on_tick(self.world_tick_id)
         if self.radar_sensor is not None:
             self.toggle_radar()
-        if self.rss_sensor:
-            self.rss_sensor.destroy()
-        if self.rss_unstructured_scene_visualizer:
-            self.rss_unstructured_scene_visualizer.destroy()
+        if self.camera_manager is not None:
+            self.destroy_sensors()
         actors : List[carla.Actor] = [
-            self.camera_manager.sensor,
             self.collision_sensor.sensor,
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
@@ -373,6 +369,10 @@ class WorldModel(object):
                 #    raise
                 #    print("Warning: Could not destroy actor: " + str(actor))
         # TODO: Call destroy_sensors?
+        if self.rss_sensor:
+            self.rss_sensor.destroy()
+        if self.rss_unstructured_scene_visualizer:
+            self.rss_unstructured_scene_visualizer.destroy()
         
         
     # TODO: These semantically do not fit in here 
