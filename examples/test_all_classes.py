@@ -15,6 +15,39 @@ arule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN,
 
 print(arule)
 
+print(EvaluationFunction("Testing this"))
+
+named_wrapper = EvaluationFunction("Testing this")
+
+@Rule
+class AnotherRule:
+    phase = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
+    
+    @EvaluationFunction("Always execute this rule")
+    def rule(ctx):
+        return True
+    
+    def action(ctx):
+        print("Hello World")
+    overwrite_settings = {"speed": {"intersection_speed_decrease": 10}}
+    description = "Set speed to intersection speed"
+ 
+ 
+
+drule = Rule({"phase": Phase.TURNING_AT_JUNCTION | Phase.BEGIN,
+      "rule": always_execute,
+      "action": lambda ctx: print("Hello World"),
+      "overwrite_settings": {"speed": {"intersection_speed_decrease": 10}},
+      "description": "Rule created from dictionary"})
+
+print(drule)
+
+# Clone rule
+
+crule = arule.clone()
+crule2 = Rule(arule)
+
+print("------\n\n", crule2,"\n", arule, "\n", crule)
 
 behavior = LunaticAgentSettings()
 options : LunaticAgentSettings

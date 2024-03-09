@@ -17,10 +17,11 @@ from typing import List
 from pprint import pprint
 
 import pygame
-import numpy as np # TODO: fix double random import
+import numpy as np
 
 from omegaconf import OmegaConf
 
+# Use this when carla is not installed
 #try:
 #    import carla
 #except ImportError as e:
@@ -90,7 +91,7 @@ def game_loop(args : argparse.ArgumentParser):
             traffic_manager.set_synchronous_mode(True)
         else:
             traffic_manager = client.get_trafficmanager()
-            logging.log(logging.DEBUG, "Might be using asynchronous mode if not changed.")
+            logging.log(logging.DEBUG, "Using asynchronous mode.")
             world_settings = sim_world.get_settings()
         print("World Settings:", world_settings)
 
@@ -112,9 +113,6 @@ def game_loop(args : argparse.ArgumentParser):
         start : carla.libcarla.Transform = spawn_points[0]
         ego.spawn(start)
 
-        #if True or args.agent == "Lunatic":
-        # TODO: # CRITICAL: This should be a dataclass->DictConfig and not its own class!
-        # TODO: if DictConfig then World and agent order can be reversed and World initialized with config
         behavior = LunaticAgentSettings(
             {'controls':{ "max_brake" : 1.0, 
                         'max_steering' : 0.25},
@@ -133,7 +131,6 @@ def game_loop(args : argparse.ArgumentParser):
             "planner": {
                 "dt" : world_settings.fixed_delta_seconds or 1/20,
                 "min_distance_next_waypoint" : 2.0,
-                
              }
             })
         # TEMP
@@ -145,13 +142,12 @@ def game_loop(args : argparse.ArgumentParser):
             print("    \n\n\n")
             pprint(behavior)
             print(behavior.to_yaml())
-        
             
+        # Test 1 - Remove
         config = behavior.make_config()
-        # Test 1
-        world_model = WorldModel(sim_world, config, args, player=ego.actor, map_inst=sim_map, agent=agent) # NOTE: # CRITICAL: Here an important tick happens that should be before the local planner initialization
+        world_model = WorldModel(sim_world, config, args, player=ego, map_inst=sim_map, agent=agent)
         
-        agent = LunaticAgent(ego.actor, world_model, config, map_inst=sim_map, overwrite_options={'distance':{
+        agent = LunaticAgent(ego, world_model, config, map_inst=sim_map, overwrite_options={'distance':{
                 "min_proximity_threshold": 12.0,
                 "emergency_braking_distance": 6.0,
                 "distance_to_leading_vehicle": 8.0},})
@@ -165,14 +161,13 @@ def game_loop(args : argparse.ArgumentParser):
                 "distance_to_leading_vehicle": 8.0},})
         config = agent.config
         
-        print("DT is", agent.config.planner.dt)
-        
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
         if PRINT_RULES: # TEMP
             print("Lunatic Agent Rules")
             pprint(agent.rules)
         
+        # Set initial destination
         wp_start = world_model.map.get_waypoint(start.location)
         all_spawn_points = world_model.map.get_spawn_points()
 
@@ -210,7 +205,7 @@ def game_loop(args : argparse.ArgumentParser):
             agent._road_matrix_updater.start()  # TODO find a nicer way
             
             # TEMP
-            agent._road_matrix_updater.stop()
+            #agent._road_matrix_updater.stop()
             
             ctx : Context = None
             while True:
@@ -298,11 +293,13 @@ def game_loop(args : argparse.ArgumentParser):
                         world_model.tick(clock) # TODO # CRITICAL maybe has to tick later
                         world_model.render(display)
                         controller.render(display)
-                        pygame.display.flip()
                         
                         matrix = agent.road_matrix  # TEMP
                         if matrix is not None:
                             pprint(matrix) # TEMP   
+                        agent._road_matrix_updater.render(display) # TEMP
+                        
+                        pygame.display.flip()
                         
             agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None) # final phase of agents lifetime
 

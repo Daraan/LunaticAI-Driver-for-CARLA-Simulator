@@ -310,7 +310,7 @@ class WorldModel(object):
             self.radar_sensor.sensor.destroy()
             self.radar_sensor = None
 
-    def modify_vehicle_physics(self, actor):
+    def modify_vehicle_physics(self, actor : carla.Vehicle):
         # If actor is not a vehicle, we cannot use the physics control
         try:
             physics_control = actor.get_physics_control()
@@ -357,7 +357,7 @@ class WorldModel(object):
         actors.extend(self.actors)
         if not self.player in actors:
             actors.append(self.player)
-        print("to destroy", actors)
+        print("to destroy", list(map(str,actors)))
         for actor in actors:
             if actor is not None:
                 print("destroying actor: " + str(actor), end=" destroyed=")

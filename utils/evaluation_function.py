@@ -1,4 +1,5 @@
-from typing import Callable, Any, Hashable, TYPE_CHECKING
+from functools import partial
+from typing import Callable, Any, Hashable, TYPE_CHECKING, Union, cast
 
 import inspect
 
@@ -42,6 +43,15 @@ class EvaluationFunction:
                                 "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5)
                                 })
     """
+    
+    def __new__(cls, first_argument: Union[str, Callable[["Context"], Hashable]], name="EvaluationFunction"):
+        if isinstance(first_argument, str):
+            return partial(cls, name=first_argument) # Calling decorator with a string
+        
+        instance = super().__new__(cls)
+        instance.__init__(first_argument, name)
+        return instance
+    
     def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction"):
         self.evaluation_function = evaluation_function
         self.name = name if name != "EvaluationFunction" else evaluation_function.__name__

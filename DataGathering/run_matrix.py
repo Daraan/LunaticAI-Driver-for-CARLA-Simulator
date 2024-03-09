@@ -1,9 +1,18 @@
-import asyncio
+import matplotlib
+matplotlib.use('Agg')
+
 import threading
 import time
 from typing import Dict, List
 
+import asyncio
+
+import numpy as np
+import matplotlib.backends.backend_agg as agg
+import pylab
+
 import carla
+import pygame
 
 from DataGathering.informationUtils import get_all_road_lane_ids
 from DataGathering.matrix_wrap import wrap_matrix_functionalities
@@ -109,6 +118,32 @@ class DataMatrix:
 
     def __del__(self):
         self.stop()
+        
+    def to_list(self):
+        return list(self.matrix.values())
+    
+    def to_numpy(self):
+        return np.array(self.to_list())  
+    
+    def render(self, display : pygame.Surface):
+        ax : pylab.Axes
+        fig, ax = pylab.subplots(figsize=(2, 2), dpi=100)
+        ax.imshow(np.rot90(self.to_numpy()), cmap='jet')
+        ax.axis('off')
+        fig.tight_layout(pad=0)
+        canvas = agg.FigureCanvasAgg(fig)
+        canvas.draw()
+        renderer = canvas.get_renderer()
+        raw_data = renderer.tostring_rgb()
+        
+        size = canvas.get_width_height()
+        #size = (size[0] //2, size[1] // 2)
+        surf = pygame.image.fromstring(raw_data, size, "RGB")
+        
+        display.blit(surf, (220, display.get_height() - surf.get_height()- 40 ))
+        pylab.close(fig)
+
+        
 
 class AsyncDataMatrix(DataMatrix):
     def __init__(self, ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids=None, *, sleep_time=0.1):
@@ -126,8 +161,8 @@ class AsyncDataMatrix(DataMatrix):
                 new_matrix = self._calculate_update()
                 with self.lock:
                     self.matrix = new_matrix
-                return self.matrix
-            except (RuntimeError, OSError):
+            except (RuntimeError, OSError) as e:
+                print(f"Error in matrix calculation: {e}")
                 raise
             except Exception as e:
                 print(f"Error in matrix calculation: {e}")
