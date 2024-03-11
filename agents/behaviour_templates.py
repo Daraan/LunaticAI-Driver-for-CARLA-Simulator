@@ -105,7 +105,7 @@ def avoid_tailgator(ctx : "Context"):
         if (right_turn == carla.LaneChange.Right or right_turn ==
             carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
             
-            detection_result = detect_vehicles(vehicle_list, max(
+            detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
                 ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=1)
             if not detection_result.obstacle_was_found:
                 print("Tailgating, moving to the right!")
@@ -114,7 +114,7 @@ def avoid_tailgator(ctx : "Context"):
                                         right_wpt.transform.location)
         
         elif left_turn == carla.LaneChange.Left and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
-            detection_result = detect_vehicles(vehicle_list, max(
+            detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
                 ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=-1)
             
             if  not detection_result.obstacle_was_found:

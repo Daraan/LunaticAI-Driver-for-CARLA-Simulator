@@ -2,8 +2,9 @@
 # NOTE it might has to use synchonous_mode
 import os
 import sys
-from typing import List, Optional, Union, cast as assure_type, TYPE_CHECKING
+from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING
 
+import numpy as np
 from omegaconf import DictConfig
 import pygame
 
@@ -14,10 +15,13 @@ from classes.HUD import HUD
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 
+from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
+from utils.keyboard_controls import RSSKeyboardControl
 
 if TYPE_CHECKING:
+    from conf.agent_settings import LunaticAgentSettings
     from agents.lunatic_agent import LunaticAgent
 
 from utils import get_actor_display_name
@@ -29,12 +33,34 @@ from utils.logging import logger
 # -- World ---------------------------------------------------------------
 # ==============================================================================
 
-class WorldModel(object):
-    """ Class representing the surrounding environment """
-
-    def get_blueprint_library(self):
-        return self.world.get_blueprint_library()
-
+class GameFramework(object):
+    clock : ClassVar[pygame.time.Clock]
+    display : ClassVar[pygame.Surface]
+    
+    def __init__(self, args, config=None):
+        if args.seed:
+            random.seed(args.seed)
+            np.random.seed(args.seed)
+        self.args = args
+        self.clock, self.display = self.init_pygame(args)
+        self.client, self.world, self.map, self.world_settings = self.init_carla(args)
+        self.config = config
+        self.agent = None
+        self.world_model = None
+        self.controller = None
+        
+        self.debug = self.world.debug
+        
+    @staticmethod
+    def init_pygame(args):
+        pygame.init()
+        pygame.font.init()
+        clock = pygame.time.Clock()
+        display = pygame.display.set_mode(
+            (args.width, args.height),
+            pygame.HWSURFACE | pygame.DOUBLEBUF)
+        return clock, display
+    
     @staticmethod
     def init_carla(args, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         client = carla.Client(args.host, args.port, worker_threads)
@@ -65,28 +91,74 @@ class WorldModel(object):
             world_settings = sim_world.get_settings()
         print("World Settings:", world_settings)
         
-        
         return client, sim_world, sim_map, world_settings
     
-    @staticmethod
-    def init_traffic_manager(client:carla.Client, sync:bool) -> carla.TrafficManager:
-        traffic_manager = client.get_trafficmanager()
-        if sync:
+    def init_traffic_manager(self) -> carla.TrafficManager:
+        traffic_manager = self.client.get_trafficmanager()
+        if self.args.sync:
             traffic_manager.set_synchronous_mode(True)
         return traffic_manager
     
-    @staticmethod
-    def init_pygame(args):
-        pygame.init()
-        pygame.font.init()
-        clock = pygame.time.Clock()
-        display = pygame.display.set_mode(
-            (args.width, args.height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
-        return clock, display
-        
+    def set_config(self, config:DictConfig):
+        self.config = config
+    
+    def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
+        self.world_model = WorldModel(self.world, config, self.args, player=player, map_inst=map_inst)
+        return self.world_model
+    
+    def make_controller(self, world_model, controller_class=RSSKeyboardControl, **kwargs):
+        self.controller = controller_class(world_model, config=self.config, **kwargs)
+        return self.controller
+    
+    def set_controller(self, controller):
+        self.controller = controller
+    
+    def parse_rss_controller_events(self, final_controls:carla.VehicleControl):
+        return self.controller.parse_events(self.clock, final_controls)
 
-    def __init__(self, carla_world : carla.World, config : DictConfig, args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
+    def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", overwrites:Optional[Dict[str, Any]]=None):
+        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self.args, map_inst=self.map, overwrites=overwrites)
+        self.config = self.agent.config
+        self.controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False)
+        return self.agent, self.world_model, self.global_planner, self.controller
+
+    def __enter__(self):
+        if self.agent is None:
+            raise ValueError("Agent not initialized.")
+        if self.world_model is None:
+            raise ValueError("World Model not initialized.")
+        if self.controller is None:
+            raise ValueError("Controller not initialized.")
+        
+        self.clock.tick() # self.args.fps)
+        if self.args.sync:
+            self.world_model.world.tick()
+        else:
+            self.world_model.world.wait_for_tick()
+        return self
+    
+    def render_everything(self):
+        """Update render and hud"""
+        self.world_model.tick(self.clock) # TODO # CRITICAL maybe has to tick later
+        self.world_model.render(self.display)
+        self.controller.render(self.display)
+        self.agent.render_road_matrix(self.display)
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self.render_everything()
+            
+            pygame.display.flip()
+            
+            Rule.update_all_cooldowns() # Rule Cooldown Framework
+
+class WorldModel(object):
+    """ Class representing the surrounding environment """
+
+    def get_blueprint_library(self):
+        return self.world.get_blueprint_library()
+
+    def __init__(self, carla_world : carla.World, config : "LunaticAgentSettings", args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
         self.world = carla_world
         self.world_settings = self.world.get_settings()
@@ -134,7 +206,6 @@ class WorldModel(object):
             
         self.player = player
         assert self.player is not None or self.external_actor # Note: Former optional
-        self._lights = carla.VehicleLightState.NONE
 
         self.collision_sensor = None
         self.lane_invasion_sensor = None
@@ -428,22 +499,6 @@ class WorldModel(object):
         if self.rss_unstructured_scene_visualizer:
             self.rss_unstructured_scene_visualizer.destroy()
         
-        
-    # TODO: These semantically do not fit in here 
-    def update_lights(self, vehicle_control : carla.VehicleControl):
-        current_lights = self._lights
-        if vehicle_control.brake:
-            current_lights |= carla.VehicleLightState.Brake
-        else:  # Remove the Brake flag
-            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Brake
-        if vehicle_control.reverse:
-            current_lights |= carla.VehicleLightState.Reverse
-        else:  # Remove the Reverse flag
-            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Reverse
-        if current_lights != self._lights:  # Change the light state only if necessary
-            self._lights = current_lights
-            self.player.set_light_state(carla.VehicleLightState(self._lights))
-
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control
         self.hud.restricted_vehicle_control = vehicle_control

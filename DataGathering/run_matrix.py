@@ -120,12 +120,18 @@ class DataMatrix:
         self.stop()
         
     def to_list(self):
+        if self.matrix is None:
+            return None
         return list(self.matrix.values())
     
     def to_numpy(self):
+        if self.matrix is None:
+            return None
         return np.array(self.to_list())  
     
     def render(self, display : pygame.Surface):
+        if self.matrix is None:
+            return
         ax : pylab.Axes
         fig, ax = pylab.subplots(figsize=(2, 2), dpi=100)
         ax.imshow(np.rot90(self.to_numpy()), cmap='jet')

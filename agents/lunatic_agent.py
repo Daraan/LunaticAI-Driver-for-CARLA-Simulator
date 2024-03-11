@@ -13,10 +13,7 @@ traffic signs, and has different possible configurations. """
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import is_dataclass
-from functools import wraps
-import random
-from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
+from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, cast as assure_type
 import weakref
 
 from omegaconf import DictConfig, OmegaConf
@@ -193,7 +190,10 @@ class LunaticAgent(BehaviorAgent):
         self._lights_list : List[carla.TrafficLight] = self._world.get_actors().filter("*traffic_light*")
         self._lights_map : Dict[int, carla.Waypoint] = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
 
-        # From ConstantVelocityAgent ----------------------------------------------
+        # Vehicle Lights
+        self._lights = carla.VehicleLightState.NONE
+
+        # Collision Sensor # TODO: duplicated in WorldModel!
         self._collision_sensor : carla.Sensor = None
         self._set_collision_sensor()
 
@@ -216,6 +216,9 @@ class LunaticAgent(BehaviorAgent):
     @property
     def road_matrix(self):
         return self._road_matrix_updater.getMatrix()
+    
+    def render_road_matrix(self, display):
+        self._road_matrix_updater.render(display) # TEMP
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
@@ -228,6 +231,8 @@ class LunaticAgent(BehaviorAgent):
         self._collision_sensor.listen(self._collision_event)
 
     def destroy_sensor(self):
+        if self._road_matrix_updater:
+            self._road_matrix_updater.stop()
         if self._collision_sensor:
             self._collision_sensor.destroy()
             self._collision_sensor = None
@@ -284,12 +289,10 @@ class LunaticAgent(BehaviorAgent):
         # Data Matrix
         self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated in the background.
         
-
     def is_taking_turn(self) -> bool:
         return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
 
     # ------------------ Step & Loop Logic ------------------ #
-
 
     def add_rule(self, rule : Rule, position=-1):
         for p in rule.phases:
@@ -430,6 +433,11 @@ class LunaticAgent(BehaviorAgent):
         # Leave loop and apply controls outside 
         # DISCUSS: Should we apply the controls here?
         return control
+    
+    def apply_control(self, control : carla.VehicleControl):
+        # Set automatic control-related vehicle lights
+        self.update_lights(control)
+        self._vehicle.apply_control(control)
 
     # ------------------ Hazard Detection & Reaction ------------------ #
 
@@ -558,8 +566,6 @@ class LunaticAgent(BehaviorAgent):
         """
         return substep_managers.emergency_manager(self, control, reason)
     
-    # ------------------ Setter Function ------------------ #
-
     def lane_change(self, direction, same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """
         Changes the path so that the vehicle performs a lane change.
@@ -581,6 +587,24 @@ class LunaticAgent(BehaviorAgent):
             print("WARNING: Ignoring the lane change as no path was found")
 
         self.set_global_plan(path)
+        
+    # ------------------ Other Function ------------------ #
+    
+    def update_lights(self, vehicle_control : carla.VehicleControl):
+        current_lights = self._lights
+        if vehicle_control.brake:
+            current_lights |= carla.VehicleLightState.Brake
+        else:  # Remove the Brake flag
+            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Brake
+        if vehicle_control.reverse:
+            current_lights |= carla.VehicleLightState.Reverse
+        else:  # Remove the Reverse flag
+            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Reverse
+        if current_lights != self._lights:  # Change the light state only if necessary
+            self._lights = current_lights
+            self._vehicle.set_light_state(carla.VehicleLightState(self._lights))
+
+    # ------------------ Setter Function ------------------ #
     
     #@override 
     def set_target_speed(self, speed : float):
