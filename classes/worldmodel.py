@@ -195,7 +195,10 @@ class WorldModel(object):
         if road_boundaries_mode is None:
             road_boundaries_mode = self._config.rss.use_stay_on_road_feature
         else:
-            self._config.rss.use_stay_on_road_feature = bool(road_boundaries_mode)
+            if AD_RSS_AVAILABLE:
+                self._config.rss.use_stay_on_road_feature = carla.RssRoadBoundariesMode.On if road_boundaries_mode else carla.RssRoadBoundariesMode.Off
+            else:
+                self._config.rss.use_stay_on_road_feature = bool(road_boundaries_mode)
         if self.rss_sensor:
             self.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On if road_boundaries_mode else carla.RssRoadBoundariesMode.Off
         else:
