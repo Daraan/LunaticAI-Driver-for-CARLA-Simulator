@@ -26,9 +26,19 @@ def subparser(func) -> argparse.ArgumentParser:
 
 @subparser
 def client_settings(parser:argparse.ArgumentParser):
-    parser.add_argument('-p', '--port', help='TCP Port', default="2000", type=int)
-    parser.add_argument('-i', '--host', help='Host', default="localhost", type=str)
-
+    parser.add_argument(
+        '--host',
+        metavar='H',
+        default='127.0.0.1',
+        help='IP of the host server (default: 127.0.0.1)')
+    parser.add_argument(
+        '-p', '--port',
+        metavar='P',
+        default=2000,
+        type=int,
+        help='TCP port to listen to (default: 2000)')
+    parser.add_argument('-m', '--map', help='Map', default="Town04_Opt", type=str)
+    parser.add_argument('--fps', help='Frames per second.', default=20, type=int)
 
 @subparser
 def interactive_mode(parser:argparse.ArgumentParser):
@@ -59,17 +69,6 @@ def automatic_control_example(argparser:argparse.ArgumentParser):
         action='store_true',
         dest='debug',
         help='Print debug information')
-    argparser.add_argument(
-        '--host',
-        metavar='H',
-        default='127.0.0.1',
-        help='IP of the host server (default: 127.0.0.1)')
-    argparser.add_argument(
-        '-p', '--port',
-        metavar='P',
-        default=2000,
-        type=int,
-        help='TCP port to listen to (default: 2000)')
     argparser.add_argument(
         '--res',
         metavar='WIDTHxHEIGHT',
@@ -123,6 +122,7 @@ def automatic_control_example(argparser:argparse.ArgumentParser):
 
 def main_parser():
     parser = argparse.ArgumentParser()
+    client_settings.add(parser)
     automatic_control_example.add(parser)
     interactive_control_example.add(parser)
     return parser

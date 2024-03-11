@@ -923,7 +923,7 @@ class RssSettings(AgentConfig):
                 self.log_level = int(self.log_level)
         else:
             if not isinstance(self.use_stay_on_road_feature, (bool, str)):
-                self.log_level = bool(self.use_stay_on_road_feature)
+                self.use_stay_on_road_feature = bool(self.use_stay_on_road_feature)
     
 
 # ---------------------

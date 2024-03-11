@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 from utils import get_actor_display_name
 from utils.blueprint_helpers import get_actor_blueprints
 from utils.blueprint_helpers import find_weather_presets
-
+from utils.logging import logger
 
 # ==============================================================================
 # -- World ---------------------------------------------------------------
@@ -34,6 +34,57 @@ class WorldModel(object):
 
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
+
+    @staticmethod
+    def init_carla(args, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+        client = carla.Client(args.host, args.port, worker_threads)
+        client.set_timeout(timeout)
+        
+        sim_world = client.get_world()
+        sim_map = sim_world.get_map()
+        
+        # Load world
+        world_name = args.map
+        if world_name and sim_map.name != "Carla/Maps/" + world_name:
+            client.load_world(world_name, map_layers=map_layers)
+            sim_world = client.get_world()
+            sim_map = sim_world.get_map()
+        else:
+            logger.debug("skipped loading world, already loaded. map_layers ignored.") # todo: remove?
+        
+        # Apply world settings
+        if args.sync:
+            logger.debug("Using synchronous mode.")
+            # apply synchronous mode if wanted
+            world_settings = sim_world.get_settings()
+            world_settings.synchronous_mode = True
+            world_settings.fixed_delta_seconds = 1/args.fps # 0.05
+            sim_world.apply_settings(world_settings)
+        else:
+            logger.debug("Using asynchronous mode.")
+            world_settings = sim_world.get_settings()
+        print("World Settings:", world_settings)
+        
+        
+        return client, sim_world, sim_map, world_settings
+    
+    @staticmethod
+    def init_traffic_manager(client:carla.Client, sync:bool) -> carla.TrafficManager:
+        traffic_manager = client.get_trafficmanager()
+        if sync:
+            traffic_manager.set_synchronous_mode(True)
+        return traffic_manager
+    
+    @staticmethod
+    def init_pygame(args):
+        pygame.init()
+        pygame.font.init()
+        clock = pygame.time.Clock()
+        display = pygame.display.set_mode(
+            (args.width, args.height),
+            pygame.HWSURFACE | pygame.DOUBLEBUF)
+        return clock, display
+        
 
     def __init__(self, carla_world : carla.World, config : DictConfig, args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
@@ -144,7 +195,10 @@ class WorldModel(object):
         if road_boundaries_mode is None:
             road_boundaries_mode = self._config.rss.use_stay_on_road_feature
         else:
-            self._config.rss.use_stay_on_road_feature = bool(road_boundaries_mode)
+            if AD_RSS_AVAILABLE:
+                self._config.rss.use_stay_on_road_feature = carla.RssRoadBoundariesMode.On if road_boundaries_mode else carla.RssRoadBoundariesMode.Off
+            else:
+                self._config.rss.use_stay_on_road_feature = bool(road_boundaries_mode)
         if self.rss_sensor:
             self.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On if road_boundaries_mode else carla.RssRoadBoundariesMode.Off
         else:
@@ -223,7 +277,6 @@ class WorldModel(object):
                 self.show_vehicle_telemetry = False
                 self.modify_vehicle_physics(self.player)
             assert isinstance(self.player, carla.Vehicle)
-
 
         if self.external_actor:
             ego_sensors : List[carla.Actor] = []
@@ -343,12 +396,9 @@ class WorldModel(object):
             self.world.remove_on_tick(self.world_tick_id)
         if self.radar_sensor is not None:
             self.toggle_radar()
-        if self.rss_sensor:
-            self.rss_sensor.destroy()
-        if self.rss_unstructured_scene_visualizer:
-            self.rss_unstructured_scene_visualizer.destroy()
+        if self.camera_manager is not None:
+            self.destroy_sensors()
         actors : List[carla.Actor] = [
-            self.camera_manager.sensor,
             self.collision_sensor.sensor,
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
@@ -373,6 +423,10 @@ class WorldModel(object):
                 #    raise
                 #    print("Warning: Could not destroy actor: " + str(actor))
         # TODO: Call destroy_sensors?
+        if self.rss_sensor:
+            self.rss_sensor.destroy()
+        if self.rss_unstructured_scene_visualizer:
+            self.rss_unstructured_scene_visualizer.destroy()
         
         
     # TODO: These semantically do not fit in here 
