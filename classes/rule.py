@@ -15,6 +15,7 @@ except ImportError:
         update_wrapper(wrapper, func)
         return wrapper
     
+from inspect import isclass
 from itertools import accumulate
 import random
 from enum import IntEnum
@@ -306,7 +307,21 @@ class Rule(_GroupRule):
         self.rule = rule
         self.description = description
         self.overwrite_settings = overwrite_settings or {}
-        
+    
+    def __new__(cls, phases=None, *args, **kwargs):
+        """
+        The @Rule decorator allows to instantiate a Rule class directly for easier out-of-the-box usage.
+        """
+        if isclass(phases):
+            if issubclass(phases, _CountdownRule):
+                raise ValueError("When using @Rule the class must not be a subclass of Rule. Consider subclassing Rule instead.")
+            decorated_class = phases
+
+            # Create the new class
+            new_rule_class = type(decorated_class.__name__, (cls,), decorated_class.__dict__.copy()) # > calls init_subclass; copy() for correct type!
+            return super().__new__(new_rule_class)
+        return super().__new__(cls)
+    
     def __init_subclass__(cls) -> None:
         """
         Automatically creates a __init__ function to allow for a simple to use class-interface to create rule classes.
@@ -330,7 +345,7 @@ class Rule(_GroupRule):
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         self.__init__(phases, cls.rule, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
-    
+        
     @__init__.register
     def __init_from_mapping(self, cls:Mapping):
         self.__init__(cls.get("phases", cls.get("phase")), cls["rule"], cls.get("action"), cls.get("false_action"), actions=cls.get("actions"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True))        
