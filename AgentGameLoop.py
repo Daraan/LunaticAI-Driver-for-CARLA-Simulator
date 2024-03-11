@@ -203,8 +203,8 @@ def game_loop(args : argparse.ArgumentParser):
                         # ----------------------------
                         planned_control.manual_gear_shift = False # TODO: turn into a rule
                         
+                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
                         if AD_RSS_AVAILABLE and agent.config.rss.enabled:
-                            ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
                             #if isinstance(controller, RSSKeyboardControl):
                             #    if controller.parse_events(clock, ctx.control):
                             #        return
@@ -217,11 +217,9 @@ def game_loop(args : argparse.ArgumentParser):
                                     #print("RSS updated controls\n"
                                     #     f"throttle: {control.throttle} -> {rss_updated_controls.throttle}, steer: {control.steer} -> {rss_updated_controls.steer}, brake: {control.brake} -> {rss_updated_controls.brake}")
                                 
-                            ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls) # NOTE: rss_updated_controls could be None
                         else:
                             rss_updated_controls = None
-                            world_model.hud.original_vehicle_control = planned_control
-                            world_model.hud.restricted_vehicle_control = None
+                        ctx = agent.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls) # NOTE: rss_updated_controls could be None
                         # ----------------------------
                         # Phase 5 - Apply Control to Vehicle
                         # ----------------------------
