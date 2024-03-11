@@ -193,7 +193,10 @@ class LunaticAgent(BehaviorAgent):
         self._lights_list : List[carla.TrafficLight] = self._world.get_actors().filter("*traffic_light*")
         self._lights_map : Dict[int, carla.Waypoint] = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
 
-        # From ConstantVelocityAgent ----------------------------------------------
+        # Vehicle Lights
+        self._lights = carla.VehicleLightState.NONE
+
+        # Collision Sensor # TODO: duplicated in WorldModel!
         self._collision_sensor : carla.Sensor = None
         self._set_collision_sensor()
 
@@ -430,6 +433,11 @@ class LunaticAgent(BehaviorAgent):
         # Leave loop and apply controls outside 
         # DISCUSS: Should we apply the controls here?
         return control
+    
+    def apply_control(self, control : carla.VehicleControl):
+        # Set automatic control-related vehicle lights
+        self.update_lights(control)
+        self._vehicle.apply_control(control)
 
     # ------------------ Hazard Detection & Reaction ------------------ #
 
@@ -581,6 +589,24 @@ class LunaticAgent(BehaviorAgent):
             print("WARNING: Ignoring the lane change as no path was found")
 
         self.set_global_plan(path)
+        
+    # ------------------ Other Function ------------------ #
+    
+    def update_lights(self, vehicle_control : carla.VehicleControl):
+        current_lights = self._lights
+        if vehicle_control.brake:
+            current_lights |= carla.VehicleLightState.Brake
+        else:  # Remove the Brake flag
+            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Brake
+        if vehicle_control.reverse:
+            current_lights |= carla.VehicleLightState.Reverse
+        else:  # Remove the Reverse flag
+            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Reverse
+        if current_lights != self._lights:  # Change the light state only if necessary
+            self._lights = current_lights
+            self._vehicle.set_light_state(carla.VehicleLightState(self._lights))
+
+    # ------------------ Setter Function ------------------ #
     
     #@override 
     def set_target_speed(self, speed : float):

@@ -134,7 +134,6 @@ class WorldModel(object):
             
         self.player = player
         assert self.player is not None or self.external_actor # Note: Former optional
-        self._lights = carla.VehicleLightState.NONE
 
         self.collision_sensor = None
         self.lane_invasion_sensor = None
@@ -428,22 +427,6 @@ class WorldModel(object):
         if self.rss_unstructured_scene_visualizer:
             self.rss_unstructured_scene_visualizer.destroy()
         
-        
-    # TODO: These semantically do not fit in here 
-    def update_lights(self, vehicle_control : carla.VehicleControl):
-        current_lights = self._lights
-        if vehicle_control.brake:
-            current_lights |= carla.VehicleLightState.Brake
-        else:  # Remove the Brake flag
-            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Brake
-        if vehicle_control.reverse:
-            current_lights |= carla.VehicleLightState.Reverse
-        else:  # Remove the Reverse flag
-            current_lights &= carla.VehicleLightState.All ^ carla.VehicleLightState.Reverse
-        if current_lights != self._lights:  # Change the light state only if necessary
-            self._lights = current_lights
-            self.player.set_light_state(carla.VehicleLightState(self._lights))
-
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control
         self.hud.restricted_vehicle_control = vehicle_control

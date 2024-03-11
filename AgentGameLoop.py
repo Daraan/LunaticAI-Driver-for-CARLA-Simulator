@@ -257,9 +257,8 @@ def game_loop(args : argparse.ArgumentParser):
                         if isinstance(controller, RSSKeyboardControl):
                             if controller.parse_events(clock, final_control):
                                 return
-                        # Set automatic control-related vehicle lights
-                        world_model.update_lights(final_control)
-                        world_model.player.apply_control(final_control)
+                        
+                        agent.apply_control(final_control)
                         agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=final_control)
                         
                         sim_world.debug.draw_point(destination, life_time=0.5)
