@@ -292,7 +292,7 @@ def game_loop(args : argparse.ArgumentParser):
     finally:
         print("Quitting. - Destroying actors and stopping world.")
         if agent is not None:
-            agent._road_matrix_updater.stop()
+            agent.destroy_sensor()
         if world_model is not None:
             world_settings = world_model.world.get_settings()
             world_settings.synchronous_mode = False

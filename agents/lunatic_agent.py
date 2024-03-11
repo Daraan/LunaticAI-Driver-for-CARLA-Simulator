@@ -231,6 +231,8 @@ class LunaticAgent(BehaviorAgent):
         self._collision_sensor.listen(self._collision_event)
 
     def destroy_sensor(self):
+        if self._road_matrix_updater:
+            self._road_matrix_updater.stop()
         if self._collision_sensor:
             self._collision_sensor.destroy()
             self._collision_sensor = None
