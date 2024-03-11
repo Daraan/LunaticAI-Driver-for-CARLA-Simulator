@@ -19,9 +19,9 @@ print(EvaluationFunction("Testing this"))
 
 named_wrapper = EvaluationFunction("Testing this")
 
-@Rule
-class AnotherRule:
-    phase = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
+
+class AnotherRule(Rule):
+    phases = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
     
     @EvaluationFunction("Always execute this rule")
     def rule(ctx):
@@ -31,7 +31,27 @@ class AnotherRule:
         print("Hello World")
     overwrite_settings = {"speed": {"intersection_speed_decrease": 10}}
     description = "Set speed to intersection speed"
+    
+@Rule
+class AnotherRule2:
+    """
+    Note that @Rule creates an instance of class AnotherRule2(Rule)
+    """
+    phases = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
+    
+    @EvaluationFunction("Always execute this rule")
+    def rule(ctx):
+        return True
+    
+    def action(ctx):
+        print("Hello World")
+    overwrite_settings = {"speed": {"intersection_speed_decrease": 10}}
+    description = "Rule class via the at"
+    
+    def myfuc(self):
+        print("Hello World")
  
+AnotherRule2.myfuc()
  
 
 drule = Rule({"phase": Phase.TURNING_AT_JUNCTION | Phase.BEGIN,
