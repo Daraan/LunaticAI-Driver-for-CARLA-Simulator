@@ -1,6 +1,7 @@
 from __future__ import annotations 
 from collections.abc import Mapping
 from functools import wraps
+import inspect
 try: # Python 3.8+
     from functools import singledispatchmethod
 except ImportError:
@@ -306,6 +307,23 @@ class Rule(_GroupRule):
         self.description = description
         self.overwrite_settings = overwrite_settings or {}
         
+    def __init_subclass__(cls) -> None:
+        """
+        Automatically creates a __init__ function to allow for a simple to use class-interface to create rule classes.
+        
+        By setting __no_auto_init = True in the class definition, the automatic __init__ creation is disabled.
+        """
+        if not "__init__" in cls.__dict__ and not cls.__dict__.get("__no_auto_init", False):
+            params = inspect.signature(cls.__init__).parameters # find overlapping parameters
+            @wraps(cls.__init__)
+            def partial_init(self, phases=None, *args, **kwargs):
+                phases = getattr(cls, "phases")
+                kwargs.update({k:v for k,v in cls.__dict__.items() if k in params and k != "phases"})
+                super(cls, self).__init__(phases, *args, **kwargs)
+            
+            #cls.__init__ = partialmethod(cls.__init__, phases, **{k:v for k,v in cls.__dict__.items() if k in params and k != "phases"})
+            cls.__init__ = partial_init
+    
     @__init__.register(_CountdownRule)
     @__init__.register(type)
     def __init_by_decorating_class(self, cls):
