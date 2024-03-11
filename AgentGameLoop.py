@@ -72,19 +72,28 @@ def game_loop(args : argparse.ArgumentParser):
 
     try:
         game_framework = GameFramework(args)
-        #clock, display = WorldModel.init_pygame(args)
-        #client, sim_world, sim_map, world_settings = WorldModel.init_carla(args, timeout=10.0)
-        traffic_manager = game_framework.init_traffic_manager()
         
-        # Spawn Vehicles
+        # -- Spawn Vehicles --
+        all_spawn_points = game_framework.map.get_spawn_points()
         spawn_points = utils.general.csv_to_transformations("examples/highway_example_car_positions.csv")
-
-        # Spawn Ego
+        
         ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
-        #ego = Vehicle(sim_world, ego_bp)
+        
+        # Spawn Others
+        traffic_manager = game_framework.init_traffic_manager()
+        for sp in spawn_points[1:4]:
+            v = Vehicle(world_model, car_bp)
+            v.spawn(sp)
+            world_model.actors.append(v.actor)
+            v.actor.set_target_velocity(carla.Vector3D(-2, 0, 0))
+            v.actor.set_autopilot(True)
+            print("Spawned", v.actor)
+        
+        # Spawn Ego
         start : carla.libcarla.Transform = spawn_points[0]
-        #ego.spawn(start)
         ego = game_framework.world.spawn_actor(ego_bp, start)
+
+        # -- Setup Agent --
 
         behavior = LunaticAgentSettings(
             {'controls':{ "max_brake" : 1.0, 
@@ -110,39 +119,11 @@ def game_loop(args : argparse.ArgumentParser):
         import classes.worldmodel
         classes.worldmodel.AD_RSS_AVAILABLE = behavior.rss.enabled
         
-        print("Set dt to", behavior.planner.dt)
         if PRINT_CONFIG:
             print("    \n\n\n")
             pprint(behavior)
             print(behavior.to_yaml())
         
-        # Test 1 - Remove
-        config = behavior.make_config()
-        game_framework.set_config(config)
-        #world_model = WorldModel(sim_world, config, args, player=ego, map_inst=sim_map, agent=agent)
-        world_model = game_framework.make_world_model(config, ego)
-        
-        agent = LunaticAgent(ego, world_model, config, map_inst=game_framework.map, overwrite_options={'distance':{
-                "min_proximity_threshold": 12.0,
-                "emergency_braking_distance": 6.0,
-                "distance_to_leading_vehicle": 8.0},})
-        del config
-        del agent
-        del world_model
-        # Test 2
-        agent, world_model, global_planner = LunaticAgent.create_world_and_agent(ego, sim_world, args, map_inst=sim_map, overwrites={'distance':{
-                "min_proximity_threshold": 12.0,
-                "emergency_braking_distance": 6.0,
-                "distance_to_leading_vehicle": 8.0},})
-        config = agent.config
-        controller = RSSKeyboardControl(world_model, start_in_autopilot=False, config=config)
-        game_framework.set_controller(controller)
-        del agent
-        del world_model
-        del global_planner
-        del controller
-        del config
-        # Test 3
         agent, world_model, global_planner, controller \
             = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
                     overwrites=behavior)
@@ -153,9 +134,10 @@ def game_loop(args : argparse.ArgumentParser):
             print("Lunatic Agent Rules")
             pprint(agent.rules)
         
+        # -- Scenario --
+        
         # Set initial destination
         wp_start = world_model.map.get_waypoint(start.location)
-        all_spawn_points = world_model.map.get_spawn_points()
 
         next_wps: List[carla.Waypoint] = wp_start.next(25)
         last_wp = next_wps[-1]
@@ -165,19 +147,7 @@ def game_loop(args : argparse.ArgumentParser):
         destination = left_last_wp.transform.location
         
         agent.set_destination(left_last_wp)
-
-        #agent.set_target_speed(33.0)
-        #agent.ignore_vehicles(agent._behavior.ignore_vehicles)
         
-        # spawn others
-        for sp in spawn_points[1:4]:
-            v = Vehicle(world_model, car_bp)
-            v.spawn(sp)
-            world_model.actors.append(v.actor)
-            v.actor.set_target_velocity(carla.Vector3D(-2, 0, 0))
-            v.actor.set_autopilot(True)
-            print("Spawned", v.actor)
-
         def loop():
             if args.sync:
                 # Assure that dt is set

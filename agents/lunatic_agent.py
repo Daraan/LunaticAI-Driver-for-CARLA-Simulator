@@ -13,10 +13,7 @@ traffic signs, and has different possible configurations. """
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import is_dataclass
-from functools import wraps
-import random
-from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
+from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, cast as assure_type
 import weakref
 
 from omegaconf import DictConfig, OmegaConf
@@ -292,12 +289,10 @@ class LunaticAgent(BehaviorAgent):
         # Data Matrix
         self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated in the background.
         
-
     def is_taking_turn(self) -> bool:
         return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
 
     # ------------------ Step & Loop Logic ------------------ #
-
 
     def add_rule(self, rule : Rule, position=-1):
         for p in rule.phases:
@@ -571,8 +566,6 @@ class LunaticAgent(BehaviorAgent):
         """
         return substep_managers.emergency_manager(self, control, reason)
     
-    # ------------------ Setter Function ------------------ #
-
     def lane_change(self, direction, same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """
         Changes the path so that the vehicle performs a lane change.

@@ -26,7 +26,7 @@ CameraBlueprints = {
     'Lidar (Ray-Cast)' : CameraBlueprint('sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)')
 }
 
-CameraBlueprintsSimple = [CameraBlueprints['Camera RGB' ]]
+CameraBlueprintsSimple = [CameraBlueprints['Camera RGB']]
 
 
 # ==============================================================================
