@@ -157,7 +157,7 @@ def game_loop(args : argparse.ArgumentParser):
         #agent.set_target_speed(33.0)
         #agent.ignore_vehicles(agent._behavior.ignore_vehicles)
         
-        controller = RSSKeyboardControl(agent.config, world_model, start_in_autopilot=False)
+        controller = RSSKeyboardControl(world_model, start_in_autopilot=False, config=agent.config)
 
         # spawn others
         for sp in spawn_points[1:4]:

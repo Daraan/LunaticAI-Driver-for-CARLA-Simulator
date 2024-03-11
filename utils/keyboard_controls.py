@@ -77,7 +77,7 @@ class RSSKeyboardControl(object):
 
     # TODO: should be a toggle between None, Autopilot, Agent
 
-    def __init__(self, config, world_model : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True):
+    def __init__(self, world_model : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True, config=None):
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
         self._config = config
@@ -138,7 +138,7 @@ class RSSKeyboardControl(object):
         print('\nReceived signal {}. Trigger stopping...'.format(signum))
         RSSKeyboardControl.signal_received = True
 
-    def parse_events(self, clock, control=None):
+    def parse_events(self, clock: pygame.time.Clock, control:carla.VehicleControl=None):
         if control:
             self._control = control
         if RSSKeyboardControl.signal_received:
@@ -272,6 +272,7 @@ class RSSKeyboardControl(object):
             #self._world_model.player.apply_control(vehicle_control)
 
     def _parse_vehicle_keys(self, keys, milliseconds):
+        """Handles manual vehicle controls via keyboard."""
         if keys[K_UP] or keys[K_w]:
             self._control.throttle = min(self._control.throttle + 0.2, 1)
         #else:
