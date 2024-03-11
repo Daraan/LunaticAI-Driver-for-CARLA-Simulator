@@ -63,12 +63,12 @@ def game_loop(args : argparse.ArgumentParser):
     Main loop of the simulation. It handles updating all the HUD information,
     ticking the agent and, if needed, the world.
     """
+    game_framework : GameFramework = None # Set for finally block
     world_model : WorldModel = None # Set for finally block
     agent : LunaticAgent = None # Set for finally block
     ego : carla.Vehicle = None # Set for finally block
     
     args.seed = 631 # TEMP
-
 
     try:
         game_framework = GameFramework(args)
@@ -81,18 +81,18 @@ def game_loop(args : argparse.ArgumentParser):
         
         # Spawn Others
         traffic_manager = game_framework.init_traffic_manager()
+        spawn_commands = []
         for sp in spawn_points[1:4]:
-            v = Vehicle(world_model, car_bp)
-            v.spawn(sp)
-            world_model.actors.append(v.actor)
-            v.actor.set_target_velocity(carla.Vector3D(-2, 0, 0))
-            v.actor.set_autopilot(True)
-            print("Spawned", v.actor)
+            spawn_commands.append(carla.command.SpawnActor(car_bp, sp).then(
+                            carla.command.SetAutopilot(carla.command.FutureActor, True)))
+
+        response = game_framework.client.apply_batch_sync(spawn_commands)
+        spawned_vehicles = list(game_framework.world.get_actors([x.actor_id for x in response]))
         
         # Spawn Ego
         start : carla.libcarla.Transform = spawn_points[0]
         ego = game_framework.world.spawn_actor(ego_bp, start)
-
+        spawned_vehicles.append(ego)
         # -- Setup Agent --
 
         behavior = LunaticAgentSettings(
@@ -262,6 +262,7 @@ def game_loop(args : argparse.ArgumentParser):
         if agent is not None:
             agent.destroy_sensor()
         if world_model is not None:
+            world_model.actors.extend(spawned_vehicles)
             world_settings = world_model.world.get_settings()
             world_settings.synchronous_mode = False
             world_settings.fixed_delta_seconds = None
@@ -269,6 +270,8 @@ def game_loop(args : argparse.ArgumentParser):
             traffic_manager.set_synchronous_mode(False)
             world_model.destroy()
             ego = None
+        elif game_framework is not None:
+            game_framework.client.apply_batch([carla.command.DestroyActor(x) for x in spawned_vehicles])
         
         try:
             if ego is not None:
