@@ -189,39 +189,41 @@ set_close_waypoint_when_done = Rule(Phase.DONE | Phase.BEGIN,
     
 # ----------- Lane Change Rules -----------
 
-def random_lane_change(ctx : "Context"):
-    """
-    Change lane to the left or right.
-    """
-    print("Chaning Lane randomly")
-    p_left = ctx.config.lane_change.random_left_lanechange_percentage
-    p_right = ctx.config.lane_change.random_right_lanechange_percentage
-    p_stay = max(0, 1 - p_left - p_right) # weight to stay in the same lane
-    direction : carla.LaneChange = carla.LaneChange(np.random.choice( (1, 0, 2), p=(p_left, p_stay, p_right)))
-    print("Direction: ", direction)
-    if direction == 0:
-        random_lane_change_rule.reset_cooldown(ctx.config.lane_change.random_lane_change_interval)
-        return
-    ctx.agent.lane_change("left" if direction == 1 else "right", 
-                          same_lane_time=ctx.config.lane_change.same_lane_time,
-                          other_lane_time=ctx.config.lane_change.other_lane_time,
-                          lane_change_time=ctx.config.lane_change.lane_change_time)
+class RandomLaneChangeRule(Rule):
+    phases = Phase.TAKE_NORMAL_STEP | Phase.BEGIN
+    rule = always_execute # TODO: Could implement check here, instead of relying on `lane_change`
+    cooldown_reset_value = None
     
-    print("restesting cooldown")
-    random_lane_change_rule.reset_cooldown(ctx.config.lane_change.random_lane_change_interval)
+    priority = RulePriority.LOWEST
+    group = "lane_change"
+    description = "Randomly change lane"
+    start_cooldown = 25
+    
+    def action(self, ctx: "Context"):
+        """
+        Change lane to the left or right.
+        """
+        print("Changing Lane randomly")
+        p_left = ctx.config.lane_change.random_left_lanechange_percentage
+        p_right = ctx.config.lane_change.random_right_lanechange_percentage
+        p_stay = max(0, 1 - p_left - p_right) # weight to stay in the same lane
+        direction : carla.LaneChange = carla.LaneChange(np.random.choice( (1, 0, 2), p=(p_left, p_stay, p_right)))
+        print("Direction: ", direction)
+        if direction == 0:
+            self.reset_cooldown(ctx.config.lane_change.random_lane_change_interval)
+            return
+        ctx.agent.lane_change("left" if direction == 1 else "right", 
+                            same_lane_time=ctx.config.lane_change.same_lane_time,
+                            other_lane_time=ctx.config.lane_change.other_lane_time,
+                            lane_change_time=ctx.config.lane_change.lane_change_time)
+        
+        print("Resetting cooldown")
+        self.reset_cooldown(ctx.config.lane_change.random_lane_change_interval)
 
-random_lane_change_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
-                               rule=always_execute,
-                               action=random_lane_change,
-                               cooldown_reset_value=None,
-                               priority=RulePriority.LOWEST,
-                               group="lane_change",
-                               description="Randomly change lane")
-random_lane_change_rule.reset_cooldown(50)
+random_lane_change_rule = RandomLaneChangeRule()
+
 
 # TODO: Create a stay right rule!    
-
-
 
 
 # ----------- RSS Rules -----------
