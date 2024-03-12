@@ -18,7 +18,7 @@ from classes.rule import always_execute
 if TYPE_CHECKING:
     from agents import LunaticAgent
 
-DEBUG_RULES = True
+DEBUG_RULES = False
 
 #TODO: maybe create some omega conf dict creator that allows to create settings more easily
 # e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
