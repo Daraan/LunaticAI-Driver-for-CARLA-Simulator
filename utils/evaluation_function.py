@@ -65,6 +65,12 @@ class EvaluationFunction:
         result = self.evaluation_function(ctx, *args, **kwargs)
         assert isinstance(result, Hashable), f"evaluation_function must return a hashable type, not {type(result)}"
         return result
+    
+    def __get__(self, instance, owner): # for in class usage class.rule
+        # NOTE: instance.rule is not an EvaluationFunction, it is a partial of one.
+        if instance is None:
+            return self # called on class
+        return partial(self, instance) # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
 
     #Helpers to extract a useful string representation of the function
     @staticmethod
