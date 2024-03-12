@@ -305,7 +305,7 @@ class Rule(_GroupRule):
         """
         return self.__class__(self) # Make use over overloaded __init__
 
-
+    @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
                  rule : Optional[Callable[[Context], Hashable]]=None, 
@@ -379,7 +379,7 @@ class Rule(_GroupRule):
         if rule is not None and not hasattr(self, "rule"):
             self.rule = rule
         elif rule is not None and hasattr(self, "rule"):
-            logger.debug("Warning", f"'rule' argument passed but class {self.__class__.__name__} already implements 'self.rule'. Overwriting 'self.rule' with passed rule.")
+            logger.debug(f"Warning 'rule' argument passed but class {self.__class__.__name__} already implements 'self.rule'. Overwriting 'self.rule' with passed rule.")
             self.rule = rule
         
         # Check Actions

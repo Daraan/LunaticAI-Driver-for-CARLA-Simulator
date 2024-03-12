@@ -259,6 +259,14 @@ if __name__ == "__main__" or DEBUG_RULES:
 
     def context_function(ctx : "Context") -> bool:
         return True
+    
+    @EvaluationFunction
+    def eval_context_method(self, ctx : "Context") -> bool:
+        return True
+
+    @EvaluationFunction
+    def eval_context_function(ctx : "Context") -> bool:
+        return True
 
     @Rule
     class SimpleRule1:
@@ -270,6 +278,18 @@ if __name__ == "__main__" or DEBUG_RULES:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = context_method
         action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
+
+    @Rule
+    class SimpleRule1B:
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        rule = eval_context_function
+        action = lambda ctx: print("ONLY CTX", ctx)
+    
+    class SimpleRuleB(Rule):
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        rule = eval_context_method
+        action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
+
 
 
 
@@ -292,11 +312,12 @@ if __name__ == "__main__" or DEBUG_RULES:
         rule = always_execute
         
         actions = {True: lambda self, ctx: print("ANOTHER FROM DICT Executing action of", self, "with context", ctx),
-                False: rule}
+                False: lambda ctx: print("ANOTHER False function.", ctx)}
 
     new_rule = DebugRuleWithEval()
     #new_rule.action
-    another_rule = Another()
     simple_rule = SimpleRule()
+    simple_ruleB = SimpleRuleB()
+    another_rule = Another()
 
-    default_rules.extend([SimpleRule1, new_rule, another_rule, simple_rule])
+    default_rules.extend([SimpleRule1, SimpleRule1B, simple_ruleB, new_rule, another_rule, simple_rule])
