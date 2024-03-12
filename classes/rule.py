@@ -110,13 +110,15 @@ class _CountdownRule:
 
     DEFAULT_COOLDOWN_RESET : ClassVar[int] = 0
     _cooldown : int # if 0 the rule can be executed
+    start_cooldown : ClassVar[int] = 0
+    """Initial Cooldown when initialized. if >0 the rule will not be ready for the first start_cooldown ticks."""
 
     # Keep track of all instances for the cooldowns
     instances : ClassVar[WeakSet["_CountdownRule"]] = WeakSet()
 
     def __init__(self, cooldown_reset_value : Optional[int] = None, enabled: bool = True):
         self.instances.add(self)
-        self._cooldown = 0
+        self._cooldown = self.start_cooldown
         self.max_cooldown = cooldown_reset_value or self.DEFAULT_COOLDOWN_RESET
         self._enabled = enabled
 
