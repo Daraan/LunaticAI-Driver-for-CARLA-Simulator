@@ -180,9 +180,19 @@ class _CountdownRule:
 
 class _GroupRule(_CountdownRule):
     group : Optional[str] = None # group of rules that share a cooldown
+    """
+    Group name of rules that should share their cooldown.
+    
+    None for a rule to not share its cooldown.
+    """
 
     # first two values in the list are current and max cooldown, the third is a set of all instances
     group_instances : ClassVar[Dict[str, List[int, int, WeakSet["_GroupRule"]]]] = {}
+    """
+    Dictionary of all group instances. Key is the group name. 
+    
+    Value is a list of the current cooldown, the max cooldown for reset and a WeakSet of all instances.
+    """
     
     def __init__(self, group :Optional[str]=None, cooldown_reset_value : Optional[int] = None, enabled: bool = True):
         super().__init__(cooldown_reset_value, enabled)
@@ -230,6 +240,7 @@ class _GroupRule(_CountdownRule):
             raise ValueError(f"Group {group} does not exist.")
 
     __filter_not_ready_instances = lambda instance: instance.group is None and instance._cooldown > 0
+    """Filter function to get all instances that are not ready. see `update_all_cooldowns`."""
 
     @classmethod
     def update_all_cooldowns(cls):
@@ -243,16 +254,33 @@ class _GroupRule(_CountdownRule):
 
 class Rule(_GroupRule):
     rule : EvaluationFunction
+    """
+    The condition that determines if the rule's actions should be executed.
+    
+    Simple variant:
+        return True if the action should be executed, False otherwise.
+        if `false_action` is defined, False will execute `false_action`.
+        
+    Advanced variant:
+        return a Hashable value that is used as key in the `actions` dict.
+    """
+    
     actions : Dict[Any, Callable[[Context], Any]]
+    """Dictionary that maps rule results to the action that should be executed."""
+    
     description : str
+    """Description of what this rule should do"""
+    
     overwrite_settings : Dict[str, Any]
+    """Settings that should overwrite the agent's settings for this rule."""
+    
     phases : Set["Phase"]
-
-    group : Optional[str] = None # group of rules that share a cooldown
+    """The phase or phases in which the rule should be evaluated."""
 
     # Indicate that no rule was applicable in the current phase
     # i.e.  rule(ctx) in actions was False 
     NOT_APPLICABLE : ClassVar = object()
+    """Object that indicates that no action was executed."""
 
     def clone(self):
         """
@@ -264,7 +292,7 @@ class Rule(_GroupRule):
         """
         return self.__class__(self) # Make use over overloaded __init__
 
-    @singledispatchmethod
+
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
                  rule : Optional[Callable[[Context], Hashable]]=None, 
@@ -279,7 +307,43 @@ class Rule(_GroupRule):
                  group : Optional[str] = None,
                  enabled: bool = True,
                  ignore_chance = NotImplemented,
-                 ) -> None:
+                 ):
+        """
+        Initializes a Rule object.
+
+        Parameters:
+        - phases: The phase(s) when the rule should be evaluated.
+            An iterable of Phase objects or a single Phase object.
+        - rule: A function that takes a Context object as input and returns a Hashable value. 
+            If not provided, the class must implement a `rule` function.
+        - action: A function or a dictionary of functions that take a Context object as input. 
+            If `action` behaves like `actions`.
+            Only one of `action` and `actions` can be set.
+        - false_action: A function that takes a Context object as input and returns any value. 
+            It is used when `action` is a single function and represents the action to be taken when the condition is False.
+        - actions: A dictionary of `action` functions
+            It should map the return values of `rule` to the corresponding action function. 
+            If `action` is None, `actions` must be provided.
+        - description: A string that describes what this rule does.
+        - overwrite_settings: A dictionary of settings that will overwrite the 
+            agent's setting for this Rule.
+        - priority: The priority of the rule. It can be a float, an integer, or a RulePriority enum value.
+        - cooldown_reset_value: An optional integer value that represents the cooldown reset value for the rule.
+            If not provided falls back to the class attribute DEFAULT_COOLDOWN_RESET.
+        - group: An optional string that specifies the group to which this rule belongs.
+        - enabled: A boolean value indicating whether the rule is enabled or not.
+        - ignore_chance: Not implemented.
+
+        Raises:
+        - ValueError: If `phases` is empty or None, or if `phases` contains an object that is not of type Phase.
+        - TypeError: If `rule` is None and the class does not implement a `rule` function, or if both `action` and `actions` are None and the class does not have an `actions` attribute or an `action` function.
+        - TypeError: if actions is not a Mapping object.
+        - ValueError: If both `action` and `actions` are provided.
+        - ValueError: If `action` is a Mapping and either `false_action` or `actions` is not None.
+        - ValueError: If an action function is not callable.
+        - ValueError: If `description` is not a string.
+
+        """
         # Check phases
         if not phases:
             raise ValueError("phases must not be empty or None")
@@ -313,9 +377,9 @@ class Rule(_GroupRule):
 
         if action is None:
             if not isinstance(actions, Mapping):
-                raise ValueError(f"actions must be a Mapping, not {type(actions)}")
+                raise TypeError(f"actions must be a Mapping, not {type(actions)}")
             self.actions = actions
-        elif isinstance(action, dict):
+        elif isinstance(action, Mapping):
             self.actions = action
             if false_action is not None or actions is not None:
                 raise ValueError("When passing a dict to action, false_action and actions must be None")
@@ -367,6 +431,8 @@ class Rule(_GroupRule):
         if not "__init__" in cls.__dict__ and not cls.__dict__.get("__no_auto_init", False):
             do_not_overwrite = ["phases"]
             if hasattr(cls, "rule"):
+                
+                # Check if the rule should be treated as a method or function
                 if isinstance(cls.rule, EvaluationFunction):
                     rule_func = cls.rule.evaluation_function
                 else:
@@ -383,6 +449,7 @@ class Rule(_GroupRule):
                         raise ValueError(f"Class {cls.__name__} already has an 'actions' attribute. It will be overwritten by the 'actions' attribute of the rule.")
                     cls.actions = cls.rule.actions
             
+            # Create a __init__ function that sets some of the parameters.
             params = inspect.signature(cls.__init__).parameters # find overlapping parameters
             
             @wraps(cls.__init__)
@@ -393,12 +460,16 @@ class Rule(_GroupRule):
                 kwargs.update({k:v for k,v in cls.__dict__.items() if k in params and k not in do_not_overwrite})
                 super(cls, self).__init__(phases, *args, **kwargs)
             
-            #cls.__init__ = partialmethod(cls.__init__, phases, **{k:v for k,v in cls.__dict__.items() if k in params and k != "phases"})
             cls.__init__ = partial_init
     
     @__init__.register(_CountdownRule)
     @__init__.register(type)
     def __init_by_decorating_class(self, cls):
+        """
+        Initialize by passing a Rule or class object to the __init__ method.
+        
+        This allows the usage of the @Rule decorator and easy copying.
+        """
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         self.__init__(phases, cls.rule, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
