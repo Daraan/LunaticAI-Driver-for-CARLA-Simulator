@@ -358,7 +358,7 @@ class Rule(_GroupRule):
             return super().__new__(new_rule_class)
         return super().__new__(cls)
     
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls):
         """
         Automatically creates a __init__ function to allow for a simple to use class-interface to create rule classes.
         
@@ -375,7 +375,16 @@ class Rule(_GroupRule):
                     # If it has two arguments it will not be overwritten -> method(self, ctx)
                     # Else with one argument function(ctx), self.rule = rule will overwrite it
                     do_not_overwrite.append("rule")
+                
+                #if not isinstance(cls.rule, EvaluationFunction):# and (isinstance(cls.rule, partial) and not isinstance(cls.rule.func, EvaluationFunction)):
+                #    raise TypeError(f"{cls.__name__}.rule must be of type EvaluationFunction. Decorate it with @EvaluationFunction.")
+                if hasattr(cls.rule, "actions") and cls.rule.actions:
+                    if hasattr(cls, "actions") and cls.actions:
+                        raise ValueError(f"Class {cls.__name__} already has an 'actions' attribute. It will be overwritten by the 'actions' attribute of the rule.")
+                    cls.actions = cls.rule.actions
+            
             params = inspect.signature(cls.__init__).parameters # find overlapping parameters
+            
             @wraps(cls.__init__)
             def partial_init(self, phases=None, *args, **kwargs):
                 # Need phases as first argument
@@ -415,14 +424,15 @@ class Rule(_GroupRule):
     def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *, ignore_phase=False, ignore_cooldown=False) -> Any:
         # Check phase
         assert ctx.agent.current_phase in self.phases
+            
         if not self.is_ready() and not ignore_cooldown:
             return self.NOT_APPLICABLE
         if not ignore_phase and ctx.agent.current_phase not in self.phases:
             return self.NOT_APPLICABLE # not applicable for this phase
         result = self.evaluate(ctx, overwrite)
+
         ctx.evaluation_results[ctx.agent.current_phase] = result
         if result in self.actions:
-            
             self._cooldown = self.max_cooldown
             action_result = self.actions[result](ctx) #todo allow priority, random chance
             ctx.action_results[ctx.agent.current_phase] = action_result

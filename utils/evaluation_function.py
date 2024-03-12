@@ -60,6 +60,7 @@ class EvaluationFunction:
             self.name = evaluation_function.__name__
         else:
             self.name = str(evaluation_function)
+        self.actions = {}
 
     def __call__(self, ctx: "Context", *args, **kwargs) -> Hashable:
         result = self.evaluation_function(ctx, *args, **kwargs)
@@ -130,6 +131,16 @@ class EvaluationFunction:
 
     def __invert__(self):
         return self.NOT(self)
+    
+    def register_action(self, key:Hashable=True):
+        def decorator(action_function):
+            if action_function.__name__ in ('action', 'actions', 'false_action'):
+                raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in ('action', 'actions', 'false_action'), got '{action_function.__name__}'.")
+            if key in self.actions:
+                print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
+            self.actions[key] = action_function # register action
+            return action_function
+        return decorator
 
 
 class ActionFunction(EvaluationFunction):
