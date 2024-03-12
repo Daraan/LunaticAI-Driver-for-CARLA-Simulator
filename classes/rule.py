@@ -440,7 +440,13 @@ class Rule(_GroupRule):
         return self.NOT_APPLICABLE # No action was executed
     
     def __str__(self) -> str:
-        return self.__class__.__name__ + f"(description={self.description}, phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, rule={self.rule}, cooldown={self.cooldown})" 
+        try:
+            if isinstance(self.rule, partial):
+                return self.__class__.__name__ + f"(description='{self.description}', phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, rule={self.rule.func}, cooldown={self.cooldown})"
+            return self.__class__.__name__ + f"(description='{self.description}', phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, rule={self.rule.__name__}, cooldown={self.cooldown})" 
+        except AttributeError as e:
+            logger.warning(str(e))
+            return self.__class__.__name__ + ("Error in rule.__str__: Rule has not been initialized correctly. Missing attributes: " + str(e))
 
     def __repr__(self) -> str:
         return str(self)
