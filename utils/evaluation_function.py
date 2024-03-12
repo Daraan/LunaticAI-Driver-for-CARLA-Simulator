@@ -54,7 +54,12 @@ class EvaluationFunction:
     
     def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction"):
         self.evaluation_function = evaluation_function
-        self.name = name if name != "EvaluationFunction" else evaluation_function.__name__
+        if name != "EvaluationFunction":
+            self.name = name
+        elif hasattr(evaluation_function, "__name__"):
+            self.name = evaluation_function.__name__
+        else:
+            self.name = str(evaluation_function)
 
     def __call__(self, ctx: "Context", *args, **kwargs) -> Hashable:
         result = self.evaluation_function(ctx, *args, **kwargs)
@@ -70,12 +75,23 @@ class EvaluationFunction:
 
     @staticmethod
     def _func_to_string(func):
+        if not hasattr(func, "__name__"):
+            return str(func)
         if func.__name__ == "<lambda>":
             return EvaluationFunction._complete_func_to_string(func)
         return func.__name__
 
+    @property
+    def __name__(self):
+        return self.name
+
     def __str__(self):
         return self.name
+    
+    def __repr__(self):
+        if self.name == "EvaluationFunction":
+            return self.__class__.__name__ + f"({self.evaluation_function})"
+        return self.__class__.__name__ + f'(name="{self.name}", evaluation_function={self.evaluation_function})'
 
     @classmethod
     def AND(cls, func1, func2):
