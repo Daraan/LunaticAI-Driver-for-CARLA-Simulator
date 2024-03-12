@@ -42,16 +42,21 @@ class Context:
     """
     agent : "LunaticAgent"
     config : "LunaticAgentSettings"
+    """A copy of the agents config. Overwritten by the rule's settings."""
     
-    evaluation_results : Dict["Phase", Hashable] # ambigious wording, which result? here evaluation result
+    evaluation_results : Dict["Phase", Hashable] # ambiguous wording, which result? here evaluation result
     action_results : Dict["Phase", Any] 
     
     control : Optional["carla.VehicleControl"]
+    """Current control the agent should use. Set by execute_phase(control=...). Safeguarded to be not set to None."""
     _control : Optional["carla.VehicleControl"]
+    """Current control the agent should use."""
     
-    prior_result : Optional[Any]
+    prior_result : Optional[Any] # TODO: maybe rename
+    """Result of the current phase."""
     
     last_context : Optional["Context"]
+    """The context object of the last tick. Used to access the last phase's results."""
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
@@ -65,10 +70,17 @@ class Context:
 
     @property
     def current_phase(self) -> "Phase":
+        """Current phase the agent is in"""
         return self.agent.current_phase
     
     @property
     def control(self) -> Union["carla.VehicleControl", None]:
+        """
+        Control the agent currently should use. 
+        
+        Setting it to None directly is discouraged. 
+        Use `set_control` to set it to None.
+        """
         return self._control
     
     @control.setter
@@ -78,9 +90,10 @@ class Context:
         self._control = control
         
     def set_control(self, control : Optional["carla.VehicleControl"]):
+        """Set the control, allows to set it to None."""
         self._control = control
     
-    def end_of_phase(self):
+    def end_of_phase(self): # TODO: keep or remove? unused
         self.last_phase_action_results = self.action_results.copy()
         self.last_phase_evaluation_results = self.evaluation_results.copy()
         self.evaluation_results.clear()
