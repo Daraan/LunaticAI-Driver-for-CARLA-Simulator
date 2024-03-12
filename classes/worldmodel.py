@@ -29,8 +29,12 @@ from utils.blueprint_helpers import get_actor_blueprints
 from utils.blueprint_helpers import find_weather_presets
 from utils.logging import logger
 
+
+class ContinueLoopException(Exception):
+    pass
+
 # ==============================================================================
-# -- World ---------------------------------------------------------------
+# -- Game Framework ---------------------------------------------------------------
 # ==============================================================================
 
 class GameFramework(object):
@@ -143,14 +147,31 @@ class GameFramework(object):
         self.world_model.render(self.display)
         self.controller.render(self.display)
         self.agent.render_road_matrix(self.display)
-    
+        
+    @staticmethod
+    def skip_rest_of_loop(message="GameFrameWork.end_loop"):
+        """
+        Terminates the current iteration and exits the GameFramework.
+        
+        NOTE: It is the users responsibility to manage the agent & local planner
+        before calling this function.
+        
+        Raises: ContinueLoopException
+        """
+        # TODO: add option that still allows for rss.
+        raise ContinueLoopException(message)
+
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
+        if exc_type is None or issubclass(exc_type, ContinueLoopException):
             self.render_everything()
             
             pygame.display.flip()
             
             Rule.update_all_cooldowns() # Rule Cooldown Framework
+
+# ==============================================================================
+# -- World ---------------------------------------------------------------
+# ==============================================================================
 
 class WorldModel(object):
     """ Class representing the surrounding environment """
