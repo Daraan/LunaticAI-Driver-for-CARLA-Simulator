@@ -34,7 +34,7 @@ def if_config(config_path, value):
     """
     Returns a partial function that checks if a value in the config is set to a certain value.
     """
-    return partial(_if_config_checker, config_path=config_path, value=value)
+    return EvaluationFunction(partial(_if_config_checker, config_path=config_path, value=value), name=f"Checks if {config_path} is {value}")
 
 # ---
 
