@@ -292,11 +292,6 @@ class Rule(_GroupRule):
         for p in phases:
             if not isinstance(p, Phase):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
-        if not isinstance(description, str):
-            raise ValueError(f"description must be of type str, not {type(description)}")
-        super().__init__(group or self.group, cooldown_reset_value, enabled) # or self.group for subclassing
-        self.priority : float | int | RulePriority = priority # used by agent.add_rule
-
         self.phases = phases
         
         # Check Rule
@@ -324,7 +319,13 @@ class Rule(_GroupRule):
                 self.actions[False] = false_action
         
         
+        # Check Description
+        if not isinstance(description, str):
+            raise ValueError(f"description must be of type str, not {type(description)}")
         self.description = description
+        super().__init__(group or self.group, cooldown_reset_value, enabled) # or self.group for subclassing
+        self.priority : float | int | RulePriority = priority # used by agent.add_rule
+        
         self.overwrite_settings = overwrite_settings or {}
     
     def __new__(cls, phases=None, *args, **kwargs):
