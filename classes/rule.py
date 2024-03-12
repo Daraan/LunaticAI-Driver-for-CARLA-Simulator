@@ -1,6 +1,6 @@
 from __future__ import annotations 
 from collections.abc import Mapping
-from functools import wraps
+from functools import partial, wraps
 import inspect
 try: # Python 3.8+
     from functools import singledispatchmethod
@@ -280,8 +280,7 @@ class Rule(_GroupRule):
                  enabled: bool = True,
                  ignore_chance = NotImplemented,
                  ) -> None:
-        if action is not None and actions is not None:
-            raise ValueError("Only one of 'action' and 'actions' can be set.")
+        # Check phases
         if not phases:
             raise ValueError("phases must not be empty or None")
         if not isinstance(phases, set):
@@ -305,19 +304,36 @@ class Rule(_GroupRule):
         elif rule is not None and hasattr(self, "rule"):
             logger.debug("Warning", f"'rule' argument passed but class {self.__class__.__name__} already implements 'self.rule'. Overwriting 'self.rule' with passed rule.")
             self.rule = rule
+        
+        # Check Actions
+        if action is not None and actions is not None:
+            raise ValueError("Only one of 'action' and 'actions' can be set.")
+        if action is None and actions is None and not hasattr(self, "actions"):
+            raise TypeError("%s.__init__() `action` and `actions` are both None. Provide at least one argument alternatively the class must have an `actions` attribute or an `action` function." % self.__class__.__name__)
+
         if action is None:
+            if not isinstance(actions, Mapping):
+                raise ValueError(f"actions must be a Mapping, not {type(actions)}")
             self.actions = actions
         elif isinstance(action, dict):
             self.actions = action
             if false_action is not None or actions is not None:
                 raise ValueError("When passing a dict to action, false_action and actions must be None")
         else:
+            # NOTE: Might overwrite actions attribute
             self.actions = {}
             if action is not None:
                 self.actions[True] = action
             if false_action is not None:
                 self.actions[False] = false_action
         
+        
+        # Assure that method(self, ctx) like functions are accessible like them
+        for key, func in self.actions.items():
+            if not callable(func):
+                raise ValueError(f"Action for key {key} must be callable, not {type(func)}")
+            if len(inspect.signature(func).parameters) >= 2:
+                self.actions[key] = partial(func, self) # bind to self
         
         # Check Description
         if not isinstance(description, str):
