@@ -54,12 +54,24 @@ class EvaluationFunction:
     
     def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction"):
         self.evaluation_function = evaluation_function
-        self.name = name if name != "EvaluationFunction" else evaluation_function.__name__
+        if name != "EvaluationFunction":
+            self.name = name
+        elif hasattr(evaluation_function, "__name__"):
+            self.name = evaluation_function.__name__
+        else:
+            self.name = str(evaluation_function)
+        self.actions = {}
 
     def __call__(self, ctx: "Context", *args, **kwargs) -> Hashable:
         result = self.evaluation_function(ctx, *args, **kwargs)
         assert isinstance(result, Hashable), f"evaluation_function must return a hashable type, not {type(result)}"
         return result
+    
+    def __get__(self, instance, owner): # for in class usage class.rule
+        # NOTE: instance.rule is not an EvaluationFunction, it is a partial of one.
+        if instance is None:
+            return self # called on class
+        return partial(self, instance) # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
 
     #Helpers to extract a useful string representation of the function
     @staticmethod
@@ -70,12 +82,23 @@ class EvaluationFunction:
 
     @staticmethod
     def _func_to_string(func):
+        if not hasattr(func, "__name__"):
+            return str(func)
         if func.__name__ == "<lambda>":
             return EvaluationFunction._complete_func_to_string(func)
         return func.__name__
 
+    @property
+    def __name__(self):
+        return self.name
+
     def __str__(self):
         return self.name
+    
+    def __repr__(self):
+        if self.name == "EvaluationFunction":
+            return self.__class__.__name__ + f"({self.evaluation_function})"
+        return self.__class__.__name__ + f'(name="{self.name}", evaluation_function={self.evaluation_function})'
 
     @classmethod
     def AND(cls, func1, func2):
@@ -108,6 +131,16 @@ class EvaluationFunction:
 
     def __invert__(self):
         return self.NOT(self)
+    
+    def register_action(self, key:Hashable=True):
+        def decorator(action_function):
+            if action_function.__name__ in ('action', 'actions', 'false_action'):
+                raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in ('action', 'actions', 'false_action'), got '{action_function.__name__}'.")
+            if key in self.actions:
+                print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
+            self.actions[key] = action_function # register action
+            return action_function
+        return decorator
 
 
 class ActionFunction(EvaluationFunction):
