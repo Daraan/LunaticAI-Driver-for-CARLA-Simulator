@@ -26,6 +26,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from classes.constants import Phase
 from utils.evaluation_function import EvaluationFunction
+from utils.logging import logger
 
 if TYPE_CHECKING:
     import carla
@@ -109,7 +110,11 @@ class _CountdownRule:
     tickrate : ClassVar[int] = NotImplemented
 
     DEFAULT_COOLDOWN_RESET : ClassVar[int] = 0
-    _cooldown : int # if 0 the rule can be executed
+    """Value the cooldown is reset to when `reset_cooldown` is called without a value."""
+    
+    _cooldown : int
+    """If 0 the rule is ready to be executed."""
+    
     start_cooldown : ClassVar[int] = 0
     """Initial Cooldown when initialized. if >0 the rule will not be ready for the first start_cooldown ticks."""
 
@@ -262,7 +267,7 @@ class Rule(_GroupRule):
     @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
-                 rule : Callable[[Context], Hashable], 
+                 rule : Optional[Callable[[Context], Hashable]]=None, 
                  action: Optional[Union[Callable[[Context], Any], Dict[Any, Callable]]] = None,
                  false_action: Optional[Callable[[Context], Any]] = None,
                  *, 
@@ -293,6 +298,18 @@ class Rule(_GroupRule):
         self.priority : float | int | RulePriority = priority # used by agent.add_rule
 
         self.phases = phases
+        
+        # Check Rule
+        if rule is None and not hasattr(self, "rule"):
+            raise TypeError("%s.__init__() missing 1 required positional argument: 'rule'. Alternatively the class must implement a `rule` function." % self.__class__.__name__)
+        #if rule is not None and not isinstance(rule, EvaluationFunction) \
+        #    and (isinstance(rule, partial) and not isinstance(rule.func, EvaluationFunction)):
+        #    raise TypeError(f"rule must be of type EvaluationFunction or a partial of a , not {type(rule)}")
+        if rule is not None and not hasattr(self, "rule"):
+            self.rule = rule
+        elif rule is not None and hasattr(self, "rule"):
+            logger.debug("Warning", f"'rule' argument passed but class {self.__class__.__name__} already implements 'self.rule'. Overwriting 'self.rule' with passed rule.")
+            self.rule = rule
         if action is None:
             self.actions = actions
         elif isinstance(action, dict):
@@ -306,7 +323,7 @@ class Rule(_GroupRule):
             if false_action is not None:
                 self.actions[False] = false_action
         
-        self.rule = rule
+        
         self.description = description
         self.overwrite_settings = overwrite_settings or {}
     
@@ -331,11 +348,23 @@ class Rule(_GroupRule):
         By setting __no_auto_init = True in the class definition, the automatic __init__ creation is disabled.
         """
         if not "__init__" in cls.__dict__ and not cls.__dict__.get("__no_auto_init", False):
+            do_not_overwrite = ["phases"]
+            if hasattr(cls, "rule"):
+                if isinstance(cls.rule, EvaluationFunction):
+                    rule_func = cls.rule.evaluation_function
+                else:
+                    rule_func = cls.rule
+                if len(inspect.signature(rule_func).parameters) >= 2:
+                    # If it has two arguments it will not be overwritten -> method(self, ctx)
+                    # Else with one argument function(ctx), self.rule = rule will overwrite it
+                    do_not_overwrite.append("rule")
             params = inspect.signature(cls.__init__).parameters # find overlapping parameters
             @wraps(cls.__init__)
             def partial_init(self, phases=None, *args, **kwargs):
+                # Need phases as first argument
                 phases = getattr(cls, "phases")
-                kwargs.update({k:v for k,v in cls.__dict__.items() if k in params and k != "phases"})
+                # Removing rule to not overwrite it
+                kwargs.update({k:v for k,v in cls.__dict__.items() if k in params and k not in do_not_overwrite})
                 super(cls, self).__init__(phases, *args, **kwargs)
             
             #cls.__init__ = partialmethod(cls.__init__, phases, **{k:v for k,v in cls.__dict__.items() if k in params and k != "phases"})
