@@ -18,6 +18,8 @@ from classes.rule import always_execute
 if TYPE_CHECKING:
     from agents import LunaticAgent
 
+DEBUG_RULES = True
+
 #TODO: maybe create some omega conf dict creator that allows to create settings more easily
 # e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
 # QUESTION: How to merge more than one entry?
@@ -232,6 +234,7 @@ def accept_rss_updates(ctx : Context):
     """
     Accept RSS updates from the RSS manager.
     """
+    print("Accepting RSS updates", ctx)
     if ctx.prior_result is None:
         return None
     assert isinstance(ctx.prior_result, carla.VehicleControl)
@@ -248,3 +251,52 @@ config_based_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
                                 description="Sets random waypoint when done")
 
 default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, set_close_waypoint_when_done, config_based_rss_updates, random_lane_change_rule]
+
+
+if __name__ == "__main__" or DEBUG_RULES:
+    def context_method(self, ctx : "Context") -> bool:
+        return True
+
+    def context_function(ctx : "Context") -> bool:
+        return True
+
+    @Rule
+    class SimpleRule1:
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        rule = context_function
+        action = lambda ctx: print("ONLY CTX", ctx)
+    
+    class SimpleRule(Rule):
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        rule = context_method
+        action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
+
+
+
+    class DebugRuleWithEval(Rule):
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        
+        @EvaluationFunction("AlwaysTrue")
+        def rule(self, ctx : "Context") -> bool:
+            print("Called rule", "self:", type(self), "ctx:", ctx)
+            return True
+        
+        @rule.register_action(True)
+        def true_action(self, ctx : "Context"):
+            print("Executing NEW RULE action of", self)
+            print("Context", ctx)
+        
+    class Another(Rule):
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        
+        rule = always_execute
+        
+        actions = {True: lambda self, ctx: print("ANOTHER FROM DICT Executing action of", self, "with context", ctx),
+                False: rule}
+
+    new_rule = DebugRuleWithEval()
+    #new_rule.action
+    another_rule = Another()
+    simple_rule = SimpleRule()
+
+    default_rules.extend([SimpleRule1, new_rule, another_rule, simple_rule])
