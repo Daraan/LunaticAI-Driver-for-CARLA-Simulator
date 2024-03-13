@@ -4,7 +4,7 @@ import weakref
 
 import carla
 
-import utils
+from classes.HUD import get_actor_display_name
 
 
 # ==============================================================================
@@ -42,7 +42,7 @@ class CollisionSensor(object):
         self = weak_self()
         if not self:
             return
-        actor_type = utils.get_actor_display_name(event.other_actor)
+        actor_type = get_actor_display_name(event.other_actor)
         self.hud.notification('Collision with %r' % actor_type)
         impulse = event.normal_impulse
         intensity = math.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)

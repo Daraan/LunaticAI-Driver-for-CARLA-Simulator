@@ -20,7 +20,7 @@ Instance Variables
     Normal impulse resulting of the collision.
 """
 
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 

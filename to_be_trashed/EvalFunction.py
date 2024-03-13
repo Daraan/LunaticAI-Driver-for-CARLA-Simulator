@@ -1,5 +1,5 @@
 from agents.lunatic_agent import LunaticAgent
-from utils.evaluation_function import EvaluationFunction
+from classes.evaluation_function import EvaluationFunction
 
 
 class EvalFunction:

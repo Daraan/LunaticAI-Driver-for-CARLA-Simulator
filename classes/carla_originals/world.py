@@ -9,8 +9,8 @@ import numpy.random as random
 
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, LaneInvasionSensor
-from utils import get_actor_display_name
-from utils.blueprint_helpers import get_actor_blueprints
+from classes.HUD import get_actor_display_name
+from launch_tools.blueprint_helpers import get_actor_blueprints
 
 
 # ==============================================================================

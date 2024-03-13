@@ -4,7 +4,7 @@ import time
 import carla
 from carla import Vector3D
 
-import utils
+import launch_tools
 
 TOWN = 'Town04'  # maybe 'Town04_Opt'
 
@@ -31,7 +31,7 @@ def spawn_cars(client=None):
         client = make_client()
     world = client.get_world()
     level = world.get_map()
-    ego_bp, car_blueprint = utils.blueprint_helpers.get_contrasting_blueprints(world)
+    ego_bp, car_blueprint = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)
     if ego_bp.has_attribute('color'):
         color = ego_bp.get_attribute('color').recommended_values[0]
         ego_bp.set_attribute('color', "255,0,0")
@@ -39,9 +39,9 @@ def spawn_cars(client=None):
     ego_bp.set_attribute('role_name', 'hero')
 
     try:
-        spawn_points = utils.csv_to_transformations("highway_example_car_positions.csv")
+        spawn_points = launch_tools.csv_to_transformations("highway_example_car_positions.csv")
     except FileNotFoundError:
-        spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
+        spawn_points = launch_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
 
     ego_spawn = spawn_points[0]
     ego = world.spawn_actor(ego_bp, ego_spawn)

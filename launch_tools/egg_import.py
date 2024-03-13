@@ -17,7 +17,7 @@ def import_carla():
             'win-amd64' if os.name == 'nt' else 'linux-x86_64')))
     try:
         sys.path.append(glob.glob(path)[0])
-        print("Appended", sys.path[-1])
+        print("Appended to sys path:", sys.path[-1])
         import carla
         return carla
     except IndexError as e:
@@ -27,5 +27,4 @@ def import_carla():
             'win-amd64' if os.name == 'nt' else 'linux-x86_64'))))
         pass
 
-print(os.getcwd(), sys.path)
 carla = import_carla()

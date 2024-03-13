@@ -1,7 +1,7 @@
 import carla
 
 from classes.vehicle import Vehicle
-from utils.logging import log
+from agents.tools.logging import log
 
 
 class CarlaService:

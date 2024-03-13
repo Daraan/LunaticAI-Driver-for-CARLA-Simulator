@@ -3,6 +3,7 @@
 import os
 import sys
 from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING
+import weakref
 
 import numpy as np
 from omegaconf import DictConfig
@@ -18,19 +19,22 @@ from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSens
 from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
-from utils.keyboard_controls import RSSKeyboardControl
+from classes.keyboard_controls import RSSKeyboardControl
 
 if TYPE_CHECKING:
     from conf.agent_settings import LunaticAgentSettings
     from agents.lunatic_agent import LunaticAgent
 
-from utils import get_actor_display_name
-from utils.blueprint_helpers import get_actor_blueprints
-from utils.blueprint_helpers import find_weather_presets
-from utils.logging import logger
+from classes.HUD import get_actor_display_name
+from launch_tools.blueprint_helpers import get_actor_blueprints
+from agents.tools.logging import logger
+
+
+class ContinueLoopException(Exception):
+    pass
 
 # ==============================================================================
-# -- World ---------------------------------------------------------------
+# -- Game Framework ---------------------------------------------------------------
 # ==============================================================================
 
 class GameFramework(object):
@@ -97,6 +101,8 @@ class GameFramework(object):
         traffic_manager = self.client.get_trafficmanager()
         if self.args.sync:
             traffic_manager.set_synchronous_mode(True)
+        traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
+        traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a config variable
         return traffic_manager
     
     def set_config(self, config:DictConfig):
@@ -104,23 +110,26 @@ class GameFramework(object):
     
     def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         self.world_model = WorldModel(self.world, config, self.args, player=player, map_inst=map_inst)
+        self.world_model.game_framework = weakref.proxy(self)
         return self.world_model
     
     def make_controller(self, world_model, controller_class=RSSKeyboardControl, **kwargs):
-        self.controller = controller_class(world_model, config=self.config, **kwargs)
-        return self.controller
+        controller = controller_class(world_model, config=self.config, clock=self.clock, **kwargs)
+        self.controller = weakref.proxy(controller)
+        return controller
     
     def set_controller(self, controller):
         self.controller = controller
     
     def parse_rss_controller_events(self, final_controls:carla.VehicleControl):
-        return self.controller.parse_events(self.clock, final_controls)
+        return self.controller.parse_events(final_controls)
 
     def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", overwrites:Optional[Dict[str, Any]]=None):
         self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self.args, map_inst=self.map, overwrites=overwrites)
         self.config = self.agent.config
-        self.controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False)
-        return self.agent, self.world_model, self.global_planner, self.controller
+        controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
+        self.world_model.game_framework = weakref.proxy(self)
+        return self.agent, self.world_model, self.global_planner, controller
 
     def __enter__(self):
         if self.agent is None:
@@ -143,17 +152,37 @@ class GameFramework(object):
         self.world_model.render(self.display)
         self.controller.render(self.display)
         self.agent.render_road_matrix(self.display)
-    
+        
+    @staticmethod
+    def skip_rest_of_loop(message="GameFrameWork.end_loop"):
+        """
+        Terminates the current iteration and exits the GameFramework.
+        
+        NOTE: It is the users responsibility to manage the agent & local planner
+        before calling this function.
+        
+        Raises: ContinueLoopException
+        """
+        # TODO: add option that still allows for rss.
+        raise ContinueLoopException(message)
+
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
+        if exc_type is None or issubclass(exc_type, ContinueLoopException):
             self.render_everything()
             
             pygame.display.flip()
             
             Rule.update_all_cooldowns() # Rule Cooldown Framework
 
+# ==============================================================================
+# -- World ---------------------------------------------------------------
+# ==============================================================================
+
 class WorldModel(object):
     """ Class representing the surrounding environment """
+
+    controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
+    game_framework : Optional[GameFramework] = None # Set when world created via GameFramework. Uses weakref.proxy
 
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
@@ -297,11 +326,7 @@ class WorldModel(object):
             for actor in self.world.get_actors():
                 if actor.attributes.get('role_name') == self.actor_role_name:
                     self.player = assure_type(carla.Vehicle, actor)
-        else:            
-            # From interactive:
-            #self.player_max_speed = 1.589
-            #self.player_max_speed_fast = 3.713
-        
+        else:        
             # Keep same camera config if the camera manager exists.
             cam_index = self.camera_manager.index if self.camera_manager is not None else 0
             cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
@@ -320,6 +345,8 @@ class WorldModel(object):
                 blueprint.set_attribute('driver_id', driver_id)
             if blueprint.has_attribute('is_invincible'):
                 blueprint.set_attribute('is_invincible', 'true')
+            
+            # TODO: Make this a config option to choose automatically.
             # set the max speed
             #if blueprint.has_attribute('speed'):
             #    self.player_max_speed = float(blueprint.get_attribute('speed').recommended_values[1])
@@ -347,7 +374,6 @@ class WorldModel(object):
                 # See: https://carla.readthedocs.io/en/latest/tuto_G_control_vehicle_physics/            
                 self.show_vehicle_telemetry = False
                 self.modify_vehicle_physics(self.player)
-            assert isinstance(self.player, carla.Vehicle)
 
         if self.external_actor:
             ego_sensors : List[carla.Actor] = []
@@ -465,6 +491,10 @@ class WorldModel(object):
         # stop from ticking
         if self.world_tick_id:
             self.world.remove_on_tick(self.world_tick_id)
+        if self.rss_sensor:
+            self.rss_sensor.destroy()
+        if self.rss_unstructured_scene_visualizer:
+            self.rss_unstructured_scene_visualizer.destroy()
         if self.radar_sensor is not None:
             self.toggle_radar()
         if self.camera_manager is not None:
@@ -493,11 +523,7 @@ class WorldModel(object):
                 #except RuntimeError:
                 #    raise
                 #    print("Warning: Could not destroy actor: " + str(actor))
-        # TODO: Call destroy_sensors?
-        if self.rss_sensor:
-            self.rss_sensor.destroy()
-        if self.rss_unstructured_scene_visualizer:
-            self.rss_unstructured_scene_visualizer.destroy()
+
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control
@@ -517,3 +543,14 @@ class WorldModel(object):
             self.hud.allowed_steering_ranges = self.rss_sensor.get_steering_ranges()     
             return vehicle_control
         return None
+
+
+def find_weather_presets():
+    """Method to find weather presets"""
+    import re
+    rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
+
+    def name(x): return ' '.join(m.group(0) for m in rgx.finditer(x))
+
+    presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
+    return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]

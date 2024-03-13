@@ -2,12 +2,12 @@ import sys
 
 import carla
 
-import utils
+import launch_tools
 from DataGathering.run_matrix import DataMatrix
 from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unfied
 from classes.driver import Driver
-from classes.traffic_manager_daniel import TrafficManagerD
+from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
 
 vehicles = []
@@ -20,11 +20,11 @@ def main():
 
     world = carlaService.getWorld()
     level = world.get_map()
-    ego_bp, car_bp = utils.prepare_blueprints(world)
+    ego_bp, car_bp = launch_tools.prepare_blueprints(world)
 
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
+    spawn_points = launch_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
     # car1 = carlaService.createCar("model3")
 
     # Spawn Ego
@@ -44,11 +44,11 @@ def main():
         vehicles.append(v)
         # v.setVelocity(1)
         print(v.actor)
-        ap = TrafficManagerD(client, v.actor)
+        ap = TrafficManager(client, v.actor)
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManagerD(client, ego.actor,
+    tm = TrafficManager(client, ego.actor,
                          # config="json/driver1.json" # Not implemented yet
                          )
     tm.init_lunatic_driver()

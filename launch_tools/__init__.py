@@ -1,13 +1,11 @@
 try:
     import carla
 except ImportError as e:
-    from utils.egg_import import import_carla
+    from launch_tools.egg_import import import_carla
     carla = import_carla()
 
 from . import argument_parsing
 from . import blueprint_helpers
-from . import general
-from . import keyboard_controls
 from .general import *
 
 # backwards compatibility

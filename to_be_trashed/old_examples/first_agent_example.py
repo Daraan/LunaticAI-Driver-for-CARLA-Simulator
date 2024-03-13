@@ -4,7 +4,7 @@ import sys
 
 import carla
 
-import utils
+import launch_tools
 # To import a basic agent
 from agents.navigation.basic_agent import BasicAgent
 from classes.carla_service import CarlaService
@@ -26,11 +26,11 @@ def main(args):
 
     world = carlaService.getWorld()
     level = world.get_map()
-    ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world)
+    ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)
 
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
-    spawn_points = utils.general.csv_to_transformations("examples/highway_example_car_positions.csv")
+    spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
     # car1 = carlaService.createCar("model3")
 
     # Spawn Ego
@@ -89,7 +89,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import utils.argument_parsing as parse
+    import launch_tools.argument_parsing as parse
     from pprint import pprint
 
     args = parse.client_settings.add(parse.interactive_mode).parse_args()
