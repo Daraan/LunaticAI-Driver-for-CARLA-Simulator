@@ -111,14 +111,14 @@ class GameFramework(object):
         return self.world_model
     
     def make_controller(self, world_model, controller_class=RSSKeyboardControl, **kwargs):
-        self.controller = controller_class(world_model, config=self.config, **kwargs)
+        self.controller = controller_class(world_model, config=self.config, clock=self.clock, **kwargs)
         return self.controller
     
     def set_controller(self, controller):
         self.controller = controller
     
     def parse_rss_controller_events(self, final_controls:carla.VehicleControl):
-        return self.controller.parse_events(self.clock, final_controls)
+        return self.controller.parse_events(final_controls)
 
     def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", overwrites:Optional[Dict[str, Any]]=None):
         self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self.args, map_inst=self.map, overwrites=overwrites)

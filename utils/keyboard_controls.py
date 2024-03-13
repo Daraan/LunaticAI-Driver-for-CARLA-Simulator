@@ -77,7 +77,7 @@ class RSSKeyboardControl(object):
 
     # TODO: should be a toggle between None, Autopilot, Agent
 
-    def __init__(self, world_model : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True, config=None):
+    def __init__(self, world_model : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True, clock:pygame.time.Clock=None, config=None):
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
         self._config = config
@@ -97,6 +97,7 @@ class RSSKeyboardControl(object):
         self._surface = pygame.Surface((self.MOUSE_STEERING_RANGE * 2, self.MOUSE_STEERING_RANGE * 2))
         self._surface.set_colorkey(pygame.Color('black'))
         self._surface.set_alpha(60)
+        self._clock = clock
 
         line_width = 2
         pygame.draw.polygon(self._surface,
@@ -138,7 +139,7 @@ class RSSKeyboardControl(object):
         print('\nReceived signal {}. Trigger stopping...'.format(signum))
         RSSKeyboardControl.signal_received = True
 
-    def parse_events(self, clock: pygame.time.Clock, control:carla.VehicleControl=None):
+    def parse_events(self, control:carla.VehicleControl=None):
         if control:
             self._control = control
         if RSSKeyboardControl.signal_received:
@@ -242,7 +243,7 @@ class RSSKeyboardControl(object):
                     self._mouse_steering_center = None
         if not self._autopilot_enabled:
             prev_steer_cache = self._steer_cache
-            self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time())
+            self._parse_vehicle_keys(pygame.key.get_pressed(), self._clock.get_time())
             if pygame.mouse.get_pressed()[0]:
                 self._parse_mouse(pygame.mouse.get_pos())
             self._control.reverse = self._control.gear < 0

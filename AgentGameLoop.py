@@ -228,7 +228,7 @@ def game_loop(args : argparse.ArgumentParser):
                         final_control = ctx.control
                         assert AD_RSS_AVAILABLE or final_control is planned_control
                         if isinstance(controller, RSSKeyboardControl):
-                            if controller.parse_events(game_framework.clock, final_control):
+                            if controller.parse_events(final_control):
                                 return
                         
                         agent.apply_control(final_control)
