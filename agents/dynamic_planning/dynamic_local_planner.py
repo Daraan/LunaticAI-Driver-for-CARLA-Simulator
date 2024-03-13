@@ -226,5 +226,7 @@ class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
             self._waypoints_queue.append(elem)
             if self._rss_sensor:
                 self._rss_sensor.sensor.append_routing_target(elem[0].transform)
+        if self._rss_sensor:
+            self._rss_sensor.drop_route() # Replans from remaining routing targets
 
         self._stop_waypoint_creation = stop_waypoint_creation
