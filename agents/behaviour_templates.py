@@ -11,6 +11,7 @@ from classes.constants import Phase
 from classes.rule import Rule, EvaluationFunction, Context, RulePriority, always_execute
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
+from utils.logging import logger
 
 from typing import TYPE_CHECKING, List
 
@@ -234,10 +235,10 @@ def accept_rss_updates(ctx : Context):
     """
     Accept RSS updates from the RSS manager.
     """
-    print("Accepting RSS updates", ctx)
     if ctx.prior_result is None:
         return None
     assert isinstance(ctx.prior_result, carla.VehicleControl)
+    logger.debug("Accepting RSS updates %s", ctx)
     ctx.control = ctx.prior_result
 
 always_accept_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,

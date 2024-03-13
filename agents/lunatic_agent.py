@@ -133,16 +133,16 @@ class LunaticAgent(BehaviorAgent):
             for k, v in overwrite_options.items():
                 OmegaConf.update(opt_dict, k, v)
         elif not overwrite_options:
-            print("Warning: Settings are not a supported Config class")
+            logger.warning("Warning: Settings are not a supported Config class")
             opt_dict = behavior  # assume the user passed something appropriate
         else:
-            print("Warning: Settings are not a supported Config class. Trying to apply overwrite options.")
+            logger.warning("Warning: Settings are not a supported Config class. Trying to apply overwrite options.")
             behavior.update(overwrite_options) 
             opt_dict = behavior  # assume the user passed something appropriate
         self._behavior = behavior
         self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
         
-        print("\n\nAgent config is", OmegaConf.to_yaml(self.config))
+        logger.info("\n\nAgent config is %s", OmegaConf.to_yaml(self.config))
         
         print("Type of vehicle", type(vehicle))
         self._vehicle : carla.Vehicle = vehicle

@@ -108,7 +108,7 @@ def game_loop(args : argparse.ArgumentParser):
                 "random_left_lanechange_percentage": 0.45,
                 "random_right_lanechange_percentage": 0.45,
             },
-            'rss': {'enabled': False, 
+            'rss': {'enabled': True, 
                     'use_stay_on_road_feature': False},
             "planner": {
                 "dt" : game_framework.world_settings.fixed_delta_seconds or 1/args.fps,
@@ -117,7 +117,7 @@ def game_loop(args : argparse.ArgumentParser):
             })
         # TEMP
         import classes.worldmodel
-        classes.worldmodel.AD_RSS_AVAILABLE = behavior.rss.enabled
+        classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
         
         if PRINT_CONFIG:
             print("    \n\n\n")
