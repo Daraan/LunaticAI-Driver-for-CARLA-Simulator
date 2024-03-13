@@ -13,6 +13,7 @@ traffic signs, and has different possible configurations. """
 from __future__ import annotations
 
 from copy import deepcopy
+import random
 from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, cast as assure_type
 import weakref
 
@@ -35,10 +36,14 @@ from agents import substep_managers
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss, RoadOption
 
 from classes.constants import Phase, Hazard
+from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import Context, Rule
 from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
 
-from classes.worldmodel import WorldModel
+from classes.worldmodel import ContinueLoopException, WorldModel
+from utils.keyboard_controls import RSSKeyboardControl
+from utils.logging import logger
+
 
 # As Reference:
 '''
@@ -333,8 +338,84 @@ class LunaticAgent(BehaviorAgent):
             raise
         return self.ctx
 
-    @result_to_context("control")
+    def verify_settings(self):
+        if self._world_model.world_settings.synchronous_mode:
+            # Assure that dt is set
+            OmegaConf.select(self.config,
+                "planner.dt",
+                throw_on_missing=True
+            )
+
+        self._road_matrix_updater.start()  # TODO find a nicer way
+        
+        # TEMP
+        self._road_matrix_updater.stop()
+
     def run_step(self, debug=False):
+        ctx = self.make_context(last_context=self.ctx)
+        try:
+            # TODO: Make this a rule and/or move inside agent
+            # TODO: make a Phases.DONE
+            if not self._world_model.controller._autopilot_enabled:
+                if self.done():
+                    # NOTE: Might be in NONE phase here.
+                    self.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
+                    if self._world_model._args.loop and self.done():
+                        # TODO: Rule / Action to define next waypoint
+                        print("The target has been reached, searching for another target")
+                        self._world_model.hud.notification("Target reached", seconds=4.0)
+                        wp = self._current_waypoint.next(50)[-1]
+                        next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
+                        if next_wp is None:
+                            next_wp = wp
+                        #destination = random.choice(spawn_points).location
+                        destination = next_wp.transform.location
+                        self.set_destination(destination)
+                    elif self.done():
+                        print("The target has been reached, stopping the simulation")
+                        self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
+                        raise KeyboardInterrupt # TODO: Different exception
+                    self.execute_phase(Phase.DONE| Phase.END, prior_results=None)
+                
+                # ----------------------------
+                # Phase NONE - Before Running step
+                # ----------------------------
+                planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
+                # ----------------------------
+                # No known Phase multiple exit points
+                # ----------------------------
+                
+                # ----------------------------
+                # Phase RSS - Check RSS
+                # ----------------------------
+                planned_control.manual_gear_shift = False # TODO: turn into a rule
+                
+                ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
+                if AD_RSS_AVAILABLE and self.config.rss.enabled:
+                    rss_updated_controls = self._world_model.rss_check_control(ctx.control)
+                else:
+                    rss_updated_controls = None
+                ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls) # NOTE: rss_updated_controls could be None
+                
+                if ctx.control is not planned_control:
+                    logger.debug("RSS updated control accepted.")
+                # ----------------------------
+                # Phase Manual User Controls
+                # TODO: Create a flag that allows this or not
+                # ----------------------------
+
+                self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=rss_updated_controls)
+                if isinstance(self._world_model.controller, RSSKeyboardControl):
+                    if self._world_model.controller.parse_events(ctx.control):
+                        raise KeyboardInterrupt
+                self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=rss_updated_controls)
+                
+        except ContinueLoopException:
+            logger.info("Continuing Loop")
+        return ctx.control
+
+    @result_to_context("control")
+    def _inner_step(self, debug=False):
         """
         This is our main entry point that runs every tick.  
         """
