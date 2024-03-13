@@ -486,6 +486,10 @@ class WorldModel(object):
         # stop from ticking
         if self.world_tick_id:
             self.world.remove_on_tick(self.world_tick_id)
+        if self.rss_sensor:
+            self.rss_sensor.destroy()
+        if self.rss_unstructured_scene_visualizer:
+            self.rss_unstructured_scene_visualizer.destroy()
         if self.radar_sensor is not None:
             self.toggle_radar()
         if self.camera_manager is not None:
@@ -514,11 +518,7 @@ class WorldModel(object):
                 #except RuntimeError:
                 #    raise
                 #    print("Warning: Could not destroy actor: " + str(actor))
-        # TODO: Call destroy_sensors?
-        if self.rss_sensor:
-            self.rss_sensor.destroy()
-        if self.rss_unstructured_scene_visualizer:
-            self.rss_unstructured_scene_visualizer.destroy()
+
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control
