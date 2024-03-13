@@ -18,6 +18,8 @@ from classes.rule import always_execute
 if TYPE_CHECKING:
     from agents import LunaticAgent
 
+DEBUG_RULES = False
+
 #TODO: maybe create some omega conf dict creator that allows to create settings more easily
 # e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
 # QUESTION: How to merge more than one entry?
@@ -34,7 +36,7 @@ def if_config(config_path, value):
     """
     Returns a partial function that checks if a value in the config is set to a certain value.
     """
-    return partial(_if_config_checker, config_path=config_path, value=value)
+    return EvaluationFunction(partial(_if_config_checker, config_path=config_path, value=value), name=f"Checks if {config_path} is {value}")
 
 # ---
 
@@ -189,39 +191,41 @@ set_close_waypoint_when_done = Rule(Phase.DONE | Phase.BEGIN,
     
 # ----------- Lane Change Rules -----------
 
-def random_lane_change(ctx : "Context"):
-    """
-    Change lane to the left or right.
-    """
-    print("Chaning Lane randomly")
-    p_left = ctx.config.lane_change.random_left_lanechange_percentage
-    p_right = ctx.config.lane_change.random_right_lanechange_percentage
-    p_stay = max(0, 1 - p_left - p_right) # weight to stay in the same lane
-    direction : carla.LaneChange = carla.LaneChange(np.random.choice( (1, 0, 2), p=(p_left, p_stay, p_right)))
-    print("Direction: ", direction)
-    if direction == 0:
-        random_lane_change_rule.reset_cooldown(ctx.config.lane_change.random_lane_change_interval)
-        return
-    ctx.agent.lane_change("left" if direction == 1 else "right", 
-                          same_lane_time=ctx.config.lane_change.same_lane_time,
-                          other_lane_time=ctx.config.lane_change.other_lane_time,
-                          lane_change_time=ctx.config.lane_change.lane_change_time)
+class RandomLaneChangeRule(Rule):
+    phases = Phase.TAKE_NORMAL_STEP | Phase.BEGIN
+    rule = always_execute # TODO: Could implement check here, instead of relying on `lane_change`
+    cooldown_reset_value = None
     
-    print("restesting cooldown")
-    random_lane_change_rule.reset_cooldown(ctx.config.lane_change.random_lane_change_interval)
+    priority = RulePriority.LOWEST
+    group = "lane_change"
+    description = "Randomly change lane"
+    start_cooldown = 25
+    
+    def action(self, ctx: "Context"):
+        """
+        Change lane to the left or right.
+        """
+        print("Changing Lane randomly")
+        p_left = ctx.config.lane_change.random_left_lanechange_percentage
+        p_right = ctx.config.lane_change.random_right_lanechange_percentage
+        p_stay = max(0, 1 - p_left - p_right) # weight to stay in the same lane
+        direction : carla.LaneChange = carla.LaneChange(np.random.choice( (1, 0, 2), p=(p_left, p_stay, p_right)))
+        print("Direction: ", direction)
+        if direction == 0:
+            self.reset_cooldown(ctx.config.lane_change.random_lane_change_interval)
+            return
+        ctx.agent.lane_change("left" if direction == 1 else "right", 
+                            same_lane_time=ctx.config.lane_change.same_lane_time,
+                            other_lane_time=ctx.config.lane_change.other_lane_time,
+                            lane_change_time=ctx.config.lane_change.lane_change_time)
+        
+        print("Resetting cooldown")
+        self.reset_cooldown(ctx.config.lane_change.random_lane_change_interval)
 
-random_lane_change_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
-                               rule=always_execute,
-                               action=random_lane_change,
-                               cooldown_reset_value=None,
-                               priority=RulePriority.LOWEST,
-                               group="lane_change",
-                               description="Randomly change lane")
-random_lane_change_rule.reset_cooldown(50)
+random_lane_change_rule = RandomLaneChangeRule()
+
 
 # TODO: Create a stay right rule!    
-
-
 
 
 # ----------- RSS Rules -----------
@@ -230,6 +234,7 @@ def accept_rss_updates(ctx : Context):
     """
     Accept RSS updates from the RSS manager.
     """
+    print("Accepting RSS updates", ctx)
     if ctx.prior_result is None:
         return None
     assert isinstance(ctx.prior_result, carla.VehicleControl)
@@ -246,3 +251,73 @@ config_based_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
                                 description="Sets random waypoint when done")
 
 default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, set_close_waypoint_when_done, config_based_rss_updates, random_lane_change_rule]
+
+
+if __name__ == "__main__" or DEBUG_RULES:
+    def context_method(self, ctx : "Context") -> bool:
+        return True
+
+    def context_function(ctx : "Context") -> bool:
+        return True
+    
+    @EvaluationFunction
+    def eval_context_method(self, ctx : "Context") -> bool:
+        return True
+
+    @EvaluationFunction
+    def eval_context_function(ctx : "Context") -> bool:
+        return True
+
+    @Rule
+    class SimpleRule1:
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        rule = context_function
+        action = lambda ctx: print("ONLY CTX", ctx)
+    
+    class SimpleRule(Rule):
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        rule = context_method
+        action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
+
+    @Rule
+    class SimpleRule1B:
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        rule = eval_context_function
+        action = lambda ctx: print("ONLY CTX", ctx)
+    
+    class SimpleRuleB(Rule):
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        rule = eval_context_method
+        action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
+
+
+
+
+    class DebugRuleWithEval(Rule):
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        
+        @EvaluationFunction("AlwaysTrue")
+        def rule(self, ctx : "Context") -> bool:
+            print("Called rule", "self:", type(self), "ctx:", ctx)
+            return True
+        
+        @rule.register_action(True)
+        def true_action(self, ctx : "Context"):
+            print("Executing NEW RULE action of", self)
+            print("Context", ctx)
+        
+    class Another(Rule):
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        
+        rule = always_execute
+        
+        actions = {True: lambda self, ctx: print("ANOTHER FROM DICT Executing action of", self, "with context", ctx),
+                False: lambda ctx: print("ANOTHER False function.", ctx)}
+
+    new_rule = DebugRuleWithEval()
+    #new_rule.action
+    simple_rule = SimpleRule()
+    simple_ruleB = SimpleRuleB()
+    another_rule = Another()
+
+    default_rules.extend([SimpleRule1, SimpleRule1B, simple_ruleB, new_rule, another_rule, simple_rule])
