@@ -8,7 +8,7 @@ import numpy as np
 import random
 from copy import deepcopy
 
-from utils.logging import log
+from agents.tools.logging import log
 
 # NOTE: TODO: double definition
 def get_row(matrix):

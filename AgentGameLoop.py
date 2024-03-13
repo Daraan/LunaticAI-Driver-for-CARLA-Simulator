@@ -32,7 +32,7 @@ from agents.tools.misc import draw_waypoints
 from classes.rule import Context, Rule
 
 from conf.agent_settings import LunaticAgentSettings
-import utils
+import launch_tools
 from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from classes.constants import Phase
@@ -75,9 +75,9 @@ def game_loop(args : argparse.ArgumentParser):
         
         # -- Spawn Vehicles --
         all_spawn_points = game_framework.map.get_spawn_points()
-        spawn_points = utils.general.csv_to_transformations("examples/highway_example_car_positions.csv")
+        spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
         
-        ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
+        ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
         
         # Spawn Others
         traffic_manager = game_framework.init_traffic_manager()
@@ -219,7 +219,7 @@ def game_loop(args : argparse.ArgumentParser):
 def main():
     """Main method"""
 
-    args = utils.argument_parsing.main_parser().parse_args()
+    args = launch_tools.argument_parsing.main_parser().parse_args()
     
     # Overrides
     args.loop = True

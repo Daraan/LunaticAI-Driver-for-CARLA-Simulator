@@ -3,7 +3,7 @@ import time
 
 import carla
 
-import utils
+import launch_tools
 from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unified & marge with agent
 from classes.driver import Driver
@@ -18,7 +18,7 @@ def main(args):
 
     world = carlaService.getWorld()
     level = world.get_map()
-    ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world)  # ego is red the others default colors
+    ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)  # ego is red the others default colors
 
     driver1 = Driver("config/default_driver.json")
     car1 = carlaService.createCar("model3")
@@ -61,7 +61,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import utils.argument_parsing as parse
+    import launch_tools.argument_parsing as parse
     from pprint import pprint
 
     args = parse.client_settings.add(parse.interactive_mode).parse_args()

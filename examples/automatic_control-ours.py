@@ -19,7 +19,7 @@ import pygame
 from classes.constants import Phase
 
 from conf.agent_settings import LunaticAgentSettings
-import utils
+import launch_tools
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
@@ -85,13 +85,13 @@ def game_loop(args):
         #import time
         #time.sleep(1.5)
         try:
-            spawn_points = utils.general.csv_to_transformations("../examples/highway_example_car_positions.csv")
+            spawn_points = launch_tools.general.csv_to_transformations("../examples/highway_example_car_positions.csv")
         except FileNotFoundError:
-            spawn_points = utils.general.csv_to_transformations("examples/highway_example_car_positions.csv")
+            spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
         # car1 = carlaService.createCar("model3")
 
         # Spawn Ego
-        ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(sim_world)
+        ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(sim_world)
         ego = Vehicle(sim_world, ego_bp)
         start: carla.Transform = spawn_points[0]
         ego.spawn(start)
@@ -254,7 +254,7 @@ def game_loop(args):
 def main():
     """Main method"""
 
-    args = utils.argument_parsing.automatic_control_example.parse_args()
+    args = launch_tools.argument_parsing.automatic_control_example.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
 

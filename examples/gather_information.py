@@ -1,7 +1,7 @@
 import time
 
 from classes.constants import StreetType
-import utils
+import launch_tools
 from DataGathering.informationUtils import *
 from classes.carla_service import CarlaService
 from classes.driver import Driver
@@ -18,11 +18,11 @@ def main():
 
     world = carlaService.getWorld()
     world_map = world.get_map()
-    ego_bp, car_bp = utils.prepare_blueprints(world)
+    ego_bp, car_bp = launch_tools.prepare_blueprints(world)
 
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
+    spawn_points = launch_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)

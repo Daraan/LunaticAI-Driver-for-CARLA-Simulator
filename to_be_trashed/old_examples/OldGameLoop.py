@@ -2,7 +2,7 @@ import time
 
 import carla
 
-import utils
+import launch_tools
 from DataGathering.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car
 from DataGathering.run_matrix import DataMatrix
 from classes.carla_service import CarlaService
@@ -25,11 +25,11 @@ def main():
 
     world = carlaService.getWorld()
     world_map = world.get_map()
-    ego_bp, car_bp = utils.blueprint_helpers.get_contrasting_blueprints(world)
+    ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)
 
     driver1 = Driver("../config/default_driver.json", traffic_manager=client)
 
-    spawn_points = utils.csv_to_transformations("highway_example_car_positions.csv")
+    spawn_points = launch_tools.csv_to_transformations("highway_example_car_positions.csv")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)

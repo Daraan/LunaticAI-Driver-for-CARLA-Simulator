@@ -1,6 +1,6 @@
 import yaml
 
-import utils
+import launch_tools
 from Rules.ApplyRules import RuleInterpreter
 from classes.carla_service import CarlaService
 from classes.driver import Driver
@@ -35,9 +35,9 @@ class VehicleSpawner:
         spawn_points_file = self.config['spawn_points']['file']
         rule_interpreter_config = self.config['rule_interpreter']['config']
 
-        ego_bp, car_bp = utils.prepare_blueprints(world)
+        ego_bp, car_bp = launch_tools.prepare_blueprints(world)
         driver1 = Driver(driver_config_path, traffic_manager=self.client)
-        spawn_points = utils.csv_to_transformations(spawn_points_file)
+        spawn_points = launch_tools.csv_to_transformations(spawn_points_file)
         rule_interpreter = RuleInterpreter(rule_interpreter_config)
         return ego_bp, car_bp, driver1, spawn_points, rule_interpreter
 
