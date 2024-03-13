@@ -15,7 +15,6 @@ import pygame
 
 import carla
 
-from utils import get_actor_display_name
 
 from classes.rss_visualization import RssStateVisualizer
 from typing import TYPE_CHECKING
@@ -24,6 +23,12 @@ if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
 
 FONT_SIZE = 20
+
+
+def get_actor_display_name(actor, truncate=250):
+    """Method to get actor display name"""
+    name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
+    return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
 
 # ==============================================================================
 # -- HUD -----------------------------------------------------------------------

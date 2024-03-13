@@ -25,7 +25,7 @@ from weakref import WeakSet
 from omegaconf import DictConfig, OmegaConf
 
 from classes.constants import Phase
-from utils.evaluation_function import EvaluationFunction
+from classes.evaluation_function import EvaluationFunction
 from utils.logging import logger
 
 if TYPE_CHECKING:

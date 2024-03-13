@@ -8,7 +8,7 @@ import carla
 from DataGathering.informationUtils import get_all_road_lane_ids
 from DataGathering.matrix_wrap import get_car_coords
 from DataGathering.run_matrix import DataMatrix
-from utils.Camera import camera_function
+from classes.camera_manager import camera_function
 from VehicleSpawning.vehicle_spawner import VehicleSpawner
 
 spawner = None

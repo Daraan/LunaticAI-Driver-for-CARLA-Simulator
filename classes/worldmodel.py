@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from conf.agent_settings import LunaticAgentSettings
     from agents.lunatic_agent import LunaticAgent
 
-from utils import get_actor_display_name
+from classes.HUD import get_actor_display_name
 from utils.blueprint_helpers import get_actor_blueprints
 from utils.logging import logger
 

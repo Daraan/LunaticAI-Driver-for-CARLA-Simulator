@@ -33,7 +33,7 @@ from classes.rule import Context, Rule
 
 from conf.agent_settings import LunaticAgentSettings
 import utils
-from utils.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
+from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from classes.constants import Phase
 from classes.HUD import HUD
