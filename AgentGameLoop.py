@@ -224,13 +224,15 @@ def game_loop(args : argparse.ArgumentParser):
                         # Phase 5 - Apply Control to Vehicle
                         # ----------------------------
 
-                        ctx = agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=rss_updated_controls)
                         final_control = ctx.control
                         assert AD_RSS_AVAILABLE or final_control is planned_control
+                        agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=rss_updated_controls)
                         if isinstance(controller, RSSKeyboardControl):
                             if controller.parse_events(final_control):
                                 return
+                        agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=rss_updated_controls)
                         
+                        ctx = agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=rss_updated_controls)
                         agent.apply_control(final_control)
                         agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None, control=final_control)
                         

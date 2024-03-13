@@ -64,6 +64,9 @@ class Phase(Flag):
     TAKE_NORMAL_STEP = auto()
 
     RSS_EVALUATION = auto()
+    
+    APPLY_MANUAL_CONTROLS = auto()
+    """Applied manually via human user interface."""
 
     EXECUTION = auto() # Out of loop
 
