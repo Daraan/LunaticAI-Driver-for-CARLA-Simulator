@@ -221,6 +221,7 @@ class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
 
         if self._rss_sensor:
             self._rss_sensor.sensor.reset_routing_targets()
+            assert len(self._rss_sensor.sensor.routing_targets) == 0, f"Routing targets not cleared. Remaining: {self._rss_sensor.sensor.routing_targets}" # TODO: End remove.
         for elem in current_plan:
             self._waypoints_queue.append(elem)
             if self._rss_sensor:
