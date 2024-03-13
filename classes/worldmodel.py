@@ -102,6 +102,8 @@ class GameFramework(object):
         traffic_manager = self.client.get_trafficmanager()
         if self.args.sync:
             traffic_manager.set_synchronous_mode(True)
+        traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
+        traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a config variable
         return traffic_manager
     
     def set_config(self, config:DictConfig):
