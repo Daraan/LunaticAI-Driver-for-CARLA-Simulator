@@ -62,14 +62,14 @@ from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-e
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent  # pylint: disable=import-error
 
 from classes.carla_originals.world import World
-from classes.carla_originals.HUD import HUD
+from classes.HUD import HUD
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
 # ==============================================================================
 
 
-from utils.keyboard_controls import PassiveKeyboardControl as KeyboardControl
+from classes.keyboard_controls import PassiveKeyboardControl as KeyboardControl
 
 
 # ==============================================================================

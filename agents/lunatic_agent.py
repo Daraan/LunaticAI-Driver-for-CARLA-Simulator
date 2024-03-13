@@ -41,7 +41,7 @@ from classes.rule import Context, Rule
 from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
 
 from classes.worldmodel import ContinueLoopException, WorldModel
-from utils.keyboard_controls import RSSKeyboardControl
+from classes.keyboard_controls import RSSKeyboardControl
 from utils.logging import logger
 
 

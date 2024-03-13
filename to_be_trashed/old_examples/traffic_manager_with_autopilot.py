@@ -5,7 +5,7 @@ import utils
 from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unified & marge with agent
 from classes.driver import Driver
-from classes.traffic_manager_daniel import TrafficManagerD
+from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
 
 vehicles = []
@@ -41,11 +41,11 @@ def main(args={}):
         vehicles.append(v)
         # v.setVelocity(1)
         print(v.actor)
-        ap = TrafficManagerD(client, v.actor)
+        ap = TrafficManager(client, v.actor)
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManagerD(client, ego.actor,
+    tm = TrafficManager(client, ego.actor,
                          # config="config/driver1.json" # Not implemented yet
                          )
     tm.init_lunatic_driver()

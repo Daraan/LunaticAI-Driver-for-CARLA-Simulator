@@ -19,7 +19,7 @@ from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSens
 from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
-from utils.keyboard_controls import RSSKeyboardControl
+from classes.keyboard_controls import RSSKeyboardControl
 
 if TYPE_CHECKING:
     from conf.agent_settings import LunaticAgentSettings
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 
 from utils import get_actor_display_name
 from utils.blueprint_helpers import get_actor_blueprints
-from utils.blueprint_helpers import find_weather_presets
 from utils.logging import logger
 
 
@@ -327,11 +326,7 @@ class WorldModel(object):
             for actor in self.world.get_actors():
                 if actor.attributes.get('role_name') == self.actor_role_name:
                     self.player = assure_type(carla.Vehicle, actor)
-        else:            
-            # From interactive:
-            #self.player_max_speed = 1.589
-            #self.player_max_speed_fast = 3.713
-        
+        else:        
             # Keep same camera config if the camera manager exists.
             cam_index = self.camera_manager.index if self.camera_manager is not None else 0
             cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
@@ -350,6 +345,8 @@ class WorldModel(object):
                 blueprint.set_attribute('driver_id', driver_id)
             if blueprint.has_attribute('is_invincible'):
                 blueprint.set_attribute('is_invincible', 'true')
+            
+            # TODO: Make this a config option to choose automatically.
             # set the max speed
             #if blueprint.has_attribute('speed'):
             #    self.player_max_speed = float(blueprint.get_attribute('speed').recommended_values[1])
@@ -377,7 +374,6 @@ class WorldModel(object):
                 # See: https://carla.readthedocs.io/en/latest/tuto_G_control_vehicle_physics/            
                 self.show_vehicle_telemetry = False
                 self.modify_vehicle_physics(self.player)
-            assert isinstance(self.player, carla.Vehicle)
 
         if self.external_actor:
             ego_sensors : List[carla.Actor] = []
@@ -547,3 +543,14 @@ class WorldModel(object):
             self.hud.allowed_steering_ranges = self.rss_sensor.get_steering_ranges()     
             return vehicle_control
         return None
+
+
+def find_weather_presets():
+    """Method to find weather presets"""
+    import re
+    rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
+
+    def name(x): return ' '.join(m.group(0) for m in rgx.finditer(x))
+
+    presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
+    return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
