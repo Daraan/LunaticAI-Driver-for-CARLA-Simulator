@@ -3,6 +3,7 @@
 import os
 import sys
 from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING
+import weakref
 
 import numpy as np
 from omegaconf import DictConfig
@@ -108,11 +109,13 @@ class GameFramework(object):
     
     def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         self.world_model = WorldModel(self.world, config, self.args, player=player, map_inst=map_inst)
+        self.world_model.game_framework = weakref.proxy(self)
         return self.world_model
     
     def make_controller(self, world_model, controller_class=RSSKeyboardControl, **kwargs):
-        self.controller = controller_class(world_model, config=self.config, clock=self.clock, **kwargs)
-        return self.controller
+        controller = controller_class(world_model, config=self.config, clock=self.clock, **kwargs)
+        self.controller = weakref.proxy(controller)
+        return controller
     
     def set_controller(self, controller):
         self.controller = controller
@@ -123,8 +126,9 @@ class GameFramework(object):
     def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", overwrites:Optional[Dict[str, Any]]=None):
         self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self.args, map_inst=self.map, overwrites=overwrites)
         self.config = self.agent.config
-        self.controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False)
-        return self.agent, self.world_model, self.global_planner, self.controller
+        controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
+        self.world_model.game_framework = weakref.proxy(self)
+        return self.agent, self.world_model, self.global_planner, controller
 
     def __enter__(self):
         if self.agent is None:
@@ -175,6 +179,9 @@ class GameFramework(object):
 
 class WorldModel(object):
     """ Class representing the surrounding environment """
+
+    controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
+    game_framework : Optional[GameFramework] = None # Set when world created via GameFramework. Uses weakref.proxy
 
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()

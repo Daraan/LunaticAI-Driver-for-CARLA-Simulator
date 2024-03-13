@@ -1,4 +1,5 @@
 import math
+import weakref
 import pygame
 from pygame.locals import KMOD_CTRL
 from pygame.locals import KMOD_SHIFT
@@ -84,6 +85,7 @@ class RSSKeyboardControl(object):
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         self._world_model = world_model
+        world_model.controller = weakref.proxy(self)
         self._control : carla.VehicleControl = None
         #self._control = carla.VehicleControl()
         self._lights = carla.VehicleLightState.NONE
