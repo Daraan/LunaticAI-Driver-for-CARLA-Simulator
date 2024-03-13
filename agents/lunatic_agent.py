@@ -518,8 +518,10 @@ class LunaticAgent(BehaviorAgent):
         # DISCUSS: Should we apply the controls here?
         return control
     
-    def apply_control(self, control : carla.VehicleControl):
+    def apply_control(self, control: Optional[carla.VehicleControl]=None):
         # Set automatic control-related vehicle lights
+        if control is None:
+            control = self.ctx.control
         self.update_lights(control)
         self._vehicle.apply_control(control)
 
