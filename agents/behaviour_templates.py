@@ -11,7 +11,7 @@ from classes.constants import Phase
 from classes.rule import Rule, EvaluationFunction, Context, RulePriority, always_execute
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
-from utils.logging import logger
+from agents.tools.logging import logger
 
 from typing import TYPE_CHECKING, List
 

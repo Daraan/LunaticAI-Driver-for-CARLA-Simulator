@@ -31,6 +31,7 @@ from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleD
                                compute_distance)
 import agents.tools.lunatic_agent_tools
 from agents.tools.lunatic_agent_tools import generate_lane_change_path, result_to_context
+from agents.tools.logging import logger
 
 from agents import substep_managers
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss, RoadOption
@@ -42,7 +43,7 @@ from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
 
 from classes.worldmodel import ContinueLoopException, WorldModel
 from classes.keyboard_controls import RSSKeyboardControl
-from utils.logging import logger
+
 
 
 # As Reference:

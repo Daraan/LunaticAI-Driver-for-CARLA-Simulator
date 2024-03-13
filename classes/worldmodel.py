@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 from classes.HUD import get_actor_display_name
 from utils.blueprint_helpers import get_actor_blueprints
-from utils.logging import logger
+from agents.tools.logging import logger
 
 
 class ContinueLoopException(Exception):

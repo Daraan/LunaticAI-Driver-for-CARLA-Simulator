@@ -26,7 +26,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from classes.constants import Phase
 from classes.evaluation_function import EvaluationFunction
-from utils.logging import logger
+from agents.tools.logging import logger
 
 if TYPE_CHECKING:
     import carla
