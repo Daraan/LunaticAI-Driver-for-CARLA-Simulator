@@ -71,7 +71,7 @@ class LunaticAgent(BehaviorAgent):
     
     rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
     _world_model : WorldModel = None
-    _ctx : weakref.ReferenceType["Context"] = None
+    ctx : "Context"
     
     # todo: rename in the future
     
@@ -153,6 +153,7 @@ class LunaticAgent(BehaviorAgent):
             self._map = self._world.get_map()
         
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
+        self.ctx = None
 
         self.live_info : LiveInfo = self.config.live_info
 
@@ -237,15 +238,17 @@ class LunaticAgent(BehaviorAgent):
             self._collision_sensor.destroy()
             self._collision_sensor = None
             
-    @property
-    def ctx(self) -> Union[Context, None]:
-        return self._ctx() # might be None
+    #@property
+    #def ctx(self) -> Union[Context, None]:
+    #    print("Getting Context", self._ctx())
+    #    return self._ctx() # might be None
     
     def make_context(self, last_context : Union[Context, None], **kwargs):
         if last_context is not None:
             del last_context.last_context
         ctx = Context(agent=self, last_context=last_context, **kwargs)
-        self._ctx = weakref.ref(ctx)
+        #self._ctx = weakref.ref(ctx)
+        self.ctx = ctx
         return ctx
 
     # ------------------ Information functions ------------------ #
