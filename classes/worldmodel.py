@@ -1,12 +1,13 @@
 # Official Example from examples/automatic-control.py
 # NOTE it might has to use synchonous_mode
+from collections.abc import Mapping
 import os
 import sys
 from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING
 import weakref
 
 import numpy as np
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 import pygame
 
 import carla
@@ -261,7 +262,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, config : "LunaticAgentSettings", args, agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
+    def __init__(self, config : "LunaticAgentSettings", args:"Union[Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
         # Set World
         if self.world is None:
@@ -294,6 +295,8 @@ class WorldModel(AccessCarlaDataProviderMixin):
                 sys.exit(1)
         
         self._config = config
+        if not isinstance(args, Mapping):
+            args = OmegaConf.load(args)
         self._args = args
         self.hud = HUD(args.width, args.height, carla_world)
         self.sync : bool = args.sync
