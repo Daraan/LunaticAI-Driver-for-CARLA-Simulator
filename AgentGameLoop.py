@@ -41,6 +41,7 @@ from classes.HUD import HUD
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 from classes.vehicle import Vehicle
 
+from agents.tools.logging import logger
 from agents.tools.misc import draw_waypoints
 from agents.navigation.basic_agent import BasicAgent  
 from agents.navigation.behavior_agent import BehaviorAgent 
@@ -259,9 +260,9 @@ def main(args: DictConfig):
     print("Launch Arguments\n", OmegaConf.to_yaml(args))  
 
     log_level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
-
-    logging.info('listening to server %s:%s', args.host, args.port)
+    
+    logger.setLevel(log_level)
+    logger.info('listening to server %s:%s', args.host, args.port)
 
     print(__doc__)
 
