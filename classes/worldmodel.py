@@ -543,7 +543,7 @@ class WorldModel(object):
         self.camera_manager.sensor = None
         self.camera_manager.index = None
 
-    def destroy(self):
+    def destroy(self, destroy_ego=False):
         """Destroys all actors"""
         # stop from ticking
         if self.world_tick_id:
@@ -556,17 +556,14 @@ class WorldModel(object):
             self.toggle_radar()
         if self.camera_manager is not None:
             self.destroy_sensors()
-        actors : List[carla.Actor] = [
-            self.collision_sensor.sensor,
-            self.lane_invasion_sensor.sensor,
-            self.gnss_sensor.sensor,
-            self.imu_sensor.sensor,
-        ]
-        actors.extend(self.actors)
-        if not self.external_actor and not self.player in actors: # do not destroy external actors.
-            actors.append(self.player)
-        print("to destroy", list(map(str,actors)))
-        for actor in actors:
+        if destroy_ego and not self.player in self.actors: # do not destroy external actors.
+            print("Destroying player")
+            self.actors.append(self.player)
+        elif not destroy_ego and self.player in self.actors:
+            logger.warning("destroy_ego=False, but player is in actors list. Destroying the actor from within WorldModel.destroy.")
+        print("to destroy", list(map(str, self.actors)))
+        while self.actors:
+            actor = self.actors.pop(0)
             if actor is not None:
                 print("destroying actor: " + str(actor), end=" destroyed=")
                 try:
@@ -574,12 +571,12 @@ class WorldModel(object):
                         actor.stop()
                 except AttributeError:
                     pass
-                #try:
-                x = actor.destroy()
-                print(x)
-                #except RuntimeError:
-                #    raise
-                #    print("Warning: Could not destroy actor: " + str(actor))
+                try:
+                    x = actor.destroy()
+                    print(x)
+                except RuntimeError:
+                    print("Warning: Could not destroy actor: " + str(actor))
+                    #raise
 
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:

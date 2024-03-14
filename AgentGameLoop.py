@@ -196,18 +196,17 @@ def game_loop(args : argparse.ArgumentParser):
         if agent is not None:
             agent.destroy_sensor()
         if world_model is not None:
-            world_model.actors.extend(spawned_vehicles)
             world_settings = world_model.world.get_settings()
             world_settings.synchronous_mode = False
             world_settings.fixed_delta_seconds = None
             world_model.world.apply_settings(world_settings)
             traffic_manager.set_synchronous_mode(False)
-            world_model.destroy()
-            ego = None
-        elif game_framework is not None:
+            world_model.destroy(destroy_ego=False)
+        if game_framework is not None:
             game_framework.client.apply_batch([carla.command.DestroyActor(x) for x in spawned_vehicles])
+            ego = None
         
-        try:
+        try: # NOTE: Currently not used
             if ego is not None:
                 ego.destroy()
         except (NameError, AttributeError) as e:
