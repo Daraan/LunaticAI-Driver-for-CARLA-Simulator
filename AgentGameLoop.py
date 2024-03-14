@@ -19,7 +19,8 @@ from pprint import pprint
 import pygame
 import numpy as np
 
-from omegaconf import OmegaConf
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
 # Use this when carla is not installed
 #try:
@@ -28,11 +29,11 @@ from omegaconf import OmegaConf
 #    from utils.egg_import import carla
 import carla 
     
-from agents.tools.misc import draw_waypoints
+import launch_tools
+from conf.agent_settings import LunaticAgentSettings
+
 from classes.rule import Context, Rule
 
-from conf.agent_settings import LunaticAgentSettings
-import launch_tools
 from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from classes.constants import Phase
@@ -40,6 +41,7 @@ from classes.HUD import HUD
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 from classes.vehicle import Vehicle
 
+from agents.tools.misc import draw_waypoints
 from agents.navigation.basic_agent import BasicAgent  
 from agents.navigation.behavior_agent import BehaviorAgent 
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 
@@ -95,7 +97,9 @@ def game_loop(args : argparse.ArgumentParser):
         spawned_vehicles.append(ego)
         # -- Setup Agent --
 
-        behavior = LunaticAgentSettings(
+        behavior = LunaticAgentSettings.from_yaml(args.agent.config)
+        behavior = OmegaConf.merge(behavior,
+        #behavior = LunaticAgentSettings(
             {'controls':{ "max_brake" : 1.0, 
                         'max_steering' : 0.25},
             'speed': {'target_speed': 33.0,
@@ -109,7 +113,7 @@ def game_loop(args : argparse.ArgumentParser):
                 "random_right_lanechange_percentage": 0.45,
             },
             'rss': {'enabled': True, 
-                    'use_stay_on_road_feature': False},
+                    'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False)},
             "planner": {
                 "dt" : game_framework.world_settings.fixed_delta_seconds or 1/args.fps,
                 "min_distance_next_waypoint" : 2.0,
@@ -249,17 +253,10 @@ def game_loop(args : argparse.ArgumentParser):
 # -- main() --------------------------------------------------------------
 # ==============================================================================
 
-
-def main():
+@hydra.main(version_base=None, config_path="./conf", config_name="launch_config")
+def main(args: DictConfig):
     """Main method"""
-
-    args = launch_tools.argument_parsing.main_parser().parse_args()
-    
-    # Overrides
-    args.loop = True
-    args.agent = "Lunatic"
-
-    args.width, args.height = [int(x) for x in args.res.split('x')]
+    print("Launch Arguments\n", OmegaConf.to_yaml(args))  
 
     log_level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
