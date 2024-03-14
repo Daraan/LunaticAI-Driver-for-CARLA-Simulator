@@ -5,7 +5,7 @@ from conf.agent_settings import LunaticAgentSettings
 from leaderboard.autoagents.autonomous_agent import AutonomousAgent
 from leaderboard.autoagents.autonomous_agent import Track
 
-from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 def get_entry_point():
     return "LunaticChallenger"
