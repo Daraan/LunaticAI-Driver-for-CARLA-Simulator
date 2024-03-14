@@ -11,6 +11,7 @@ import pygame
 
 import carla
 import numpy.random as random
+from agents.tools.lunatic_agent_tools import AgentDoneException, ContinueLoopException
 from classes.HUD import HUD
 
 from classes.camera_manager import CameraManager
@@ -35,9 +36,6 @@ try:
 except ImportError:
     logger.warning("CarlaDataProvider not available: ScenarioManager (srunner module) not found in path. Make sure it is in your PYTHONPATH or PATH variable.")
     CarlaDataProvider = None
-
-class ContinueLoopException(Exception):
-    pass
 
 class AccessCarlaDataProviderMixin:
     """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
@@ -116,6 +114,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
         self.controller = None
         
         self.debug = self.world.debug
+        self.continue_loop = True
         
     @staticmethod
     def init_pygame(args):
@@ -243,6 +242,9 @@ class GameFramework(AccessCarlaDataProviderMixin):
             pygame.display.flip()
             
             Rule.update_all_cooldowns() # Rule Cooldown Framework
+        elif isinstance(exc_val, AgentDoneException):
+            self.continue_loop = False
+            
 
 # ==============================================================================
 # -- World ---------------------------------------------------------------

@@ -157,7 +157,13 @@ def game_loop(args : argparse.ArgumentParser):
         def loop():
             ctx : Context = None
             agent.verify_settings()
-            while True:
+            while game_framework.continue_loop:
+                # Loop with traffic_manager
+                if controller._autopilot_enabled:
+                    if controller.parse_events(None):
+                        return
+                    continue
+                # Agent Loop
                 with game_framework:
                     final_control = agent.run_step(debug=True)
                     
@@ -180,9 +186,27 @@ def game_loop(args : argparse.ArgumentParser):
                     
                     matrix = agent.road_matrix  # TEMP
                     if matrix is not None:
-                        pprint(matrix) # TEMP               
-                                     
-            agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None) # final phase of agents lifetime
+                        pprint(matrix) # TEMP
+                
+                # Continue the Loop from outside
+                if args.loop and not game_framework.continue_loop and agent.done():
+                    # TODO: Rule / Action to define next waypoint
+                    print("The target has been reached, searching for another target")
+                    world_model.hud.notification("Target reached", seconds=4.0)
+                    
+                    # Set new destination
+                    wp = agent._current_waypoint.next(50)[-1]
+                    next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
+                    if next_wp is None:
+                        next_wp = wp
+                    #destination = random.choice(spawn_points).location
+                    destination = next_wp.transform.location
+                    agent.set_destination(destination)
+                    game_framework.continue_loop = True
+                    agent.execute_phase(Phase.DONE| Phase.END, prior_results=None)
+            
+             # final phase of agents lifetime                  
+            agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None)
 
         # Interactive
         if "-I" in sys.argv:

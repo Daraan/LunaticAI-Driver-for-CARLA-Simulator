@@ -230,3 +230,17 @@ def result_to_context(key):
         return wrapper
         
     return decorator
+
+
+class AgentDoneException(Exception):
+    """
+    Raised when there is no more waypoint in the queue to follow and no rule set a new destination.
+    """
+
+
+class ContinueLoopException(Exception):
+    """
+    Raise when `run_step` action of the agent should not be continued further.
+
+    The agent returns the current ctx.control to the caller of run_step.
+    """

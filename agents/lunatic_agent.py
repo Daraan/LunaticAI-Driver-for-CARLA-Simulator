@@ -27,6 +27,8 @@ from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
 import agents.tools
+from agents.tools.lunatic_agent_tools import AgentDoneException
+from agents.tools.lunatic_agent_tools import ContinueLoopException
 from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
                                compute_distance)
 import agents.tools.lunatic_agent_tools
@@ -41,7 +43,7 @@ from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import Context, Rule
 from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
 
-from classes.worldmodel import ContinueLoopException, WorldModel, CarlaDataProvider
+from classes.worldmodel import WorldModel, CarlaDataProvider
 from classes.keyboard_controls import RSSKeyboardControl
 
 
@@ -358,54 +360,42 @@ class LunaticAgent(BehaviorAgent):
         try:
             # TODO: Make this a rule and/or move inside agent
             # TODO: make a Phases.DONE
-            if not self._world_model.controller._autopilot_enabled:
+            if self.done():
+                # NOTE: Might be in NONE phase here.
+                self.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
                 if self.done():
-                    # NOTE: Might be in NONE phase here.
-                    self.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
-                    if self._world_model._args.loop and self.done():
-                        # TODO: Rule / Action to define next waypoint
-                        print("The target has been reached, searching for another target")
-                        self._world_model.hud.notification("Target reached", seconds=4.0)
-                        wp = self._current_waypoint.next(50)[-1]
-                        next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
-                        if next_wp is None:
-                            next_wp = wp
-                        #destination = random.choice(spawn_points).location
-                        destination = next_wp.transform.location
-                        self.set_destination(destination)
-                    elif self.done():
-                        print("The target has been reached, stopping the simulation")
-                        self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
-                        raise KeyboardInterrupt # TODO: Different exception
-                    self.execute_phase(Phase.DONE| Phase.END, prior_results=None)
-                
-                # ----------------------------
-                # Phase NONE - Before Running step
-                # ----------------------------
-                planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
-                # ----------------------------
-                # No known Phase multiple exit points
-                # ----------------------------
-                
-                # ----------------------------
-                # Phase RSS - Check RSS
-                # ----------------------------
-                planned_control.manual_gear_shift = False # TODO: turn into a rule
-                
-                ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
-                if AD_RSS_AVAILABLE and self.config.rss.enabled:
-                    rss_updated_controls = self._world_model.rss_check_control(ctx.control)
-                else:
-                    rss_updated_controls = None
-                ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls) # NOTE: rss_updated_controls could be None
-                
-                if ctx.control is not planned_control:
-                    logger.debug("RSS updated control accepted.")
-                # ----------------------------
-                # Phase Manual User Controls
-                # TODO: Create a flag that allows this or not
-                # ----------------------------
-
+                    # No Rule set a net destination
+                    print("The target has been reached, stopping the simulation")
+                    self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
+                    raise AgentDoneException
+                self.execute_phase(Phase.DONE| Phase.END, prior_results=None)
+            
+            # ----------------------------
+            # Phase NONE - Before Running step
+            # ----------------------------
+            planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
+            # ----------------------------
+            # No known Phase multiple exit points
+            # ----------------------------
+            
+            # ----------------------------
+            # Phase RSS - Check RSS
+            # ----------------------------
+            planned_control.manual_gear_shift = False # TODO: turn into a rule
+            
+            ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
+            if AD_RSS_AVAILABLE and self.config.rss.enabled:
+                rss_updated_controls = self._world_model.rss_check_control(ctx.control)
+            else:
+                rss_updated_controls = None
+            ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls) # NOTE: rss_updated_controls could be None
+            
+            if ctx.control is not planned_control:
+                logger.debug("RSS updated control accepted.")
+            # ----------------------------
+            # Phase Manual User Controls
+            # TODO: Create a flag that allows this or not
+            # ----------------------------
                 
         except ContinueLoopException:
             logger.info("Continuing Loop")
