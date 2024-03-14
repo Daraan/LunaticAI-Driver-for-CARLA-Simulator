@@ -406,11 +406,6 @@ class LunaticAgent(BehaviorAgent):
                 # TODO: Create a flag that allows this or not
                 # ----------------------------
 
-                self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=rss_updated_controls)
-                if isinstance(self._world_model.controller, RSSKeyboardControl):
-                    if self._world_model.controller.parse_events(ctx.control):
-                        raise KeyboardInterrupt
-                self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=rss_updated_controls)
                 
         except ContinueLoopException:
             logger.info("Continuing Loop")

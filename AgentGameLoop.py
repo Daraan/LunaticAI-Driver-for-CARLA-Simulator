@@ -161,6 +161,12 @@ def game_loop(args : argparse.ArgumentParser):
                 with game_framework:
                     final_control = agent.run_step(debug=True)
                     
+                    agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=final_control)
+                    if isinstance(world_model.controller, RSSKeyboardControl):
+                        if controller.parse_events(ctx.control):
+                            return
+                    agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
+                    
                     agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=final_control)
                     agent.apply_control() # Note Uses control from agent.ctx.control in case of last Phase changed it.
                     agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None)
