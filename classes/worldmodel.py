@@ -433,11 +433,21 @@ class WorldModel(object):
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
-        self.gnss_sensor = GnssSensor(self.player)
-        self.imu_sensor = IMUSensor(self.player)
+        self.gnss_sensor = None # GnssSensor(self.player) # TODO: make it optional
+        self.imu_sensor = None # IMUSensor(self.player)
+        self.actors.extend([
+            self.collision_sensor,
+            self.lane_invasion_sensor,
+        ])
+        if self.gnss_sensor:
+            self.actors.append(self.gnss_sensor)
+        if self.imu_sensor:
+            self.actors.append(self.imu_sensor)
+        
         self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
         self.camera_manager.transform_index = cam_pos_id
         self.camera_manager.set_sensor(cam_index, notify=False)
+        
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
         
