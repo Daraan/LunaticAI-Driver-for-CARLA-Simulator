@@ -41,9 +41,8 @@ from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import Context, Rule
 from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
 
-from classes.worldmodel import ContinueLoopException, WorldModel
+from classes.worldmodel import ContinueLoopException, WorldModel, CarlaDataProvider
 from classes.keyboard_controls import RSSKeyboardControl
-
 
 
 # As Reference:
@@ -94,10 +93,10 @@ class LunaticAgent(BehaviorAgent):
         else:
             config = cls._base_settings.make_config()
         
-        world_model = WorldModel(sim_world, config, args, player=vehicle, map_inst=map_inst)
+        world_model = WorldModel(config, args, carla_world=sim_world, player=vehicle, map_inst=map_inst)
         config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/20
         
-        agent = cls(world_model, config, map_inst=map_inst, grp_inst=grp_inst)
+        agent = cls(world_model, config, grp_inst=grp_inst)
         return agent, world_model, agent.get_global_planner()
 
     def __init__(self, world_model : WorldModel, behavior : Union[str, LunaticAgentSettings], *, vehicle: carla.Vehicle=None, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
@@ -151,13 +150,19 @@ class LunaticAgent(BehaviorAgent):
         self._world_model : WorldModel = world_model
         self._world : carla.World = world_model.world
         if map_inst:
-            if isinstance( (map_inst or world_model.map), carla.Map):
-                self._map = map_inst or world_model.map
+            if world_model.map and map_inst != world_model.map:
+                raise ValueError("Passed Map instance does not match the map instance of the world model.") # TEMP: Turn into warning
+            if isinstance(map_inst, carla.Map):
+                self._map = map_inst
             else:
                 print("Warning: Ignoring the given map as it is not a 'carla.Map'")
                 self._map = self._world.get_map()
-        else:
+                world_model.map = self._map
+        elif world_model.map is None:
             self._map = self._world.get_map()
+            world_model.map = self._map
+        else:
+            self._map = world_model.map
         
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
         self.ctx = None
@@ -183,15 +188,11 @@ class LunaticAgent(BehaviorAgent):
         self._incoming_direction : RoadOption = None
 
         # Initialize the planners
-        self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=opt_dict, map_inst=self._map, world=self._world if self._world else "MISSING", rss_sensor=world_model.rss_sensor)
+        self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=opt_dict, map_inst=world_model.map, world=self._world if self._world else "MISSING", rss_sensor=world_model.rss_sensor)
         if grp_inst:
-            if isinstance(grp_inst, GlobalRoutePlanner):
-                self._global_planner = grp_inst
-            else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-                self._global_planner = GlobalRoutePlanner(self._map, self.config.planner.sampling_resolution)
+            self._global_planner = grp_inst
         else:
-            self._global_planner = GlobalRoutePlanner(self._map, self.config.planner.sampling_resolution)
+            self._global_planner = GlobalRoutePlanner(world_model.map, self.config.planner.sampling_resolution)
 
         # Get the static elements of the scene
         # TODO: This could be done globally and not for each instance :/
@@ -209,11 +210,10 @@ class LunaticAgent(BehaviorAgent):
         self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
         
         # Data Matrix
-        world_settings = self._world_model.world_settings if self._world_model is not None else self._world.get_settings() # TODO: change when creation order can be reversed.
-        if world_settings.synchronous_mode:
-            self._road_matrix_updater = DataMatrix(self._vehicle, self._world , map_inst)
+        if self._world_model.world_settings.synchronous_mode:
+            self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
         else:
-            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world, map_inst)
+            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
         
         # Vehicle information
         self.live_info.current_speed = 0

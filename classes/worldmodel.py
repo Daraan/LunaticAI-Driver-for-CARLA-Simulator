@@ -31,6 +31,7 @@ from agents.tools.logging import logger
 
 try:
     from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+    logger.info("Using CarlaDataProvider from srunner module.")
 except ImportError:
     logger.warning("CarlaDataProvider not available: ScenarioManager (srunner module) not found in path. Make sure it is in your PYTHONPATH or PATH variable.")
     CarlaDataProvider = None
@@ -38,21 +39,77 @@ except ImportError:
 class ContinueLoopException(Exception):
     pass
 
+class AccessCarlaDataProviderMixin:
+    """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
+    
+    if CarlaDataProvider is not None:
+        @property
+        def client(self) -> carla.Client:
+            return CarlaDataProvider.get_client()
+        
+        @client.setter
+        def client(self, value: carla.Client):
+            CarlaDataProvider.set_client(value)
+        
+        @property
+        def world(self) -> carla.World:
+            return CarlaDataProvider.get_world()
+        
+        @world.setter
+        def world(self, value: carla.World):
+            CarlaDataProvider.set_world(value)
+        
+        @property
+        def map(self) -> carla.Map:
+            return CarlaDataProvider.get_map()
+        
+        @map.setter
+        def map(self, value: carla.Map):
+            CarlaDataProvider.set_map(value)
+    else:
+        __client: carla.Client = None # type: ignore
+        __map: carla.Map = None  # type: ignore
+        __world: carla.World = None # type: ignore
+        
+        @property
+        def client(self) -> carla.Client:
+            return AccessCarlaDataProviderMixin.__client
+        
+        @client.setter
+        def client(self, value: carla.Client):
+            AccessCarlaDataProviderMixin.__client = value
+            
+        @property
+        def world(self) -> carla.World:
+            return AccessCarlaDataProviderMixin.__world
+        
+        @world.setter
+        def world(self, value: carla.World):
+            AccessCarlaDataProviderMixin.__world = value
+            
+        @property
+        def map(self) -> carla.Map:
+            return AccessCarlaDataProviderMixin.__map
+        
+        @map.setter
+        def map(self, value: carla.Map):
+            AccessCarlaDataProviderMixin.__map = value
+
 # ==============================================================================
 # -- Game Framework ---------------------------------------------------------------
 # ==============================================================================
 
-class GameFramework(object):
+class GameFramework(AccessCarlaDataProviderMixin):
     clock : ClassVar[pygame.time.Clock]
     display : ClassVar[pygame.Surface]
     
-    def __init__(self, args, config=None):
+    def __init__(self, args, config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
             random.seed(args.seed)
             np.random.seed(args.seed)
-        self.args = args
+        self._args = args
         self.clock, self.display = self.init_pygame(args)
-        self.client, self.world, self.map, self.world_settings = self.init_carla(args)
+        self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
         self.config = config
         self.agent = None
         self.world_model = None
@@ -70,38 +127,28 @@ class GameFramework(object):
             pygame.HWSURFACE | pygame.DOUBLEBUF)
         return clock, display
     
-    @staticmethod
-    def init_carla(args, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
-        if CarlaDataProvider is not None:
-            client = CarlaDataProvider.get_client()
-            if client is None:
-                client = carla.Client(args.host, args.port, worker_threads)
-                CarlaDataProvider.set_client(client)
-            elif TYPE_CHECKING:
-                client = assure_type(carla.Client, client)
-            # Note maybe use client.load_world_if_different(world_name, reset_settings=True, map_layers=map_layers)
-            sim_world = CarlaDataProvider.get_world()
-            if sim_world is None:
-                sim_world = client.get_world()
-                CarlaDataProvider.set_world(sim_world)
-            elif TYPE_CHECKING:
-                sim_world = assure_type(carla.World, sim_world)
-            #CarlaDataProvider.set_traffic_manager_port(args.traffic_manager_port)
-            sim_map = assure_type(carla.Map, CarlaDataProvider.get_map())
+    def init_carla(self, args, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+        if self.client is None: # TODO: Note this maybe prevents usage of two different ports
+            self.client = carla.Client(args.host, args.port, worker_threads)
+            self.client.set_timeout(timeout)
         else:
-            client = carla.Client(args.host, args.port, worker_threads)
-            client.set_timeout(timeout)
-            sim_world = client.get_world()
-            sim_map = sim_world.get_map()
+            assert isinstance(self.client, carla.Client)
+        
+        if self.world is None:
+            self.world = self.client.get_world()
+        else:
+            assert isinstance(self.world, carla.World)
+            
+        if self.map is None:
+            self.map = self.world.get_map()
+        else:
+            assert isinstance(self.map, carla.Map)
         
         world_name = args.map
-        if world_name and sim_map.name != "Carla/Maps/" + world_name:
+        if world_name and self.map.name != "Carla/Maps/" + world_name:
             logger.info(f"Loading world: {world_name}")
-            sim_world = client.load_world(world_name, map_layers=map_layers)
-            sim_map = sim_world.get_map()
-            if CarlaDataProvider is not None:
-                CarlaDataProvider.set_world(sim_world)
-                CarlaDataProvider.set_map(sim_map)
+            self.world = self.client.load_world(world_name, map_layers=map_layers)
+            self.map = self.world.get_map()
         else:
             logger.debug("skipped loading world, already loaded. map_layers ignored.") # todo: remove?
         
@@ -109,20 +156,20 @@ class GameFramework(object):
         if args.sync:
             logger.debug("Using synchronous mode.")
             # apply synchronous mode if wanted
-            world_settings = sim_world.get_settings()
+            world_settings = self.world.get_settings()
             world_settings.synchronous_mode = True
             world_settings.fixed_delta_seconds = 1/args.fps # 0.05
-            sim_world.apply_settings(world_settings)
+            self.world.apply_settings(world_settings)
         else:
             logger.debug("Using asynchronous mode.")
-            world_settings = sim_world.get_settings()
+            world_settings = self.world.get_settings()
         print("World Settings:", world_settings)
         
-        return client, sim_world, sim_map, world_settings
+        return world_settings
     
     def init_traffic_manager(self) -> carla.TrafficManager:
         traffic_manager = self.client.get_trafficmanager()
-        if self.args.sync:
+        if self._args.sync:
             traffic_manager.set_synchronous_mode(True)
         traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
         traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a config variable
@@ -132,7 +179,7 @@ class GameFramework(object):
         self.config = config
     
     def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
-        self.world_model = WorldModel(self.world, config, self.args, player=player, map_inst=map_inst)
+        self.world_model = WorldModel(config, self._args, player=player)
         self.world_model.game_framework = weakref.proxy(self)
         return self.world_model
     
@@ -148,7 +195,7 @@ class GameFramework(object):
         return self.controller.parse_events(final_controls)
 
     def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", overwrites:Optional[Dict[str, Any]]=None):
-        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self.args, map_inst=self.map, overwrites=overwrites)
+        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, map_inst=self.map, overwrites=overwrites)
         self.config = self.agent.config
         controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         self.world_model.game_framework = weakref.proxy(self)
@@ -163,7 +210,7 @@ class GameFramework(object):
             raise ValueError("Controller not initialized.")
         
         self.clock.tick() # self.args.fps)
-        if self.args.sync:
+        if self._args.sync:
             self.world_model.world.tick()
         else:
             self.world_model.world.wait_for_tick()
@@ -201,7 +248,7 @@ class GameFramework(object):
 # -- World ---------------------------------------------------------------
 # ==============================================================================
 
-class WorldModel(object):
+class WorldModel(AccessCarlaDataProviderMixin):
     """ Class representing the surrounding environment """
 
     controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
@@ -210,26 +257,32 @@ class WorldModel(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, carla_world : carla.World, config : "LunaticAgentSettings", args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
+    def __init__(self, config : "LunaticAgentSettings", args, agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
-        self.world = carla_world
+        # Set World
+        if self.world is None:
+            if carla_world is None:
+                raise ValueError("CarlaDataProvider not available and `carla_world` not passed.")
+            self.world = carla_world
+        elif carla_world is not None and self.world != carla_world:
+            raise ValueError("CarlaDataProvider.get_world() and passed `carla_world` are not the same.")
         self.world_settings = self.world.get_settings()
+        
         # TEMP:
         if agent:
             agent._world_model = self
         
-        if map_inst:
+        if self.map is not None: # if this is set accesses CarlaDataProvider
+            if map_inst and self.map != map_inst:
+                raise ValueError("CarlaDataProvider.get_map() and passed map_inst are not the same.")
+        elif map_inst:
             if isinstance(map_inst, carla.Map):
-                self._map = map_inst
+                self.map = map_inst
             else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-            self._map = None
-        if not map_inst or not self._map:
+                logger.warning("Warning: Ignoring the given map as it is not a 'carla.Map'")
+        if self.map is None:
             try:
-                if agent:
-                    self.map = agent._map
-                else:
-                    self.map = self.world.get_map()
+                self.map = self.world.get_map()
             except RuntimeError as error:
                 print('RuntimeError: {}'.format(error))
                 print('  The server could not send the OpenDRIVE (.xodr) file:')
@@ -243,6 +296,9 @@ class WorldModel(object):
         self.dim = (args.width, args.height)
         self.external_actor : bool = args.externalActor
         self.actor_role_name : Optional[str] = args.rolename
+        self._actor_filter = args.filter
+        self._actor_generation = args.generation
+        self._gamma = args.gamma
 
         # TODO: Remove?
         self.recording = False
@@ -273,9 +329,6 @@ class WorldModel(object):
         self._weather_index = 0
         self.weather = None
         
-        self._actor_filter = args.filter
-        self._actor_generation = args.generation
-        self._gamma = args.gamma
         self.recording_enabled = False
         self.recording_start = 0
         self.actors = []
@@ -303,8 +356,7 @@ class WorldModel(object):
         self.rss_unstructured_scene_visualizer = None
         self.rss_bounding_box_visualizer = None
         
-        self._actor_filter = args.filter
-        if not self._actor_filter.startswith("vehicle."):
+        if config.rss.enabled and not self._actor_filter.startswith("vehicle."):
             print('Error: RSS only supports vehicles as ego.')
             sys.exit(1)
         if AD_RSS_AVAILABLE:
@@ -312,7 +364,7 @@ class WorldModel(object):
         else:
             self._restrictor = None
 
-        self.restart(args) # # interactive without args
+        self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
 
@@ -352,7 +404,7 @@ class WorldModel(object):
                 return actor
         return None
 
-    def restart(self, args):
+    def restart(self):
         """Restart the world"""
         # Keep same camera config if the camera manager exists.
         # TODO: unsure if correct
