@@ -29,6 +29,11 @@ from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
 from agents.tools.logging import logger
 
+try:
+    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+except ImportError:
+    logger.warning("CarlaDataProvider not available: ScenarioManager (srunner module) not found in path. Make sure it is in your PYTHONPATH or PATH variable.")
+    CarlaDataProvider = None
 
 class ContinueLoopException(Exception):
     pass
@@ -67,18 +72,36 @@ class GameFramework(object):
     
     @staticmethod
     def init_carla(args, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
-        client = carla.Client(args.host, args.port, worker_threads)
-        client.set_timeout(timeout)
-        
-        sim_world = client.get_world()
-        sim_map = sim_world.get_map()
-        
-        # Load world
-        world_name = args.map
-        if world_name and sim_map.name != "Carla/Maps/" + world_name:
-            client.load_world(world_name, map_layers=map_layers)
+        if CarlaDataProvider is not None:
+            client = CarlaDataProvider.get_client()
+            if client is None:
+                client = carla.Client(args.host, args.port, worker_threads)
+                CarlaDataProvider.set_client(client)
+            elif TYPE_CHECKING:
+                client = assure_type(carla.Client, client)
+            # Note maybe use client.load_world_if_different(world_name, reset_settings=True, map_layers=map_layers)
+            sim_world = CarlaDataProvider.get_world()
+            if sim_world is None:
+                sim_world = client.get_world()
+                CarlaDataProvider.set_world(sim_world)
+            elif TYPE_CHECKING:
+                sim_world = assure_type(carla.World, sim_world)
+            #CarlaDataProvider.set_traffic_manager_port(args.traffic_manager_port)
+            sim_map = assure_type(carla.Map, CarlaDataProvider.get_map())
+        else:
+            client = carla.Client(args.host, args.port, worker_threads)
+            client.set_timeout(timeout)
             sim_world = client.get_world()
             sim_map = sim_world.get_map()
+        
+        world_name = args.map
+        if world_name and sim_map.name != "Carla/Maps/" + world_name:
+            logger.info(f"Loading world: {world_name}")
+            sim_world = client.load_world(world_name, map_layers=map_layers)
+            sim_map = sim_world.get_map()
+            if CarlaDataProvider is not None:
+                CarlaDataProvider.set_world(sim_world)
+                CarlaDataProvider.set_map(sim_map)
         else:
             logger.debug("skipped loading world, already loaded. map_layers ignored.") # todo: remove?
         

@@ -150,8 +150,8 @@ def game_loop(args : argparse.ArgumentParser):
         
         def loop():
             ctx : Context = None
+            agent.verify_settings()
             while True:
-                agent.verify_settings()
                 with game_framework:
                     final_control = agent.run_step(debug=True)
                     

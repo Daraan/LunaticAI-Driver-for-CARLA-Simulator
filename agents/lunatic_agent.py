@@ -97,10 +97,10 @@ class LunaticAgent(BehaviorAgent):
         world_model = WorldModel(sim_world, config, args, player=vehicle, map_inst=map_inst)
         config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/20
         
-        agent = cls(vehicle, world_model, config, map_inst=map_inst, grp_inst=grp_inst)
+        agent = cls(world_model, config, map_inst=map_inst, grp_inst=grp_inst)
         return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, vehicle : carla.Vehicle, world_model : WorldModel, behavior : Union[str, LunaticAgentSettings], map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, world_model : WorldModel, behavior : Union[str, LunaticAgentSettings], *, vehicle: carla.Vehicle=None, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -117,7 +117,9 @@ class LunaticAgent(BehaviorAgent):
 
         # OURS: Fusing behavior
         # Settings ---------------------------------------------------------------
-        print("Behavior of Agent", behavior)
+        if world_model is None and vehicle is None:
+            raise ValueError("Must pass vehicle when not providing the world.")
+        
         opt_dict : LunaticAgentSettings
         if behavior is None and world_model._config is not None:
             opt_dict = world_model._config
@@ -145,8 +147,7 @@ class LunaticAgent(BehaviorAgent):
         
         logger.info("\n\nAgent config is %s", OmegaConf.to_yaml(self.config))
         
-        print("Type of vehicle", type(vehicle))
-        self._vehicle : carla.Vehicle = vehicle
+        self._vehicle : carla.Vehicle = world_model.player
         self._world_model : WorldModel = world_model
         self._world : carla.World = world_model.world
         if map_inst:
