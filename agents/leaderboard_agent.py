@@ -4,7 +4,7 @@ from leaderboard.autoagents.autonomous_agent import AutonomousAgent
 from leaderboard.autoagents.autonomous_agent import Track
 
 def get_entry_point():
-    return LunaticChallenger
+    return "LunaticChallenger"
 
 class LunaticChallenger(LunaticAgent, AutonomousAgent):
     pass
