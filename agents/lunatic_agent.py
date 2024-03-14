@@ -95,7 +95,8 @@ class LunaticAgent(BehaviorAgent):
         else:
             config = cls._base_settings.make_config()
         
-        world_model = WorldModel(config, args, carla_world=sim_world, player=vehicle, map_inst=map_inst)
+        #world_model = WorldModel(config, args, carla_world=sim_world, player=vehicle, map_inst=map_inst)
+        world_model = WorldModel(config, carla_world=sim_world, player=vehicle, map_inst=map_inst) # TEST: without args
         config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/20
         
         agent = cls(world_model, config, grp_inst=grp_inst)
