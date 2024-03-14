@@ -63,7 +63,6 @@ class RoadOption(IntEnum):
     CHANGELANERIGHT = 6
 '''
 
-
 class LunaticAgent(BehaviorAgent):
     """
     BasicAgent implements an agent that navigates the scene.
@@ -102,7 +101,7 @@ class LunaticAgent(BehaviorAgent):
         agent = cls(world_model, config, grp_inst=grp_inst)
         return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, world_model : WorldModel, behavior : Union[str, LunaticAgentSettings], *, vehicle: carla.Vehicle=None, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, world_model: WorldModel, behavior: Union[str, LunaticAgentSettings], *, vehicle: carla.Vehicle=None, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 

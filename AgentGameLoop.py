@@ -114,7 +114,7 @@ def game_loop(args : argparse.ArgumentParser):
                 "random_right_lanechange_percentage": 0.45,
             },
             'rss': {'enabled': True, 
-                    'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False)},
+                    'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False) if AD_RSS_AVAILABLE else False,},
             "planner": {
                 "dt" : game_framework.world_settings.fixed_delta_seconds or 1/args.fps,
                 "min_distance_next_waypoint" : 2.0,

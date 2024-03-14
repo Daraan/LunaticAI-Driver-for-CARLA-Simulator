@@ -32,7 +32,7 @@ from launch_tools.blueprint_helpers import get_actor_blueprints
 from agents.tools.logging import logger
 
 try:
-    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider
     logger.info("Using CarlaDataProvider from srunner module.")
 except ImportError:
     logger.warning("CarlaDataProvider not available: ScenarioManager (srunner module) not found in path. Make sure it is in your PYTHONPATH or PATH variable.")
@@ -650,11 +650,11 @@ class WorldModel(AccessCarlaDataProviderMixin):
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:
             # adjust the controls
-            vehicle_control = self._restrictor.restrict_vehicle_control(
+            proposed_vehicle_control = self._restrictor.restrict_vehicle_control(
                             vehicle_control, rss_proper_response, self.rss_sensor.ego_dynamics_on_route, self._vehicle_physics)
-            self.hud.restricted_vehicle_control = vehicle_control
+            self.hud.restricted_vehicle_control = proposed_vehicle_control
             self.hud.allowed_steering_ranges = self.rss_sensor.get_steering_ranges()     
-            return vehicle_control
+            return proposed_vehicle_control
         return None
 
 
