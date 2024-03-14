@@ -125,7 +125,7 @@ def game_loop(args):
                 )
             from omegaconf import OmegaConf
             print(behavior.to_yaml())
-            agent = LunaticAgent(world, behavior)
+            agent = LunaticAgent(behavior, world)
         elif args.agent == "Basic":
             agent = BasicAgent(world.player, 30)
             agent.follow_speed_limits(True)

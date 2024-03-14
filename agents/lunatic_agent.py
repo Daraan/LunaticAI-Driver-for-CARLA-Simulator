@@ -96,12 +96,12 @@ class LunaticAgent(BehaviorAgent):
         
         #world_model = WorldModel(config, args, carla_world=sim_world, player=vehicle, map_inst=map_inst)
         world_model = WorldModel(config, carla_world=sim_world, player=vehicle, map_inst=map_inst) # TEST: without args
-        config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/20
+        config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
-        agent = cls(world_model, config, grp_inst=grp_inst)
+        agent = cls(config, world_model, grp_inst=grp_inst)
         return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, world_model: WorldModel, behavior: Union[str, LunaticAgentSettings], *, vehicle: carla.Vehicle=None, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -122,7 +122,7 @@ class LunaticAgent(BehaviorAgent):
             raise ValueError("Must pass vehicle when not providing the world.")
         
         opt_dict : LunaticAgentSettings
-        if behavior is None and world_model._config is not None:
+        if behavior is None and world_model and world_model._config is not None:
             opt_dict = world_model._config
         elif behavior is None:
             raise ValueError("Must pass a valid config as behavior or a world model with a set config.")
@@ -147,6 +147,10 @@ class LunaticAgent(BehaviorAgent):
         self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
         
         logger.info("\n\nAgent config is %s", OmegaConf.to_yaml(self.config))
+        
+        if world_model is None:
+            world_model = WorldModel(self.config, player=vehicle, map_inst=map_inst)
+            self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model.args.fps
         
         self._vehicle : carla.Vehicle = world_model.player
         self._world_model : WorldModel = world_model
