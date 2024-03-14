@@ -63,7 +63,9 @@ class AccessCarlaDataProviderMixin:
         
         @map.setter
         def map(self, value: carla.Map):
-            CarlaDataProvider.set_map(value)
+            if CarlaDataProvider.get_map() != value:
+                raise ValueError("CarlaDataProvider.get_map() and passed map are not the same.")
+            # Do nothing as map is set when using get_map or set_world
     else:
         __client: carla.Client = None # type: ignore
         __map: carla.Map = None  # type: ignore
