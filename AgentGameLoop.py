@@ -155,7 +155,6 @@ def game_loop(args : argparse.ArgumentParser):
         agent.set_destination(left_last_wp)
         
         def loop():
-            ctx : Context = None
             agent.verify_settings()
             while game_framework.continue_loop:
                 # Loop with traffic_manager
@@ -169,7 +168,7 @@ def game_loop(args : argparse.ArgumentParser):
                     
                     agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=final_control)
                     if isinstance(world_model.controller, RSSKeyboardControl):
-                        if controller.parse_events(ctx.control):
+                        if controller.parse_events(agent.get_control()):
                             return
                     agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
                     

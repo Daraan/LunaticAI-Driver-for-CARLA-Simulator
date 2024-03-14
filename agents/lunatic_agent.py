@@ -677,6 +677,16 @@ class LunaticAgent(BehaviorAgent):
             self._lights = current_lights
             self._vehicle.set_light_state(carla.VehicleLightState(self._lights))
 
+    # ------------------ Getter Function ------------------ #
+    
+    def get_control(self) -> Union[None, carla.VehicleControl]:
+        """
+        Returns the currently planned control of the agent.
+        
+        If retrieved before the local planner has been run, it will return None.
+        """
+        return self.ctx.control
+
     # ------------------ Setter Function ------------------ #
     
     #@override 
