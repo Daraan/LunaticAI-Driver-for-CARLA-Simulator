@@ -124,9 +124,15 @@ def game_loop(args : argparse.ArgumentParser):
             pprint(behavior)
             print(behavior.to_yaml())
         
-        agent, world_model, global_planner, controller \
-            = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
+        # TEMP # Test external actor, do not pass ego
+        if args.externalActor:
+            agent, world_model, global_planner, controller \
+                = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
                     overwrites=behavior)
+        else:
+            agent, world_model, global_planner, controller \
+                = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
+                        overwrites=behavior)
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
