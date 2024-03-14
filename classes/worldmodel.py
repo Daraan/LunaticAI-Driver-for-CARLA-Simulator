@@ -242,7 +242,6 @@ class WorldModel(object):
         self.sync : bool = args.sync
         self.dim = (args.width, args.height)
         self.external_actor : bool = args.externalActor
-        assert not self.external_actor
         self.actor_role_name : Optional[str] = args.rolename
 
         # TODO: Remove?
@@ -250,14 +249,18 @@ class WorldModel(object):
         self.recording_frame_num = 0
         self.recording_dir_num = 0
         
-        if player is None:
-            if agent:
-                player = agent._vehicle
-            else:
-                player = self.world.get_actors().find(self.actor_role_name)
-            
-        self.player = player
-        assert self.player is not None or self.external_actor # Note: Former optional
+        if self.external_actor and (player is not None or agent is not None):
+            raise ValueError("External actor cannot be used with player or agent.")
+        if player is None and agent is not None:
+            self.player = agent._vehicle
+        elif player is not None and agent is not None:
+            if player != agent._vehicle:
+                raise ValueError("Passed `player` and `agent._vehicle` are not the same.")
+            self.player = player
+        else:
+            self.player = player
+
+        assert self.player is not None or self.external_actor # Note: Former optional. PLayer set in restart
 
         self.collision_sensor = None
         self.lane_invasion_sensor = None
@@ -342,18 +345,37 @@ class WorldModel(object):
             settings.fixed_delta_seconds = None
             self.world.apply_settings(settings)
 
+    @staticmethod
+    def _find_external_actor(world:carla.World, role_name:str, actor_list: Optional[carla.ActorList]=None) -> Union[None, carla.Actor]:
+        for actor in actor_list or world.get_actors():
+            if actor.attributes.get('role_name') == role_name:
+                return actor
+        return None
+
     def restart(self, args):
         """Restart the world"""
+        # Keep same camera config if the camera manager exists.
+        # TODO: unsure if correct
+        cam_index = self.camera_manager.index if self.camera_manager is not None else 0
+        cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
         if self.external_actor:
             # Check whether there is already an actor with defined role name
-            for actor in self.world.get_actors():
-                if actor.attributes.get('role_name') == self.actor_role_name:
-                    self.player = assure_type(carla.Vehicle, actor)
-        else:        
-            # Keep same camera config if the camera manager exists.
-            cam_index = self.camera_manager.index if self.camera_manager is not None else 0
-            cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
-
+            actor_list = self.world.get_actors() # In sync mode the actor list could be empty
+            if len(actor_list) == 0:
+                self.tick_server_world() 
+                actor_list = self.world.get_actors()
+            self.player = self._find_external_actor(self.world, self.actor_role_name, actor_list)
+            
+            # TODO: Make this more nicer, see maybe scenario runner how to wait for spawn. Only do tick if in sync mode. Async wait.
+            if self.player is None:
+                self.tick_server_world() 
+                self.player = assure_type(carla.Vehicle, self._find_external_actor(self.world, self.actor_role_name))
+            if self.player is None:
+                print("Error: No actor found with role name: " + self.actor_role_name)
+                sys.exit(1)
+            elif TYPE_CHECKING:
+                self.player = assure_type(carla.Vehicle, self.player)
+        else:
             # Get a random blueprint.
             blueprint : carla.ActorBlueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
             blueprint.set_attribute('role_name', self.actor_role_name)
@@ -404,7 +426,7 @@ class WorldModel(object):
                 if actor.parent == self.player:
                     ego_sensors.append(actor)
 
-            for ego_sensor in ego_sensors:
+            for ego_sensor in ego_sensors: # TODO: Why we do this
                 if ego_sensor is not None:
                     ego_sensor.destroy()
 
@@ -427,10 +449,12 @@ class WorldModel(object):
             self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
         else: 
             self.rss_sensor = None
+        self.tick_server_world()
+
+    def tick_server_world(self):
         if self.sync:
-            self.world.tick()
-        else:
-            self.world.wait_for_tick()
+            return self.world.tick()
+        return self.world.wait_for_tick()
 
     #def tick(self, clock):
     #    self.hud.tick(self.player, clock) # RSS example. TODO: Check which has to be used!
@@ -529,7 +553,7 @@ class WorldModel(object):
             self.imu_sensor.sensor,
         ]
         actors.extend(self.actors)
-        if not self.player in actors:
+        if not self.external_actor and not self.player in actors: # do not destroy external actors.
             actors.append(self.player)
         print("to destroy", list(map(str,actors)))
         for actor in actors:
