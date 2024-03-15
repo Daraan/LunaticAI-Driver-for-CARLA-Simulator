@@ -35,8 +35,11 @@ try:
     from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider
     logger.info("Using CarlaDataProvider from srunner module.")
 except ImportError:
-    logger.warning("CarlaDataProvider not available: ScenarioManager (srunner module) not found in path. Make sure it is in your PYTHONPATH or PATH variable.")
-    CarlaDataProvider = None
+    try:
+        from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+    except ImportError:
+        logger.warning("CarlaDataProvider not available: ScenarioManager (srunner module) not found in path. Make sure it is in your PYTHONPATH or PATH variable.")
+        CarlaDataProvider = None
 
 class AccessCarlaDataProviderMixin:
     """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
@@ -156,17 +159,20 @@ class GameFramework(AccessCarlaDataProviderMixin):
             logger.debug("skipped loading world, already loaded. map_layers ignored.") # todo: remove?
         
         # Apply world settings
-        if args.sync:
-            logger.debug("Using synchronous mode.")
-            # apply synchronous mode if wanted
-            world_settings = self.world.get_settings()
-            world_settings.synchronous_mode = True
-            world_settings.fixed_delta_seconds = 1/args.fps # 0.05
-            self.world.apply_settings(world_settings)
+        if args.sync is not None: # Else let this be handled by someone else
+            if args.sync:
+                logger.debug("Using synchronous mode.")
+                # apply synchronous mode if wanted
+                world_settings = self.world.get_settings()
+                world_settings.synchronous_mode = True
+                world_settings.fixed_delta_seconds = 1/args.fps # 0.05
+                self.world.apply_settings(world_settings)
+            else:
+                logger.debug("Using asynchronous mode.")
+                world_settings = self.world.get_settings()
         else:
-            logger.debug("Using asynchronous mode.")
             world_settings = self.world.get_settings()
-        print("World Settings:", world_settings)
+            print("World Settings:", world_settings)
         
         return world_settings
     
@@ -213,10 +219,11 @@ class GameFramework(AccessCarlaDataProviderMixin):
             raise ValueError("Controller not initialized.")
         
         self.clock.tick() # self.args.fps)
-        if self._args.sync:
-            self.world_model.world.tick()
-        else:
-            self.world_model.world.wait_for_tick()
+        if self._args.sync is not None:
+            if self._args.sync:
+                self.world_model.world.tick()
+            else:
+                self.world_model.world.wait_for_tick()
         return self
     
     def render_everything(self):

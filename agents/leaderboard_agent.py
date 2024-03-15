@@ -1,3 +1,4 @@
+from omegaconf import OmegaConf
 from agents.lunatic_agent import LunaticAgent
 
 from classes.worldmodel import GameFramework, WorldModel
@@ -5,30 +6,34 @@ from conf.agent_settings import LunaticAgentSettings
 from leaderboard.autoagents.autonomous_agent import AutonomousAgent
 from leaderboard.autoagents.autonomous_agent import Track
 
-from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 def get_entry_point():
     return "LunaticChallenger"
 
-class LunaticChallenger(LunaticAgent, AutonomousAgent):
-    
+class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     def __init__(self, carla_host, carla_port, debug=False):
-        super(LunaticAgent, self).__init__(carla_host, carla_port, debug)
-
+        super().__init__(carla_host, carla_port, debug)
 
     def setup(self, path_to_conf_file):
         self.track = Track.MAP
         sim_world = CarlaDataProvider.get_world()
         map_inst = CarlaDataProvider.get_map()
         
+        args = OmegaConf.load("/home/dsperber/TeamProject/LunaticAI-Driver-for-CARLA-Simulator/conf/launch_config.yaml")
+        args.map = None # Let scenario manager decide
+        args.sync = None
+        
         behavior = LunaticAgentSettings()#.from_yaml(path_to_conf_file)
         config = behavior.make_config()
+        self.game_framework = GameFramework(args, config)
         # TODO: How to make args optioal
-        world_model = WorldModel(sim_world, config, args, player=None, map_inst=map_inst)
-        LunaticAgent.__init__(self, world_model, config, map_inst=map_inst, grp_inst=CarlaDataProvider.get_global_route_planner())
-
+        world_model = WorldModel(config, args=args)
+        LunaticAgent.__init__(self, config, world_model, map_inst=map_inst, grp_inst=CarlaDataProvider.get_global_route_planner())
 
     def run_step(self, debug=False):
-        
-        return super().run_step(debug)
+        with self.game_framework:
+            control = super().run_step(debug)
+        # Handle render updates
+        return control
