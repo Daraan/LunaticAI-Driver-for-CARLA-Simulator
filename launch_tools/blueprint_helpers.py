@@ -63,7 +63,7 @@ def get_actor_blueprints(world: carla.World, filter: str,
     """
     bps = world.get_blueprint_library().filter(filter)
 
-    if generation.lower() == "all":
+    if isinstance(generation, str) and generation.lower() == "all":
         return bps
 
     # If the filter returns only one bp, we assume that this one needed

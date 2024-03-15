@@ -150,7 +150,8 @@ class GameFramework(AccessCarlaDataProviderMixin):
         if world_name and self.map.name != "Carla/Maps/" + world_name:
             logger.info(f"Loading world: {world_name}")
             self.world = self.client.load_world(world_name, map_layers=map_layers)
-            self.map = self.world.get_map()
+            if not self.map: # Note: CarlaDataProvider.set_world handles this.
+                self.map = self.world.get_map()
         else:
             logger.debug("skipped loading world, already loaded. map_layers ignored.") # todo: remove?
         
@@ -296,9 +297,11 @@ class WorldModel(AccessCarlaDataProviderMixin):
         
         self._config = config
         if not isinstance(args, Mapping):
+            # NOTE: THis does NOT INCLUDE CLI OVERWRITES
             args = OmegaConf.load(args)
+            args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
         self._args = args
-        self.hud = HUD(args.width, args.height, carla_world)
+        self.hud = HUD(args.width, args.height, self.world)
         self.sync : bool = args.sync
         self.dim = (args.width, args.height)
         self.external_actor : bool = args.externalActor

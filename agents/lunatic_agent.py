@@ -150,7 +150,7 @@ class LunaticAgent(BehaviorAgent):
         
         if world_model is None:
             world_model = WorldModel(self.config, player=vehicle, map_inst=map_inst)
-            self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model.args.fps
+            self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
         self._vehicle : carla.Vehicle = world_model.player
         self._world_model : WorldModel = world_model
