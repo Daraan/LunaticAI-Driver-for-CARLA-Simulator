@@ -27,6 +27,8 @@ from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
 import agents.tools
+from agents.tools.lunatic_agent_tools import AgentDoneException
+from agents.tools.lunatic_agent_tools import ContinueLoopException
 from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
                                compute_distance)
 import agents.tools.lunatic_agent_tools
@@ -41,9 +43,8 @@ from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import Context, Rule
 from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
 
-from classes.worldmodel import ContinueLoopException, WorldModel
+from classes.worldmodel import WorldModel, CarlaDataProvider
 from classes.keyboard_controls import RSSKeyboardControl
-
 
 
 # As Reference:
@@ -61,7 +62,6 @@ class RoadOption(IntEnum):
     CHANGELANELEFT = 5
     CHANGELANERIGHT = 6
 '''
-
 
 class LunaticAgent(BehaviorAgent):
     """
@@ -94,13 +94,14 @@ class LunaticAgent(BehaviorAgent):
         else:
             config = cls._base_settings.make_config()
         
-        world_model = WorldModel(sim_world, config, args, player=vehicle, map_inst=map_inst)
-        config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/20
+        #world_model = WorldModel(config, args, carla_world=sim_world, player=vehicle, map_inst=map_inst)
+        world_model = WorldModel(config, carla_world=sim_world, player=vehicle, map_inst=map_inst) # TEST: without args
+        config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
-        agent = cls(world_model, config, map_inst=map_inst, grp_inst=grp_inst)
+        agent = cls(config, world_model, grp_inst=grp_inst)
         return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, world_model : WorldModel, behavior : Union[str, LunaticAgentSettings], *, vehicle: carla.Vehicle=None, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -121,7 +122,7 @@ class LunaticAgent(BehaviorAgent):
             raise ValueError("Must pass vehicle when not providing the world.")
         
         opt_dict : LunaticAgentSettings
-        if behavior is None and world_model._config is not None:
+        if behavior is None and world_model and world_model._config is not None:
             opt_dict = world_model._config
         elif behavior is None:
             raise ValueError("Must pass a valid config as behavior or a world model with a set config.")
@@ -147,17 +148,27 @@ class LunaticAgent(BehaviorAgent):
         
         logger.info("\n\nAgent config is %s", OmegaConf.to_yaml(self.config))
         
+        if world_model is None:
+            world_model = WorldModel(self.config, player=vehicle, map_inst=map_inst)
+            self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
+        
         self._vehicle : carla.Vehicle = world_model.player
         self._world_model : WorldModel = world_model
         self._world : carla.World = world_model.world
         if map_inst:
-            if isinstance( (map_inst or world_model.map), carla.Map):
-                self._map = map_inst or world_model.map
+            if world_model.map and map_inst != world_model.map:
+                raise ValueError("Passed Map instance does not match the map instance of the world model.") # TEMP: Turn into warning
+            if isinstance(map_inst, carla.Map):
+                self._map = map_inst
             else:
                 print("Warning: Ignoring the given map as it is not a 'carla.Map'")
                 self._map = self._world.get_map()
-        else:
+                world_model.map = self._map
+        elif world_model.map is None:
             self._map = self._world.get_map()
+            world_model.map = self._map
+        else:
+            self._map = world_model.map
         
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
         self.ctx = None
@@ -183,15 +194,11 @@ class LunaticAgent(BehaviorAgent):
         self._incoming_direction : RoadOption = None
 
         # Initialize the planners
-        self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=opt_dict, map_inst=self._map, world=self._world if self._world else "MISSING", rss_sensor=world_model.rss_sensor)
+        self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=opt_dict, map_inst=world_model.map, world=self._world if self._world else "MISSING", rss_sensor=world_model.rss_sensor)
         if grp_inst:
-            if isinstance(grp_inst, GlobalRoutePlanner):
-                self._global_planner = grp_inst
-            else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-                self._global_planner = GlobalRoutePlanner(self._map, self.config.planner.sampling_resolution)
+            self._global_planner = grp_inst
         else:
-            self._global_planner = GlobalRoutePlanner(self._map, self.config.planner.sampling_resolution)
+            self._global_planner = GlobalRoutePlanner(world_model.map, self.config.planner.sampling_resolution)
 
         # Get the static elements of the scene
         # TODO: This could be done globally and not for each instance :/
@@ -209,11 +216,10 @@ class LunaticAgent(BehaviorAgent):
         self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
         
         # Data Matrix
-        world_settings = self._world_model.world_settings if self._world_model is not None else self._world.get_settings() # TODO: change when creation order can be reversed.
-        if world_settings.synchronous_mode:
-            self._road_matrix_updater = DataMatrix(self._vehicle, self._world , map_inst)
+        if self._world_model.world_settings.synchronous_mode:
+            self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
         else:
-            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world, map_inst)
+            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
         
         # Vehicle information
         self.live_info.current_speed = 0
@@ -358,59 +364,42 @@ class LunaticAgent(BehaviorAgent):
         try:
             # TODO: Make this a rule and/or move inside agent
             # TODO: make a Phases.DONE
-            if not self._world_model.controller._autopilot_enabled:
+            if self.done():
+                # NOTE: Might be in NONE phase here.
+                self.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
                 if self.done():
-                    # NOTE: Might be in NONE phase here.
-                    self.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
-                    if self._world_model._args.loop and self.done():
-                        # TODO: Rule / Action to define next waypoint
-                        print("The target has been reached, searching for another target")
-                        self._world_model.hud.notification("Target reached", seconds=4.0)
-                        wp = self._current_waypoint.next(50)[-1]
-                        next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
-                        if next_wp is None:
-                            next_wp = wp
-                        #destination = random.choice(spawn_points).location
-                        destination = next_wp.transform.location
-                        self.set_destination(destination)
-                    elif self.done():
-                        print("The target has been reached, stopping the simulation")
-                        self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
-                        raise KeyboardInterrupt # TODO: Different exception
-                    self.execute_phase(Phase.DONE| Phase.END, prior_results=None)
-                
-                # ----------------------------
-                # Phase NONE - Before Running step
-                # ----------------------------
-                planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
-                # ----------------------------
-                # No known Phase multiple exit points
-                # ----------------------------
-                
-                # ----------------------------
-                # Phase RSS - Check RSS
-                # ----------------------------
-                planned_control.manual_gear_shift = False # TODO: turn into a rule
-                
-                ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
-                if AD_RSS_AVAILABLE and self.config.rss.enabled:
-                    rss_updated_controls = self._world_model.rss_check_control(ctx.control)
-                else:
-                    rss_updated_controls = None
-                ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls) # NOTE: rss_updated_controls could be None
-                
-                if ctx.control is not planned_control:
-                    logger.debug("RSS updated control accepted.")
-                # ----------------------------
-                # Phase Manual User Controls
-                # TODO: Create a flag that allows this or not
-                # ----------------------------
-
-                self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=rss_updated_controls)
-                if isinstance(self._world_model.controller, RSSKeyboardControl):
-                    if self._world_model.controller.parse_events(ctx.control):
-                        raise KeyboardInterrupt
-                self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=rss_updated_controls)
+                    # No Rule set a net destination
+                    print("The target has been reached, stopping the simulation")
+                    self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
+                    raise AgentDoneException
+                self.execute_phase(Phase.DONE| Phase.END, prior_results=None)
+            
+            # ----------------------------
+            # Phase NONE - Before Running step
+            # ----------------------------
+            planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
+            # ----------------------------
+            # No known Phase multiple exit points
+            # ----------------------------
+            
+            # ----------------------------
+            # Phase RSS - Check RSS
+            # ----------------------------
+            planned_control.manual_gear_shift = False # TODO: turn into a rule
+            
+            ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
+            if AD_RSS_AVAILABLE and self.config.rss.enabled:
+                rss_updated_controls = self._world_model.rss_check_control(ctx.control)
+            else:
+                rss_updated_controls = None
+            ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls) # NOTE: rss_updated_controls could be None
+            
+            if ctx.control is not planned_control:
+                logger.debug("RSS updated control accepted.")
+            # ----------------------------
+            # Phase Manual User Controls
+            # TODO: Create a flag that allows this or not
+            # ----------------------------
                 
         except ContinueLoopException:
             logger.info("Continuing Loop")
@@ -691,6 +680,16 @@ class LunaticAgent(BehaviorAgent):
         if current_lights != self._lights:  # Change the light state only if necessary
             self._lights = current_lights
             self._vehicle.set_light_state(carla.VehicleLightState(self._lights))
+
+    # ------------------ Getter Function ------------------ #
+    
+    def get_control(self) -> Union[None, carla.VehicleControl]:
+        """
+        Returns the currently planned control of the agent.
+        
+        If retrieved before the local planner has been run, it will return None.
+        """
+        return self.ctx.control
 
     # ------------------ Setter Function ------------------ #
     

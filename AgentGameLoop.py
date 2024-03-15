@@ -19,7 +19,8 @@ from pprint import pprint
 import pygame
 import numpy as np
 
-from omegaconf import OmegaConf
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
 # Use this when carla is not installed
 #try:
@@ -28,11 +29,11 @@ from omegaconf import OmegaConf
 #    from utils.egg_import import carla
 import carla 
     
-from agents.tools.misc import draw_waypoints
+import launch_tools
+from conf.agent_settings import LunaticAgentSettings
+
 from classes.rule import Context, Rule
 
-from conf.agent_settings import LunaticAgentSettings
-import launch_tools
 from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from classes.constants import Phase
@@ -40,6 +41,8 @@ from classes.HUD import HUD
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 from classes.vehicle import Vehicle
 
+from agents.tools.logging import logger
+from agents.tools.misc import draw_waypoints
 from agents.navigation.basic_agent import BasicAgent  
 from agents.navigation.behavior_agent import BehaviorAgent 
 from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 
@@ -95,7 +98,9 @@ def game_loop(args : argparse.ArgumentParser):
         spawned_vehicles.append(ego)
         # -- Setup Agent --
 
-        behavior = LunaticAgentSettings(
+        behavior = LunaticAgentSettings.from_yaml(args.agent.config)
+        behavior = OmegaConf.merge(behavior,
+        #behavior = LunaticAgentSettings(
             {'controls':{ "max_brake" : 1.0, 
                         'max_steering' : 0.25},
             'speed': {'target_speed': 33.0,
@@ -109,7 +114,7 @@ def game_loop(args : argparse.ArgumentParser):
                 "random_right_lanechange_percentage": 0.45,
             },
             'rss': {'enabled': True, 
-                    'use_stay_on_road_feature': False},
+                    'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False) if AD_RSS_AVAILABLE else False,},
             "planner": {
                 "dt" : game_framework.world_settings.fixed_delta_seconds or 1/args.fps,
                 "min_distance_next_waypoint" : 2.0,
@@ -124,9 +129,15 @@ def game_loop(args : argparse.ArgumentParser):
             pprint(behavior)
             print(behavior.to_yaml())
         
-        agent, world_model, global_planner, controller \
-            = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
+        # TEMP # Test external actor, do not pass ego
+        if args.externalActor:
+            agent, world_model, global_planner, controller \
+                = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
                     overwrites=behavior)
+        else:
+            agent, world_model, global_planner, controller \
+                = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
+                        overwrites=behavior)
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
@@ -149,11 +160,22 @@ def game_loop(args : argparse.ArgumentParser):
         agent.set_destination(left_last_wp)
         
         def loop():
-            ctx : Context = None
             agent.verify_settings()
-            while True:
+            while game_framework.continue_loop:
+                # Loop with traffic_manager
+                if controller._autopilot_enabled:
+                    if controller.parse_events(None):
+                        return
+                    continue
+                # Agent Loop
                 with game_framework:
                     final_control = agent.run_step(debug=True)
+                    
+                    agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=final_control)
+                    if isinstance(world_model.controller, RSSKeyboardControl):
+                        if controller.parse_events(agent.get_control()):
+                            return
+                    agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
                     
                     agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=final_control)
                     agent.apply_control() # Note Uses control from agent.ctx.control in case of last Phase changed it.
@@ -168,9 +190,27 @@ def game_loop(args : argparse.ArgumentParser):
                     
                     matrix = agent.road_matrix  # TEMP
                     if matrix is not None:
-                        pprint(matrix) # TEMP               
-                                     
-            agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None) # final phase of agents lifetime
+                        pprint(matrix) # TEMP
+                
+                # Continue the Loop from outside
+                if args.loop and not game_framework.continue_loop and agent.done():
+                    # TODO: Rule / Action to define next waypoint
+                    print("The target has been reached, searching for another target")
+                    world_model.hud.notification("Target reached", seconds=4.0)
+                    
+                    # Set new destination
+                    wp = agent._current_waypoint.next(50)[-1]
+                    next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
+                    if next_wp is None:
+                        next_wp = wp
+                    #destination = random.choice(spawn_points).location
+                    destination = next_wp.transform.location
+                    agent.set_destination(destination)
+                    game_framework.continue_loop = True
+                    agent.execute_phase(Phase.DONE| Phase.END, prior_results=None)
+            
+             # final phase of agents lifetime                  
+            agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None)
 
         # Interactive
         if "-I" in sys.argv:
@@ -190,18 +230,17 @@ def game_loop(args : argparse.ArgumentParser):
         if agent is not None:
             agent.destroy_sensor()
         if world_model is not None:
-            world_model.actors.extend(spawned_vehicles)
             world_settings = world_model.world.get_settings()
             world_settings.synchronous_mode = False
             world_settings.fixed_delta_seconds = None
             world_model.world.apply_settings(world_settings)
             traffic_manager.set_synchronous_mode(False)
-            world_model.destroy()
-            ego = None
-        elif game_framework is not None:
+            world_model.destroy(destroy_ego=False)
+        if game_framework is not None:
             game_framework.client.apply_batch([carla.command.DestroyActor(x) for x in spawned_vehicles])
+            ego = None
         
-        try:
+        try: # NOTE: Currently not used
             if ego is not None:
                 ego.destroy()
         except (NameError, AttributeError) as e:
@@ -215,22 +254,15 @@ def game_loop(args : argparse.ArgumentParser):
 # -- main() --------------------------------------------------------------
 # ==============================================================================
 
-
-def main():
+@hydra.main(version_base=None, config_path="./conf", config_name="launch_config")
+def main(args: DictConfig):
     """Main method"""
-
-    args = launch_tools.argument_parsing.main_parser().parse_args()
-    
-    # Overrides
-    args.loop = True
-    args.agent = "Lunatic"
-
-    args.width, args.height = [int(x) for x in args.res.split('x')]
+    print("Launch Arguments\n", OmegaConf.to_yaml(args))  
 
     log_level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
-
-    logging.info('listening to server %s:%s', args.host, args.port)
+    
+    logger.setLevel(log_level)
+    logger.info('listening to server %s:%s', args.host, args.port)
 
     print(__doc__)
 

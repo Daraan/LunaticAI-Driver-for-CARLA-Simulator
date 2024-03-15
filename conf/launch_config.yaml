@@ -1,0 +1,39 @@
+verbose: True
+debug: True
+interactive: False
+seed: null
+
+# carla_service:
+map: "Town04"
+host: "127.0.0.1"
+port: 2000
+fps: 20
+sync: False
+
+loop: True
+
+# camera:
+width: 1280
+height: 720
+gamma: 2.2
+
+# Actor
+externalActor: True
+rolename: "hero"
+filter: "vehicle.*"
+generation: 2
+autopilot: False
+
+agent:
+  class_name: "LunaticAgent"
+  config: "conf/lunatic_agent_settings.yaml"
+
+# Disable Hydra logging
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+defaults:
+  - override hydra/hydra_logging: disabled  
+  - override hydra/job_logging: disabled  

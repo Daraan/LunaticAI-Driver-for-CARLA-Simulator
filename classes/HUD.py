@@ -104,9 +104,10 @@ class HUD(object):
             u'Heading:% 16.0f\N{DEGREE SIGN} % 2s' % (transform.rotation.yaw, heading),
             #  TODO maybe 'Heading: % 20.2f' % math.radians(transform.rotation.yaw),
             'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (transform.location.x, transform.location.y)),
-            'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (world.gnss_sensor.lat, world.gnss_sensor.lon)),
-            'Height:  % 18.0f m' % transform.location.z,
-            '']
+            'Height:  % 18.0f m' % transform.location.z,]
+        if world.gnss_sensor:
+            self._info_text.append('GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (world.gnss_sensor.lat, world.gnss_sensor.lon)))
+        self._info_text.append('') # empty line
         if isinstance(control, carla.VehicleControl):
             if self.original_vehicle_control:
                 orig_control = self.original_vehicle_control
