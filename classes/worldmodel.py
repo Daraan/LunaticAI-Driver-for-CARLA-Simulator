@@ -421,6 +421,21 @@ class WorldModel(AccessCarlaDataProviderMixin):
                 return actor
         return None
 
+    def _wait_for_external_actor(self, timeout=20, sleep=3) -> carla.Actor:
+        import time
+        self.tick_server_world() # Tick the world?
+        start = time.time()
+        t = start
+        while t > start + timeout:
+            player = self._find_external_actor(self.world, self.actor_role_name)
+            if player is not None:
+                return player
+            logger.info("...External actor %s not found. Waiting to find external actor %s", self.actor_role_name)
+            time.sleep(sleep) # Note if on same thread, nothing will happen. Put function into thread?
+            self.tick_server_world() # Tick the world?
+        logger.error("External actor `%s` not found. Exiting...", self.actor_role_name)
+        sys.exit(1)
+
     def restart(self):
         """Restart the world"""
         # Keep same camera config if the camera manager exists.
@@ -430,18 +445,11 @@ class WorldModel(AccessCarlaDataProviderMixin):
         if self.external_actor:
             # Check whether there is already an actor with defined role name
             actor_list = self.world.get_actors() # In sync mode the actor list could be empty
-            if len(actor_list) == 0:
-                self.tick_server_world() 
-                actor_list = self.world.get_actors()
             self.player = self._find_external_actor(self.world, self.actor_role_name, actor_list)
-            
+            if self.player is None:
+                self.player = assure_type(carla.Vehicle, 
+                                self._wait_for_external_actor(timeout=20))
             # TODO: Make this more nicer, see maybe scenario runner how to wait for spawn. Only do tick if in sync mode. Async wait.
-            if self.player is None:
-                self.tick_server_world() 
-                self.player = assure_type(carla.Vehicle, self._find_external_actor(self.world, self.actor_role_name))
-            if self.player is None:
-                print("Error: No actor found with role name: " + self.actor_role_name)
-                sys.exit(1)
             elif TYPE_CHECKING:
                 self.player = assure_type(carla.Vehicle, self.player)
         else:
@@ -531,7 +539,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.tick_server_world()
 
     def tick_server_world(self):
-        if self.sync:
+        if self.sync: #TODO: What if ticks are handled externally?
             return self.world.tick()
         return self.world.wait_for_tick()
 
