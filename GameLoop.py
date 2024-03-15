@@ -1,104 +1,111 @@
+import random
+import threading
 import time
+from asyncio import Queue
 
 import carla
 
-import utils
-from DataGathering.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car, \
-    check_ego_on_highway, create_city_matrix, detect_surronding_cars
-from classes.carla_service import CarlaService
-from classes.driver import Driver
-from classes.traffic_manager_daniel import TrafficManagerD
-from classes.vehicle import Vehicle
+from DataGathering.informationUtils import get_all_road_lane_ids
+from DataGathering.matrix_wrap import get_car_coords
+from DataGathering.run_matrix import DataMatrix
+from utils.Camera import camera_function
+from VehicleSpawning.vehicle_spawner import VehicleSpawner
 
+spawner = None
 vehicles = []
+
+# Define a constant for minimum distance to trigger emergency braking
+MIN_DISTANCE_TO_BRAKE = 10  # Adjust as needed
 
 
 def main():
-    global client
-    carlaService = CarlaService("Town04", "127.0.0.1", 2000)
-    client = carlaService.client
+    global spawner, vehicles
 
-    world = carlaService.getWorld()
-    world_map = world.get_map()
-    ego_bp, car_bp = utils.prepare_blueprints(world)
+    # Initialise the class for vehicle spawning
+    spawner = VehicleSpawner('VehicleSpawning/config/vehicle_spawn.yaml')
+    spawner.initialize_carla_service()
+    world, world_map = spawner.setup_world()
+    ego_bp, car_bp, driver1, spawn_points, rule_interpreter = spawner.prepare_vehicles(world)
 
-    driver1 = Driver("config/default_driver.json", traffic_manager=client)
+    # Spawn vehicles and assign drivers
+    ego = spawner.spawn_vehicles(world, ego_bp, spawn_points)
+    ego_vehicle = spawner.assign_drivers(ego, driver1)
 
-    spawn_points = utils.csv_to_transformations("examples/highway_example_car_positions.csv")
+    # Spawn traffic
+    vehicles, tm = spawner.spawn_traffic(world, car_bp, spawn_points, driver1, ego.vehicle)
 
-    # Spawn Ego
-    ego = Vehicle(world, ego_bp)
-    try:
-        ego.spawn(spawn_points[0])
-    except:
-        pass
-
-    vehicles.append(ego)
-    carlaService.assignDriver(ego, driver1)
-
-    ego_vehicle = ego.actor
-    vehicle_type = ego_vehicle.type_id
-
-    # spawn others
-    for sp in spawn_points[1:]:
-        v = Vehicle(world, car_bp)
-        v.spawn(sp)
-        vehicles.append(v)
-        ap = TrafficManagerD(client, v.actor)
-        ap.init_passive_driver()
-        ap.start_drive()
-
-    tm = TrafficManagerD(client, ego.actor)
-    tm.init_lunatic_driver()
-    tm.start_drive()
-
-    # Define the radius to search for other vehicles
-    radius = 100
-
-    # Initialize speed of ego_vehicle to use as global variable
+    # Initialize loop variables
     world.tick()
-    highway_shape = None
     road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
-    df = initialize_dataframe()
-    t_end = time.time() + 10
+    t_end = time.time() + 10000
+
+    # Create a thread for the camera functionality
+    camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
+    camera_thread.start()
+
+    # Initialize matrix thread
+    data_matrix = DataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+
     while time.time() < t_end:
         try:
-            follow_car(ego_vehicle, world)
-            ego_location = ego_vehicle.get_location()
-            ego_waypoint = world_map.get_waypoint(ego_location)
-            ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)
+            pass
+            # Retrieve the latest matrix from the matrix thread
+            matrix = data_matrix.getMatrix()
 
-            current_lanes = []
-            for id in road_lane_ids:
-                if str(ego_waypoint.road_id) == id.split("_")[0]:
-                    current_lanes.append(int(id.split("_")[1]))
+            if matrix is None:
+                continue
 
-            # Normal Road
-            if ego_on_highway:
-                street_type = "On highway"
-            else:
-                street_type = "Non highway street"
-            matrix = create_city_matrix(ego_location, road_lane_ids, world_map)
+            (i_car, j_car) = get_car_coords(matrix)
+            results = rule_interpreter.execute_all_functions(driver1, matrix, i_car, j_car, tm)
 
-            if matrix:
-                matrix, _ = detect_surronding_cars(
-                    ego_location, ego_vehicle, matrix, road_lane_ids, world, radius, ego_on_highway, highway_shape
-                )
-
-            for i in matrix:
-                if matrix[i] == [3, 3, 3, 3, 3, 3, 3, 3]:
+            overtake_direction = 0
+            # Random lane change
+            overtake_choice = random.randint(1, 100)
+            if overtake_choice <= driver1.risky_overtake_chance:
+                if matrix[i_car + 1][j_car + 1] == 3 and matrix[i_car - 1][j_car + 1] == 3:
                     continue
-                print(i, matrix[i])
-            print(street_type)
+                elif matrix[i_car + 1][j_car + 1] == 3:
+                    tm.force_overtake(100, -1)
+                elif matrix[i_car - 1][j_car + 1] == 3:
+                    tm.force_overtake(100, 1)
+                else:
+                    overtake_direction = random.choice([-1, 1])
+                    tm.force_overtake(100, overtake_direction)
+                print("Random lane change")
+                continue
 
-            # clock.tick_busy_loop(60)
-            time.sleep(0.5)
-            world.tick()
+            if matrix[i_car + 1][j_car + 1] == 0:
+                # print("can overtake on right")
+                overtake_direction = 1
+            if matrix[i_car - 1][j_car + 1] == 0:
+                # print("can overtake on left")
+                overtake_direction = -1
+
+            # Overtake logic
+            if matrix[i_car][j_car + 1] == 2 or matrix[i_car][j_car + 2] == 2:
+                overtake_choice = random.randint(1, 100)
+                if overtake_choice >= driver1.overtake_mistake_chance:
+                    tm.force_overtake(100, overtake_direction)
+                    print("overtake!")
+                    continue
+                else:
+                    print("overtake averted by chance")
+
+            # Brake logic
+            if matrix[i_car][j_car + 1] == 2:
+                # Check distance to obstacle
+                distance_to_obstacle = j_car + 1
+                if distance_to_obstacle < MIN_DISTANCE_TO_BRAKE:
+                    # Apply emergency braking
+                    driver1.vehicle.setBrake(1)  # Adjust brake intensity as needed
+                    print("Emergency braking activated!")
 
         except Exception as e:
-            continue
+            print(e.__str__())
 
     input("press any key to end...")
+    data_matrix.stop()
+    camera_thread.join()
 
 
 if __name__ == '__main__':
@@ -106,7 +113,7 @@ if __name__ == '__main__':
         main()
     finally:
         try:
-            client.apply_batch([carla.command.DestroyActor(x.actor) for x in vehicles])
+            if spawner and spawner.client:
+                spawner.client.apply_batch([carla.command.DestroyActor(x.actor) for x in vehicles])
         except NameError:
-            # Should be client not defined
             pass
