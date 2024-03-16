@@ -28,12 +28,18 @@ agent:
   class_name: "LunaticAgent"
   config: "conf/lunatic_agent_settings.yaml"
 
+defaults:
+  # _self_ described where this config should be placed; at first position => every config can overwrite it
+  - _self_
+  - agent : conf/lunatic_agent_settings.yaml
 # Disable Hydra logging
+  - override hydra/hydra_logging: disabled
+# Disable writting the output of the run to a .log file
+  - override hydra/job_logging: disabled  
+
 hydra:
-  output_subdir: null
+  # creates no .hydra subfolder that stores the runs config
+  # output_subdir: null
+  # Will output in the top-level (?)
   run:
     dir: .
-
-defaults:
-  - override hydra/hydra_logging: disabled  
-  - override hydra/job_logging: disabled  
