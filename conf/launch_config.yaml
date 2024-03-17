@@ -8,7 +8,7 @@ map: "Town04"
 host: "127.0.0.1"
 port: 2000
 fps: 20
-sync: False
+sync: True
 
 loop: True
 
@@ -31,24 +31,44 @@ agent: ???
 defaults:
   # _self_ described where this config should be placed; at first position => every config can overwrite it
   - _self_
-  # Describes the default settings, must have all entries.
+
+  # -------------------------------------------
+  #        Agent Default Configuration 
+  # -------------------------------------------
+  # Describes the default settings.
   # <filename>@agent
+  # -------------------------------------------
   - lunatic_agent_settings@agent
 
-  # Extensions to the default settings, which are separated
-  - config_extensions/interpolation@agent
-  - config_extensions/live_info@agent.live_info
+  # -------------------------------------------
+  # Extensions to the default settings
+  # These files are utility or not often used settings
+  # -------------------------------------------
+  # LocalPlanner settings
   - config_extensions/planner@agent.planner
-  # Overwrite the default settings, with partial config from the experiements subfolder
-  # e.g. python my_file.py "experiments@agent=[test_experiment, test_experiment2]"
+  # Interpolation / Aliases
+  - config_extensions/interpolation@agent
+  # Only available during runtime
+  - config_extensions/live_info@agent.live_info
+
+  # -------------------------------------------
+  #    Experiments (fine granular changes)
+  # ------------------------------------------- 
+  # Overwrite the default settings, with partial config from the experiments subfolder
+  # e.g. 
+  #   python my_file.py "experiments@agent=[test_experiment, test_experiment2]"
+  #
+  # NOTE: to use another directory you need to add + sign in the command line
+  #   python my_file.py +<directory_name>@agent=<file_name in directory>"
+  # -------------------------------------------
   - experiments@agent : null
-  # to use another directory you need a + sign
-  # python my_file.py +<directory_name>@agent=<file_name in directory>"
+  
+# --------------- HYDRA ----------------------- 
 
 # Disable Hydra logging
   - override hydra/hydra_logging: disabled
 # Disables ALL loggers # TODO: but introduces hydras own handler find way to remove.
-#  - override hydra/job_logging: disabled  
+# - override hydra/job_logging: disabled  
 
 hydra:
   # creates no .hydra subfolder that stores the runs config
