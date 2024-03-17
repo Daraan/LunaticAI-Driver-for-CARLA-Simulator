@@ -7,6 +7,7 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
+from collections.abc import Mapping
 import signal
 import sys
 import argparse
@@ -73,8 +74,62 @@ def game_loop(args : argparse.ArgumentParser):
     
     args.seed = 631 # TEMP
 
+    # -- Load Settings Agent --
+
+    print("Creating settings")
+    # TODO: Pack this in some utility function
+    if isinstance(args.agent, dict):
+        logger.debug("Using agent settings from dict")
+        behavior = LunaticAgentSettings(**args.agent)
+    elif isinstance(args.agent, str):
+        logger.info("Using agent settings from file `%s`", args.agent)
+        behavior = LunaticAgentSettings.from_yaml(args.agent)
+        behavior = OmegaConf.merge(behavior,
+        #behavior = LunaticAgentSettings(
+            {'controls':{ "max_brake" : 1.0, 
+                        'max_steering' : 0.25},
+            'speed': {'target_speed': 33.0,
+                        'max_speed' : 50,
+                        'follow_speed_limits' : False,
+                        'speed_decrease' : 15,
+                            'safety_time' : 7,
+                            'min_speed' : 0 },
+            'lane_change' : {
+                "random_left_lanechange_percentage": 0.45,
+                "random_right_lanechange_percentage": 0.45,
+            },
+            'rss': {'enabled': True, 
+                    'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False) if AD_RSS_AVAILABLE else False},
+            "planner": {
+                "dt" : game_framework.world_settings.fixed_delta_seconds or 1/args.fps,
+                "min_distance_next_waypoint" : 2.0,
+            }
+            })
+    elif is_dataclass(args.agent) or isinstance(args.agent, DictConfig):
+        logger.info("Using agent settings hydra interface")
+        behavior = args.agent
+    else:
+        logger.warning("Type `%s` of launch argument type `agent` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args.agent))
+        behavior = args.agent
+    # TEMP
+    import classes.worldmodel
+    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
+    
+    if PRINT_CONFIG:
+        print("    \n\n\n")
+        pprint(behavior)
+        from conf.agent_settings import AgentConfig
+        if isinstance(behavior, AgentConfig):
+            print(behavior.to_yaml())
+        else:
+            try:
+                print(OmegaConf.to_yaml(behavior))
+            except Exception as e:
+                pprint(behavior)
     try:
+        print("Creating game framework:...", end="")
         game_framework = GameFramework(args)
+        print("Done")
         
         # -- Spawn Vehicles --
         all_spawn_points = game_framework.map.get_spawn_points()
@@ -96,40 +151,9 @@ def game_loop(args : argparse.ArgumentParser):
         start : carla.libcarla.Transform = spawn_points[0]
         ego = game_framework.world.spawn_actor(ego_bp, start)
         spawned_vehicles.append(ego)
-        # -- Setup Agent --
-
-        behavior = LunaticAgentSettings.from_yaml(args.agent.config)
-        behavior = OmegaConf.merge(behavior,
-        #behavior = LunaticAgentSettings(
-            {'controls':{ "max_brake" : 1.0, 
-                        'max_steering' : 0.25},
-            'speed': {'target_speed': 33.0,
-                        'max_speed' : 50,
-                        'follow_speed_limits' : False,
-                        'speed_decrease' : 15,
-                            'safety_time' : 7,
-                            'min_speed' : 0 },
-            'lane_change' : {
-                "random_left_lanechange_percentage": 0.45,
-                "random_right_lanechange_percentage": 0.45,
-            },
-            'rss': {'enabled': True, 
-                    'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False) if AD_RSS_AVAILABLE else False,},
-            "planner": {
-                "dt" : game_framework.world_settings.fixed_delta_seconds or 1/args.fps,
-                "min_distance_next_waypoint" : 2.0,
-             }
-            })
-        # TEMP
-        import classes.worldmodel
-        classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
-        
-        if PRINT_CONFIG:
-            print("    \n\n\n")
-            pprint(behavior)
-            print(behavior.to_yaml())
         
         # TEMP # Test external actor, do not pass ego
+        print("Creating agent and WorldModel:...", end="")
         if args.externalActor:
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
@@ -138,6 +162,7 @@ def game_loop(args : argparse.ArgumentParser):
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
                         overwrites=behavior)
+        print("Done")
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
