@@ -24,11 +24,21 @@ filter: "vehicle.*"
 generation: 2
 autopilot: False
 
+# Agent
+# Should be set by another file, see defaults
+agent: ???
+
 defaults:
   # _self_ described where this config should be placed; at first position => every config can overwrite it
   - _self_
   # Describes the default settings, must have all entries.
+  # <filename>@agent
   - lunatic_agent_settings@agent
+
+  # Extensions to the default settings, which are separated
+  - config_extensions/interpolation@agent
+  - config_extensions/live_info@agent.live_info
+  - config_extensions/planner@agent.planner
   # Overwrite the default settings, with partial config from the experiements subfolder
   # e.g. python my_file.py "experiments@agent=[test_experiment, test_experiment2]"
   - experiments@agent : null
@@ -37,12 +47,12 @@ defaults:
 
 # Disable Hydra logging
   - override hydra/hydra_logging: disabled
-# Disable writting the output of the run to a .log file
-  - override hydra/job_logging: disabled  
+# Disables ALL loggers # TODO: but introduces hydras own handler find way to remove.
+#  - override hydra/job_logging: disabled  
 
 hydra:
   # creates no .hydra subfolder that stores the runs config
-  # output_subdir: null
+  output_subdir: null
   # Will output in the top-level (?)
   run:
     dir: .
