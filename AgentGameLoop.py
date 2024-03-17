@@ -249,17 +249,19 @@ def game_loop(args : argparse.ArgumentParser):
             thread.join()
         else:
             loop()
-
+    except Exception as e:
+        logger.error("Exception in game loop", exc_info=True)
     finally:
         print("Quitting. - Destroying actors and stopping world.")
         if agent is not None:
             agent.destroy_sensor()
-        if world_model is not None:
-            world_settings = world_model.world.get_settings()
+        if game_framework is not None:
+            world_settings = game_framework.world.get_settings()
             world_settings.synchronous_mode = False
             world_settings.fixed_delta_seconds = None
-            world_model.world.apply_settings(world_settings)
+            game_framework.world.apply_settings(world_settings)
             traffic_manager.set_synchronous_mode(False)
+        if world_model is not None:
             world_model.destroy(destroy_ego=False)
         if game_framework is not None:
             game_framework.client.apply_batch([carla.command.DestroyActor(x) for x in spawned_vehicles])
