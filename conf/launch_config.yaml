@@ -24,16 +24,25 @@ filter: "vehicle.*"
 generation: 2
 autopilot: False
 
-agent:
-  class_name: "LunaticAgent"
-  config: "conf/lunatic_agent_settings.yaml"
+defaults:
+  # _self_ described where this config should be placed; at first position => every config can overwrite it
+  - _self_
+  # Describes the default settings, must have all entries.
+  - lunatic_agent_settings@agent
+  # Overwrite the default settings, with partial config from the experiements subfolder
+  # e.g. python my_file.py "experiments@agent=[test_experiment, test_experiment2]"
+  - experiments@agent : null
+  # to use another directory you need a + sign
+  # python my_file.py +<directory_name>@agent=<file_name in directory>"
 
 # Disable Hydra logging
+  - override hydra/hydra_logging: disabled
+# Disable writting the output of the run to a .log file
+  - override hydra/job_logging: disabled  
+
 hydra:
-  output_subdir: null
+  # creates no .hydra subfolder that stores the runs config
+  # output_subdir: null
+  # Will output in the top-level (?)
   run:
     dir: .
-
-defaults:
-  - override hydra/hydra_logging: disabled  
-  - override hydra/job_logging: disabled  
