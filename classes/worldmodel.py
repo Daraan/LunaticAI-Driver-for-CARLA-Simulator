@@ -306,6 +306,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         
         self._config = config
         if not isinstance(args, Mapping):
+            # Args is expeced to be a string here
             # NOTE: THis does NOT INCLUDE CLI OVERWRITES
             args = OmegaConf.load(args)
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.

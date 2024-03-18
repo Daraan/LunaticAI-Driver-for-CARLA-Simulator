@@ -99,7 +99,7 @@ class LunaticAgent(BehaviorAgent):
             logger.debug("A config was passed, using it as is.")
         
         #world_model = WorldModel(config, args, carla_world=sim_world, player=vehicle, map_inst=map_inst)
-        world_model = WorldModel(config, carla_world=sim_world, player=vehicle, map_inst=map_inst) # TEST: without args
+        world_model = WorldModel(config, args=args, carla_world=sim_world, player=vehicle, map_inst=map_inst) # TEST: without args
         config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
         agent = cls(config, world_model, grp_inst=grp_inst)
