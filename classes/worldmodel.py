@@ -24,7 +24,7 @@ from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundin
 from classes.keyboard_controls import RSSKeyboardControl
 
 if TYPE_CHECKING:
-    from conf.agent_settings import LunaticAgentSettings
+    from agents.tools.config_creation import LunaticAgentSettings
     from agents.lunatic_agent import LunaticAgent
 
 from classes.HUD import get_actor_display_name
@@ -32,7 +32,7 @@ from launch_tools.blueprint_helpers import get_actor_blueprints
 from agents.tools.logging import logger
 
 try:
-    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider # type: ignore
     logger.info("Using CarlaDataProvider from srunner module.")
 except ImportError:
     try:
@@ -426,7 +426,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.tick_server_world() # Tick the world?
         start = time.time()
         t = start
-        while t > start + timeout:
+        while t < start + timeout:
             player = self._find_external_actor(self.world, self.actor_role_name)
             if player is not None:
                 return player
@@ -434,6 +434,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
             time.sleep(sleep) # Note if on same thread, nothing will happen. Put function into thread?
             self.tick_server_world() # Tick the world?
         logger.error("External actor `%s` not found. Exiting...", self.actor_role_name)
+        print("External actor `%s` not found. Exiting..." % self.actor_role_name)
         sys.exit(1)
 
     def restart(self):

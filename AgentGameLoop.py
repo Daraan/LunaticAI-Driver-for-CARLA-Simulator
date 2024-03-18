@@ -7,13 +7,15 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
+from collections.abc import Mapping
+from dataclasses import is_dataclass
 import signal
 import sys
 import argparse
 import logging
 import threading
 import random
-from typing import List
+from typing import List, Union
 from pprint import pprint
 
 import pygame
@@ -30,7 +32,7 @@ from omegaconf import DictConfig, OmegaConf
 import carla 
     
 import launch_tools
-from conf.agent_settings import LunaticAgentSettings
+from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
 from classes.rule import Context, Rule
 
@@ -61,7 +63,7 @@ FPS = 10
 # -- Game Loop ---------------------------------------------------------
 # ==============================================================================
 
-def game_loop(args : argparse.ArgumentParser):
+def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     """
     Main loop of the simulation. It handles updating all the HUD information,
     ticking the agent and, if needed, the world.
@@ -73,8 +75,63 @@ def game_loop(args : argparse.ArgumentParser):
     
     args.seed = 631 # TEMP
 
+    # -- Load Settings Agent --
+
+    print("Creating settings")
+    # TODO: Pack this in some utility function
+    if isinstance(args.agent, dict):
+        logger.debug("Using agent settings from dict with LunaticAgentSettings.")
+        behavior = LunaticAgentSettings(**args.agent)
+    elif isinstance(args.agent, str):
+        logger.info("Using agent settings from file `%s`", args.agent)
+        behavior = LunaticAgentSettings.from_yaml(args.agent)
+        
+        # TEMP:
+        behavior = OmegaConf.merge(behavior,
+            {'controls':{ "max_brake" : 1.0, 
+                        'max_steering' : 0.25},
+            'speed': {'target_speed': 33.0,
+                        'max_speed' : 50,
+                        'follow_speed_limits' : False,
+                        'speed_decrease' : 15,
+                            'safety_time' : 7,
+                            'min_speed' : 0 },
+            'lane_change' : {
+                "random_left_lanechange_percentage": 0.45,
+                "random_right_lanechange_percentage": 0.45,
+            },
+            'rss': {'enabled': True, 
+                    'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False) if AD_RSS_AVAILABLE else False},
+            "planner": {
+                "dt" : game_framework.world_settings.fixed_delta_seconds or 1/args.fps,
+                "min_distance_next_waypoint" : 2.0,
+            }
+            })
+    elif is_dataclass(args.agent) or isinstance(args.agent, DictConfig):
+        logger.info("Using agent settings hydra interface")
+        behavior = args.agent
+    else:
+        logger.warning("Type `%s` of launch argument type `agent` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args.agent))
+        behavior = args.agent
+    # TEMP
+    import classes.worldmodel
+    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
+    
+    if PRINT_CONFIG:
+        print("    \n\n\n")
+        pprint(behavior)
+        from agents.tools.config_creation import AgentConfig
+        if isinstance(behavior, AgentConfig):
+            print(behavior.to_yaml())
+        else:
+            try:
+                print(OmegaConf.to_yaml(behavior))
+            except Exception as e:
+                pprint(behavior)
     try:
+        logger.info("Creating Game Framework ...")
         game_framework = GameFramework(args)
+        logger.debug("Created Game Framework.\n")
         
         # -- Spawn Vehicles --
         all_spawn_points = game_framework.map.get_spawn_points()
@@ -96,40 +153,9 @@ def game_loop(args : argparse.ArgumentParser):
         start : carla.libcarla.Transform = spawn_points[0]
         ego = game_framework.world.spawn_actor(ego_bp, start)
         spawned_vehicles.append(ego)
-        # -- Setup Agent --
-
-        behavior = LunaticAgentSettings.from_yaml(args.agent.config)
-        behavior = OmegaConf.merge(behavior,
-        #behavior = LunaticAgentSettings(
-            {'controls':{ "max_brake" : 1.0, 
-                        'max_steering' : 0.25},
-            'speed': {'target_speed': 33.0,
-                        'max_speed' : 50,
-                        'follow_speed_limits' : False,
-                        'speed_decrease' : 15,
-                            'safety_time' : 7,
-                            'min_speed' : 0 },
-            'lane_change' : {
-                "random_left_lanechange_percentage": 0.45,
-                "random_right_lanechange_percentage": 0.45,
-            },
-            'rss': {'enabled': True, 
-                    'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False) if AD_RSS_AVAILABLE else False,},
-            "planner": {
-                "dt" : game_framework.world_settings.fixed_delta_seconds or 1/args.fps,
-                "min_distance_next_waypoint" : 2.0,
-             }
-            })
-        # TEMP
-        import classes.worldmodel
-        classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
-        
-        if PRINT_CONFIG:
-            print("    \n\n\n")
-            pprint(behavior)
-            print(behavior.to_yaml())
         
         # TEMP # Test external actor, do not pass ego
+        logger.info("Creating agent and WorldModel ...")
         if args.externalActor:
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
@@ -138,6 +164,7 @@ def game_loop(args : argparse.ArgumentParser):
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
                         overwrites=behavior)
+        logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
@@ -199,12 +226,17 @@ def game_loop(args : argparse.ArgumentParser):
                     world_model.hud.notification("Target reached", seconds=4.0)
                     
                     # Set new destination
+                    # Choose a random point anywhere
+                    #destination = random.choice(spawn_points).location
+                    
+                    # Choose a random point nearby.
                     wp = agent._current_waypoint.next(50)[-1]
                     next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
                     if next_wp is None:
                         next_wp = wp
-                    #destination = random.choice(spawn_points).location
                     destination = next_wp.transform.location
+                    
+                    # Set new destination and indicate that we continue
                     agent.set_destination(destination)
                     game_framework.continue_loop = True
                     agent.execute_phase(Phase.DONE| Phase.END, prior_results=None)
@@ -224,17 +256,19 @@ def game_loop(args : argparse.ArgumentParser):
             thread.join()
         else:
             loop()
-
+    except Exception as e:
+        logger.error("Exception in game loop", exc_info=True)
     finally:
         print("Quitting. - Destroying actors and stopping world.")
         if agent is not None:
             agent.destroy_sensor()
-        if world_model is not None:
-            world_settings = world_model.world.get_settings()
+        if game_framework is not None:
+            world_settings = game_framework.world.get_settings()
             world_settings.synchronous_mode = False
             world_settings.fixed_delta_seconds = None
-            world_model.world.apply_settings(world_settings)
+            game_framework.world.apply_settings(world_settings)
             traffic_manager.set_synchronous_mode(False)
+        if world_model is not None:
             world_model.destroy(destroy_ego=False)
         if game_framework is not None:
             game_framework.client.apply_batch([carla.command.DestroyActor(x) for x in spawned_vehicles])
@@ -255,9 +289,9 @@ def game_loop(args : argparse.ArgumentParser):
 # ==============================================================================
 
 @hydra.main(version_base=None, config_path="./conf", config_name="launch_config")
-def main(args: DictConfig):
+def main(args: LaunchConfig):
     """Main method"""
-    print("Launch Arguments\n", OmegaConf.to_yaml(args))  
+    #print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")  
 
     log_level = logging.DEBUG if args.debug else logging.INFO
     
@@ -273,7 +307,6 @@ def main(args: DictConfig):
         
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
-
 
 if __name__ == '__main__':
     main()

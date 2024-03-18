@@ -41,7 +41,7 @@ from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, D
 from classes.constants import Phase, Hazard
 from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import Context, Rule
-from conf.agent_settings import AgentConfig, LiveInfo, LunaticAgentSettings
+from agents.tools.config_creation import AgentConfig, LiveInfo, LunaticAgentSettings
 
 from classes.worldmodel import WorldModel, CarlaDataProvider
 from classes.keyboard_controls import RSSKeyboardControl

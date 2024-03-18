@@ -1,48 +1,116 @@
-verbose: True
-debug: True
-interactive: False
-seed: null
 
-# carla_service:
+# Carla Service:
 map: "Town04"
 host: "127.0.0.1"
 port: 2000
+sync: True
 fps: 20
-sync: False
 
-loop: True
+# Random (GameFramework):
+seed: null
 
-# camera:
+# Camera:
 width: 1280
 height: 720
 gamma: 2.2
 
 # Actor
-externalActor: True
-rolename: "hero"
-filter: "vehicle.*"
-generation: 2
+
+# Use autopilot instead of agent system
 autopilot: False
 
+# - External Actor
+# Use an external actor from another process, the code will wait until an actor with `rolename` is found
+externalActor: True
+# The role name that is looked for in the actor list, if externalActor is True
+rolename: "hero"
+
+# Vehicle Model
+filter: "vehicle.*"
+generation: 2
+
+# -------------------------------------------------
+
+# The below settings might need to be implemented manually, see the AgentGameLoop.py file how they are used
+
+loop: True
+
+# If True sets the log level to DEBUG 
+debug: True
+
+# After launching to code enter python interactive mode
+interactive: False
+
+# -------------------------------------------------
+
+# Agent Settings
+# This is the key where the agents settings are stored
+# Value is set by other files through the defaults list below.
+agent: ???
+
+# -------------------------------------------------
+# Hydra DefaultList
+# See https://hydra.cc/docs/advanced/defaults_list/
+# -------------------------------------------------
+
 defaults:
-  # _self_ described where this config should be placed; at first position => every config can overwrite it
+  # _self_ described where this config should be placed; at first position => every config can overwrite this file
   - _self_
-  # Describes the default settings, must have all entries.
-  - lunatic_agent_settings@agent
-  # Overwrite the default settings, with partial config from the experiements subfolder
-  # e.g. python my_file.py "experiments@agent=[test_experiment, test_experiment2]"
+
+  # -------------------------------------------
+  #        Agent Default Configuration 
+  # -------------------------------------------
+  # Describes the default settings of the agent.
+  # Format: <filename>@agent
+  # -------------------------------------------
+  - agent_default_settings@agent
+
+  # To use a different defaults setting use:
+  # TODO: figure out and write here
+  # likely needs another file with defaults
+
+  # -------------------------------------------
+  # Extensions to the default settings
+  # These files are utility or not often used settings
+  # -------------------------------------------
+  
+  # LocalPlanner settings
+  - config_extensions/planner@agent.planner
+  
+  # Interpolation / Aliases
+  - config_extensions/interpolation@agent
+  
+  # Only available during runtime
+  - config_extensions/live_info@agent.live_info
+  
+  # Configure the logger to be used
+  - config_extensions/job_logging@hydra.job_logging
+
+  # -------------------------------------------
+  #    Experiments (fine granular changes)
+  # ------------------------------------------- 
+  # Overwrite the default settings, with partial config from the experiments subfolder
+  # e.g. 
+  #   python my_file.py "experiments@agent=[test_experiment, test_experiment2]"
+  #
+  # NOTE: to use another directory you have two options 
+  # 1) add + sign in the command line before the containing folder followed by @agent
+  #    python my_file.py +<directory_name>@agent=<file_name in directory>"
+  # 2) add your directory to the line below, the + sign then does not become necessary.
+  #    <directory_path_in_./conf>@agent : null
+  # -------------------------------------------
   - experiments@agent : null
-  # to use another directory you need a + sign
-  # python my_file.py +<directory_name>@agent=<file_name in directory>"
+  
+# --------------- HYDRA ----------------------- 
 
 # Disable Hydra logging
   - override hydra/hydra_logging: disabled
-# Disable writting the output of the run to a .log file
-  - override hydra/job_logging: disabled  
+# Disables ALL loggers
+# - override hydra/job_logging: disabled  
 
 hydra:
   # creates no .hydra subfolder that stores the runs config
-  # output_subdir: null
-  # Will output in the top-level (?)
+  output_subdir: null
+  # Will output in the top-level
   run:
     dir: .

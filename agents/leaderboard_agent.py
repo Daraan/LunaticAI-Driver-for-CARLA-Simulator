@@ -2,7 +2,7 @@ from omegaconf import OmegaConf
 from agents.lunatic_agent import LunaticAgent
 
 from classes.worldmodel import GameFramework, WorldModel
-from conf.agent_settings import LunaticAgentSettings
+from agents.tools.config_creation import LunaticAgentSettings
 from leaderboard.autoagents.autonomous_agent import AutonomousAgent
 from leaderboard.autoagents.autonomous_agent import Track
 

@@ -1,4 +1,3 @@
-overwrites: {}
 speed:
   target_speed: 20.0
   follow_speed_limits: false

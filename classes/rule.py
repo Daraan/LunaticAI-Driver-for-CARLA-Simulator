@@ -31,7 +31,7 @@ from agents.tools.logging import logger
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
-    from conf.agent_settings import LunaticAgentSettings
+    from agents.tools.config_creation import LunaticAgentSettings
 
 
 class Context:

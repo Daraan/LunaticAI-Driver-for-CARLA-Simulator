@@ -18,7 +18,7 @@ from agents.navigation.local_planner import LocalPlanner, RoadOption, PlannedWay
 from agents.dynamic_planning.dynamic_controller import DynamicVehiclePIDController
 from agents.tools.misc import draw_waypoints, get_speed
 from classes.rss_sensor import RssSensor
-from conf.agent_settings import BasicAgentSettings
+from agents.tools.config_creation import BasicAgentSettings
 
 
 '''

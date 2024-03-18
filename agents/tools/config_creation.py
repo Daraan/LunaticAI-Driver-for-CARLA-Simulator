@@ -42,9 +42,9 @@ __all__ = ["AgentConfig",
            "LunaticAgentSettings",
            "SimpleLunaticAgentSettings",
            "AutopilotBehavior",
+           
+           "LaunchConfig",
         ]
-
-MISSING = "???"
 
 # ---------------------
 # Helper methods
@@ -1063,3 +1063,35 @@ if __name__ == "__main__":
         pass
     #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
     LunaticAgentSettings.export_options("lunatic_agent_settings.yaml")
+
+# ---------------------
+
+@dataclass
+class LaunchConfig:
+    verbose: bool = True
+    debug: bool = True
+    interactive: bool = False
+    seed: Optional[int] = None
+
+    # carla_service:
+    map: str = "Town04"
+    host: str = "127.0.0.1"
+    port: int = 2000
+    fps: int = 20
+    sync: bool = True
+
+    loop: bool = True
+
+    # camera:
+    width: int = 1280
+    height: int = 720
+    gamma: float = 2.2
+
+    # Actor
+    externalActor: bool = True
+    rolename: str = "hero"
+    filter: str = "vehicle.*"
+    generation: int = 2
+    autopilot: bool = False
+    
+    agent : LunaticAgentSettings = MISSING
