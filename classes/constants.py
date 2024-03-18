@@ -65,8 +65,8 @@ class Phase(Flag):
 
     RSS_EVALUATION = auto()
     
-    APPLY_MANUAL_CONTROLS = auto()
     """Applied manually via human user interface."""
+    APPLY_MANUAL_CONTROLS = auto()
 
     EXECUTION = auto() # Out of loop
 
@@ -98,6 +98,9 @@ class Phase(Flag):
     PHASE_5 = EXECUTION # out of loop
 
     EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE | TERMINATING
+    
+    USER_CONTROLLED = APPLY_MANUAL_CONTROLS | EXECUTION | TERMINATING
+    """Phases that might or not be went through as they must be implemented manually by the user."""
 
     NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP
     IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
@@ -119,12 +122,17 @@ class Phase(Flag):
             return Phase.BEGIN | Phase.UPDATE_INFORMATION
         #if self in (Phase.EXECUTION|Phase.END, Phase.DONE| Phase.END) : # End loop
         #    return Phase.NONE
+        if self == Phase.EXECUTION | Phase.BEGIN:
+            return Phase.USER_CONTROLLED # Cannot know what the next phase is
         if Phase.BEGIN in self:
             return (self & ~Phase.BEGIN) | Phase.END
         # Note these should all be END phases
         if Phase.EXCEPTIONS & self:
             #return Phase.EXECUTION | Phase.BEGIN
             return Phase.RSS_EVALUATION | Phase.BEGIN
+        if Phase.USER_CONTROLLED & self:
+            # cannot know what the next phase is
+            return Phase.USER_CONTROLLED | Phase.BEGIN
         if Phase.TERMINATING in self:
             return Phase.NONE
         if Phase.END in self: # Safeguard
@@ -133,15 +141,21 @@ class Phase(Flag):
         return Phase(self.value * 2)
 
     @classmethod
+    def get_user_controlled_phases(cls):
+        return cls.APPLY_MANUAL_CONTROLS, cls.EXECUTION, cls.TERMINATING
+
+    @classmethod
     def get_phases(cls):
-        return cls.get_main_phases() + cls.get_exceptions() + [cls.TERMINATING | cls.BEGIN, cls.TERMINATING | cls.END]
+        return cls.get_main_phases() + cls.get_exceptions() + [p for phase in cls.get_user_controlled_phases() for p in (phase | cls.BEGIN, phase | cls.END)] + [cls.TERMINATING | cls.BEGIN, cls.TERMINATING | cls.END]
 
     @classmethod
     @lru_cache(1)  # < Python3.8
     def get_main_phases(cls):
         main_phases = [cls.NONE, cls.UPDATE_INFORMATION | cls.BEGIN]
         p = main_phases[1].next_phase()
-        while p != main_phases[1]:
+        while p != main_phases[1] and not (p & cls.USER_CONTROLLED):
+            if p & cls.USER_CONTROLLED:
+                raise ValueError("User controlled phase should not be in main phases %s" % p)
             main_phases.append(p)
             p = p.next_phase()
         return main_phases

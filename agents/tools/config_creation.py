@@ -182,7 +182,6 @@ class AgentConfig:
             Exception: If the overwrites cannot be merged into the agent settings.
 
         """
-        print("is mapping", isinstance(LunaticAgentSettings, Mapping), isinstance(LunaticAgentSettings(), Mapping))
         from agents.tools.logging import logger
         behavior : cls
         if isinstance(args_agent, dict):
@@ -201,10 +200,6 @@ class AgentConfig:
         if config_mode is not None:
             logger.debug("Converting agent settings to to container via %s", config_mode)
             behavior = OmegaConf.to_container(behavior, structured_config_mode=config_mode)
-        if dict_config_no_parent and  isinstance(behavior, DictConfig):
-            # Dict config interpolations always use the full path, interpolations might go from the root of the config.
-            # If there is launch_config.agent, with launch config as root, the interpolations will not work.
-            behavior.__dict__["_parent"] = None # Remove parent from
         
         if overwrites:
             if isinstance(behavior, DictConfig):
@@ -215,6 +210,12 @@ class AgentConfig:
                 except:
                     logger.error("Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. config_mode=SCMode.DICT_CONFIG is recommended for this to work.")
                     raise
+        if isinstance(behavior, DictConfig):
+            behavior._set_flag("allow_objects", True)
+            if dict_config_no_parent:
+                # Dict config interpolations always use the full path, interpolations might go from the root of the config.
+                # If there is launch_config.agent, with launch config as root, the interpolations will not work.
+                behavior.__dict__["_parent"] = None # Remove parent from
         return cast(cls, behavior)
         
     

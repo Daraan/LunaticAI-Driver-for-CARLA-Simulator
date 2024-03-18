@@ -65,6 +65,6 @@ emergency:
   - -0.25
   - 0.25
 rss:
-  enabled: true
+  enabled: false
   use_stay_on_road_feature: 'On'
   log_level: info
