@@ -82,17 +82,21 @@ class LunaticAgent(BehaviorAgent):
     # todo: rename in the future
     
     @classmethod
-    def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args, settings_archtype: "Optional[type[AgentConfig]]"=None, overwrites: Dict[str, Any]={}, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None):
+    def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args, settings_archtype: "Optional[type[AgentConfig]]"=None, config:LunaticAgentSettings=None, overwrites: Dict[str, Any]={}, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None):
         
-        config : LunaticAgentSettings
-        if settings_archtype is not None and not isinstance(settings_archtype, type):
-            # is an instance; assuming user passes appropriate config
-            config = settings_archtype
-        elif settings_archtype is not None:
-            behavior = settings_archtype(overwrites)
-            config = behavior.make_config()
+        if config is None:
+            if settings_archtype is not None and not isinstance(settings_archtype, type):
+                logger.debug("Assuming correct config.")
+                config = settings_archtype
+            elif settings_archtype is not None:
+                logger.debug("Creating config from settings_archtype")
+                behavior = settings_archtype(overwrites)
+                config = behavior.make_config()
+            else:
+                logger.debug("Using %s._base_settings %s to create config.", cls.__name__, cls._base_settings)
+                config = cls._base_settings.make_config()
         else:
-            config = cls._base_settings.make_config()
+            logger.debug("A config was passed, using it as is.")
         
         #world_model = WorldModel(config, args, carla_world=sim_world, player=vehicle, map_inst=map_inst)
         world_model = WorldModel(config, carla_world=sim_world, player=vehicle, map_inst=map_inst) # TEST: without args
@@ -123,16 +127,19 @@ class LunaticAgent(BehaviorAgent):
         
         opt_dict : LunaticAgentSettings
         if behavior is None and world_model and world_model._config is not None:
+            logger.debug("Using world model config")
             opt_dict = world_model._config
         elif behavior is None:
             raise ValueError("Must pass a valid config as behavior or a world model with a set config.")
         elif isinstance(behavior, str): # Assuming Path
+            logger.debug("Creating config from yaml file")
             opt_dict : LunaticAgentSettings = LunaticAgentSettings.from_yaml(behavior)
         elif isinstance(behavior, AgentConfig):
-            print("Is valid config")
+            logger.info("Config is a dataclass / AgentConfig")
             opt_dict  = assure_type(behavior.__class__, behavior.make_config())  # base options from templates
             opt_dict.update(overwrite_options) # Note uses DictConfig.update
         elif isinstance(behavior, DictConfig):
+            logger.info("Config is a DictConfig")
             opt_dict : LunaticAgentSettings = behavior
             for k, v in overwrite_options.items():
                 OmegaConf.update(opt_dict, k, v)
@@ -216,11 +223,15 @@ class LunaticAgent(BehaviorAgent):
         self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
         
         # Data Matrix
-        if self._world_model.world_settings.synchronous_mode:
-            self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+        if self.config.data_matrix.enabled:
+            if self.config.data_matrix.sync and self._world_model.world_settings.synchronous_mode:
+                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+            else:
+                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+            self._road_matrix_updater.start()  # TODO maybe find a nicer way
         else:
-            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
-        self._road_matrix_updater.start()  # TODO maybe find a nicer way
+            self._road_matrix_updater = None
+        self._road_matrix_counter = 0 # TODO: Todo make this nicer and maybe get ticks from world.
         
         # Vehicle information
         self.live_info.current_speed = 0
@@ -313,7 +324,13 @@ class LunaticAgent(BehaviorAgent):
         #self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
         
         # Data Matrix
-        self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated in the background.
+        if self._road_matrix_updater:
+            self._road_matrix_counter += 1
+            if (self._road_matrix_counter % self.config.data_matrix.sync_interval) == 0:
+                logger.debug("Updating Road Matrix")
+                self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated in the background.
+            else:
+                logger.debug("Not updating Road Matrix")
         
     def is_taking_turn(self) -> bool:
         return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)

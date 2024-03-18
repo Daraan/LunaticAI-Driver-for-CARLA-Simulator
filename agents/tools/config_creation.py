@@ -158,7 +158,11 @@ class AgentConfig:
         return r
     
     @classmethod
-    def create_from_args(cls, args_agent:"Union[os.PathLike, dict, DictConfig, dataclass]", overwrites:"Optional[Mapping]"=None, config_mode:Optional[SCMode]=SCMode.DICT_CONFIG):
+    def create_from_args(cls, args_agent:"Union[os.PathLike, dict, DictConfig, dataclass]", 
+                         overwrites:"Optional[Mapping]"=None, 
+                         dict_config_no_parent:bool = True,
+                         config_mode:Optional[SCMode]=None # SCMode.DICT_CONFIG # NOTE: DICT_CONFIG is only good when we have a structured config 
+                         ):
         """
         Creates the agent settings based on the provided arguments.
 
@@ -182,8 +186,8 @@ class AgentConfig:
         from agents.tools.logging import logger
         behavior : cls
         if isinstance(args_agent, dict):
-            logger.debug("Using agent settings from dict with LunaticAgentSettings.")
-            behavior = cls(**args_agent)
+            logger.debug("Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a dict config. Interpolations not available.")
+            behavior = cls(**args_agent) # NOTE: Not a dict config
         elif isinstance(args_agent, str):
             logger.info("Using agent settings from file `%s`", args_agent)
             behavior = cls.from_yaml(args_agent)
@@ -194,14 +198,14 @@ class AgentConfig:
             if config_mode is None or config_mode == SCMode.DICT:
                 logger.warning("Type `%s` of launch argument type `agent` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args_agent))
             behavior = args_agent
-        if SCMode is not None:
-            # Do not convert is already is DictConfig, or dataclass depending on the situation
-            if (config_mode == SCMode.DICT or 
-                config_mode == SCMode.DICT_CONFIG and not isinstance(behavior, DictConfig)
-                or config_mode == SCMode.INSTANTIATE and not is_dataclass(behavior)): # TODO: attrs not supported
-                logger.debug("Converting agent settings to to container via %s", config_mode)
-                behavior = OmegaConf.to_container(structured_config_mode=config_mode)
-                
+        if config_mode is not None:
+            logger.debug("Converting agent settings to to container via %s", config_mode)
+            behavior = OmegaConf.to_container(behavior, structured_config_mode=config_mode)
+        if dict_config_no_parent and  isinstance(behavior, DictConfig):
+            # Dict config interpolations always use the full path, interpolations might go from the root of the config.
+            # If there is launch_config.agent, with launch config as root, the interpolations will not work.
+            behavior.__dict__["_parent"] = None # Remove parent from
+        
         if overwrites:
             if isinstance(behavior, DictConfig):
                 behavior = OmegaConf.merge(behavior, OmegaConf.create(overwrites, flags={"allow_objects": True}))
