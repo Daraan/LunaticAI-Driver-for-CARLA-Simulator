@@ -28,7 +28,7 @@ def _make_own_logger(name="__main__"):
     handler.setFormatter(formatter)
 
     logger.addHandler(handler)
-    
+    return logger
 
 def make_logger(name="__main__"):
     if USE_HYDRA_IF_POSSIBLE:
