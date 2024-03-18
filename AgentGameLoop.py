@@ -8,6 +8,7 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 from __future__ import print_function  # for python 2.7 compatibility
 
 from collections.abc import Mapping
+from dataclasses import is_dataclass
 import signal
 import sys
 import argparse
