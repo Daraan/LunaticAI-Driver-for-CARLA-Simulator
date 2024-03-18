@@ -156,6 +156,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
                         overwrites=behavior)
+        agent.verify_settings()
         logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:

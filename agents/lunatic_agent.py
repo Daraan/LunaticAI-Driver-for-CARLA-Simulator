@@ -208,7 +208,7 @@ class LunaticAgent(BehaviorAgent):
         # Vehicle Lights
         self._lights = carla.VehicleLightState.NONE
 
-        # Collision Sensor # TODO: duplicated in WorldModel!
+        # Collision Sensor # TODO: duplicated in WorldModel, maybe can be shared.
         self._collision_sensor : carla.Sensor = None
         self._set_collision_sensor()
 
@@ -220,6 +220,7 @@ class LunaticAgent(BehaviorAgent):
             self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
         else:
             self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+        self._road_matrix_updater.start()  # TODO maybe find a nicer way
         
         # Vehicle information
         self.live_info.current_speed = 0
@@ -355,18 +356,13 @@ class LunaticAgent(BehaviorAgent):
             raise
         return self.ctx
 
-    def verify_settings(self):
+    def verify_settings(self, config : LunaticAgentSettings=None):
         if self._world_model.world_settings.synchronous_mode:
             # Assure that dt is set
-            OmegaConf.select(self.config,
+            OmegaConf.select(config or self.config,
                 "planner.dt",
                 throw_on_missing=True
             )
-
-        self._road_matrix_updater.start()  # TODO find a nicer way
-        
-        # TEMP
-        self._road_matrix_updater.stop()
 
     def run_step(self, debug=False):
         ctx = self.make_context(last_context=self.ctx)
