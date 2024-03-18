@@ -378,7 +378,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         if config.rss.enabled and not self._actor_filter.startswith("vehicle."):
             print('Error: RSS only supports vehicles as ego.')
             sys.exit(1)
-        if AD_RSS_AVAILABLE:
+        if config.rss.enabled and AD_RSS_AVAILABLE:
             self._restrictor = carla.RssRestrictor()
         else:
             self._restrictor = None
@@ -534,7 +534,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         
         self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim)
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
-        if AD_RSS_AVAILABLE:
+        if self._config.rss.enabled and AD_RSS_AVAILABLE:
             self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer)
             self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
