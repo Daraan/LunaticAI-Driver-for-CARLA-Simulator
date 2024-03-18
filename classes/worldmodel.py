@@ -24,7 +24,7 @@ from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundin
 from classes.keyboard_controls import RSSKeyboardControl
 
 if TYPE_CHECKING:
-    from agents.tools.config_creation import LunaticAgentSettings
+    from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
     from agents.lunatic_agent import LunaticAgent
 
 from classes.HUD import get_actor_display_name
@@ -107,7 +107,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
     clock : ClassVar[pygame.time.Clock]
     display : ClassVar[pygame.Surface]
     
-    def __init__(self, args, config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+    def __init__(self, args: "LaunchConfig", config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
             random.seed(args.seed)
             np.random.seed(args.seed)
@@ -219,11 +219,12 @@ class GameFramework(AccessCarlaDataProviderMixin):
             raise ValueError("Controller not initialized.")
         
         self.clock.tick() # self.args.fps)
-        if self._args.sync is not None:
-            if self._args.sync:
-                self.world_model.world.tick()
-            else:
-                self.world_model.world.wait_for_tick()
+        if self._args.handle_ticks:
+            if self._args.sync is not None:
+                if self._args.sync:
+                    self.world_model.world.tick()
+                else:
+                    self.world_model.world.wait_for_tick()
         return self
     
     def render_everything(self):
@@ -381,6 +382,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         else:
             self._restrictor = None
 
+        logger.debug("Calling WorldModel.restart()")
         self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
@@ -540,9 +542,10 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.tick_server_world()
 
     def tick_server_world(self):
-        if self.sync: #TODO: What if ticks are handled externally?
-            return self.world.tick()
-        return self.world.wait_for_tick()
+        if self._args.handle_ticks:
+            if self.sync: #TODO: What if ticks are handled externally?
+                return self.world.tick()
+            return self.world.wait_for_tick()
 
     #def tick(self, clock):
     #    self.hud.tick(self.player, clock) # RSS example. TODO: Check which has to be used!
