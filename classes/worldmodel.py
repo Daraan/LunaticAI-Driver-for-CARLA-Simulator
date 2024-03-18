@@ -433,7 +433,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
             player = self._find_external_actor(self.world, self.actor_role_name)
             if player is not None:
                 return player
-            logger.info("...External actor %s not found. Waiting to find external actor %s", self.actor_role_name)
+            logger.info("...External actor not found. Waiting to find external actor named `%s`", self.actor_role_name)
             time.sleep(sleep) # Note if on same thread, nothing will happen. Put function into thread?
             self.tick_server_world() # Tick the world?
         logger.error("External actor `%s` not found. Exiting...", self.actor_role_name)
