@@ -79,13 +79,14 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     print("Creating settings")
     # TODO: Pack this in some utility function
     if isinstance(args.agent, dict):
-        logger.debug("Using agent settings from dict")
+        logger.debug("Using agent settings from dict with LunaticAgentSettings.")
         behavior = LunaticAgentSettings(**args.agent)
     elif isinstance(args.agent, str):
         logger.info("Using agent settings from file `%s`", args.agent)
         behavior = LunaticAgentSettings.from_yaml(args.agent)
+        
+        # TEMP:
         behavior = OmegaConf.merge(behavior,
-        #behavior = LunaticAgentSettings(
             {'controls':{ "max_brake" : 1.0, 
                         'max_steering' : 0.25},
             'speed': {'target_speed': 33.0,

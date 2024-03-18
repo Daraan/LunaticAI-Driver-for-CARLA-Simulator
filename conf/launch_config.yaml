@@ -28,28 +28,43 @@ autopilot: False
 # Should be set by another file, see defaults
 agent: ???
 
+# -------------------------------------------------
+# Hydra DefaultList
+# See https://hydra.cc/docs/advanced/defaults_list/
+# -------------------------------------------------
+
 defaults:
-  # _self_ described where this config should be placed; at first position => every config can overwrite it
+  # _self_ described where this config should be placed; at first position => every config can overwrite this file
   - _self_
 
   # -------------------------------------------
   #        Agent Default Configuration 
   # -------------------------------------------
-  # Describes the default settings.
-  # <filename>@agent
+  # Describes the default settings of the agent.
+  # Format: <filename>@agent
   # -------------------------------------------
-  - lunatic_agent_settings@agent
+  - agent_default_settings@agent
+
+  # To use a different defaults setting use:
+  # TODO: figure out and write here
+  # likely needs another file with defaults
 
   # -------------------------------------------
   # Extensions to the default settings
   # These files are utility or not often used settings
   # -------------------------------------------
+  
   # LocalPlanner settings
   - config_extensions/planner@agent.planner
+  
   # Interpolation / Aliases
   - config_extensions/interpolation@agent
+  
   # Only available during runtime
   - config_extensions/live_info@agent.live_info
+  
+  # Configure the logger to be used
+  - config_extensions/job_logging@hydra.job_logging
 
   # -------------------------------------------
   #    Experiments (fine granular changes)
@@ -73,6 +88,6 @@ defaults:
 hydra:
   # creates no .hydra subfolder that stores the runs config
   output_subdir: null
-  # Will output in the top-level (?)
+  # Will output in the top-level
   run:
     dir: .
