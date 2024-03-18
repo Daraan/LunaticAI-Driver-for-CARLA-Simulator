@@ -73,8 +73,11 @@ defaults:
   # e.g. 
   #   python my_file.py "experiments@agent=[test_experiment, test_experiment2]"
   #
-  # NOTE: to use another directory you need to add + sign in the command line
-  #   python my_file.py +<directory_name>@agent=<file_name in directory>"
+  # NOTE: to use another directory you have two options 
+  # 1) add + sign in the command line before the containing folder followed by @agent
+  #    python my_file.py +<directory_name>@agent=<file_name in directory>"
+  # 2) add your directory to the line below, the + sign then does not become necessary.
+  #    <directory_path_in_./conf>@agent : null
   # -------------------------------------------
   - experiments@agent : null
   
