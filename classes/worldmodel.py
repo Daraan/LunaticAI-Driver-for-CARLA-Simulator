@@ -628,7 +628,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
     def destroy(self, destroy_ego=False):
         """Destroys all actors"""
         # stop from ticking
-        if self.world_tick_id:
+        if self.world_tick_id and self.world:
             self.world.remove_on_tick(self.world_tick_id)
         if self.rss_sensor:
             self.rss_sensor.destroy()
