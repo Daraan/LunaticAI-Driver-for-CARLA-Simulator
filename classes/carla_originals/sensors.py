@@ -7,12 +7,23 @@ import carla
 from classes.HUD import get_actor_display_name
 
 
+class CustomSensor(object):
+    
+    sensor : carla.Sensor
+    
+    def destroy(self):
+        """Destroys the sensor"""
+        if self.sensor is not None:
+            self.sensor.stop()
+            self.sensor.destroy()
+            self.sensor = None
+
 # ==============================================================================
 # -- CollisionSensor -----------------------------------------------------------
 # ==============================================================================
 
 
-class CollisionSensor(object):
+class CollisionSensor(CustomSensor):
     """ Class for collision sensors"""
 
     def __init__(self, parent_actor, hud):
@@ -56,7 +67,7 @@ class CollisionSensor(object):
 # ==============================================================================
 
 
-class LaneInvasionSensor(object):
+class LaneInvasionSensor(CustomSensor):
     """Class for lane invasion sensors"""
 
     def __init__(self, parent_actor, hud):
@@ -88,7 +99,7 @@ class LaneInvasionSensor(object):
 # ==============================================================================
 
 
-class GnssSensor(object):
+class GnssSensor(CustomSensor):
     """ Class for GNSS sensors"""
 
     def __init__(self, parent_actor):
@@ -114,13 +125,13 @@ class GnssSensor(object):
             return
         self.lat = event.latitude
         self.lon = event.longitude
-
+        
 # ==============================================================================
 # -- RadarSensor ---------------------------------------------------------------
 # ==============================================================================
 
 
-class RadarSensor(object):
+class RadarSensor(CustomSensor):
     def __init__(self, parent_actor):
         self.sensor = None
         self._parent = parent_actor
@@ -187,7 +198,7 @@ class RadarSensor(object):
 # -- IMUSensor -----------------------------------------------------------------
 # ==============================================================================
 
-class IMUSensor(object):
+class IMUSensor(CustomSensor):
     def __init__(self, parent_actor):
         self.sensor = None
         self._parent = parent_actor

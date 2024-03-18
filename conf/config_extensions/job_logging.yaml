@@ -1,0 +1,14 @@
+
+formatters:
+    simple:
+        # note blank space before filename for IDE support
+        format: "[%(levelname)s][%(filename)s:%(lineno)d, %(funcName)s]: %(message)s"
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: ${hydra.runtime.output_dir}/${hydra.job.name}.log

@@ -18,7 +18,7 @@ import numpy.random as random
 import pygame
 from classes.constants import Phase
 
-from conf.agent_settings import LunaticAgentSettings
+from agents.tools.config_creation import LunaticAgentSettings
 import launch_tools
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
@@ -125,7 +125,7 @@ def game_loop(args):
                 )
             from omegaconf import OmegaConf
             print(behavior.to_yaml())
-            agent = LunaticAgent(world, behavior)
+            agent = LunaticAgent(behavior, world)
         elif args.agent == "Basic":
             agent = BasicAgent(world.player, 30)
             agent.follow_speed_limits(True)

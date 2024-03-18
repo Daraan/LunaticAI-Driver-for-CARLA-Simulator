@@ -5,7 +5,7 @@ from agents.lunatic_agent import LunaticAgent
 from classes.constants import Phase
 
 from classes.rule import Rule, EvaluationFunction, Context, always_execute
-from conf.agent_settings import LunaticAgentSettings, LunaticAgentSpeedSettings
+from agents.tools.config_creation import LunaticAgentSettings, LunaticAgentSpeedSettings
 
 arule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
                                       rule=always_execute, 

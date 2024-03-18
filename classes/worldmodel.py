@@ -1,16 +1,18 @@
 # Official Example from examples/automatic-control.py
 # NOTE it might has to use synchonous_mode
+from collections.abc import Mapping
 import os
 import sys
 from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING
 import weakref
 
 import numpy as np
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 import pygame
 
 import carla
 import numpy.random as random
+from agents.tools.lunatic_agent_tools import AgentDoneException, ContinueLoopException
 from classes.HUD import HUD
 
 from classes.camera_manager import CameraManager
@@ -22,38 +24,103 @@ from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundin
 from classes.keyboard_controls import RSSKeyboardControl
 
 if TYPE_CHECKING:
-    from conf.agent_settings import LunaticAgentSettings
+    from agents.tools.config_creation import LunaticAgentSettings
     from agents.lunatic_agent import LunaticAgent
 
 from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
 from agents.tools.logging import logger
 
+try:
+    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider # type: ignore
+    logger.info("Using CarlaDataProvider from srunner module.")
+except ImportError:
+    try:
+        from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+    except ImportError:
+        logger.warning("CarlaDataProvider not available: ScenarioManager (srunner module) not found in path. Make sure it is in your PYTHONPATH or PATH variable.")
+        CarlaDataProvider = None
 
-class ContinueLoopException(Exception):
-    pass
+class AccessCarlaDataProviderMixin:
+    """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
+    
+    if CarlaDataProvider is not None:
+        @property
+        def client(self) -> carla.Client:
+            return CarlaDataProvider.get_client()
+        
+        @client.setter
+        def client(self, value: carla.Client):
+            CarlaDataProvider.set_client(value)
+        
+        @property
+        def world(self) -> carla.World:
+            return CarlaDataProvider.get_world()
+        
+        @world.setter
+        def world(self, value: carla.World):
+            CarlaDataProvider.set_world(value)
+        
+        @property
+        def map(self) -> carla.Map:
+            return CarlaDataProvider.get_map()
+        
+        @map.setter
+        def map(self, value: carla.Map):
+            if CarlaDataProvider.get_map() != value:
+                raise ValueError("CarlaDataProvider.get_map() and passed map are not the same.")
+            # Do nothing as map is set when using get_map or set_world
+    else:
+        __client: carla.Client = None # type: ignore
+        __map: carla.Map = None  # type: ignore
+        __world: carla.World = None # type: ignore
+        
+        @property
+        def client(self) -> carla.Client:
+            return AccessCarlaDataProviderMixin.__client
+        
+        @client.setter
+        def client(self, value: carla.Client):
+            AccessCarlaDataProviderMixin.__client = value
+            
+        @property
+        def world(self) -> carla.World:
+            return AccessCarlaDataProviderMixin.__world
+        
+        @world.setter
+        def world(self, value: carla.World):
+            AccessCarlaDataProviderMixin.__world = value
+            
+        @property
+        def map(self) -> carla.Map:
+            return AccessCarlaDataProviderMixin.__map
+        
+        @map.setter
+        def map(self, value: carla.Map):
+            AccessCarlaDataProviderMixin.__map = value
 
 # ==============================================================================
 # -- Game Framework ---------------------------------------------------------------
 # ==============================================================================
 
-class GameFramework(object):
+class GameFramework(AccessCarlaDataProviderMixin):
     clock : ClassVar[pygame.time.Clock]
     display : ClassVar[pygame.Surface]
     
-    def __init__(self, args, config=None):
+    def __init__(self, args, config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
             random.seed(args.seed)
             np.random.seed(args.seed)
-        self.args = args
+        self._args = args
         self.clock, self.display = self.init_pygame(args)
-        self.client, self.world, self.map, self.world_settings = self.init_carla(args)
+        self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
         self.config = config
         self.agent = None
         self.world_model = None
         self.controller = None
         
         self.debug = self.world.debug
+        self.continue_loop = True
         
     @staticmethod
     def init_pygame(args):
@@ -65,41 +132,53 @@ class GameFramework(object):
             pygame.HWSURFACE | pygame.DOUBLEBUF)
         return clock, display
     
-    @staticmethod
-    def init_carla(args, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
-        client = carla.Client(args.host, args.port, worker_threads)
-        client.set_timeout(timeout)
+    def init_carla(self, args, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+        if self.client is None: # TODO: Note this maybe prevents usage of two different ports
+            self.client = carla.Client(args.host, args.port, worker_threads)
+            self.client.set_timeout(timeout)
+        else:
+            assert isinstance(self.client, carla.Client)
         
-        sim_world = client.get_world()
-        sim_map = sim_world.get_map()
+        if self.world is None:
+            self.world = self.client.get_world()
+        else:
+            assert isinstance(self.world, carla.World)
+            
+        if self.map is None:
+            self.map = self.world.get_map()
+        else:
+            assert isinstance(self.map, carla.Map)
         
-        # Load world
         world_name = args.map
-        if world_name and sim_map.name != "Carla/Maps/" + world_name:
-            client.load_world(world_name, map_layers=map_layers)
-            sim_world = client.get_world()
-            sim_map = sim_world.get_map()
+        if world_name and self.map.name != "Carla/Maps/" + world_name:
+            logger.info(f"Loading world: {world_name}")
+            self.world = self.client.load_world(world_name, map_layers=map_layers)
+            if not self.map: # Note: CarlaDataProvider.set_world handles this.
+                self.map = self.world.get_map()
         else:
             logger.debug("skipped loading world, already loaded. map_layers ignored.") # todo: remove?
         
         # Apply world settings
-        if args.sync:
-            logger.debug("Using synchronous mode.")
-            # apply synchronous mode if wanted
-            world_settings = sim_world.get_settings()
-            world_settings.synchronous_mode = True
-            world_settings.fixed_delta_seconds = 1/args.fps # 0.05
-            sim_world.apply_settings(world_settings)
+        if args.sync is not None: # Else let this be handled by someone else
+            if args.sync:
+                logger.debug("Using synchronous mode.")
+                # apply synchronous mode if wanted
+                world_settings = self.world.get_settings()
+                world_settings.synchronous_mode = True
+                world_settings.fixed_delta_seconds = 1/args.fps # 0.05
+                self.world.apply_settings(world_settings)
+            else:
+                logger.debug("Using asynchronous mode.")
+                world_settings = self.world.get_settings()
         else:
-            logger.debug("Using asynchronous mode.")
-            world_settings = sim_world.get_settings()
-        print("World Settings:", world_settings)
+            world_settings = self.world.get_settings()
+            print("World Settings:", world_settings)
         
-        return client, sim_world, sim_map, world_settings
+        return world_settings
     
     def init_traffic_manager(self) -> carla.TrafficManager:
         traffic_manager = self.client.get_trafficmanager()
-        if self.args.sync:
+        if self._args.sync:
             traffic_manager.set_synchronous_mode(True)
         traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
         traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a config variable
@@ -109,7 +188,7 @@ class GameFramework(object):
         self.config = config
     
     def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
-        self.world_model = WorldModel(self.world, config, self.args, player=player, map_inst=map_inst)
+        self.world_model = WorldModel(config, self._args, player=player)
         self.world_model.game_framework = weakref.proxy(self)
         return self.world_model
     
@@ -125,7 +204,7 @@ class GameFramework(object):
         return self.controller.parse_events(final_controls)
 
     def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", overwrites:Optional[Dict[str, Any]]=None):
-        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self.args, map_inst=self.map, overwrites=overwrites)
+        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, map_inst=self.map, overwrites=overwrites)
         self.config = self.agent.config
         controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         self.world_model.game_framework = weakref.proxy(self)
@@ -140,10 +219,11 @@ class GameFramework(object):
             raise ValueError("Controller not initialized.")
         
         self.clock.tick() # self.args.fps)
-        if self.args.sync:
-            self.world_model.world.tick()
-        else:
-            self.world_model.world.wait_for_tick()
+        if self._args.sync is not None:
+            if self._args.sync:
+                self.world_model.world.tick()
+            else:
+                self.world_model.world.wait_for_tick()
         return self
     
     def render_everything(self):
@@ -173,12 +253,15 @@ class GameFramework(object):
             pygame.display.flip()
             
             Rule.update_all_cooldowns() # Rule Cooldown Framework
+        elif isinstance(exc_val, AgentDoneException):
+            self.continue_loop = False
+            
 
 # ==============================================================================
 # -- World ---------------------------------------------------------------
 # ==============================================================================
 
-class WorldModel(object):
+class WorldModel(AccessCarlaDataProviderMixin):
     """ Class representing the surrounding environment """
 
     controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
@@ -187,26 +270,32 @@ class WorldModel(object):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, carla_world : carla.World, config : "LunaticAgentSettings", args, agent:"LunaticAgent" = None, player : carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
+    def __init__(self, config : "LunaticAgentSettings", args:"Union[Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
-        self.world = carla_world
+        # Set World
+        if self.world is None:
+            if carla_world is None:
+                raise ValueError("CarlaDataProvider not available and `carla_world` not passed.")
+            self.world = carla_world
+        elif carla_world is not None and self.world != carla_world:
+            raise ValueError("CarlaDataProvider.get_world() and passed `carla_world` are not the same.")
         self.world_settings = self.world.get_settings()
+        
         # TEMP:
         if agent:
             agent._world_model = self
         
-        if map_inst:
+        if self.map is not None: # if this is set accesses CarlaDataProvider
+            if map_inst and self.map != map_inst:
+                raise ValueError("CarlaDataProvider.get_map() and passed map_inst are not the same.")
+        elif map_inst:
             if isinstance(map_inst, carla.Map):
-                self._map = map_inst
+                self.map = map_inst
             else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-            self._map = None
-        if not map_inst or not self._map:
+                logger.warning("Warning: Ignoring the given map as it is not a 'carla.Map'")
+        if self.map is None:
             try:
-                if agent:
-                    self.map = agent._map
-                else:
-                    self.map = self.world.get_map()
+                self.map = self.world.get_map()
             except RuntimeError as error:
                 print('RuntimeError: {}'.format(error))
                 print('  The server could not send the OpenDRIVE (.xodr) file:')
@@ -214,27 +303,37 @@ class WorldModel(object):
                 sys.exit(1)
         
         self._config = config
+        if not isinstance(args, Mapping):
+            # NOTE: THis does NOT INCLUDE CLI OVERWRITES
+            args = OmegaConf.load(args)
+            args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
         self._args = args
-        self.hud = HUD(args.width, args.height, carla_world)
+        self.hud = HUD(args.width, args.height, self.world)
         self.sync : bool = args.sync
         self.dim = (args.width, args.height)
         self.external_actor : bool = args.externalActor
-        assert not self.external_actor
         self.actor_role_name : Optional[str] = args.rolename
+        self._actor_filter = args.filter
+        self._actor_generation = args.generation
+        self._gamma = args.gamma
 
         # TODO: Remove?
         self.recording = False
         self.recording_frame_num = 0
         self.recording_dir_num = 0
         
-        if player is None:
-            if agent:
-                player = agent._vehicle
-            else:
-                player = self.world.get_actors().find(self.actor_role_name)
-            
-        self.player = player
-        assert self.player is not None or self.external_actor # Note: Former optional
+        if self.external_actor and (player is not None or agent is not None):
+            raise ValueError("External actor cannot be used with player or agent.")
+        if player is None and agent is not None:
+            self.player = agent._vehicle
+        elif player is not None and agent is not None:
+            if player != agent._vehicle:
+                raise ValueError("Passed `player` and `agent._vehicle` are not the same.")
+            self.player = player
+        else:
+            self.player = player
+
+        assert self.player is not None or self.external_actor # Note: Former optional. PLayer set in restart
 
         self.collision_sensor = None
         self.lane_invasion_sensor = None
@@ -247,9 +346,6 @@ class WorldModel(object):
         self._weather_index = 0
         self.weather = None
         
-        self._actor_filter = args.filter
-        self._actor_generation = args.generation
-        self._gamma = args.gamma
         self.recording_enabled = False
         self.recording_start = 0
         self.actors = []
@@ -277,8 +373,7 @@ class WorldModel(object):
         self.rss_unstructured_scene_visualizer = None
         self.rss_bounding_box_visualizer = None
         
-        self._actor_filter = args.filter
-        if not self._actor_filter.startswith("vehicle."):
+        if config.rss.enabled and not self._actor_filter.startswith("vehicle."):
             print('Error: RSS only supports vehicles as ego.')
             sys.exit(1)
         if AD_RSS_AVAILABLE:
@@ -286,7 +381,7 @@ class WorldModel(object):
         else:
             self._restrictor = None
 
-        self.restart(args) # # interactive without args
+        self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
 
@@ -319,18 +414,46 @@ class WorldModel(object):
             settings.fixed_delta_seconds = None
             self.world.apply_settings(settings)
 
-    def restart(self, args):
+    @staticmethod
+    def _find_external_actor(world:carla.World, role_name:str, actor_list: Optional[carla.ActorList]=None) -> Union[None, carla.Actor]:
+        for actor in actor_list or world.get_actors():
+            if actor.attributes.get('role_name') == role_name:
+                return actor
+        return None
+
+    def _wait_for_external_actor(self, timeout=20, sleep=3) -> carla.Actor:
+        import time
+        self.tick_server_world() # Tick the world?
+        start = time.time()
+        t = start
+        while t < start + timeout:
+            player = self._find_external_actor(self.world, self.actor_role_name)
+            if player is not None:
+                return player
+            logger.info("...External actor %s not found. Waiting to find external actor %s", self.actor_role_name)
+            time.sleep(sleep) # Note if on same thread, nothing will happen. Put function into thread?
+            self.tick_server_world() # Tick the world?
+        logger.error("External actor `%s` not found. Exiting...", self.actor_role_name)
+        print("External actor `%s` not found. Exiting..." % self.actor_role_name)
+        sys.exit(1)
+
+    def restart(self):
         """Restart the world"""
+        # Keep same camera config if the camera manager exists.
+        # TODO: unsure if correct
+        cam_index = self.camera_manager.index if self.camera_manager is not None else 0
+        cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
         if self.external_actor:
             # Check whether there is already an actor with defined role name
-            for actor in self.world.get_actors():
-                if actor.attributes.get('role_name') == self.actor_role_name:
-                    self.player = assure_type(carla.Vehicle, actor)
-        else:        
-            # Keep same camera config if the camera manager exists.
-            cam_index = self.camera_manager.index if self.camera_manager is not None else 0
-            cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
-
+            actor_list = self.world.get_actors() # In sync mode the actor list could be empty
+            self.player = self._find_external_actor(self.world, self.actor_role_name, actor_list)
+            if self.player is None:
+                self.player = assure_type(carla.Vehicle, 
+                                self._wait_for_external_actor(timeout=20))
+            # TODO: Make this more nicer, see maybe scenario runner how to wait for spawn. Only do tick if in sync mode. Async wait.
+            elif TYPE_CHECKING:
+                self.player = assure_type(carla.Vehicle, self.player)
+        else:
             # Get a random blueprint.
             blueprint : carla.ActorBlueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
             blueprint.set_attribute('role_name', self.actor_role_name)
@@ -381,18 +504,28 @@ class WorldModel(object):
                 if actor.parent == self.player:
                     ego_sensors.append(actor)
 
-            for ego_sensor in ego_sensors:
+            for ego_sensor in ego_sensors: # TODO: Why we do this
                 if ego_sensor is not None:
                     ego_sensor.destroy()
 
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
-        self.gnss_sensor = GnssSensor(self.player)
-        self.imu_sensor = IMUSensor(self.player)
+        self.gnss_sensor = None # GnssSensor(self.player) # TODO: make it optional
+        self.imu_sensor = None # IMUSensor(self.player)
+        self.actors.extend([
+            self.collision_sensor,
+            self.lane_invasion_sensor,
+        ])
+        if self.gnss_sensor:
+            self.actors.append(self.gnss_sensor)
+        if self.imu_sensor:
+            self.actors.append(self.imu_sensor)
+        
         self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
         self.camera_manager.transform_index = cam_pos_id
         self.camera_manager.set_sensor(cam_index, notify=False)
+        
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
         
@@ -404,10 +537,12 @@ class WorldModel(object):
             self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
         else: 
             self.rss_sensor = None
-        if self.sync:
-            self.world.tick()
-        else:
-            self.world.wait_for_tick()
+        self.tick_server_world()
+
+    def tick_server_world(self):
+        if self.sync: #TODO: What if ticks are handled externally?
+            return self.world.tick()
+        return self.world.wait_for_tick()
 
     #def tick(self, clock):
     #    self.hud.tick(self.player, clock) # RSS example. TODO: Check which has to be used!
@@ -486,7 +621,7 @@ class WorldModel(object):
         self.camera_manager.sensor = None
         self.camera_manager.index = None
 
-    def destroy(self):
+    def destroy(self, destroy_ego=False):
         """Destroys all actors"""
         # stop from ticking
         if self.world_tick_id:
@@ -499,17 +634,14 @@ class WorldModel(object):
             self.toggle_radar()
         if self.camera_manager is not None:
             self.destroy_sensors()
-        actors : List[carla.Actor] = [
-            self.collision_sensor.sensor,
-            self.lane_invasion_sensor.sensor,
-            self.gnss_sensor.sensor,
-            self.imu_sensor.sensor,
-        ]
-        actors.extend(self.actors)
-        if not self.player in actors:
-            actors.append(self.player)
-        print("to destroy", list(map(str,actors)))
-        for actor in actors:
+        if destroy_ego and not self.player in self.actors: # do not destroy external actors.
+            print("Destroying player")
+            self.actors.append(self.player)
+        elif not destroy_ego and self.player in self.actors:
+            logger.warning("destroy_ego=False, but player is in actors list. Destroying the actor from within WorldModel.destroy.")
+        print("to destroy", list(map(str, self.actors)))
+        while self.actors:
+            actor = self.actors.pop(0)
             if actor is not None:
                 print("destroying actor: " + str(actor), end=" destroyed=")
                 try:
@@ -517,12 +649,12 @@ class WorldModel(object):
                         actor.stop()
                 except AttributeError:
                     pass
-                #try:
-                x = actor.destroy()
-                print(x)
-                #except RuntimeError:
-                #    raise
-                #    print("Warning: Could not destroy actor: " + str(actor))
+                try:
+                    x = actor.destroy()
+                    print(x)
+                except RuntimeError:
+                    print("Warning: Could not destroy actor: " + str(actor))
+                    #raise
 
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
@@ -537,11 +669,11 @@ class WorldModel(object):
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:
             # adjust the controls
-            vehicle_control = self._restrictor.restrict_vehicle_control(
+            proposed_vehicle_control = self._restrictor.restrict_vehicle_control(
                             vehicle_control, rss_proper_response, self.rss_sensor.ego_dynamics_on_route, self._vehicle_physics)
-            self.hud.restricted_vehicle_control = vehicle_control
+            self.hud.restricted_vehicle_control = proposed_vehicle_control
             self.hud.allowed_steering_ranges = self.rss_sensor.get_steering_ranges()     
-            return vehicle_control
+            return proposed_vehicle_control
         return None
 
 
