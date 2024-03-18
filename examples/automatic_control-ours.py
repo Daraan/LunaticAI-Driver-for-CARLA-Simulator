@@ -18,7 +18,7 @@ import numpy.random as random
 import pygame
 from classes.constants import Phase
 
-from conf.agent_settings import LunaticAgentSettings
+from agents.tools.config_creation import LunaticAgentSettings
 import launch_tools
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error

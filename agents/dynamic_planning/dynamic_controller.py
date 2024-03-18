@@ -16,7 +16,7 @@ from agents.navigation.controller import VehiclePIDController, PIDLongitudinalCo
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from conf.agent_settings import BasicAgentSettings
+    from agents.tools.config_creation import BasicAgentSettings
 
 STEERING_UPDATE_SPEED = 0.1
 

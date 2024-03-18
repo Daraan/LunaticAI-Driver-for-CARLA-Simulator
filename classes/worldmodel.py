@@ -24,7 +24,7 @@ from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundin
 from classes.keyboard_controls import RSSKeyboardControl
 
 if TYPE_CHECKING:
-    from conf.agent_settings import LunaticAgentSettings
+    from agents.tools.config_creation import LunaticAgentSettings
     from agents.lunatic_agent import LunaticAgent
 
 from classes.HUD import get_actor_display_name

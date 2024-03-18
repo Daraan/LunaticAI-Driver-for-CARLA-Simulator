@@ -31,7 +31,7 @@ from omegaconf import DictConfig, OmegaConf
 import carla 
     
 import launch_tools
-from conf.agent_settings import LunaticAgentSettings
+from agents.tools.config_creation import LunaticAgentSettings
 
 from classes.rule import Context, Rule
 
@@ -118,7 +118,7 @@ def game_loop(args : argparse.ArgumentParser):
     if PRINT_CONFIG:
         print("    \n\n\n")
         pprint(behavior)
-        from conf.agent_settings import AgentConfig
+        from agents.tools.config_creation import AgentConfig
         if isinstance(behavior, AgentConfig):
             print(behavior.to_yaml())
         else:
