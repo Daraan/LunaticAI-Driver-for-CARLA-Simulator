@@ -78,31 +78,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     # -- Load Settings Agent --
 
     print("Creating settings")
-    # TODO: Pack this in some utility function
-    behavior = LunaticAgentSettings.create_from_args(args.agent, 
-                            overwrites={
-                                'controls':{ "max_brake" : 1.0, 
-                                            'max_steering' : 0.25
-                                },
-                                'speed': {'target_speed': 33.0,
-                                            'max_speed' : 50,
-                                            'follow_speed_limits' : False,
-                                            'speed_decrease' : 15,
-                                            'safety_time' : 7,
-                                            'min_speed' : 0
-                                },
-                                'lane_change' : {
-                                    "random_left_lanechange_percentage": 0.45,
-                                    "random_right_lanechange_percentage": 0.45,
-                                },
-                                'rss': {'enabled': True, 
-                                        'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False) if AD_RSS_AVAILABLE else False
-                                },
-                                "planner": {
-                                    "dt" : 1/args.fps if args.fps else MISSING,
-                                    "min_distance_next_waypoint" : 2.0,
-                                }
-                            })
+    behavior = LunaticAgentSettings.create_from_args(args.agent)
 
     # TEMP
     import classes.worldmodel
@@ -151,11 +127,11 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         if args.externalActor:
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
-                    overwrites=behavior)
+                    config=behavior)
         else:
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
-                        overwrites=behavior)
+                        config=behavior)
         agent.verify_settings()
         logger.debug("Created agent and WorldModel.\n")
         

@@ -65,5 +65,17 @@ emergency:
   - 0.25
 rss:
   enabled: true
+
+  # For fast vehicles RSS currently is unreliable, disables rss updates when the vehicle is faster than this. TODO: Implement
+  rss_max_speed: 30.0
   use_stay_on_road_feature: 'On'
   log_level: info
+data_matrix:
+  enabled: true
+  # When the world uses synchronous mode and sync is true, the data matrix will be updated every sync_interval ticks.
+  # A low value will have a negative impact on the fps.
+  # If the world uses asynchronous mode or sync is False the data matrix will be updated by a different thread.
+  # This increases the fps but updates will be less frequent.
+  sync : true
+  # The interval in frames after which the data matrix should be updated. Sync must be true.
+  sync_interval: 20
