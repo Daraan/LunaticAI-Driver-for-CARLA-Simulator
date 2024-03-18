@@ -242,15 +242,19 @@ class LunaticAgent(BehaviorAgent):
     def set_vehicle(self, vehicle:carla.Vehicle):
         self._vehicle = vehicle
         # Data Matrix
-        if self._world_model.world_settings.synchronous_mode:
-            self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+        if self.config.data_matrix.enabled:
+            if self._world_model.world_settings.synchronous_mode:
+                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+            else:
+                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
         else:
-            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+            self._road_matrix_updater = None
         self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=self.config, map_inst=self._world_model.map, world=self._world_model.world, rss_sensor=self._world_model.rss_sensor)
 
     @property
     def road_matrix(self):
-        return self._road_matrix_updater.getMatrix()
+        if self._road_matrix_updater:
+            return self._road_matrix_updater.getMatrix()
     
     def render_road_matrix(self, display):
         if self._road_matrix_updater:
