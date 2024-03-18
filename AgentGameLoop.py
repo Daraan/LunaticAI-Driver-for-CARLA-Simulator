@@ -151,11 +151,11 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         if args.externalActor:
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
-                    overwrites=behavior)
+                    config=behavior)
         else:
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
-                        overwrites=behavior)
+                        config=behavior)
         agent.verify_settings()
         logger.debug("Created agent and WorldModel.\n")
         
