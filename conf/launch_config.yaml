@@ -4,7 +4,7 @@ map: "Town04"
 host: "127.0.0.1"
 port: 2000
 sync: false
-handle_ticks: true
+handle_ticks: false
 fps: 20
 
 # Random (GameFramework):

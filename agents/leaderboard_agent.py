@@ -46,8 +46,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                                     job_name="test_app")
             args = compose(config_name=config_name)
             hydra_initalized = True
-            args.map = None # Let scenario manager decide
+            # Let scenario manager decide
+            args.map = None
             args.sync = None
+            args.handle_ticks = False # Assure that this is false
             print(OmegaConf.to_yaml(args))
         self.args = args
         
