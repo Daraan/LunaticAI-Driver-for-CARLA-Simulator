@@ -3,7 +3,7 @@
 map: "Town04"
 host: "127.0.0.1"
 port: 2000
-sync: True
+sync: false
 handle_ticks: true
 fps: 20
 

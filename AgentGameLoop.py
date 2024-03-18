@@ -260,7 +260,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
 @hydra.main(version_base=None, config_path="./conf", config_name="launch_config")
 def main(args: LaunchConfig):
     """Main method"""
-    #print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")  
+    print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")
 
     log_level = logging.DEBUG if args.debug else logging.INFO
     

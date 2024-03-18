@@ -71,11 +71,11 @@ rss:
   use_stay_on_road_feature: 'On'
   log_level: info
 data_matrix:
-  enabled: false
+  enabled: true
   # When the world uses synchronous mode and sync is true, the data matrix will be updated every sync_interval ticks.
   # A low value will have a negative impact on the fps.
   # If the world uses asynchronous mode or sync is False the data matrix will be updated by a different thread.
   # This increases the fps but updates will be less frequent.
   sync : true
   # The interval in frames after which the data matrix should be updated. Sync must be true.
-  sync_interval: 20
+  sync_interval: 5
