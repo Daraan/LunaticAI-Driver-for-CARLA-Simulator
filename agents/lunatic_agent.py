@@ -356,7 +356,7 @@ class LunaticAgent(BehaviorAgent):
         Sets the current phase of the agent and executes all rules that are associated with it.
         """
         normal_next = self.current_phase.next_phase() # sanity checking if everything is correct
-        assert phase == normal_next or phase & Phase.EXCEPTIONS, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
+        assert normal_next == Phase.USER_CONTROLLED or phase == normal_next or phase & Phase.EXCEPTIONS or phase & Phase.USER_CONTROLLED, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
         
         self.current_phase = phase # set next phase
         
