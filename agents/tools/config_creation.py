@@ -160,6 +160,8 @@ class AgentConfig:
     @classmethod
     def create_from_args(cls, args_agent:"Union[os.PathLike, dict, DictConfig, dataclass]", 
                          overwrites:"Optional[Mapping]"=None, 
+                         *,
+                         assure_copy : bool = False,
                          dict_config_no_parent:bool = True,
                          config_mode:Optional[SCMode]=None # SCMode.DICT_CONFIG # NOTE: DICT_CONFIG is only good when we have a structured config 
                          ):
@@ -192,11 +194,18 @@ class AgentConfig:
             behavior = cls.from_yaml(args_agent)
         elif is_dataclass(args_agent) or isinstance(args_agent, DictConfig):
             logger.info("Using agent settings as is, as it is a dataclass or DictConfig.")
-            behavior = args_agent
+            if assure_copy:
+                behavior : cls = OmegaConf.create(args_agent, flags={"allow_objects": True})
+            else:
+                behavior = args_agent
         else:
             if config_mode is None or config_mode == SCMode.DICT:
                 logger.warning("Type `%s` of launch argument type `agent` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args_agent))
-            behavior = args_agent
+            if assure_copy:
+                from copy import deepcopy
+                behavior = deepcopy(args_agent)
+            else:
+                behavior = args_agent
         if config_mode is not None:
             logger.debug("Converting agent settings to to container via %s", config_mode)
             behavior = OmegaConf.to_container(behavior, structured_config_mode=config_mode)
@@ -216,6 +225,7 @@ class AgentConfig:
                 # Dict config interpolations always use the full path, interpolations might go from the root of the config.
                 # If there is launch_config.agent, with launch config as root, the interpolations will not work.
                 behavior.__dict__["_parent"] = None # Remove parent from
+        
         return cast(cls, behavior)
         
     

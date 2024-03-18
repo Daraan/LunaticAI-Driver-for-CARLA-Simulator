@@ -23,6 +23,7 @@ hydra_initalized = False
 import logging
 logger.setLevel(logging.DEBUG)
 
+args: LaunchConfig 
 
 class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
@@ -38,20 +39,22 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         logger.info("Setup with conf file %s", path_to_conf_file)
         config_dir, config_name = os.path.split(path_to_conf_file)
         global hydra_initalized
+        global args
         if not hydra_initalized:
             initialize_config_dir(version_base=None, 
                                     config_dir=config_dir, 
                                     job_name="test_app")
-            self.args: LaunchConfig = compose(config_name=config_name)
-            print(OmegaConf.to_yaml(self.args))
+            args = compose(config_name=config_name)
             hydra_initalized = True
-            self.args.map = None # Let scenario manager decide
-            self.args.sync = None
+            args.map = None # Let scenario manager decide
+            args.sync = None
+            print(OmegaConf.to_yaml(args))
+        self.args = args
         
         sim_world = CarlaDataProvider.get_world()
         map_inst = CarlaDataProvider.get_map()
         
-        config = LunaticAgentSettings.create_from_args(self.args.agent)
+        config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True)
         config.planner.dt = 1/20 # TODO: maybe get from somewhere
         
         self.game_framework = GameFramework(self.args, config)
