@@ -14,7 +14,7 @@ import argparse
 import logging
 import threading
 import random
-from typing import List
+from typing import List, Union
 from pprint import pprint
 
 import pygame
@@ -31,7 +31,7 @@ from omegaconf import DictConfig, OmegaConf
 import carla 
     
 import launch_tools
-from agents.tools.config_creation import LunaticAgentSettings
+from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
 from classes.rule import Context, Rule
 
@@ -62,7 +62,7 @@ FPS = 10
 # -- Game Loop ---------------------------------------------------------
 # ==============================================================================
 
-def game_loop(args : argparse.ArgumentParser):
+def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     """
     Main loop of the simulation. It handles updating all the HUD information,
     ticking the agent and, if needed, the world.
@@ -282,9 +282,9 @@ def game_loop(args : argparse.ArgumentParser):
 # ==============================================================================
 
 @hydra.main(version_base=None, config_path="./conf", config_name="launch_config")
-def main(args: DictConfig):
+def main(args: LaunchConfig):
     """Main method"""
-    print("Launch Arguments\n", OmegaConf.to_yaml(args))  
+    print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")  
 
     log_level = logging.DEBUG if args.debug else logging.INFO
     
@@ -300,7 +300,6 @@ def main(args: DictConfig):
         
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
-
 
 if __name__ == '__main__':
     main()
