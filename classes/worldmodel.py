@@ -24,7 +24,7 @@ from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundin
 from classes.keyboard_controls import RSSKeyboardControl
 
 if TYPE_CHECKING:
-    from agents.tools.config_creation import LunaticAgentSettings
+    from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
     from agents.lunatic_agent import LunaticAgent
 
 from classes.HUD import get_actor_display_name
@@ -107,7 +107,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
     clock : ClassVar[pygame.time.Clock]
     display : ClassVar[pygame.Surface]
     
-    def __init__(self, args, config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+    def __init__(self, args: "LaunchConfig", config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
             random.seed(args.seed)
             np.random.seed(args.seed)
@@ -219,11 +219,12 @@ class GameFramework(AccessCarlaDataProviderMixin):
             raise ValueError("Controller not initialized.")
         
         self.clock.tick() # self.args.fps)
-        if self._args.sync is not None:
-            if self._args.sync:
-                self.world_model.world.tick()
-            else:
-                self.world_model.world.wait_for_tick()
+        if self._args.handle_ticks:
+            if self._args.sync is not None:
+                if self._args.sync:
+                    self.world_model.world.tick()
+                else:
+                    self.world_model.world.wait_for_tick()
         return self
     
     def render_everything(self):
@@ -231,7 +232,8 @@ class GameFramework(AccessCarlaDataProviderMixin):
         self.world_model.tick(self.clock) # TODO # CRITICAL maybe has to tick later
         self.world_model.render(self.display)
         self.controller.render(self.display)
-        self.agent.render_road_matrix(self.display)
+        if self.agent:
+            self.agent.render_road_matrix(self.display)
         
     @staticmethod
     def skip_rest_of_loop(message="GameFrameWork.end_loop"):
@@ -376,11 +378,12 @@ class WorldModel(AccessCarlaDataProviderMixin):
         if config.rss.enabled and not self._actor_filter.startswith("vehicle."):
             print('Error: RSS only supports vehicles as ego.')
             sys.exit(1)
-        if AD_RSS_AVAILABLE:
+        if config.rss.enabled and AD_RSS_AVAILABLE:
             self._restrictor = carla.RssRestrictor()
         else:
             self._restrictor = None
 
+        logger.debug("Calling WorldModel.restart()")
         self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
@@ -531,7 +534,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         
         self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim)
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
-        if AD_RSS_AVAILABLE:
+        if self._config.rss.enabled and AD_RSS_AVAILABLE:
             self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer)
             self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
@@ -540,9 +543,10 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.tick_server_world()
 
     def tick_server_world(self):
-        if self.sync: #TODO: What if ticks are handled externally?
-            return self.world.tick()
-        return self.world.wait_for_tick()
+        if self._args.handle_ticks:
+            if self.sync: #TODO: What if ticks are handled externally?
+                return self.world.tick()
+            return self.world.wait_for_tick()
 
     #def tick(self, clock):
     #    self.hud.tick(self.player, clock) # RSS example. TODO: Check which has to be used!
@@ -624,7 +628,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
     def destroy(self, destroy_ego=False):
         """Destroys all actors"""
         # stop from ticking
-        if self.world_tick_id:
+        if self.world_tick_id and self.world:
             self.world.remove_on_tick(self.world_tick_id)
         if self.rss_sensor:
             self.rss_sensor.destroy()
