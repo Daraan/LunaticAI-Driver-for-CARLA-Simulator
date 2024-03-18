@@ -253,7 +253,8 @@ class LunaticAgent(BehaviorAgent):
         return self._road_matrix_updater.getMatrix()
     
     def render_road_matrix(self, display):
-        self._road_matrix_updater.render(display) # TEMP
+        if self._road_matrix_updater:
+            self._road_matrix_updater.render(display) # TEMP
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
