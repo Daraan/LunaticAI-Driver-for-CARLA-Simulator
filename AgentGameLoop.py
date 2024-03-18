@@ -155,7 +155,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         spawned_vehicles.append(ego)
         
         # TEMP # Test external actor, do not pass ego
-        print("Creating agent and WorldModel:...", end="")
+        print("Creating agent and WorldModel:...")
         if args.externalActor:
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
@@ -164,7 +164,6 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
                         overwrites=behavior)
-        print("Done")
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
@@ -286,7 +285,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
 @hydra.main(version_base=None, config_path="./conf", config_name="launch_config")
 def main(args: LaunchConfig):
     """Main method"""
-    print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")  
+    #print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")  
 
     log_level = logging.DEBUG if args.debug else logging.INFO
     
