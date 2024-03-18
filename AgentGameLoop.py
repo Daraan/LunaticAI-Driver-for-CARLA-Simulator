@@ -22,7 +22,7 @@ import pygame
 import numpy as np
 
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import MISSING, DictConfig, OmegaConf
 
 # Use this when carla is not installed
 #try:
@@ -79,40 +79,31 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
 
     print("Creating settings")
     # TODO: Pack this in some utility function
-    if isinstance(args.agent, dict):
-        logger.debug("Using agent settings from dict with LunaticAgentSettings.")
-        behavior = LunaticAgentSettings(**args.agent)
-    elif isinstance(args.agent, str):
-        logger.info("Using agent settings from file `%s`", args.agent)
-        behavior = LunaticAgentSettings.from_yaml(args.agent)
-        
-        # TEMP:
-        behavior = OmegaConf.merge(behavior,
-            {'controls':{ "max_brake" : 1.0, 
-                        'max_steering' : 0.25},
-            'speed': {'target_speed': 33.0,
-                        'max_speed' : 50,
-                        'follow_speed_limits' : False,
-                        'speed_decrease' : 15,
-                            'safety_time' : 7,
-                            'min_speed' : 0 },
-            'lane_change' : {
-                "random_left_lanechange_percentage": 0.45,
-                "random_right_lanechange_percentage": 0.45,
-            },
-            'rss': {'enabled': True, 
-                    'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False) if AD_RSS_AVAILABLE else False},
-            "planner": {
-                "dt" : game_framework.world_settings.fixed_delta_seconds or 1/args.fps,
-                "min_distance_next_waypoint" : 2.0,
-            }
-            })
-    elif is_dataclass(args.agent) or isinstance(args.agent, DictConfig):
-        logger.info("Using agent settings hydra interface")
-        behavior = args.agent
-    else:
-        logger.warning("Type `%s` of launch argument type `agent` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args.agent))
-        behavior = args.agent
+    behavior = LunaticAgentSettings.create_from_args(args.agent, 
+                            overwrites={
+                                'controls':{ "max_brake" : 1.0, 
+                                            'max_steering' : 0.25
+                                },
+                                'speed': {'target_speed': 33.0,
+                                            'max_speed' : 50,
+                                            'follow_speed_limits' : False,
+                                            'speed_decrease' : 15,
+                                            'safety_time' : 7,
+                                            'min_speed' : 0
+                                },
+                                'lane_change' : {
+                                    "random_left_lanechange_percentage": 0.45,
+                                    "random_right_lanechange_percentage": 0.45,
+                                },
+                                'rss': {'enabled': True, 
+                                        'use_stay_on_road_feature': carla.RssRoadBoundariesMode(False) if AD_RSS_AVAILABLE else False
+                                },
+                                "planner": {
+                                    "dt" : 1/args.fps if args.fps else MISSING,
+                                    "min_distance_next_waypoint" : 2.0,
+                                }
+                            })
+
     # TEMP
     import classes.worldmodel
     classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
@@ -128,6 +119,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                 print(OmegaConf.to_yaml(behavior))
             except Exception as e:
                 pprint(behavior)
+    
     try:
         logger.info("Creating Game Framework ...")
         game_framework = GameFramework(args)
@@ -164,6 +156,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
                         overwrites=behavior)
+        agent.verify_settings()
         logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:

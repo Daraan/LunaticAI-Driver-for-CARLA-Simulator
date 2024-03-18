@@ -1,5 +1,6 @@
 # DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
 
+from collections.abc import Mapping
 import sys
 if __name__ == "__main__": # TEMP clean at the end, only here for testing
     import os
@@ -7,7 +8,7 @@ if __name__ == "__main__": # TEMP clean at the end, only here for testing
 
 from enum import Enum
 from functools import partial, wraps
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, is_dataclass
 import typing
 from typing import TYPE_CHECKING, Callable, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast
 
@@ -153,10 +154,66 @@ class AgentConfig:
             options : cls = OmegaConf.load(path)
         if category is None:
             return options
-        r : DictConfig = cast(AgentConfig, options[category])
+        r : cls = cast(cls, options[category])
         return r
     
+    @classmethod
+    def create_from_args(cls, args_agent:"Union[os.PathLike, dict, DictConfig, dataclass]", overwrites:"Optional[Mapping]"=None, config_mode:Optional[SCMode]=SCMode.DICT_CONFIG):
+        """
+        Creates the agent settings based on the provided arguments.
 
+        Args:
+            cls (ConfigType): The type of the agent settings.
+            args_agent (Union[os.PathLike, dict, DictConfig, dataclass]): The argument specifying the agent settings. It can be a path to a YAML file, a dictionary, a dataclass, or a DictConfig.
+            overwrites (Optional[Mapping]): Optional mapping containing additional settings to overwrite the default agent settings.
+            config_mode (omegaconf.SCMode, optional): 
+                Optional configuration mode for structured config. 
+                If None the return type might not be a DictConfig.
+                Defaults to SCMode.DICT_CONFIG.
+
+        Returns:
+            ConfigType: The created agent settings.
+
+        Raises:
+            Exception: If the overwrites cannot be merged into the agent settings.
+
+        """
+        print("is mapping", isinstance(LunaticAgentSettings, Mapping), isinstance(LunaticAgentSettings(), Mapping))
+        from agents.tools.logging import logger
+        behavior : cls
+        if isinstance(args_agent, dict):
+            logger.debug("Using agent settings from dict with LunaticAgentSettings.")
+            behavior = cls(**args_agent)
+        elif isinstance(args_agent, str):
+            logger.info("Using agent settings from file `%s`", args_agent)
+            behavior = cls.from_yaml(args_agent)
+        elif is_dataclass(args_agent) or isinstance(args_agent, DictConfig):
+            logger.info("Using agent settings as is, as it is a dataclass or DictConfig.")
+            behavior = args_agent
+        else:
+            if config_mode is None or config_mode == SCMode.DICT:
+                logger.warning("Type `%s` of launch argument type `agent` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args_agent))
+            behavior = args_agent
+        if SCMode is not None:
+            # Do not convert is already is DictConfig, or dataclass depending on the situation
+            if (config_mode == SCMode.DICT or 
+                config_mode == SCMode.DICT_CONFIG and not isinstance(behavior, DictConfig)
+                or config_mode == SCMode.INSTANTIATE and not is_dataclass(behavior)): # TODO: attrs not supported
+                logger.debug("Converting agent settings to to container via %s", config_mode)
+                behavior = OmegaConf.to_container(structured_config_mode=config_mode)
+                
+        if overwrites:
+            if isinstance(behavior, DictConfig):
+                behavior = OmegaConf.merge(behavior, OmegaConf.create(overwrites, flags={"allow_objects": True}))
+            else:
+                try:
+                    behavior.update(overwrites)
+                except:
+                    logger.error("Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. config_mode=SCMode.DICT_CONFIG is recommended for this to work.")
+                    raise
+        return cast(cls, behavior)
+        
+    
     @class_or_instance_method
     def make_config(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations=True, lock_fields:Optional[List[str]]=None) -> ConfigType:
         """
