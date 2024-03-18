@@ -1,31 +1,51 @@
-verbose: True
-debug: True
-interactive: False
-seed: null
 
-# carla_service:
+# Carla Service:
 map: "Town04"
 host: "127.0.0.1"
 port: 2000
-fps: 20
 sync: True
+fps: 20
 
-loop: True
+# Random (GameFramework):
+seed: null
 
-# camera:
+# Camera:
 width: 1280
 height: 720
 gamma: 2.2
 
 # Actor
-externalActor: True
-rolename: "hero"
-filter: "vehicle.*"
-generation: 2
+
+# Use autopilot instead of agent system
 autopilot: False
 
-# Agent
-# Should be set by another file, see defaults
+# - External Actor
+# Use an external actor from another process, the code will wait until an actor with `rolename` is found
+externalActor: True
+# The role name that is looked for in the actor list, if externalActor is True
+rolename: "hero"
+
+# Vehicle Model
+filter: "vehicle.*"
+generation: 2
+
+# -------------------------------------------------
+
+# The below settings might need to be implemented manually, see the AgentGameLoop.py file how they are used
+
+loop: True
+
+# If True sets the log level to DEBUG 
+debug: True
+
+# After launching to code enter python interactive mode
+interactive: False
+
+# -------------------------------------------------
+
+# Agent Settings
+# This is the key where the agents settings are stored
+# Value is set by other files through the defaults list below.
 agent: ???
 
 # -------------------------------------------------
@@ -73,8 +93,11 @@ defaults:
   # e.g. 
   #   python my_file.py "experiments@agent=[test_experiment, test_experiment2]"
   #
-  # NOTE: to use another directory you need to add + sign in the command line
-  #   python my_file.py +<directory_name>@agent=<file_name in directory>"
+  # NOTE: to use another directory you have two options 
+  # 1) add + sign in the command line before the containing folder followed by @agent
+  #    python my_file.py +<directory_name>@agent=<file_name in directory>"
+  # 2) add your directory to the line below, the + sign then does not become necessary.
+  #    <directory_path_in_./conf>@agent : null
   # -------------------------------------------
   - experiments@agent : null
   
@@ -82,7 +105,7 @@ defaults:
 
 # Disable Hydra logging
   - override hydra/hydra_logging: disabled
-# Disables ALL loggers # TODO: but introduces hydras own handler find way to remove.
+# Disables ALL loggers
 # - override hydra/job_logging: disabled  
 
 hydra:

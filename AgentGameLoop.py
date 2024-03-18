@@ -129,9 +129,9 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             except Exception as e:
                 pprint(behavior)
     try:
-        print("Creating game framework:...", end="")
+        logger.info("Creating Game Framework ...")
         game_framework = GameFramework(args)
-        print("Done")
+        logger.debug("Created Game Framework.\n")
         
         # -- Spawn Vehicles --
         all_spawn_points = game_framework.map.get_spawn_points()
@@ -155,7 +155,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         spawned_vehicles.append(ego)
         
         # TEMP # Test external actor, do not pass ego
-        print("Creating agent and WorldModel:...", end="")
+        logger.info("Creating agent and WorldModel ...")
         if args.externalActor:
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
@@ -164,7 +164,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             agent, world_model, global_planner, controller \
                 = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
                         overwrites=behavior)
-        print("Done")
+        logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:
         agent.add_rules(behaviour_templates.default_rules)
@@ -226,12 +226,17 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                     world_model.hud.notification("Target reached", seconds=4.0)
                     
                     # Set new destination
+                    # Choose a random point anywhere
+                    #destination = random.choice(spawn_points).location
+                    
+                    # Choose a random point nearby.
                     wp = agent._current_waypoint.next(50)[-1]
                     next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
                     if next_wp is None:
                         next_wp = wp
-                    #destination = random.choice(spawn_points).location
                     destination = next_wp.transform.location
+                    
+                    # Set new destination and indicate that we continue
                     agent.set_destination(destination)
                     game_framework.continue_loop = True
                     agent.execute_phase(Phase.DONE| Phase.END, prior_results=None)
@@ -286,7 +291,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
 @hydra.main(version_base=None, config_path="./conf", config_name="launch_config")
 def main(args: LaunchConfig):
     """Main method"""
-    print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")  
+    #print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")  
 
     log_level = logging.DEBUG if args.debug else logging.INFO
     
