@@ -242,18 +242,23 @@ class LunaticAgent(BehaviorAgent):
     def set_vehicle(self, vehicle:carla.Vehicle):
         self._vehicle = vehicle
         # Data Matrix
-        if self._world_model.world_settings.synchronous_mode:
-            self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+        if self.config.data_matrix.enabled:
+            if self._world_model.world_settings.synchronous_mode:
+                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+            else:
+                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
         else:
-            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+            self._road_matrix_updater = None
         self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=self.config, map_inst=self._world_model.map, world=self._world_model.world, rss_sensor=self._world_model.rss_sensor)
 
     @property
     def road_matrix(self):
-        return self._road_matrix_updater.getMatrix()
+        if self._road_matrix_updater:
+            return self._road_matrix_updater.getMatrix()
     
     def render_road_matrix(self, display):
-        self._road_matrix_updater.render(display) # TEMP
+        if self._road_matrix_updater:
+            self._road_matrix_updater.render(display) # TEMP
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
@@ -355,7 +360,7 @@ class LunaticAgent(BehaviorAgent):
         Sets the current phase of the agent and executes all rules that are associated with it.
         """
         normal_next = self.current_phase.next_phase() # sanity checking if everything is correct
-        assert phase == normal_next or phase & Phase.EXCEPTIONS, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
+        assert normal_next == Phase.USER_CONTROLLED or phase == normal_next or phase & Phase.EXCEPTIONS or phase & Phase.USER_CONTROLLED, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
         
         self.current_phase = phase # set next phase
         
