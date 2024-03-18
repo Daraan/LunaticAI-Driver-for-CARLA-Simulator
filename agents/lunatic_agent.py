@@ -223,11 +223,15 @@ class LunaticAgent(BehaviorAgent):
         self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
         
         # Data Matrix
-        if self._world_model.world_settings.synchronous_mode:
-            self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+        if self.config.data_matrix.enabled:
+            if self.config.data_matrix.sync and self._world_model.world_settings.synchronous_mode:
+                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+            else:
+                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+            self._road_matrix_updater.start()  # TODO maybe find a nicer way
         else:
-            self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
-        self._road_matrix_updater.start()  # TODO maybe find a nicer way
+            self._road_matrix_updater = None
+        self._road_matrix_counter = 0 # TODO: Todo make this nicer and maybe get ticks from world.
         
         # Vehicle information
         self.live_info.current_speed = 0
@@ -320,7 +324,13 @@ class LunaticAgent(BehaviorAgent):
         #self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
         
         # Data Matrix
-        self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated in the background.
+        if self._road_matrix_updater:
+            self._road_matrix_counter += 1
+            if (self._road_matrix_counter % self.config.data_matrix.sync_interval) == 0:
+                logger.debug("Updating Road Matrix")
+                self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated in the background.
+            else:
+                logger.debug("Not updating Road Matrix")
         
     def is_taking_turn(self) -> bool:
         return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
