@@ -966,6 +966,7 @@ else:
     
 @dataclass
 class RssSettings(AgentConfig):
+    
     enabled : bool = True
     """
     Use the RSS sensor.
@@ -981,6 +982,8 @@ class RssSettings(AgentConfig):
         log_level : RssLogLevel = carla.RssLogLevel.info # type: ignore
         """Set the initial log level of the RSSSensor"""
     else:
+        enabled = False
+        
         use_stay_on_road_feature : "RssRoadBoundariesMode" = True # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
