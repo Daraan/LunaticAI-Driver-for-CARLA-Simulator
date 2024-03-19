@@ -26,7 +26,7 @@ def get_entry_point():
     return "LunaticChallenger"
 
 # TODO: Pack this in an extra config
-WORLD_MODEL_DESTROY_SENSORS = False
+WORLD_MODEL_DESTROY_SENSORS = True
 ENABLE_RSS = False
 ENABLE_DATA_MATRIX = True
 
@@ -138,7 +138,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     def destroy(self):
         self._destroyed = True
-        print("Destroying")
+        print("Destroying Lunatic Challenger")
         self._road_matrix_updater.stop()
         super().destroy()
         if self.world_model:
