@@ -132,7 +132,7 @@ class Phase(Flag):
             return Phase.RSS_EVALUATION | Phase.BEGIN
         if Phase.USER_CONTROLLED & self:
             # cannot know what the next phase is
-            return Phase.USER_CONTROLLED | Phase.BEGIN
+            return Phase.USER_CONTROLLED | Phase.BEGIN # assure that is a BEGIN or END phase
         if Phase.TERMINATING in self:
             return Phase.NONE
         if Phase.END in self: # Safeguard
