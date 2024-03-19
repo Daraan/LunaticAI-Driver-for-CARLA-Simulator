@@ -33,6 +33,13 @@ ENABLE_DATA_MATRIX = True
 DATA_MATRIX_ASYNC = True
 DATA_MATRIX_TICK_SPEED = 60
 
+class UserInterruption(Exception):
+    """
+    Terminate the run_step loop if user input is detected.
+    
+    Allow the scenario runner and leaderboard to exit gracefully.
+    """
+
 args: LaunchConfig 
 class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
@@ -84,6 +91,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         LunaticAgent.__init__(self, config, self.world_model, map_inst=map_inst, grp_inst=CarlaDataProvider.get_global_route_planner())
         self.game_framework.agent = self # TODO: Remove this circular reference
         self.agent_engaged = False
+        self._destroyed = False
         
     def sensors(self):
         sensors: list = super().sensors()
@@ -114,7 +122,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=control)
             if self.controller.parse_events(self.get_control()):
                 print("Exiting by user input.")
-                raise KeyboardInterrupt("Exiting via user input.")
+                self.destroy()
+                raise UserInterruption("Exiting by user input.")
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
             
             self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control)
@@ -125,6 +134,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             raise e
     
     def destroy(self):
+        self._destroyed = True
         print("Destroying")
         self._road_matrix_updater.stop()
         super().destroy()
@@ -138,3 +148,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.game_framework = None
         pygame.quit()
         print("Destroyed", self)
+        
+    def __del__(self):
+        if not self._destroyed:
+            self.destroy()
