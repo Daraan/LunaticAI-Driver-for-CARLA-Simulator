@@ -100,6 +100,13 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             with self.game_framework:
                 control = super(AutonomousAgent, self).run_step(debug=self.args.debug) # Call Lunatic Agent run_step
             # Handle render updates
+            
+            self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=control)
+            if self.controller.parse_events(self.get_control()):
+                print("Exiting by user input.")
+                raise KeyboardInterrupt("Exiting via user input.")
+            self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
+            
             self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control)
             return control
         except Exception as e:
