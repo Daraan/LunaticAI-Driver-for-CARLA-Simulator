@@ -43,7 +43,7 @@ class TrafficLightDetectionResult(NamedTuple):
     traffic_light_was_found : bool
     traffic_light : carla.TrafficLight
 
-def draw_waypoints(world : carla.World, waypoints, road_option: "RoadOption"=None, z=0.5, **kwargs):
+def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5, *, road_options: "list[RoadOption]"=None, **kwargs):
     """
     Draw a list of waypoints at a certain height given in z.
 
@@ -51,15 +51,18 @@ def draw_waypoints(world : carla.World, waypoints, road_option: "RoadOption"=Non
         :param waypoints: list or iterable container with the waypoints to draw
         :param z: height in meters
     """
-    if road_option:
-        color = roadoption_color(road_option)
+    if road_options:
+        colors = [roadoption_color(o) for o in road_options]
+    elif 'colors' in kwargs:
+        colors = kwargs.pop('colors')
     else:
         color = kwargs.pop('color', (255, 0, 0))
-    if not isinstance(color, carla.Color):
-        color = carla.Color(*color)
+        if not isinstance(color, carla.Color):
+            color = carla.Color(*color)
+        colors = [color]*len(waypoints)
     kwargs.setdefault('life_time', 1.0)
     kwargs.setdefault('arrow_size', 0.3)
-    for wpt in waypoints:
+    for wpt, color in zip(waypoints, colors):
         wpt_t = wpt.transform
         begin = wpt_t.location + carla.Location(z=z)
         angle = math.radians(wpt_t.rotation.yaw)
