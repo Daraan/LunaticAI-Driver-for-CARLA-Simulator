@@ -966,6 +966,7 @@ else:
     
 @dataclass
 class RssSettings(AgentConfig):
+    
     enabled : bool = True
     """
     Use the RSS sensor.
@@ -981,6 +982,8 @@ class RssSettings(AgentConfig):
         log_level : RssLogLevel = carla.RssLogLevel.info # type: ignore
         """Set the initial log level of the RSSSensor"""
     else:
+        enabled = False
+        
         use_stay_on_road_feature : "RssRoadBoundariesMode" = True # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
@@ -996,7 +999,27 @@ class RssSettings(AgentConfig):
         else:
             if not isinstance(self.use_stay_on_road_feature, (bool, str)):
                 self.use_stay_on_road_feature = bool(self.use_stay_on_road_feature)
+                
+
+@dataclass
+class DataMatrixSettings(AgentConfig):
+    enabled : bool = True
+    """Use the DataMatrix"""
     
+    sync: bool = True
+    """
+    When the world uses synchronous mode and sync is true, the data matrix will be updated every sync_interval ticks.
+    A low value will have a negative impact on the fps.
+    If the world uses asynchronous mode or sync is False the data matrix will be updated by a different thread.
+    This increases the fps but updates will be less frequent.
+    """
+    
+    sync_interval: int = 5
+    """
+    The interval in frames after which the data matrix should be updated. Sync must be true.
+    """
+
+
 
 # ---------------------
 # Final Settings
@@ -1100,6 +1123,8 @@ class LunaticAgentSettings(AgentConfig):
     planner : LunaticAgentPlannerSettings = field(default_factory=LunaticAgentPlannerSettings, init=False)
     emergency : LunaticAgentEmergencySettings = field(default_factory=LunaticAgentEmergencySettings, init=False)
     rss : RssSettings = field(default_factory=RssSettings, init=False)
+    data_matrix : DataMatrixSettings = field(default_factory=DataMatrixSettings, init=False)
+    
     
 
 @dataclass
