@@ -15,13 +15,16 @@ from leaderboard.autoagents.autonomous_agent import Track
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-def get_entry_point():
-    print("Getting entry point")
-    return "LunaticChallenger"
 
 hydra_initalized = False
 import logging
 logger.setLevel(logging.DEBUG)
+
+
+def get_entry_point():
+    print("Getting entry point")
+    return "LunaticChallenger"
+
 # TODO: Pack this in an extra config
 WORLD_MODEL_DESTROY_SENSORS = False
 ENABLE_RSS = False
@@ -31,7 +34,6 @@ DATA_MATRIX_ASYNC = True
 DATA_MATRIX_TICK_SPEED = 60
 
 args: LaunchConfig 
-
 class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     def __init__(self, carla_host, carla_port, debug=False):
@@ -107,8 +109,11 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     def destroy(self):
         print("Destroying")
+        self._road_matrix_updater.stop()
         super().destroy()
         if self.world_model:
+            if not WORLD_MODEL_DESTROY_SENSORS:
+                self.world_model.actors.clear()
             self.world_model.destroy()
             self.world_model = None
         if self.game_framework:
