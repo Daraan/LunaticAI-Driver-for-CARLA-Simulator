@@ -191,7 +191,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("Plan GPS", global_plan_gps[:10])
         print("Plan World Coord", global_plan_world_coord[:10])
         
-        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, 25) # Downsample to less distance. TODO: should increase this
+        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, 10) # Downsample to less distance. TODO: should increase this
         print("Downsampled ids", ds_ids)
         
         # Reduce the global plan to the downsampled ids
