@@ -159,7 +159,7 @@ class RssUnstructuredSceneVisualizerMode(Enum):
 class RssUnstructuredSceneVisualizer(object):
     """Gives a top-view over the setting?"""
 
-    def __init__(self, parent_actor, world, display_dimensions):
+    def __init__(self, parent_actor, world, display_dimensions, gamma_correction=2.2):
         self._last_rendered_frame = -1
         self._surface = None
         self._current_rss_surface : Tuple[int, pygame.Surface] = None
@@ -169,6 +169,7 @@ class RssUnstructuredSceneVisualizer(object):
         self._display_dimensions = display_dimensions
         self._camera = None
         self._mode = RssUnstructuredSceneVisualizerMode.disabled
+        self._gamma = gamma_correction
 
         self.restart(RssUnstructuredSceneVisualizerMode.window)
 
@@ -204,11 +205,13 @@ class RssUnstructuredSceneVisualizer(object):
             bp : carla.ActorBlueprint = bp_library.find('sensor.camera.rgb')
             bp.set_attribute('image_size_x', str(self._dim[0]))
             bp.set_attribute('image_size_y', str(self._dim[1]))
+            if bp.has_attribute('gamma'):
+                    bp.set_attribute('gamma', str(self._gamma))
 
-            self._camera : carla.Sensor = assure_type(carla.Sensor ,self._world.spawn_actor(
-                bp,
-                carla.Transform(carla.Location(x=7.5, z=10), carla.Rotation(pitch=-90)),
-                attach_to=self._parent_actor))
+            self._camera : carla.Sensor = assure_type(carla.Sensor, self._world.spawn_actor(
+                                                        bp,
+                                                        carla.Transform(carla.Location(x=7.5, z=10), carla.Rotation(pitch=-90)),
+                                                        attach_to=self._parent_actor))
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
             weak_self = weakref.ref(self)

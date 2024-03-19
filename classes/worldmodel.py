@@ -534,7 +534,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
         
-        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim)
+        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim, gamma_correction=self._gamma)
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
         if self._config.rss.enabled and AD_RSS_AVAILABLE:
             self.rss_sensor = RssSensor(self.player, self.world,

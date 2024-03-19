@@ -21,8 +21,7 @@ CameraBlueprints = {
     'Camera Depth (Gray Scale)' : CameraBlueprint('sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'),
     'Camera Depth (Logarithmic Gray Scale)' : CameraBlueprint('sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'),
     'Camera Semantic Segmentation (Raw)' : CameraBlueprint('sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'),
-    'Camera Semantic Segmentation (CityScapes Palette)' : CameraBlueprint('sensor.camera.semantic_segmentation', cc.CityScapesPalette,
-        'Camera Semantic Segmentation (CityScapes Palette)'),
+    'Camera Semantic Segmentation (CityScapes Palette)' : CameraBlueprint('sensor.camera.semantic_segmentation', cc.CityScapesPalette, 'Camera Semantic Segmentation (CityScapes Palette)'),
     'Lidar (Ray-Cast)' : CameraBlueprint('sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)')
 }
 
