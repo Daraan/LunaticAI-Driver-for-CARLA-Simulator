@@ -1,11 +1,17 @@
 import os
+from typing import Any, Dict, TYPE_CHECKING
 import pygame
 from omegaconf import OmegaConf
 from hydra import compose, initialize_config_dir
 
-from leaderboard.autoagents.autonomous_agent import AutonomousAgent
-from leaderboard.autoagents.autonomous_agent import Track
+import carla
+
+from agents.tools.misc import draw_route
+from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+
+from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track
+from leaderboard.utils.route_manipulation import downsample_route
 
 from agents.lunatic_agent import LunaticAgent
 
@@ -15,6 +21,9 @@ from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 from agents.tools.logging import logger
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
+if TYPE_CHECKING:
+    from agents.navigation.local_planner import RoadOption
+    from srunner.autoagents.sensor_interface import SensorInterface
 
 hydra_initalized = False
 import logging
@@ -30,8 +39,10 @@ WORLD_MODEL_DESTROY_SENSORS = True
 ENABLE_RSS = True and AD_RSS_AVAILABLE
 ENABLE_DATA_MATRIX = True
 
-DATA_MATRIX_ASYNC = True
+DATA_MATRIX_ASYNC = False
 DATA_MATRIX_TICK_SPEED = 60
+
+USE_OPEN_DRIVE_DATA = False
 
 class UserInterruption(Exception):
     """
@@ -43,11 +54,19 @@ class UserInterruption(Exception):
 args: LaunchConfig 
 class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
+    sensor_interface: "SensorInterface"
+    _global_plan: "list[tuple[Dict[str, float], RoadOption]]" = None
+    _global_plan_world_coord: "list[tuple[carla.Transform, RoadOption]]" = None
+    _global_plan_waypoints: "list[tuple[carla.Waypoint, RoadOption]]" = None 
+    
     def __init__(self, carla_host, carla_port, debug=False):
         print("Initializing LunaticChallenger")
         self.world_model: WorldModel = None
         self.game_framework: GameFramework = None
         super().__init__(carla_host, carla_port, debug)
+        self.track = Track.MAP
+        self._opendrive_data = None
+        self._local_planner = None
 
     def setup(self, path_to_conf_file):
         self.track = Track.MAP
@@ -90,22 +109,25 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         print("Initializing agent")
         LunaticAgent.__init__(self, config, self.world_model, map_inst=map_inst, grp_inst=CarlaDataProvider.get_global_route_planner())
+        print("LunaticAgent initialized")
+        self._local_planner_set_plan(self._global_plan_waypoints)
+        
         self.game_framework.agent = self # TODO: Remove this circular reference
         self.agent_engaged = False
         self._destroyed = False
         
     def sensors(self):
         sensors: list = super().sensors()
-        sensors.extend([
-            {'type': 'sensor.opendrive_map', 'reading_frequency': 1, 'id': 'OpenDRIVE'},
-        ])
+        if USE_OPEN_DRIVE_DATA:
+            sensors.extend([
+                {'type': 'sensor.opendrive_map', 'reading_frequency': 1, 'id': 'OpenDRIVE'},
+            ])
         return sensors
 
     @staticmethod
     def _print_input_data(input_data):
         if not input_data:
-            print("No input data:", input_data)
-            return
+            return None
         print("=====================>")
         for key, val in input_data.items():
             if hasattr(val[1], 'shape'):
@@ -114,11 +136,24 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             else:
                 print("[{} -- {:06d}] ".format(key, val[0]))
         print("<=====================")
+        return True
 
-    def run_step(self, input_data, timestamp):
+    def run_step(self, input_data:"Dict[str, tuple[int, Any]]", timestamp):
         try:
-            self._print_input_data(input_data)
-            self.agent_engaged = True
+            if self._print_input_data(input_data) and "OpenDRIVE" in input_data:
+                frame, data = input_data["OpenDRIVE"]
+                data : str = data["opendrive"]
+                if self._opendrive_data != data:
+                    if self._opendrive_data is not None:
+                        breakpoint()
+                    self._opendrive_data = data
+                    print(frame, data[:5000])
+                    with open("opendrive.xml", "w") as f:
+                        f.write(data)
+                else:
+                    print("OpenDRIVE data unchanged")
+            self.agent_engaged = True # remove this, if not used
+            
             with self.game_framework:
                 control = super(AutonomousAgent, self).run_step(debug=self.args.debug) # Call Lunatic Agent run_step
             # Handle render updates
@@ -137,10 +172,68 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.destroy()
             raise e
     
+    # TODO maybe move to misc / tools
+    @staticmethod
+    def _transform_to_waypoint(transform: "carla.Transform", project_to_road=True, lane_type=carla.LaneType.Driving) -> "carla.Waypoint":
+        return CarlaDataProvider.get_map().get_waypoint(transform.location, project_to_road=project_to_road, lane_type=lane_type)
+    
+    def _local_planner_set_plan(self, plan):
+        super(AutonomousAgent, self).set_global_plan(plan, stop_waypoint_creation=True, clean_queue=True)
+        if self.game_framework._args.debug:
+            draw_route(CarlaDataProvider.get_world(), plan, vertical_shift=0.5, size=0.15, downsample=1, life_time=1000.0)
+    
+    def set_global_plan(self, global_plan_gps: "tuple[Dict[str, float], RoadOption]", global_plan_world_coord: "tuple[carla.Transform, RoadOption]"):
+        """
+        Set the plan (route) for the agent
+        """
+        #super().set_global_plan(global_plan_gps, global_plan_world_coord)
+        print("==============Road updated============")
+        print("Plan GPS", global_plan_gps[:10])
+        print("Plan World Coord", global_plan_world_coord[:10])
+        
+        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, 10) # Downsample to less distance. TODO: should increase this
+        print("Downsampled ids", ds_ids)
+        
+        # Reduce the global plan to the downsampled ids
+        self._global_plan_world_coord = [(global_plan_world_coord[x][0], global_plan_world_coord[x][1]) for x in ds_ids]
+        assert self._global_plan_world_coord == [global_plan_world_coord[x] for x in ds_ids]
+        self._global_plan = [global_plan_gps[x] for x in ds_ids]
+        self._global_plan_waypoints = [(self._transform_to_waypoint(transform), road_option) for transform, road_option in self._global_plan_world_coord]
+        if self._local_planner is not None:
+             # TODO: maybe waypoints is not necessary as we extract locations
+            self._local_planner_set_plan(self._global_plan_waypoints)
+    
+    PRINT_TIMES = False
+    def __call__(self):
+        """
+        Execute the agent call, e.g. agent()
+        Returns the next vehicle controls
+        """
+        input_data = self.sensor_interface.get_data(GameTime.get_frame())
+
+        timestamp = GameTime.get_time()
+
+        if self.PRINT_TIMES:
+            if not self.wallclock_t0:
+                self.wallclock_t0 = GameTime.get_wallclocktime()
+            wallclock = GameTime.get_wallclocktime()
+            wallclock_diff = (wallclock - self.wallclock_t0).total_seconds()
+            sim_ratio = 0 if wallclock_diff == 0 else timestamp/wallclock_diff
+
+            print('=== [Agent] -- Wallclock = {} -- System time = {} -- Game time = {} -- Ratio = {}x'.format(
+                str(wallclock)[:-3], format(wallclock_diff, '.3f'), format(timestamp, '.3f'), format(sim_ratio, '.3f')))
+
+        control = self.run_step(input_data, timestamp)
+        control.manual_gear_shift = False
+
+        return control
+
     def destroy(self):
         self._destroyed = True
         print("Destroying Lunatic Challenger")
-        self._road_matrix_updater.stop()
+        if self._road_matrix_updater is not None:
+            self._road_matrix_updater.stop()
+            self._road_matrix_updater = None
         super().destroy()
         if self.world_model:
             if not WORLD_MODEL_DESTROY_SENSORS:
