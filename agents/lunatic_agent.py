@@ -329,11 +329,12 @@ class LunaticAgent(BehaviorAgent):
         #self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
         
         # Data Matrix
-        if self._road_matrix_updater:
+        if self._road_matrix_updater and self._road_matrix_updater.sync:
             self._road_matrix_counter += 1
             if (self._road_matrix_counter % self.config.data_matrix.sync_interval) == 0:
                 logger.debug("Updating Road Matrix")
-                self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated in the background.
+                # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
+                self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
             else:
                 logger.debug("Not updating Road Matrix")
         

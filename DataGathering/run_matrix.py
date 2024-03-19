@@ -97,6 +97,7 @@ class DataMatrix:
         self.road_lane_ids = road_lane_ids or get_all_road_lane_ids(world_map=world_map)
         self.matrix : Dict[int, List[int]] = None
         self.running = True
+        self._sync = True
 
     def _calculate_update(self):
         return wrap_matrix_functionalities(self.ego_vehicle, self.world, self.world_map,
@@ -149,11 +150,14 @@ class DataMatrix:
         display.blit(surf, (220, display.get_height() - surf.get_height()- 40 ))
         pylab.close(fig)
 
-        
+    @property
+    def sync(self):
+        return self._sync
 
 class AsyncDataMatrix(DataMatrix):
     def __init__(self, ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids=None, *, sleep_time=0.1):
         super().__init__(ego_vehicle, world, world_map, road_lane_ids)
+        self._sync = False
         self.sleep_time = sleep_time
         self.lock = threading.Lock()
         self.worker_thread = threading.Thread(target=self._worker)
