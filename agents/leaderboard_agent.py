@@ -22,6 +22,13 @@ def get_entry_point():
 hydra_initalized = False
 import logging
 logger.setLevel(logging.DEBUG)
+# TODO: Pack this in an extra config
+WORLD_MODEL_DESTROY_SENSORS = False
+ENABLE_RSS = False
+ENABLE_DATA_MATRIX = True
+
+DATA_MATRIX_ASYNC = True
+DATA_MATRIX_TICK_SPEED = 60
 
 args: LaunchConfig 
 
@@ -50,6 +57,11 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             args.map = None
             args.sync = None
             args.handle_ticks = False # Assure that this is false
+            
+            args.agent.data_matrix.enabled = ENABLE_DATA_MATRIX
+            args.agent.data_matrix.sync = not DATA_MATRIX_ASYNC
+            args.agent.data_matrix.sync_interval = DATA_MATRIX_TICK_SPEED
+            args.agent.rss.enabled = ENABLE_RSS
             print(OmegaConf.to_yaml(args))
         self.args = args
         
