@@ -3,17 +3,17 @@ import pygame
 from omegaconf import OmegaConf
 from hydra import compose, initialize_config_dir
 
+from leaderboard.autoagents.autonomous_agent import AutonomousAgent
+from leaderboard.autoagents.autonomous_agent import Track
+from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+
 from agents.lunatic_agent import LunaticAgent
 
 from classes.constants import Phase
 from classes.keyboard_controls import RSSKeyboardControl
-from classes.worldmodel import GameFramework, WorldModel
+from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 from agents.tools.logging import logger
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
-from leaderboard.autoagents.autonomous_agent import AutonomousAgent
-from leaderboard.autoagents.autonomous_agent import Track
-
-from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 
 hydra_initalized = False
@@ -26,8 +26,8 @@ def get_entry_point():
     return "LunaticChallenger"
 
 # TODO: Pack this in an extra config
-WORLD_MODEL_DESTROY_SENSORS = False
-ENABLE_RSS = False
+WORLD_MODEL_DESTROY_SENSORS = True
+ENABLE_RSS = True and AD_RSS_AVAILABLE
 ENABLE_DATA_MATRIX = True
 
 DATA_MATRIX_ASYNC = True
@@ -66,6 +66,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             args.map = None
             args.sync = None
             args.handle_ticks = False # Assure that this is false
+            args.gamma = 3.3
             
             args.agent.data_matrix.enabled = ENABLE_DATA_MATRIX
             args.agent.data_matrix.sync = not DATA_MATRIX_ASYNC
@@ -138,7 +139,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     def destroy(self):
         self._destroyed = True
-        print("Destroying")
+        print("Destroying Lunatic Challenger")
         self._road_matrix_updater.stop()
         super().destroy()
         if self.world_model:
