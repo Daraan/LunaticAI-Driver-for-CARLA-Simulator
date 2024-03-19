@@ -11,14 +11,19 @@
 import math
 import numpy as np
 
-from typing import NamedTuple
+from typing import NamedTuple, TYPE_CHECKING
 
 import carla
+
+if TYPE_CHECKING:
+    from agents.navigation.local_planner import RoadOption
 
 __all__ = [
     'ObstacleDetectionResult',
     'TrafficLightDetectionResult',
+    'roadoption_color',
     'draw_waypoints',
+    'draw_route',
     'get_speed',
     'get_trafficlight_trigger_location',
     'is_within_distance',
@@ -57,6 +62,41 @@ def draw_waypoints(world : carla.World, waypoints, z=0.5, **kwargs):
         angle = math.radians(wpt_t.rotation.yaw)
         end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
         world.debug.draw_arrow(begin, end, color=color, **kwargs)
+        
+def roadoption_color(option: "RoadOption") -> carla.Color:
+    from agents.navigation.local_planner import RoadOption # TODO: move to constants to avoid circular import
+    if option == RoadOption.LEFT:  # Yellow
+        return carla.Color(128, 128, 0)
+    elif option == RoadOption.RIGHT:  # Cyan
+        return carla.Color(0, 128, 128)
+    elif option == RoadOption.CHANGELANELEFT:  # Orange
+        return carla.Color(128, 32, 0)
+    elif option == RoadOption.CHANGELANERIGHT:  # Dark Cyan
+        return carla.Color(0, 32, 128)
+    elif option == RoadOption.STRAIGHT:  # Gray
+        return carla.Color(64, 64, 64)
+    else:  # LANEFOLLOW
+        return carla.Color(0, 128, 0)  # Green       
+    
+def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
+    """
+    Draw a list of waypoints at a certain height given in vertical_shift.
+    
+    * NOTE: This is based on the one from the leaderboard project.
+    """
+    for i, w in enumerate(waypoints):
+        if i % downsample != 0:
+            continue
+
+        color = roadoption_color(w[1])
+
+        wp = w[0].location + carla.Location(z=vertical_shift)
+        world.debug.draw_point(wp, size=size, color=color, life_time=life_time)
+
+    world.debug.draw_point(waypoints[0][0].location + carla.Location(z=vertical_shift), size=2*size,
+                                color=carla.Color(0, 0, 128), life_time=life_time)
+    world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=2*size,
+                                color=carla.Color(128, 128, 128), life_time=life_time)
 
 
 def get_speed(vehicle):
