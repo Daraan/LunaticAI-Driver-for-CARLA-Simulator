@@ -180,7 +180,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     def _local_planner_set_plan(self, plan):
         super(AutonomousAgent, self).set_global_plan(plan, stop_waypoint_creation=True, clean_queue=True)
         if self.game_framework._args.debug:
-            draw_route(CarlaDataProvider.get_world(), plan, vertical_shift=1, size=0.3, downsample=1, life_time=1000.0)
+            draw_route(CarlaDataProvider.get_world(), plan, vertical_shift=0.5, size=0.15, downsample=1, life_time=1000.0)
     
     def set_global_plan(self, global_plan_gps: "tuple[Dict[str, float], RoadOption]", global_plan_world_coord: "tuple[carla.Transform, RoadOption]"):
         """
