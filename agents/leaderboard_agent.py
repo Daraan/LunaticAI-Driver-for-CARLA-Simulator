@@ -6,6 +6,7 @@ from hydra import compose, initialize_config_dir
 
 import carla
 
+from agents.tools.misc import draw_route
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
@@ -178,6 +179,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     def _local_planner_set_plan(self, plan):
         super(AutonomousAgent, self).set_global_plan(plan, stop_waypoint_creation=True, clean_queue=True)
+        if self.game_framework._args.debug:
+            draw_route(CarlaDataProvider.get_world(), plan, vertical_shift=1, size=0.3, downsample=1, life_time=1000.0)
     
     def set_global_plan(self, global_plan_gps: "tuple[Dict[str, float], RoadOption]", global_plan_world_coord: "tuple[carla.Transform, RoadOption]"):
         """
@@ -188,7 +191,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("Plan GPS", global_plan_gps[:10])
         print("Plan World Coord", global_plan_world_coord[:10])
         
-        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, 200) # Downsample to 200m
+        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, 25) # Downsample to less distance. TODO: should increase this
         print("Downsampled ids", ds_ids)
         
         # Reduce the global plan to the downsampled ids
