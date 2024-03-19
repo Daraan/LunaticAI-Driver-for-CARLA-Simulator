@@ -534,7 +534,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
         
-        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim)
+        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim, gamma_correction=self._gamma)
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
         if self._config.rss.enabled and AD_RSS_AVAILABLE:
             self.rss_sensor = RssSensor(self.player, self.world,
@@ -621,7 +621,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
             pygame.image.save(display, "_out%04d/%08d.bmp" % (self.recording_dir_num, self.recording_frame_num))
             self.recording_frame_num += 1
 
-    def destroy_sensors(self):
+    def destroy_sensors(self): # TODO only camera_manager, should be renamed.
         """Destroy sensors"""
         self.camera_manager.sensor.destroy()
         self.camera_manager.sensor = None
@@ -634,8 +634,10 @@ class WorldModel(AccessCarlaDataProviderMixin):
             self.world.remove_on_tick(self.world_tick_id)
         if self.rss_sensor:
             self.rss_sensor.destroy()
+            self.rss_sensor = None
         if self.rss_unstructured_scene_visualizer:
             self.rss_unstructured_scene_visualizer.destroy()
+            self.rss_unstructured_scene_visualizer = None
         if self.radar_sensor is not None:
             self.toggle_radar()
         if self.camera_manager is not None:
