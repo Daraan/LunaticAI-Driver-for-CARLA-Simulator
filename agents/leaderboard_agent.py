@@ -102,6 +102,9 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
 
     @staticmethod
     def _print_input_data(input_data):
+        if not input_data:
+            print("No input data:", input_data)
+            return
         print("=====================>")
         for key, val in input_data.items():
             if hasattr(val[1], 'shape'):
