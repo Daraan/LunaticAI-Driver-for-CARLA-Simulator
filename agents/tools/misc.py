@@ -43,7 +43,7 @@ class TrafficLightDetectionResult(NamedTuple):
     traffic_light_was_found : bool
     traffic_light : carla.TrafficLight
 
-def draw_waypoints(world : carla.World, waypoints, z=0.5, **kwargs):
+def draw_waypoints(world : carla.World, waypoints, road_option: "RoadOption"=None, z=0.5, **kwargs):
     """
     Draw a list of waypoints at a certain height given in z.
 
@@ -51,7 +51,10 @@ def draw_waypoints(world : carla.World, waypoints, z=0.5, **kwargs):
         :param waypoints: list or iterable container with the waypoints to draw
         :param z: height in meters
     """
-    color = kwargs.pop('color', (255, 0, 0))
+    if road_option:
+        color = roadoption_color(road_option)
+    else:
+        color = kwargs.pop('color', (255, 0, 0))
     if not isinstance(color, carla.Color):
         color = carla.Color(*color)
     kwargs.setdefault('life_time', 1.0)
@@ -78,7 +81,7 @@ def roadoption_color(option: "RoadOption") -> carla.Color:
     else:  # LANEFOLLOW
         return carla.Color(0, 128, 0)  # Green       
     
-def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
+def _draw_route_trans(world: carla.World, waypoints: "list[tuple[carla.Transform, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
     """
     Draw a list of waypoints at a certain height given in vertical_shift.
     
@@ -97,6 +100,42 @@ def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform, RoadO
                                 color=carla.Color(0, 0, 128), life_time=life_time)
     world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=2*size,
                                 color=carla.Color(128, 128, 128), life_time=life_time)
+    
+def _draw_route_wp(world: carla.World, waypoints: "list[tuple[carla.Waypoint, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
+    """
+    Draw a list of waypoints at a certain height given in vertical_shift.
+    
+    * NOTE: This is based on the one from the leaderboard project.
+    """
+    for i, w in enumerate(waypoints):
+        if i % downsample != 0:
+            continue
+
+        color = roadoption_color(w[1])
+
+        wp = w[0].transform.location + carla.Location(z=vertical_shift)
+        world.debug.draw_point(wp, size=size, color=color, life_time=life_time)
+
+    world.debug.draw_point(waypoints[0][0].transform.location + carla.Location(z=vertical_shift), size=2*size,
+                                color=carla.Color(0, 0, 128), life_time=life_time)
+    world.debug.draw_point(waypoints[-1][0].transform.location + carla.Location(z=vertical_shift), size=2*size,
+                                color=carla.Color(128, 128, 128), life_time=life_time)
+    
+def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform | carla.Waypoint, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
+    """
+    Draw a list of waypoints at a certain height given in vertical_shift.
+    
+    * NOTE: This is based on the one from the leaderboard project.
+    """
+    if len(waypoints) == 0:
+        return
+    if isinstance(waypoints[0][0], carla.Transform):
+        _draw_route_trans(world, waypoints, vertical_shift, size, downsample, life_time)
+    elif isinstance(waypoints[0][0], carla.Waypoint):
+        _draw_route_wp(world, waypoints, vertical_shift, size, downsample, life_time)
+    else:
+        print("Drawing of type:", type(waypoints[0][0]), "not supported.")
+
 
 
 def get_speed(vehicle):
