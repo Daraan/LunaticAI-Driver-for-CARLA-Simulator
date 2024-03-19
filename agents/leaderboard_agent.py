@@ -125,14 +125,14 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=control)
             if self.controller.parse_events(self.get_control()):
                 print("Exiting by user input.")
-                self.destroy()
                 raise UserInterruption("Exiting by user input.")
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
             
             self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control)
             return control
         except Exception as e:
-            logger.error("Error in LunaticChallenger.run_step:", exc_info=True)
+            if not isinstance(e, UserInterruption):
+                logger.error("Error in LunaticChallenger.run_step:", exc_info=True)
             self.destroy()
             raise e
     
