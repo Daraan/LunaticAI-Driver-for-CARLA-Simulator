@@ -48,6 +48,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self.world_model: WorldModel = None
         self.game_framework: GameFramework = None
         super().__init__(carla_host, carla_port, debug)
+        self.track = Track.MAP
+        self._opendrive_data = None
 
     def setup(self, path_to_conf_file):
         self.track = Track.MAP
@@ -104,8 +106,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     @staticmethod
     def _print_input_data(input_data):
         if not input_data:
-            print("No input data:", input_data)
-            return
+            return None
         print("=====================>")
         for key, val in input_data.items():
             if hasattr(val[1], 'shape'):
@@ -114,11 +115,24 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             else:
                 print("[{} -- {:06d}] ".format(key, val[0]))
         print("<=====================")
+        return True
 
-    def run_step(self, input_data, timestamp):
+    def run_step(self, input_data:"Dict[str, tuple[int, Any]]", timestamp):
         try:
-            self._print_input_data(input_data)
-            self.agent_engaged = True
+            if self._print_input_data(input_data) and "OpenDRIVE" in input_data:
+                frame, data = input_data["OpenDRIVE"]
+                data : str = data["opendrive"]
+                if self._opendrive_data != data:
+                    if self._opendrive_data is not None:
+                        breakpoint()
+                    self._opendrive_data = data
+                    print(frame, data[:5000])
+                    with open("opendrive.xml", "w") as f:
+                        f.write(data)
+                else:
+                    print("OpenDRIVE data unchanged")
+            self.agent_engaged = True # remove this, if not used
+            
             with self.game_framework:
                 control = super(AutonomousAgent, self).run_step(debug=self.args.debug) # Call Lunatic Agent run_step
             # Handle render updates
