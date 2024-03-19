@@ -82,10 +82,17 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         LunaticAgent.__init__(self, config, self.world_model, map_inst=map_inst, grp_inst=CarlaDataProvider.get_global_route_planner())
         self.game_framework.agent = self # TODO: Remove this circular reference
         self.agent_engaged = False
+        
+    def sensors(self):
+        sensors: list = super().sensors()
+        sensors.extend([
+            {'type': 'sensor.opendrive_map', 'reading_frequency': 1, 'id': 'OpenDRIVE'},
+        ])
+        return sensors
+        
 
     def run_step(self, input_data, timestamp):
         try:
-            print("Running step")
             print("Input data", input_data)
             self.agent_engaged = True
             with self.game_framework:
