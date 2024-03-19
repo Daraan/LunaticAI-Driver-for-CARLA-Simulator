@@ -41,6 +41,8 @@ ENABLE_DATA_MATRIX = True
 DATA_MATRIX_ASYNC = False
 DATA_MATRIX_TICK_SPEED = 60
 
+USE_OPEN_DRIVE_DATA = False
+
 class UserInterruption(Exception):
     """
     Terminate the run_step loop if user input is detected.
@@ -115,9 +117,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         
     def sensors(self):
         sensors: list = super().sensors()
-        sensors.extend([
-            {'type': 'sensor.opendrive_map', 'reading_frequency': 1, 'id': 'OpenDRIVE'},
-        ])
+        if USE_OPEN_DRIVE_DATA:
+            sensors.extend([
+                {'type': 'sensor.opendrive_map', 'reading_frequency': 1, 'id': 'OpenDRIVE'},
+            ])
         return sensors
 
     @staticmethod
