@@ -44,6 +44,17 @@ DATA_MATRIX_TICK_SPEED = 60
 
 USE_OPEN_DRIVE_DATA = False
 
+DOWNSAMPLING_FACTOR_OF_ROUTE_COORDINATES = 10
+"""
+The smaller the the value the more exact will the agent stick to the original route,
+BUT ONLY IF the route is provided as a fine-grained route.
+
+# NOTE: We should NOT rely on the route to be available in a fine grained manner -> Should work with larger values
+
+Larger values will make the agent cut corners and drive more straight lines.
+Needs extra tools to stick to the road.
+"""
+
 class UserInterruption(Exception):
     """
     Terminate the run_step loop if user input is detected.
@@ -191,7 +202,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("Plan GPS", global_plan_gps[:10])
         print("Plan World Coord", global_plan_world_coord[:10])
         
-        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, 10) # Downsample to less distance. TODO: should increase this
+        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, DOWNSAMPLING_FACTOR_OF_ROUTE_COORDINATES) # Downsample to less distance. TODO: should increase this
         print("Downsampled ids", ds_ids)
         
         # Reduce the global plan to the downsampled ids
