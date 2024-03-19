@@ -184,7 +184,7 @@ class DynamicLocalPlanner(LocalPlanner):
             control = self._vehicle_controller.run_step(self.target_waypoint)
 
         if debug:
-            draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
+            draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], road_options=[self.target_road_option], z=1.0)
 
         return control
 
