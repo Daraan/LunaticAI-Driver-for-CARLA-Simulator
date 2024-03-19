@@ -299,14 +299,15 @@ class LunaticAgent(BehaviorAgent):
         """
         self.live_info.current_speed = get_speed(self._vehicle)
         self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
+        
+        self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
+        
         # planner has access to config
         #self._local_planner.set_speed(self.live_info.current_speed_limit)            # <-- Adjusts Planner
         
         self.live_info.direction : RoadOption = self._local_planner.target_road_option # type: ignore
         if self.live_info.direction is None:
             self.live_info.direction = RoadOption.LANEFOLLOW
-
-        self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10)
 
         self._previous_direction = self._incoming_direction
         self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(

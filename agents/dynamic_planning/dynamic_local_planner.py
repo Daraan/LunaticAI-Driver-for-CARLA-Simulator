@@ -210,6 +210,7 @@ class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
         """
         if clean_queue:
             self._waypoints_queue.clear()
+            # NOTE: We clean the RSS routing targets below and fill it with the new/or extended queue. No need to clean it here.
 
         # Remake the waypoints queue if the new plan has a higher length than the queue
         new_plan_length = len(current_plan) + len(self._waypoints_queue)
