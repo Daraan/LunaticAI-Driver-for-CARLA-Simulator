@@ -91,11 +91,21 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             {'type': 'sensor.opendrive_map', 'reading_frequency': 1, 'id': 'OpenDRIVE'},
         ])
         return sensors
-        
+
+    @staticmethod
+    def _print_input_data(input_data):
+        print("=====================>")
+        for key, val in input_data.items():
+            if hasattr(val[1], 'shape'):
+                shape = val[1].shape
+                print("[{} -- {:06d}] with shape {}".format(key, val[0], shape))
+            else:
+                print("[{} -- {:06d}] ".format(key, val[0]))
+        print("<=====================")
 
     def run_step(self, input_data, timestamp):
         try:
-            print("Input data", input_data)
+            self._print_input_data(input_data)
             self.agent_engaged = True
             with self.game_framework:
                 control = super(AutonomousAgent, self).run_step(debug=self.args.debug) # Call Lunatic Agent run_step
