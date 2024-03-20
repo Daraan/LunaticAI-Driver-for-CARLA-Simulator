@@ -52,6 +52,7 @@ agent: ???
 # -------------------------------------------------
 # Hydra DefaultList
 # See https://hydra.cc/docs/advanced/defaults_list/
+# For the Grammer syntax see https://hydra.cc/docs/advanced/override_grammar/basic/
 # -------------------------------------------------
 
 defaults:
@@ -86,6 +87,9 @@ defaults:
   
   # Configure the logger to be used
   - config_extensions/job_logging@hydra.job_logging
+
+  # Leaderboard Agent override and extensions  @<root>
+  - config_extensions/leaderboard_agent_settings@
 
   # -------------------------------------------
   #    Experiments (fine granular changes)
