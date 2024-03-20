@@ -1,0 +1,17 @@
+# Use top-level for compatibility
+width : ${width}
+height : ${height}
+# Gamma correction
+gamma : 2.2
+recorder:
+  # The output path will be formatted with the image.frame number
+  # The directory will be numbered if it already exists
+  output_path: 'recorder/%08d'
+  # Describe how many frames to skip before saving the next one
+  frame_interval: 8
+camera_blueprints:
+  - TODO
+  - 'Camera RGB' : 
+      - 'sensor.camera.rgb'
+      - Raw
+      - 'Camera RGB'
