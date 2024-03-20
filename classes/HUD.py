@@ -9,7 +9,7 @@
 """Example of automatic vehicle control from client side."""
 import os
 import math
-from typing import ClassVar
+from typing import ClassVar, Optional, Union
 from datetime import timedelta
 import pygame
 
@@ -285,25 +285,37 @@ class FadingText(object):
 class HelpText(object):
     """Helper class to handle text output using pygame"""
 
-    def __init__(self, font, width, height):
+    def __init__(self, font, width, height, doc:Optional[Union[str, bool]] = None):
         """Constructor method"""
-        lines = __doc__.split('\n')
-        self.font = font
-        #self.dim = (680, len(lines) * 22 + 12)
         self.line_space = 18
-        self.dim = (780, len(lines) * self.line_space + 12)
-        self.pos = (0.5 * width - 0.5 * self.dim[0], 0.5 * height - 0.5 * self.dim[1])
+        self.font = font
         self.seconds_left = 0
+        self._width = width
+        self._height = height
+        if doc != False:
+            self.create_surface(doc or __doc__)
+        else:
+            self.surface = None
+        self._render = False
+        
+    def create_surface(self, doc):
+        """Create surface method"""
+        lines = doc.split('\n')
+        self.dim = (780, len(lines) * self.line_space + 12)
+        #self.dim = (680, len(lines) * 22 + 12)
+        self.pos = (0.5 * self._width - 0.5 * self.dim[0], 0.5 * self._height - 0.5 * self.dim[1])
         self.surface = pygame.Surface(self.dim)
         self.surface.fill((0, 0, 0, 0))
         for i, line in enumerate(lines):
             text_texture = self.font.render(line, True, (255, 255, 255))
             self.surface.blit(text_texture, (22, i * self.line_space))
-            self._render = False
         self.surface.set_alpha(220)
 
     def toggle(self):
         """Toggle on or off the render help"""
+        if self.surface is None:
+            print("Warning: No help text available - Initialized with doc=False. Cannot display help. Call create_surface first.")
+            return
         self._render = not self._render
 
     def render(self, display):
