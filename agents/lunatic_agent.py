@@ -692,7 +692,7 @@ class LunaticAgent(BehaviorAgent):
         if not path:
             print("WARNING: Ignoring the lane change as no path was found")
 
-        self.set_global_plan(path)
+        super(LunaticAgent, self).set_global_plan(path)
         
     # ------------------ Other Function ------------------ #
     
