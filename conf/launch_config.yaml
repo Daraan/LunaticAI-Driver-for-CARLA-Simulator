@@ -80,6 +80,9 @@ defaults:
   
   # Interpolation / Aliases
   - config_extensions/interpolation@agent
+
+  # Camera settings
+  - config_extensions/camera@camera
   
   # Only available during runtime
   - config_extensions/live_info@agent.live_info

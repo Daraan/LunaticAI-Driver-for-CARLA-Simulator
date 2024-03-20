@@ -40,10 +40,10 @@ class CameraManager(object):
     """ Class for camera management"""
 
     def __init__(self, parent_actor : carla.Actor, 
-                 hud : "HUD", 
-                 gamma_correction=0,
+                 hud : "HUD",
+                 args:"LaunchConfig",
                  sensors:Optional[List[CameraBlueprint]]=CameraBlueprintsSimple,
-                 args:"LaunchConfig"=None):
+                 ):
         """Constructor method"""
         self.sensor = None
         self.surface : pygame.Surface = None
@@ -83,7 +83,7 @@ class CameraManager(object):
                 blp.set_attribute('image_size_x', str(hud.dim[0]))
                 blp.set_attribute('image_size_y', str(hud.dim[1]))
                 if blp.has_attribute('gamma'):
-                    blp.set_attribute('gamma', str(gamma_correction))
+                    blp.set_attribute('gamma', str(args.camera.gamma))
             elif item[0].startswith('sensor.lidar'):
                 blp.set_attribute('range', '50')
             self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
