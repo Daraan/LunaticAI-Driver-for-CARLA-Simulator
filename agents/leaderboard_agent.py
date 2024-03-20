@@ -195,7 +195,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
             
             self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control)
-            return control
+            final_controls = self.get_control()
+            
+            # TODO: Update HUD controls info
+            return final_controls
         except Exception as e:
             if not isinstance(e, UserInterruption):
                 logger.error("Error in LunaticChallenger.run_step:", exc_info=True)
