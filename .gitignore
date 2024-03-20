@@ -1,6 +1,6 @@
 # Recorder outputs
 _out*
-recorder/
+/*recorder
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
