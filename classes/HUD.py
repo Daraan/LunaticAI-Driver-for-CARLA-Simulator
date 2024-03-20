@@ -16,6 +16,7 @@ import pygame
 import carla
 
 
+from classes.keyboard_controls import RSSKeyboardControl
 from classes.rss_visualization import RssStateVisualizer
 from typing import TYPE_CHECKING
 
@@ -39,7 +40,7 @@ class HUD(object):
     """Class for HUD text"""
     default_font : ClassVar[str] = 'ubuntumono'
 
-    def __init__(self, width:int, height:int, world : carla.World):
+    def __init__(self, width:int, height:int, world : carla.World, help_text:Optional[str]=RSSKeyboardControl.__doc__):
         """Constructor method"""
         self.dim = (width, height)
         self._world = world
@@ -51,7 +52,8 @@ class HUD(object):
         mono = pygame.font.match_font(mono)
         self._font_mono = pygame.font.Font(mono, 12 if os.name == 'nt' else 14)
         self._notifications = FadingText(font, (width, 40), (0, height - 40))
-        self.help = HelpText(pygame.font.Font(mono, FONT_SIZE), width, height)
+        self.help = HelpText(pygame.font.Font(mono, FONT_SIZE), width, height, 
+                             doc=help_text if help_text is not None else False)
         self.server_fps = 0
         self.frame = 0
         self.simulation_time = 0
@@ -293,7 +295,7 @@ class HelpText(object):
         self._width = width
         self._height = height
         if doc != False:
-            self.create_surface(doc or __doc__)
+            self.create_surface(doc or __doc__) # Use doc of THIS file, analog to carla examples.
         else:
             self.surface = None
         self._render = False

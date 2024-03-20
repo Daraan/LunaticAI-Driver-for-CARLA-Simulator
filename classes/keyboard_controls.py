@@ -118,7 +118,8 @@ class RSSKeyboardControl(object):
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         self._world_model = world_model
-        self._world_model.hud.help.create_surface(self.__doc__)
+        if self._world_model.hud.help.surface is None:
+            self._world_model.hud.help.create_surface(self.__doc__)
         world_model.controller = weakref.proxy(self)
         self._control : carla.VehicleControl = None
         #self._control = carla.VehicleControl()
