@@ -130,6 +130,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self.game_framework.agent = self # TODO: Remove this circular reference
         self.agent_engaged = False
         self._destroyed = False
+        try:
+            print(self.controller.get_docstring())
+        except Exception as e:
+            pass
         
     def sensors(self):
         sensors: list = super().sensors()
