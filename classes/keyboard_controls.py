@@ -71,8 +71,41 @@ class PassiveKeyboardControl(object):
 
 
 class RSSKeyboardControl(object):
-    """Class that handles keyboard input."""
+    """
+    TODO: This documentation is not up to date!
 
+    Use ARROWS or WASD keys for control.
+
+        W            : throttle
+        S            : brake
+        AD           : steer
+        Q            : toggle reverse
+        Space        : hand-brake
+        P            : toggle autopilot
+
+        TAB          : change view
+        Backspace    : change vehicle
+
+        R            : toggle recording images to disk
+
+        F2           : toggle RSS visualization mode
+        F3           : increase log level
+        F4           : decrease log level
+        F5           : increase map log level
+        F6           : decrease map log level
+        B            : toggle RSS Road Boundaries Mode
+        G            : RSS check drop current route
+        T            : toggle RSS (NotImplemented)
+        N            : pause simulation
+
+        F1           : toggle HUD
+        H/?          : toggle help
+        ESC          : quit
+    """
+    @classmethod
+    def get_docstring(cls):
+        return "======== Controls ===========\n"+cls.__doc__+"\n============================\n"
+    
     MOUSE_STEERING_RANGE = 200
     signal_received = False
 
