@@ -37,11 +37,13 @@ def get_entry_point():
     return "LunaticChallenger"
 
 # TODO: Pack this in an extra config
+DEBUG = False
+
 WORLD_MODEL_DESTROY_SENSORS = True
 ENABLE_RSS = True and AD_RSS_AVAILABLE
 
-ENABLE_DATA_MATRIX = True
-DATA_MATRIX_ASYNC = False
+ENABLE_DATA_MATRIX = False
+DATA_MATRIX_ASYNC = True
 DATA_MATRIX_SYNC_INTERVAL = 60
 
 USE_OPEN_DRIVE_DATA = False
@@ -88,6 +90,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("Setup with conf file", path_to_conf_file)
         logger.info("Setup with conf file %s", path_to_conf_file)
         config_dir, config_name = os.path.split(path_to_conf_file)
+        # TODO: Maybe move to init so its available during set_global_plan 
         global hydra_initialized
         global args
         if not hydra_initialized:
@@ -101,7 +104,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             assert not args.map, "Map should be set by scenario manager and be None in the config file found map is %s." % args.map
             assert not args.handle_ticks
             assert args.sync is None
-            
+            args.debug = DEBUG
             args.agent.data_matrix.enabled = ENABLE_DATA_MATRIX
             args.agent.data_matrix.sync = not DATA_MATRIX_ASYNC
             args.agent.data_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
@@ -130,9 +133,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self.game_framework.agent = self # TODO: Remove this circular reference
         self.agent_engaged = False
         self._destroyed = False
+        # Print controller docs
         try:
             print(self.controller.get_docstring())
-        except Exception as e:
+        except Exception:
             pass
         
     def sensors(self):

@@ -2,7 +2,8 @@
 sync: null
 handle_ticks: False
 map: null
-gamma: 3.3
+camera:
+  gamma: 3.3
 
 agent:
   data_matrix :
