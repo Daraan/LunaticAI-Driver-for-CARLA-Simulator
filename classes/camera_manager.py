@@ -53,7 +53,7 @@ class CameraManager(object):
         self.recording = False
         self._args = args
         self._frame_interval = args.camera.recorder.frame_interval # todo freeze
-        self.outpath = args.camera.recorder.outpath # todo freeze
+        self.outpath = args.camera.recorder.output_path # todo freeze
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
@@ -169,6 +169,7 @@ class CameraManager(object):
         if self.recording and (
                 (image.frame % self._frame_interval) == 0
                 or self.current_frame + self._frame_interval < image.frame):
+            print("Saving image to disk", self.outpath % image.frame)
             image.save_to_disk(self.outpath % image.frame)
         self.current_frame = image.frame
 
