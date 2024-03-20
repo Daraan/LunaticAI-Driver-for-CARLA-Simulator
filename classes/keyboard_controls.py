@@ -39,7 +39,7 @@ from pygame.locals import MOUSEBUTTONUP
 
 import carla
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
 
@@ -71,8 +71,41 @@ class PassiveKeyboardControl(object):
 
 
 class RSSKeyboardControl(object):
-    """Class that handles keyboard input."""
+    """
+    TODO: This documentation is not up to date!
 
+    Use ARROWS or WASD keys for control.
+
+        W            : throttle
+        S            : brake
+        AD           : steer
+        Q            : toggle reverse
+        Space        : hand-brake
+        P            : toggle autopilot
+
+        TAB          : change view
+        Backspace    : change vehicle
+
+        R            : toggle recording images to disk
+
+        F2           : toggle RSS visualization mode
+        F3           : increase log level
+        F4           : decrease log level
+        F5           : increase map log level
+        F6           : decrease map log level
+        B            : toggle RSS Road Boundaries Mode
+        G            : RSS check drop current route
+        T            : toggle RSS (NotImplemented)
+        N            : pause simulation
+
+        F1           : toggle HUD
+        H/?          : toggle help
+        ESC          : quit
+    """
+    @classmethod
+    def get_docstring(cls):
+        return "======== Controls ===========\n"+cls.__doc__+"\n============================\n"
+    
     MOUSE_STEERING_RANGE = 200
     signal_received = False
 
@@ -85,6 +118,8 @@ class RSSKeyboardControl(object):
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         self._world_model = world_model
+        if self._world_model.hud.help.surface is None:
+            self._world_model.hud.help.create_surface(self.__doc__)
         world_model.controller = weakref.proxy(self)
         self._control : carla.VehicleControl = None
         #self._control = carla.VehicleControl()
@@ -141,7 +176,7 @@ class RSSKeyboardControl(object):
         print('\nReceived signal {}. Trigger stopping...'.format(signum))
         RSSKeyboardControl.signal_received = True
 
-    def parse_events(self, control:carla.VehicleControl=None):
+    def parse_events(self, control:"Optional[carla.VehicleControl]"=None):
         if control:
             self._control = control
         if RSSKeyboardControl.signal_received:
@@ -278,11 +313,13 @@ class RSSKeyboardControl(object):
         """Handles manual vehicle controls via keyboard."""
         if keys[K_UP] or keys[K_w]:
             self._control.throttle = min(self._control.throttle + 0.2, 1)
+            self._control.brake = 0
         #else:
         #    self._control.throttle = max(self._control.throttle - 0.2, 0)
 
         if keys[K_DOWN] or keys[K_s]:
             self._control.brake = min(self._control.brake + 0.2, 1)
+            self._control.throttle = 0
         #else:
         #    self._control.brake = max(self._control.brake - 0.2, 0)
 
@@ -302,8 +339,8 @@ class RSSKeyboardControl(object):
             self._steer_cache = max(self._steer_cache - steer_increment, 0.0)
         elif self._steer_cache < 0:
             self._steer_cache = min(self._steer_cache + steer_increment, 0.0)
-        #else:
-        #    self._steer_cache = 0
+        else:
+            self._steer_cache = 0
 
         self._steer_cache = min(1.0, max(-1.0, self._steer_cache))
         self._control.steer = round(self._steer_cache, 1)

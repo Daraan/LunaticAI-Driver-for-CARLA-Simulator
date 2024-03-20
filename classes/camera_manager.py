@@ -5,9 +5,11 @@ import numpy as np
 import pygame
 from carla import ColorConverter as cc
 
-from typing import TYPE_CHECKING, List, NamedTuple, Optional, Union
+from typing import TYPE_CHECKING, List, NamedTuple, Optional
+
 if TYPE_CHECKING:
     from classes.HUD import HUD
+    from agents.tools.config_creation import LaunchConfig
 
 class CameraBlueprint(NamedTuple):
     blueprint_path : str
@@ -15,6 +17,7 @@ class CameraBlueprint(NamedTuple):
     name : str
     actual_blueprint : Optional[carla.ActorBlueprint] = None
 
+# TODO maybe use camera.yaml
 CameraBlueprints = {
     'Camera RGB' : CameraBlueprint('sensor.camera.rgb', cc.Raw, 'Camera RGB'),
     'Camera Depth (Raw)' : CameraBlueprint('sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'),
@@ -37,20 +40,25 @@ class CameraManager(object):
     """ Class for camera management"""
 
     def __init__(self, parent_actor : carla.Actor, 
-                 hud : "HUD", 
-                 gamma_correction=0,
-                 sensors:Optional[List[CameraBlueprint]]=CameraBlueprintsSimple):
+                 hud : "HUD",
+                 args:"LaunchConfig",
+                 sensors:Optional[List[CameraBlueprint]]=CameraBlueprintsSimple,
+                 ):
         """Constructor method"""
         self.sensor = None
         self.surface : pygame.Surface = None
         self._parent = parent_actor
         self.hud : "HUD" = hud
-        self.current_frame = None
+        self.current_frame = -1
         self.recording = False
+        self._args = args
+        self._frame_interval = args.camera.recorder.frame_interval # todo freeze
+        self.outpath = args.camera.recorder.output_path # todo freeze
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
         attachment = carla.AttachmentType
+        # Maybe use args.camera.camera_blueprints
         self._camera_transforms = [
             (carla.Transform(carla.Location(x=-2.0 * bound_x, y=+0.0 * bound_y, z=2.0 * bound_z),
                              carla.Rotation(pitch=8.0)), attachment.SpringArmGhost),
@@ -75,7 +83,7 @@ class CameraManager(object):
                 blp.set_attribute('image_size_x', str(hud.dim[0]))
                 blp.set_attribute('image_size_y', str(hud.dim[1]))
                 if blp.has_attribute('gamma'):
-                    blp.set_attribute('gamma', str(gamma_correction))
+                    blp.set_attribute('gamma', str(args.camera.gamma))
             elif item[0].startswith('sensor.lidar'):
                 blp.set_attribute('range', '50')
             self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
@@ -134,11 +142,10 @@ class CameraManager(object):
             display.blit(self.surface, (0, 0))
 
     @staticmethod
-    def _parse_image(weak_self, image):
+    def _parse_image(weak_self: "weakref.ref[CameraManager]", image:carla.Image):
         self = weak_self()
         if not self:
             return
-        self.current_frame = image.frame
         if self.sensors[self.index][0].startswith('sensor.lidar'):
             points = np.frombuffer(image.raw_data, dtype=np.dtype('f4'))
             points = np.reshape(points, (int(points.shape[0] / 4), 4))
@@ -159,8 +166,12 @@ class CameraManager(object):
             array = array[:, :, :3]
             array = array[:, :, ::-1]
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
-        if self.recording:
-            image.save_to_disk('_out/%08d' % image.frame)
+        if self.recording and (
+                (image.frame % self._frame_interval) == 0
+                or self.current_frame + self._frame_interval < image.frame):
+            print("Saving image to disk", self.outpath % image.frame)
+            image.save_to_disk(self.outpath % image.frame)
+        self.current_frame = image.frame
 
 
 def follow_car(ego_vehicle : carla.Actor, world : carla.World):

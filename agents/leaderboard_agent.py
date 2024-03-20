@@ -1,3 +1,4 @@
+import operator
 import os
 from typing import Any, Dict, TYPE_CHECKING
 import pygame
@@ -22,10 +23,11 @@ from agents.tools.logging import logger
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
 if TYPE_CHECKING:
-    from agents.navigation.local_planner import RoadOption
     from srunner.autoagents.sensor_interface import SensorInterface
+    from agents.navigation.local_planner import RoadOption
+    from DataGathering.run_matrix import DataMatrix
 
-hydra_initalized = False
+hydra_initialized = False
 import logging
 logger.setLevel(logging.DEBUG)
 
@@ -37,12 +39,23 @@ def get_entry_point():
 # TODO: Pack this in an extra config
 WORLD_MODEL_DESTROY_SENSORS = True
 ENABLE_RSS = True and AD_RSS_AVAILABLE
-ENABLE_DATA_MATRIX = True
 
+ENABLE_DATA_MATRIX = True
 DATA_MATRIX_ASYNC = False
-DATA_MATRIX_TICK_SPEED = 60
+DATA_MATRIX_SYNC_INTERVAL = 60
 
 USE_OPEN_DRIVE_DATA = False
+
+DOWNSAMPLING_FACTOR_OF_ROUTE_COORDINATES = 10
+"""
+The smaller the the value the more exact will the agent stick to the original route,
+BUT ONLY IF the route is provided as a fine-grained route.
+
+NOTE: We should NOT rely on the route to be available in a fine grained manner -> Should work with larger values
+
+Larger values will make the agent cut corners and drive more straight lines.
+Needs extra tools to stick to the road.
+"""
 
 class UserInterruption(Exception):
     """
@@ -59,6 +72,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     _global_plan_world_coord: "list[tuple[carla.Transform, RoadOption]]" = None
     _global_plan_waypoints: "list[tuple[carla.Waypoint, RoadOption]]" = None 
     
+    _road_matrix_updater : "DataMatrix" = None
+    
     def __init__(self, carla_host, carla_port, debug=False):
         print("Initializing LunaticChallenger")
         self.world_model: WorldModel = None
@@ -73,28 +88,28 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("Setup with conf file", path_to_conf_file)
         logger.info("Setup with conf file %s", path_to_conf_file)
         config_dir, config_name = os.path.split(path_to_conf_file)
-        global hydra_initalized
+        global hydra_initialized
         global args
-        if not hydra_initalized:
+        if not hydra_initialized:
             initialize_config_dir(version_base=None, 
                                     config_dir=config_dir, 
                                     job_name="test_app")
             args = compose(config_name=config_name)
-            hydra_initalized = True
+            
+            hydra_initialized = True
             # Let scenario manager decide
-            args.map = None
-            args.sync = None
-            args.handle_ticks = False # Assure that this is false
-            args.gamma = 3.3
+            assert not args.map, "Map should be set by scenario manager and be None in the config file found map is %s." % args.map
+            assert not args.handle_ticks
+            assert args.sync is None
             
             args.agent.data_matrix.enabled = ENABLE_DATA_MATRIX
             args.agent.data_matrix.sync = not DATA_MATRIX_ASYNC
-            args.agent.data_matrix.sync_interval = DATA_MATRIX_TICK_SPEED
+            args.agent.data_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
             args.agent.rss.enabled = ENABLE_RSS
             print(OmegaConf.to_yaml(args))
         self.args = args
         
-        sim_world = CarlaDataProvider.get_world()
+        #sim_world = CarlaDataProvider.get_world()
         map_inst = CarlaDataProvider.get_map()
         
         config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True)
@@ -118,10 +133,17 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         
     def sensors(self):
         sensors: list = super().sensors()
-        if USE_OPEN_DRIVE_DATA:
-            sensors.extend([
-                {'type': 'sensor.opendrive_map', 'reading_frequency': 1, 'id': 'OpenDRIVE'},
-            ])
+        
+         # temp; remove
+        try:
+            i = [x['type'] for x in args.leaderboard.sensors].index('sensor.opendrive_map')
+        except ValueError:
+            pass
+        else:
+            args.leaderboard.sensors[i].use = USE_OPEN_DRIVE_DATA
+        
+        sensors.extend(filter(operator.itemgetter('use'), args.leaderboard.sensors))
+        logger.info("Using sensors: %s", sensors)
         return sensors
 
     @staticmethod
@@ -191,7 +213,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("Plan GPS", global_plan_gps[:10])
         print("Plan World Coord", global_plan_world_coord[:10])
         
-        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, 10) # Downsample to less distance. TODO: should increase this
+        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, DOWNSAMPLING_FACTOR_OF_ROUTE_COORDINATES) # Downsample to less distance. TODO: should increase this
         print("Downsampled ids", ds_ids)
         
         # Reduce the global plan to the downsampled ids
@@ -203,7 +225,6 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
              # TODO: maybe waypoints is not necessary as we extract locations
             self._local_planner_set_plan(self._global_plan_waypoints)
     
-    PRINT_TIMES = False
     def __call__(self):
         """
         Execute the agent call, e.g. agent()
@@ -213,7 +234,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
 
         timestamp = GameTime.get_time()
 
-        if self.PRINT_TIMES:
+        if args.leaderboard.print_time_info:
             if not self.wallclock_t0:
                 self.wallclock_t0 = GameTime.get_wallclocktime()
             wallclock = GameTime.get_wallclocktime()

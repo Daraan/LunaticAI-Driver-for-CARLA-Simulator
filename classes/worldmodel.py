@@ -318,12 +318,16 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.actor_role_name : Optional[str] = args.rolename
         self._actor_filter = args.filter
         self._actor_generation = args.generation
-        self._gamma = args.gamma
+        self._gamma = args.camera.gamma
 
-        # TODO: Remove?
+        # TODO: Unify with CameraManager
         self.recording = False
         self.recording_frame_num = 0
         self.recording_dir_num = 0
+        
+        # From manual controls
+        self.recording_enabled = False
+        self.recording_start = 0
         
         if self.external_actor and (player is not None or agent is not None):
             raise ValueError("External actor cannot be used with player or agent.")
@@ -349,8 +353,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self._weather_index = 0
         self.weather = None
         
-        self.recording_enabled = False
-        self.recording_start = 0
+
         self.actors = []
         
         # From interactive:
@@ -527,14 +530,14 @@ class WorldModel(AccessCarlaDataProviderMixin):
         if self.imu_sensor:
             self.actors.append(self.imu_sensor)
         
-        self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
+        self.camera_manager = CameraManager(self.player, self.hud, self._args)
         self.camera_manager.transform_index = cam_pos_id
         self.camera_manager.set_sensor(cam_index, notify=False)
         
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
         
-        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim, gamma_correction=self._gamma)
+        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim, gamma_correction=self._gamma) # TODO: use args instead of gamma
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
         if self._config.rss.enabled and AD_RSS_AVAILABLE:
             self.rss_sensor = RssSensor(self.player, self.world,
@@ -583,12 +586,18 @@ class WorldModel(AccessCarlaDataProviderMixin):
 
     def toggle_recording(self):
         if not self.recording:
-            dir_name = "_out%04d" % self.recording_dir_num
-            while os.path.exists(dir_name):
+            dir_name, filename = os.path.split(self._args.camera.recorder.output_path)
+            try:
+                dir_name_formatted = dir_name % self.recording_dir_num
+            except TypeError:
+                dir_name += "%04d" 
+                dir_name_formatted = dir_name % self.recording_dir_num
+            while os.path.exists(dir_name_formatted):
                 self.recording_dir_num += 1
-                dir_name = "_out%04d" % self.recording_dir_num
+                dir_name_formatted = dir_name % self.recording_dir_num
+            self.recording_file_format = os.path.join(dir_name, filename)
             self.recording_frame_num = 0
-            os.mkdir(dir_name)
+            os.makedirs(dir_name_formatted)
         else:
             self.hud.notification('Recording finished (folder: _out%04d)' % self.recording_dir_num)
         
@@ -618,7 +627,10 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.hud.render(display)
 
         if self.recording:
-            pygame.image.save(display, "_out%04d/%08d.bmp" % (self.recording_dir_num, self.recording_frame_num))
+            try:
+                pygame.image.save(display, self.recording_file_format % (self.recording_dir_num, self.recording_frame_num))
+            except Exception as e:
+                logger.error("Could not save image format: `%s` % (self.recording_dir_num, self.recording_frame_num): %s", self.recording_file_format, e)
             self.recording_frame_num += 1
 
     def destroy_sensors(self): # TODO only camera_manager, should be renamed.
