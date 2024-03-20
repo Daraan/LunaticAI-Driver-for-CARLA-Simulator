@@ -318,7 +318,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.actor_role_name : Optional[str] = args.rolename
         self._actor_filter = args.filter
         self._actor_generation = args.generation
-        self._gamma = args.gamma
+        self._gamma = args.camera.gamma
 
         # TODO: Unify with CameraManager
         self.recording = False

@@ -2,7 +2,8 @@
 width : ${width}
 height : ${height}
 # Gamma correction
-gamma : 2.2
+gamma : ${gamma}
+
 recorder:
   # The output path will be formatted with the image.frame number
   # The directory will be numbered if it already exists
