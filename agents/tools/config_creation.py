@@ -1175,7 +1175,18 @@ class LaunchConfig:
     host: str = "127.0.0.1"
     port: int = 2000
     fps: int = 20
-    sync: bool = True
+    sync: Union[bool, None] = True
+    """
+    If True, the simulation will be set to run in synchronous mode.
+    For False, the simulation will be set to run in asynchronous mode.
+    If None the world settings for synchronous mode will not be adjusted, 
+    assuming this is handled by the user / external system.
+    """
+    handle_ticks: bool = True
+    """
+    Decide if the GameFramework & WoldModel are allowed to call carla.World.tick()
+    or if `False` the ticks should be handled by an outside system.
+    """
 
     loop: bool = True
 
