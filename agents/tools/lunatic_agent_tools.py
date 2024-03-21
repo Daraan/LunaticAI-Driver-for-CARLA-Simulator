@@ -244,3 +244,11 @@ class ContinueLoopException(Exception):
 
     The agent returns the current ctx.control to the caller of run_step.
     """
+
+
+class UserInterruption(Exception):
+    """
+    Terminate the run_step loop if user input is detected.
+
+    Allow the scenario runner and leaderboard to exit gracefully.
+    """
