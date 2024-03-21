@@ -178,7 +178,7 @@ class RSSKeyboardControl(object):
 
     def parse_events(self, control:"Optional[carla.VehicleControl]"=None):
         if control:
-            self._control = control
+            self._control = control # Note this might be the rss updated controls
         if RSSKeyboardControl.signal_received:
             print('\nAccepted signal. Stopping loop...')
             return True

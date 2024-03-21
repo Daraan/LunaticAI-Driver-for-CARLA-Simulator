@@ -511,7 +511,7 @@ class Rule(_GroupRule):
             
         if not self.is_ready() and not ignore_cooldown:
             return self.NOT_APPLICABLE
-        if not ignore_phase and ctx.agent.current_phase not in self.phases:
+        if not ignore_phase and ctx.agent.current_phase not in self.phases: #NOTE: This is currently never False as checked in execute_phase and the agents dictionary.
             return self.NOT_APPLICABLE # not applicable for this phase
         result = self.evaluate(ctx, overwrite)
 
