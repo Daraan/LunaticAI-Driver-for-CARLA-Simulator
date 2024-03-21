@@ -8,6 +8,7 @@ from hydra import compose, initialize_config_dir
 import carla
 
 from agents.tools.misc import draw_route
+from agents.tools.lunatic_agent_tools import UserInterruption
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
@@ -58,13 +59,6 @@ NOTE: We should NOT rely on the route to be available in a fine grained manner -
 Larger values will make the agent cut corners and drive more straight lines.
 Needs extra tools to stick to the road.
 """
-
-class UserInterruption(Exception):
-    """
-    Terminate the run_step loop if user input is detected.
-    
-    Allow the scenario runner and leaderboard to exit gracefully.
-    """
 
 args: LaunchConfig 
 class LunaticChallenger(AutonomousAgent, LunaticAgent):
