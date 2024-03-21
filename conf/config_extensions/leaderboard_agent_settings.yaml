@@ -1,0 +1,23 @@
+# Decide externally
+sync: null
+handle_ticks: False
+map: null
+camera:
+  gamma: 3.3
+
+agent:
+  data_matrix :
+    enabled: true
+    sync: true
+    sync_interval: 60
+  rss:
+    enabled: true
+leaderboard:
+  sensors:
+    - type: 'sensor.opendrive_map'
+      use: false
+      id : OpenDRIVE
+      reading_frequency : 1
+  global_plan:
+    downsampling_factor: 10
+  print_time_info: false

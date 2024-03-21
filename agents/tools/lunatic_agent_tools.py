@@ -8,9 +8,10 @@ from agents.tools.misc import (is_within_distance,
 
 
 
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
+    from typing import Literal
 
 # TODO: see if max_distance is currently still necessary
 # TODO: move angles to config
