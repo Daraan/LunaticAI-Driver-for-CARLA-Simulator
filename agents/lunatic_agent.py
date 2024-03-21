@@ -391,6 +391,28 @@ class LunaticAgent(BehaviorAgent):
     def run_step(self, debug=False):
         ctx = self.make_context(last_context=self.ctx)
         try:
+            # ----------------------------
+            # Phase 0 - Update Information
+            # ----------------------------
+            self.execute_phase(Phase.UPDATE_INFORMATION | Phase.BEGIN, prior_results=None)
+            self._update_information()
+            self.execute_phase(Phase.UPDATE_INFORMATION | Phase.END, prior_results=None)
+
+            # ----------------------------
+            # Phase 1 - Plan Path
+            # ----------------------------
+
+            # TODO: What TODO if the last phase was COLLISION, EMERGENCY
+            # Some information to PLAN_PATH should reflect this
+
+            # TODO: add option to diverge from existing path here, or plan a new path
+            # NOTE: Currently done in the local planner and behavior functions
+            self.execute_phase(Phase.PLAN_PATH | Phase.BEGIN, prior_results=None)
+            # User defined action
+            # TODO: when going around corners / junctions and the distance between waypoints is too big,
+            # We should replan and and make a more fine grained plan, to stay on the road.
+            self.execute_phase(Phase.PLAN_PATH | Phase.END, prior_results=None)
+            
             # TODO: Make this a rule and/or move inside agent
             # TODO: make a Phases.DONE
             if self.done():
@@ -401,7 +423,11 @@ class LunaticAgent(BehaviorAgent):
                     print("The target has been reached, stopping the simulation")
                     self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
                     raise AgentDoneException
-                self.execute_phase(Phase.DONE| Phase.END, prior_results=None)
+                try:
+                    self.execute_phase(Phase.DONE | Phase.END, prior_results=None)
+                except ContinueLoopException:
+                    # Throw this exception if update information and PLAN_PATH should be executed again
+                    raise 
             
             # ----------------------------
             # Phase NONE - Before Running step
@@ -440,24 +466,6 @@ class LunaticAgent(BehaviorAgent):
         This is our main entry point that runs every tick.  
         """
         self.debug = debug
-        # ----------------------------
-        # Phase 0 - Update Information
-        # ----------------------------
-        self.execute_phase(Phase.UPDATE_INFORMATION | Phase.BEGIN, prior_results=None)
-        self._update_information()
-        self.execute_phase(Phase.UPDATE_INFORMATION | Phase.END, prior_results=None)
-
-        # ----------------------------
-        # Phase 1 - Plan Path
-        # ----------------------------
-
-        # TODO: What TODO if the last phase was COLLISION, EMERGENCY
-        # Some information to PLAN_PATH should reflect this
-
-        # TODO: add option to diverge from existing path here, or plan a new path
-        # NOTE: Currently done in the local planner and behavior functions
-        self.execute_phase(Phase.PLAN_PATH | Phase.BEGIN, prior_results=None)
-        self.execute_phase(Phase.PLAN_PATH | Phase.END, prior_results=None)
 
         # ----------------------------
         # Phase 2 - Detection of Pedestrians and Traffic Lights
