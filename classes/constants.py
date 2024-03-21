@@ -118,7 +118,7 @@ class Phase(Flag):
 
     def next_phase(self):
         # Hardcoded transitions
-        if self in (Phase.NONE, Phase.EXECUTION|Phase.END, Phase.DONE|Phase.END): # Begin loop
+        if self in (Phase.NONE, Phase.EXECUTION|Phase.END): # Begin loop
             return Phase.BEGIN | Phase.UPDATE_INFORMATION
         #if self in (Phase.EXECUTION|Phase.END, Phase.DONE| Phase.END) : # End loop
         #    return Phase.NONE
@@ -127,6 +127,8 @@ class Phase(Flag):
         if Phase.BEGIN in self:
             return (self & ~Phase.BEGIN) | Phase.END
         # Note these should all be END phases
+        if Phase.DONE in self:
+            return Phase.BEGIN | Phase.UPDATE_INFORMATION
         if Phase.EXCEPTIONS & self:
             #return Phase.EXECUTION | Phase.BEGIN
             return Phase.RSS_EVALUATION | Phase.BEGIN
