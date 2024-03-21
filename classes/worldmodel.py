@@ -106,6 +106,7 @@ class AccessCarlaDataProviderMixin:
 class GameFramework(AccessCarlaDataProviderMixin):
     clock : ClassVar[pygame.time.Clock]
     display : ClassVar[pygame.Surface]
+    controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
     
     def __init__(self, args: "LaunchConfig", config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
@@ -194,8 +195,8 @@ class GameFramework(AccessCarlaDataProviderMixin):
     
     def make_controller(self, world_model, controller_class=RSSKeyboardControl, **kwargs):
         controller = controller_class(world_model, config=self.config, clock=self.clock, **kwargs)
-        self.controller = weakref.proxy(controller)
-        return controller
+        self.controller: controller_class = weakref.proxy(controller) # note type not correct. TODO: proxy a good idea?
+        return controller # NOTE: does not return the proxy object.
     
     def set_controller(self, controller):
         self.controller = controller
