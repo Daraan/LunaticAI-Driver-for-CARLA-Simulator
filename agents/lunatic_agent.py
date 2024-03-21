@@ -362,6 +362,9 @@ class LunaticAgent(BehaviorAgent):
     
     def is_taking_turn(self) -> bool:
         return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
+    
+    def is_changing_lane(self) -> bool:
+        return self._incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
 
     # ------------------ Step & Loop Logic ------------------ #
 
