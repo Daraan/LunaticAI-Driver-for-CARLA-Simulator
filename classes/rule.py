@@ -57,6 +57,14 @@ class Context:
     
     last_context : Optional["Context"]
     """The context object of the last tick. Used to access the last phase's results."""
+    
+    second_pass : bool = None
+    """
+    Whether or not the run_step function performs a second pass.
+    
+    NOTE: The correct value of should not be assumed.
+    The user is responsible for setting this value to True if a second pass is required.
+    """
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
