@@ -178,7 +178,7 @@ class RSSKeyboardControl(object):
 
     def parse_events(self, control:"Optional[carla.VehicleControl]"=None):
         if control:
-            self._control = control
+            self._control = control # Note this might be the rss updated controls
         if RSSKeyboardControl.signal_received:
             print('\nAccepted signal. Stopping loop...')
             return True
@@ -210,6 +210,7 @@ class RSSKeyboardControl(object):
                 elif event.key == K_F2:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.toggle_debug_visualization_mode()
+                        self._world_model.hud.notification("RSS Debug Visualization Mode: %s" % self._world_model.rss_sensor.debug_visualizer._visualization_mode)
                 elif event.key == K_F3:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.decrease_log_level()
@@ -229,9 +230,11 @@ class RSSKeyboardControl(object):
                         if self._world_model.rss_sensor.sensor.road_boundaries_mode == carla.RssRoadBoundariesMode.Off:
                             self._world_model.rss_set_road_boundaries_mode(carla.RssRoadBoundariesMode.On)
                             print("carla.RssRoadBoundariesMode.On")
+                            self._world_model.hud.notification("RSS Road Boundaries Mode:  On")
                         else:
                             self._world_model.rss_set_road_boundaries_mode(carla.RssRoadBoundariesMode.Off)
                             print("carla.RssRoadBoundariesMode.Off")
+                            self._world_model.hud.notification("RSS Road Boundaries Mode: Off")
                 elif event.key == K_g:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.drop_route()

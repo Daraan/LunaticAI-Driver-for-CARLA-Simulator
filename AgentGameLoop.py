@@ -183,10 +183,6 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                     except IndexError:
                         pass
                     game_framework.debug.draw_point(destination, life_time=0.5)
-                    
-                    matrix = agent.road_matrix  # TEMP
-                    if matrix is not None:
-                        pprint(matrix) # TEMP
                 
                 # Continue the Loop from outside
                 if args.loop and not game_framework.continue_loop and agent.done():

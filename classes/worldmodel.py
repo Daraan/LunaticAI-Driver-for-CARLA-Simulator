@@ -106,6 +106,7 @@ class AccessCarlaDataProviderMixin:
 class GameFramework(AccessCarlaDataProviderMixin):
     clock : ClassVar[pygame.time.Clock]
     display : ClassVar[pygame.Surface]
+    controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
     
     def __init__(self, args: "LaunchConfig", config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
@@ -121,6 +122,8 @@ class GameFramework(AccessCarlaDataProviderMixin):
         
         self.debug = self.world.debug
         self.continue_loop = True
+        
+        self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
         
     @staticmethod
     def init_pygame(args):
@@ -194,8 +197,8 @@ class GameFramework(AccessCarlaDataProviderMixin):
     
     def make_controller(self, world_model, controller_class=RSSKeyboardControl, **kwargs):
         controller = controller_class(world_model, config=self.config, clock=self.clock, **kwargs)
-        self.controller = weakref.proxy(controller)
-        return controller
+        self.controller: controller_class = weakref.proxy(controller) # note type not correct. TODO: proxy a good idea?
+        return controller # NOTE: does not return the proxy object.
     
     def set_controller(self, controller):
         self.controller = controller
@@ -249,15 +252,14 @@ class GameFramework(AccessCarlaDataProviderMixin):
         raise ContinueLoopException(message)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None or issubclass(exc_type, ContinueLoopException):
-            self.render_everything()
-            
-            pygame.display.flip()
-            
-            Rule.update_all_cooldowns() # Rule Cooldown Framework
-        elif isinstance(exc_val, AgentDoneException):
+        self.cooldown_framework.__exit__(exc_type, exc_val, exc_tb)
+        self.render_everything()
+        pygame.display.flip()
+        
+        if isinstance(exc_val, AgentDoneException):
             self.continue_loop = False
-            
+        #elif exc_type is None or issubclass(exc_type, ContinueLoopException):
+        #    pass
 
 # ==============================================================================
 # -- World ---------------------------------------------------------------
@@ -541,7 +543,8 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
         if self._config.rss.enabled and AD_RSS_AVAILABLE:
             self.rss_sensor = RssSensor(self.player, self.world,
-                                    self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer)
+                                    self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer,
+                                    visualizer_mode=self._config.rss.debug_visualization_mode)
             self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
         else: 
             self.rss_sensor = None

@@ -12,7 +12,7 @@ try:
     AD_RSS_AVAILABLE = True
 except ImportError:
     AD_RSS_AVAILABLE = False
-from classes.rss_visualization import RssDebugVisualizer # pylint: disable=relative-import
+from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisualizer, RssUnstructuredSceneVisualizer # pylint: disable=relative-import
 
 
 # ==============================================================================
@@ -68,7 +68,7 @@ class RssStateInfo(object):
 
 class RssSensor(object):
 
-    def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer, bounding_box_visualizer, state_visualizer, routing_targets=None):
+    def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer:"RssUnstructuredSceneVisualizer", bounding_box_visualizer, state_visualizer, *, visualizer_mode=RssDebugVisualizationMode.Off,routing_targets=None):
         self.sensor = None
         self.unstructured_scene_visualizer = unstructured_scene_visualizer
         self.bounding_box_visualizer = bounding_box_visualizer
@@ -84,7 +84,7 @@ class RssSensor(object):
         self.ego_dynamics_on_route = None
         self.current_vehicle_parameters = self.get_default_parameters()
         self.route = None
-        self.debug_visualizer = RssDebugVisualizer(parent_actor, world)
+        self.debug_visualizer = RssDebugVisualizer(parent_actor, world, visualizer_mode)
         self.state_visualizer = state_visualizer
         self.change_to_unstructured_position_map = dict()
 

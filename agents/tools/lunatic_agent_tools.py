@@ -8,7 +8,7 @@ from agents.tools.misc import (is_within_distance,
 
 
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 
@@ -138,7 +138,7 @@ detect_vehicles_in_front = partial(detect_vehicles, up_angle_th=90, low_angle_th
 detect_vehicles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th=160)
 
 
-def generate_lane_change_path(waypoint : carla.Waypoint, direction='left', distance_same_lane=10,
+def generate_lane_change_path(waypoint : carla.Waypoint, direction:"Literal['left'] | Literal['right']"='left', distance_same_lane=10,
                                    distance_other_lane=25, lane_change_distance=25,
                                    check=True, lane_changes=1, step_distance=2):
     """
@@ -243,4 +243,19 @@ class ContinueLoopException(Exception):
     Raise when `run_step` action of the agent should not be continued further.
 
     The agent returns the current ctx.control to the caller of run_step.
+    """
+
+
+class UserInterruption(Exception):
+    """
+    Terminate the run_step loop if user input is detected.
+
+    Allow the scenario runner and leaderboard to exit gracefully.
+    """
+    
+class UpdatedPathException(Exception):
+    """
+    Should be raised when the path has been updated and the agent should replan.
+    
+    Phase.DONE | END
     """

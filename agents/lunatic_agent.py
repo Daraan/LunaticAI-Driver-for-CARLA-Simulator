@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import random
-from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, cast as assure_type
+from typing import Any, ClassVar, Dict, List, Literal, Optional, Set, Tuple, Union, cast as assure_type
 import weakref
 
 from omegaconf import DictConfig, OmegaConf
@@ -27,7 +27,7 @@ from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
 import agents.tools
-from agents.tools.lunatic_agent_tools import AgentDoneException
+from agents.tools.lunatic_agent_tools import AgentDoneException, UpdatedPathException
 from agents.tools.lunatic_agent_tools import ContinueLoopException
 from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
                                compute_distance)
@@ -292,55 +292,79 @@ class LunaticAgent(BehaviorAgent):
 
     # ------------------ Information functions ------------------ #
 
-    def _update_information(self, exact_waypoint=True):
+    def _update_information(self, exact_waypoint=True, second_pass=False):
         """
         This method updates the information regarding the ego
         vehicle based on the surrounding world.
+        
+        second_pass = True will skip some calculations, 
+        especially useful if a second call to _update_information is necessary in the same tick.
+        
+        Assumes: second_pass == True => agent.done() == False
         """
-        self.live_info.current_speed = get_speed(self._vehicle)
-        self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
+        # Information that needs to be updated after the plan / route was changed.
+        if not second_pass:
+            # For heavy and tick-constant information
+            self.location = self._vehicle.get_location()
+            self.live_info.current_speed = get_speed(self._vehicle)
+            self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
+            
+            self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
+            
+            # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
+            # TODO: Use CarlaDataProvider
+            self.vehicles_nearby : List[carla.Vehicle] = self._world.get_actors().filter("*vehicle*")
+            self.walkers_nearby : List[carla.Walker] = self._world.get_actors().filter("*walker.pedestrian*")
+            
+            # Data Matrix
+            if self._road_matrix_updater and self._road_matrix_updater.sync:
+                self._road_matrix_counter += 1
+                if (self._road_matrix_counter % self.config.data_matrix.sync_interval) == 0:
+                    logger.debug("Updating Road Matrix")
+                    # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
+                    self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
+                else:
+                    logger.debug("Not updating Road Matrix")        
+            self._previous_direction = self._incoming_direction
         
-        self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
-        
-        # planner has access to config
-        #self._local_planner.set_speed(self.live_info.current_speed_limit)            # <-- Adjusts Planner
-        
-        self.live_info.direction : RoadOption = self._local_planner.target_road_option # type: ignore
-        if self.live_info.direction is None:
+        # This info might change after PLAN_PATH and DONE
+        if not self.done():
+            self.live_info.direction = assure_type(RoadOption, self._local_planner.target_road_option) # TODO: This might lack one tick behind? updated in run_step
+            assert self.live_info.direction is not None, "Direction is None; this should not happen."
             self.live_info.direction = RoadOption.LANEFOLLOW
 
-        self._previous_direction = self._incoming_direction
-        self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
-            steps=self._look_ahead_steps)
-        if self._incoming_direction is None:
-            self._incoming_direction = RoadOption.LANEFOLLOW
-
-        self.location = ego_vehicle_loc = self._vehicle.get_location()
-        if exact_waypoint:
-            self._current_waypoint : carla.Waypoint = self._map.get_waypoint(ego_vehicle_loc)
+                    # NOTE: This should be called after 
+            self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
+                steps=self._look_ahead_steps)
+            assert self._incoming_direction is not None, "Incoming direction is None; this should not happen."
+            # self._incoming_direction = RoadOption.LANEFOLLOW
+            if exact_waypoint and not second_pass:
+                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.location)
+            elif not exact_waypoint:
+                self._current_waypoint : carla.Waypoint = self._incoming_waypoint
+            # else: exact waypoint from first pass
         else:
-            self._current_waypoint : carla.Waypoint = self._incoming_waypoint
+            assert second_pass == False, "In the second pass the agent should have replaned and agent.done() should be False"
+            # Assumes second_pass is False
+            if exact_waypoint:
+                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.location)
+            else:
+                self._current_waypoint : carla.Waypoint = self._incoming_waypoint # NOTE: this is from the last tick
+            # Queue is empty
+            self._incoming_waypoint = None
+            self._incoming_direction = RoadOption.VOID
+            
+        #logger.debug(f"Incoming Direction: {str(self._incoming_direction):<20} - Second Pass: {second_pass}")
 
-        # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
-        self.vehicles_nearby : List[carla.Vehicle] = self._world.get_actors().filter("*vehicle*")
-        self.walkers_nearby : List[carla.Walker] = self._world.get_actors().filter("*walker.pedestrian*")
-        
         # RSS
         # todo uncomment if agent is created after world model
         #self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
-        
-        # Data Matrix
-        if self._road_matrix_updater and self._road_matrix_updater.sync:
-            self._road_matrix_counter += 1
-            if (self._road_matrix_counter % self.config.data_matrix.sync_interval) == 0:
-                logger.debug("Updating Road Matrix")
-                # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
-                self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
-            else:
-                logger.debug("Not updating Road Matrix")
-        
+    
     def is_taking_turn(self) -> bool:
         return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
+    
+    def is_changing_lane(self) -> bool:
+        return self._incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
 
     # ------------------ Step & Loop Logic ------------------ #
 
@@ -388,11 +412,40 @@ class LunaticAgent(BehaviorAgent):
                 throw_on_missing=True
             )
 
-    def run_step(self, debug=False):
-        ctx = self.make_context(last_context=self.ctx)
+    def run_step(self, debug=False, second_pass=False):
+        if not second_pass:
+            ctx = self.make_context(last_context=self.ctx)
+        else:
+            ctx = self.ctx
+        ctx.second_pass = second_pass
         try:
-            # TODO: Make this a rule and/or move inside agent
-            # TODO: make a Phases.DONE
+            # ----------------------------
+            # Phase 0 - Update Information
+            # ----------------------------
+            self.execute_phase(Phase.UPDATE_INFORMATION | Phase.BEGIN, prior_results=None)
+            self._update_information(second_pass=second_pass)
+            self.execute_phase(Phase.UPDATE_INFORMATION | Phase.END, prior_results=None)
+
+            # ----------------------------
+            # Phase 1 - Plan Path
+            # ----------------------------
+
+            # TODO: What TODO if the last phase was COLLISION, EMERGENCY
+            # Some information to PLAN_PATH should reflect this
+
+            # TODO: add option to diverge from existing path here, or plan a new path
+            # NOTE: Currently done in the local planner and behavior functions
+            try:
+                self.execute_phase(Phase.PLAN_PATH | Phase.BEGIN, prior_results=None)
+                # User defined action
+                # TODO: when going around corners / junctions and the distance between waypoints is too big,
+                # We should replan and and make a more fine grained plan, to stay on the road.
+                self.execute_phase(Phase.PLAN_PATH | Phase.END, prior_results=None)
+            except UpdatedPathException as e:
+                if second_pass:
+                    raise ValueError("UpdatedPathException was raised in the second pass. This should not happen.") from e
+                return self.run_step(debug=debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
+            
             if self.done():
                 # NOTE: Might be in NONE phase here.
                 self.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
@@ -401,7 +454,8 @@ class LunaticAgent(BehaviorAgent):
                     print("The target has been reached, stopping the simulation")
                     self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
                     raise AgentDoneException
-                self.execute_phase(Phase.DONE| Phase.END, prior_results=None)
+                self.execute_phase(Phase.DONE | Phase.END, prior_results=None)
+                return self.run_step(debug=debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
             
             # ----------------------------
             # Phase NONE - Before Running step
@@ -440,24 +494,6 @@ class LunaticAgent(BehaviorAgent):
         This is our main entry point that runs every tick.  
         """
         self.debug = debug
-        # ----------------------------
-        # Phase 0 - Update Information
-        # ----------------------------
-        self.execute_phase(Phase.UPDATE_INFORMATION | Phase.BEGIN, prior_results=None)
-        self._update_information()
-        self.execute_phase(Phase.UPDATE_INFORMATION | Phase.END, prior_results=None)
-
-        # ----------------------------
-        # Phase 1 - Plan Path
-        # ----------------------------
-
-        # TODO: What TODO if the last phase was COLLISION, EMERGENCY
-        # Some information to PLAN_PATH should reflect this
-
-        # TODO: add option to diverge from existing path here, or plan a new path
-        # NOTE: Currently done in the local planner and behavior functions
-        self.execute_phase(Phase.PLAN_PATH | Phase.BEGIN, prior_results=None)
-        self.execute_phase(Phase.PLAN_PATH | Phase.END, prior_results=None)
 
         # ----------------------------
         # Phase 2 - Detection of Pedestrians and Traffic Lights
@@ -672,7 +708,7 @@ class LunaticAgent(BehaviorAgent):
         """
         return substep_managers.emergency_manager(self, control, reason)
     
-    def lane_change(self, direction, same_lane_time=0, other_lane_time=0, lane_change_time=2):
+    def lane_change(self, direction: "Literal['left'] | Literal['right']", same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """
         Changes the path so that the vehicle performs a lane change.
         Use 'direction' to specify either a 'left' or 'right' lane change,
@@ -680,7 +716,7 @@ class LunaticAgent(BehaviorAgent):
         """
         speed = self._vehicle.get_velocity().length()
         path : list = generate_lane_change_path(
-            self._map.get_waypoint(self._vehicle.get_location()), # get current waypoint
+            self._current_waypoint, # NOTE: Assuming exact_waypoint
             direction,
             same_lane_time * speed, # get direction in meters t*V
             other_lane_time * speed,
@@ -693,6 +729,7 @@ class LunaticAgent(BehaviorAgent):
             print("WARNING: Ignoring the lane change as no path was found")
 
         super(LunaticAgent, self).set_global_plan(path)
+        # TODO: # CRITICAL: Keep old global plan if it is some end goal.
         
     # ------------------ Other Function ------------------ #
     
