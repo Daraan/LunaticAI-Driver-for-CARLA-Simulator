@@ -124,15 +124,18 @@ class _CountdownRule:
 
     DEFAULT_COOLDOWN_RESET : ClassVar[int] = 0
     """Value the cooldown is reset to when `reset_cooldown` is called without a value."""
+       
+    start_cooldown : ClassVar[int] = 0
+    """Initial Cooldown when initialized. if >0 the rule will not be ready for the first start_cooldown ticks."""
+
+    instances : ClassVar[WeakSet["_CountdownRule"]] = WeakSet()
+    """Keep track of all instances for the cooldowns"""
     
     _cooldown : int
     """If 0 the rule is ready to be executed."""
     
-    start_cooldown : ClassVar[int] = 0
-    """Initial Cooldown when initialized. if >0 the rule will not be ready for the first start_cooldown ticks."""
-
-    # Keep track of all instances for the cooldowns
-    instances : ClassVar[WeakSet["_CountdownRule"]] = WeakSet()
+    blocked : bool = False # NOTE: not a property
+    """Indicates if the rule is blocked for this tick only. Reset to False after the tick."""
 
     def __init__(self, cooldown_reset_value : Optional[int] = None, enabled: bool = True):
         self.instances.add(self)
@@ -142,7 +145,7 @@ class _CountdownRule:
 
     def is_ready(self) -> bool:
         """Group aware check if a rule is ready."""
-        return self.enabled and self.cooldown == 0 # Note: uses property getters. Group aware for GroupRules
+        return self.cooldown == 0 and self.enabled and not self.blocked # Note: uses property getters. Group aware for GroupRules
     
     def reset_cooldown(self, value:Optional[int]=None):
         if value is None:
@@ -169,8 +172,14 @@ class _CountdownRule:
         for instance in cls.instances:
             instance.update_cooldown()
             
+    @classmethod
+    def unblock_all_rules(cls):
+        for instance in cls.instances:
+            instance.blocked = False
+            
     @property
     def enabled(self) -> bool:
+        """If False the rule will not be evaluated. Contrary to `blocked` it will not be reset after the tick."""
         return self._enabled
     
     @enabled.setter
@@ -187,9 +196,9 @@ class _CountdownRule:
             return self
 
         def __exit__(_, exc_type, exc_value, traceback):
-            if exc_type is None:
-                Rule.update_all_cooldowns()
-
+            Rule.update_all_cooldowns()
+            Rule.unblock_all_rules()
+                
 
 class _GroupRule(_CountdownRule):
     group : Optional[str] = None # group of rules that share a cooldown

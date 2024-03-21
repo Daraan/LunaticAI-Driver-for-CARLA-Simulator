@@ -123,6 +123,8 @@ class GameFramework(AccessCarlaDataProviderMixin):
         self.debug = self.world.debug
         self.continue_loop = True
         
+        self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
+        
     @staticmethod
     def init_pygame(args):
         pygame.init()
@@ -250,15 +252,14 @@ class GameFramework(AccessCarlaDataProviderMixin):
         raise ContinueLoopException(message)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None or issubclass(exc_type, ContinueLoopException):
-            self.render_everything()
-            
-            pygame.display.flip()
-            
-            Rule.update_all_cooldowns() # Rule Cooldown Framework
-        elif isinstance(exc_val, AgentDoneException):
+        self.cooldown_framework.__exit__(exc_type, exc_val, exc_tb)
+        self.render_everything()
+        pygame.display.flip()
+        
+        if isinstance(exc_val, AgentDoneException):
             self.continue_loop = False
-            
+        #elif exc_type is None or issubclass(exc_type, ContinueLoopException):
+        #    pass
 
 # ==============================================================================
 # -- World ---------------------------------------------------------------
