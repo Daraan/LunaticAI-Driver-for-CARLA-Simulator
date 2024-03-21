@@ -597,7 +597,11 @@ class RssDebugVisualizer(object):
     def __init__(self, player, world : carla.World):
         self._world = world
         self._player = player
-        self._visualization_mode : RssDebugVisualizationMode = RssDebugVisualizationMode.Off
+        if isinstance(visualization_mode, str):
+            visualization_mode = RssDebugVisualizationMode[visualization_mode]
+        elif isinstance(visualization_mode, int):
+            visualization_mode = RssDebugVisualizationMode(visualization_mode)
+        self._visualization_mode : RssDebugVisualizationMode = visualization_mode
 
     def toggleMode(self):
         if self._visualization_mode == RssDebugVisualizationMode.All:
