@@ -594,7 +594,7 @@ class RssDebugVisualizationMode(Enum):
 
 class RssDebugVisualizer(object):
 
-    def __init__(self, player, world : carla.World):
+    def __init__(self, player, world : carla.World, visualization_mode: Union[RssDebugVisualizationMode,str,int] = RssDebugVisualizationMode.Off):
         self._world = world
         self._player = player
         if isinstance(visualization_mode, str):
