@@ -417,6 +417,7 @@ class LunaticAgent(BehaviorAgent):
             ctx = self.make_context(last_context=self.ctx)
         else:
             ctx = self.ctx
+        ctx.second_pass = second_pass
         try:
             # ----------------------------
             # Phase 0 - Update Information
@@ -443,10 +444,8 @@ class LunaticAgent(BehaviorAgent):
             except UpdatedPathException as e:
                 if second_pass:
                     raise ValueError("UpdatedPathException was raised in the second pass. This should not happen.") from e
-                return self.run_step(debug=debug, second_pass=True)
+                return self.run_step(debug=debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
             
-            # TODO: Make this a rule and/or move inside agent
-            # TODO: make a Phases.DONE
             if self.done():
                 # NOTE: Might be in NONE phase here.
                 self.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
@@ -456,7 +455,7 @@ class LunaticAgent(BehaviorAgent):
                     self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
                     raise AgentDoneException
                 self.execute_phase(Phase.DONE | Phase.END, prior_results=None)
-                return self.run_step(debug=debug, second_pass=True)
+                return self.run_step(debug=debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
             
             # ----------------------------
             # Phase NONE - Before Running step
