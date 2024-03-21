@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import random
-from typing import Any, ClassVar, Dict, List, Literal, Optional, Set, Tuple, Union, cast as assure_type
+from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
 import weakref
 
 from omegaconf import DictConfig, OmegaConf
@@ -46,6 +46,8 @@ from agents.tools.config_creation import AgentConfig, LiveInfo, LunaticAgentSett
 from classes.worldmodel import WorldModel, CarlaDataProvider
 from classes.keyboard_controls import RSSKeyboardControl
 
+if TYPE_CHECKING:
+    from typing import Literal # for Python 3.8
 
 # As Reference:
 '''
