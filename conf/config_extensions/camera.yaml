@@ -16,3 +16,18 @@ camera_blueprints:
       - 'sensor.camera.rgb'
       - Raw
       - 'Camera RGB'
+
+hud :
+  data_matrix :
+      # NOTE: Keywords must match DataMatrix.render
+      draw : true
+      # Draw the numerical values of the matrix
+      values : true
+      # Orient vertical (lanes are left to right) instead of horizontal.
+      vertical : true
+      imshow_settings :
+        cmap : jet
+      text_settings:
+        color : orange
+      # TODO: options for position
+

@@ -2,6 +2,8 @@
 
 from collections.abc import Mapping
 import sys
+
+from classes.camera_manager import CameraBlueprint
 if __name__ == "__main__": # TEMP clean at the end, only here for testing
     import os
     sys.path.append(os.path.abspath("../"))
@@ -10,7 +12,7 @@ from enum import Enum
 from functools import partial, wraps
 from dataclasses import dataclass, field, asdict, is_dataclass
 import typing
-from typing import TYPE_CHECKING, Callable, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast
 
 # from typing import ParamSpec, Concatenate, TypeAlias
 #Param = ParamSpec("Param")
@@ -39,11 +41,12 @@ __all__ = ["AgentConfig",
            "BasicAgentSettings", 
            "BehaviorAgentSettings", 
            "SimpleBasicAgentSettings", 
-           "SimpleBehaviorAgentSettings"
+           "SimpleBehaviorAgentSettings",
            "LunaticAgentSettings",
            "SimpleLunaticAgentSettings",
            "AutopilotBehavior",
            
+           "CameraConfig",
            "LaunchConfig",
         ]
 
@@ -1019,6 +1022,21 @@ class DataMatrixSettings(AgentConfig):
     The interval in frames after which the data matrix should be updated. Sync must be true.
     """
 
+    hud : Dict[str, Any] = field(default_factory={
+                    'draw': True,
+                    'values': True,
+                    'vertical' : True,
+                    'imshow_settings': {'cmap': 'jet'},
+                    'text_settings' : {'color': 'orange'} 
+                    })
+    """
+    Keyword arguments for `DataMatrix.render`
+    NOTE: The default_settings substitute this with an interpolation that might not work,
+    as it relies on the parent LaunchConfig that is currently removed.
+    
+    `camera.hud.data_matrix` is preferred.
+    """
+
 
 
 # ---------------------
@@ -1164,6 +1182,67 @@ if __name__ == "__main__":
 # ---------------------
 
 @dataclass
+class CameraConfig:
+    
+    width: int = 1280
+    height: int = 720
+    gamma: float = 2.2
+    """Gamma correction of the camera"""
+    
+    camera_blueprints : List[CameraBlueprint] = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
+    
+    @dataclass
+    class RecorderSettings:
+        """
+        Recorder settings for the camera.
+        """
+        enabled : bool = NotImplemented
+        """
+        Whether the recorder is enabled
+        
+        Set at WorldModel level
+        """
+        
+        output_path : str = '_recorder/session%03d/%08d.bmp'
+        """
+        Folder to record the camera
+        
+        Needs two numeric conversion placeholders.
+        """
+        
+        frame_interval : int = 1
+        """Interval to record the camera"""
+        
+    recorder : RecorderSettings = field(default_factory=RecorderSettings)
+    
+    @dataclass
+    class DataMatrixHudConfig:
+        """
+        Camera configuration for the agent.
+        """
+        enabled : bool = True
+        """Whether the camera is enabled"""
+        
+        draw : bool = True
+        """Whether to draw the camera"""
+        
+        values : bool = True
+        """Whether to draw the values"""
+        
+        vertical : bool = True
+        """Whether to draw the values vertically"""
+        
+        imshow_settings : dict = field(default_factory=lambda: {'cmap': 'jet'})
+        """Settings for the imshow function"""
+        
+        text_settings : dict = field(default_factory=lambda: {'color': 'orange'})
+        """Settings for the text"""
+        
+    data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
+    
+
+
+@dataclass
 class LaunchConfig:
     verbose: bool = True
     debug: bool = True
@@ -1203,3 +1282,5 @@ class LaunchConfig:
     autopilot: bool = False
     
     agent : LunaticAgentSettings = MISSING
+    
+    camera : CameraConfig = field(default_factory=CameraConfig)
