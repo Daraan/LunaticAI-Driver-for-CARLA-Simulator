@@ -2,6 +2,8 @@
 
 from collections.abc import Mapping
 import sys
+
+from classes.camera_manager import CameraBlueprint
 if __name__ == "__main__": # TEMP clean at the end, only here for testing
     import os
     sys.path.append(os.path.abspath("../"))
@@ -1179,6 +1181,67 @@ if __name__ == "__main__":
 # ---------------------
 
 @dataclass
+class CameraConfig:
+    
+    width: int = 1280
+    height: int = 720
+    gamma: float = 2.2
+    """Gamma correction of the camera"""
+    
+    camera_blueprints : List[CameraBlueprint] = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
+    
+    @dataclass
+    class RecorderSettings:
+        """
+        Recorder settings for the camera.
+        """
+        enabled : bool = NotImplemented
+        """
+        Whether the recorder is enabled
+        
+        Set at WorldModel level
+        """
+        
+        output_path : str = '_recorder/session%03d/%08d.bmp'
+        """
+        Folder to record the camera
+        
+        Needs two numeric conversion placeholders.
+        """
+        
+        frame_interval : int = 1
+        """Interval to record the camera"""
+        
+    recorder : RecorderSettings = field(default_factory=RecorderSettings)
+    
+    @dataclass
+    class DataMatrixHudConfig:
+        """
+        Camera configuration for the agent.
+        """
+        enabled : bool = True
+        """Whether the camera is enabled"""
+        
+        draw : bool = True
+        """Whether to draw the camera"""
+        
+        values : bool = True
+        """Whether to draw the values"""
+        
+        vertical : bool = True
+        """Whether to draw the values vertically"""
+        
+        imshow_settings : dict = field(default_factory=lambda: {'cmap': 'jet'})
+        """Settings for the imshow function"""
+        
+        text_settings : dict = field(default_factory=lambda: {'color': 'orange'})
+        """Settings for the text"""
+        
+    data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
+    
+
+
+@dataclass
 class LaunchConfig:
     verbose: bool = True
     debug: bool = True
@@ -1218,3 +1281,5 @@ class LaunchConfig:
     autopilot: bool = False
     
     agent : LunaticAgentSettings = MISSING
+    
+    camera : CameraConfig = field(default_factory=CameraConfig)

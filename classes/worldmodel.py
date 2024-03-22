@@ -276,7 +276,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, config : "LunaticAgentSettings", args:"Union[Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
+    def __init__(self, config : "LunaticAgentSettings", args:"Union[LaunchConfig, Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
         # Set World
         if self.world is None:
@@ -314,7 +314,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
             # NOTE: THis does NOT INCLUDE CLI OVERWRITES
             args = OmegaConf.load(args)
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
-        self._args = args
+        self._args : LaunchConfig = args
         self.hud = HUD(args.width, args.height, self.world)
         self.sync : bool = args.sync
         self.dim = (args.width, args.height)
