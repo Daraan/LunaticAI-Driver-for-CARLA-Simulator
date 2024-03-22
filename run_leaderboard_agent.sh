@@ -1,5 +1,3 @@
-# NOTE: This file is supposed to run from the leaderboard-agent branch and with a setup from doc/leadearbord_requirements
-
 export LEADERBOARD_ROOT=~/TeamProject/leaderboard
 
 # Parameterization settings. These will be explained in 2.2. Now simply copy them to run the test.

@@ -4,7 +4,7 @@ map: "Town04"
 host: "127.0.0.1"
 port: 2000
 sync: false
-handle_ticks: true
+handle_ticks: false
 fps: 20
 
 # Random (GameFramework):
@@ -90,6 +90,9 @@ defaults:
   
   # Configure the logger to be used
   - config_extensions/job_logging@hydra.job_logging
+
+  # Leaderboard Agent override and extensions  @<root>
+  - config_extensions/leaderboard_agent_settings@
 
   # -------------------------------------------
   #    Experiments (fine granular changes)
