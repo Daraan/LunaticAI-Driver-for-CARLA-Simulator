@@ -233,11 +233,12 @@ class GameFramework(AccessCarlaDataProviderMixin):
     def render_everything(self):
         """Update render and hud"""
         self.world_model.tick(self.clock) # TODO # CRITICAL maybe has to tick later
+        self.world_model.render(self.display, finalize=False)
         self.controller.render(self.display)
         options = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
         if options and self.agent:
             self.agent.render_road_matrix(self.display, options)
-        self.world_model.render(self.display) #NOTE: THIS HAS TO BE BE LAST, as recording is done here.
+        self.world_model.finalize_render(self.display)
         
     @staticmethod
     def skip_rest_of_loop(message="GameFrameWork.end_loop"):
@@ -275,7 +276,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
     def get_blueprint_library(self):
         return self.world.get_blueprint_library()
 
-    def __init__(self, config : "LunaticAgentSettings", args:"Union[Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
+    def __init__(self, config : "LunaticAgentSettings", args:"Union[LaunchConfig, Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
         # Set World
         if self.world is None:
@@ -313,7 +314,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
             # NOTE: THis does NOT INCLUDE CLI OVERWRITES
             args = OmegaConf.load(args)
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
-        self._args = args
+        self._args : LaunchConfig = args
         self.hud = HUD(args.width, args.height, self.world)
         self.sync : bool = args.sync
         self.dim = (args.width, args.height)
@@ -604,6 +605,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
             os.makedirs(dir_name_formatted)
             self.hud.notification('Started recording (folder: %s)' % dir_name_formatted)
         else:
+            dir_name_formatted = os.path.split(self.recording_file_format)[0] % self.recording_dir_num
             self.hud.notification('Recording finished (folder: %s)' % dir_name_formatted)
         
         self.recording = not self.recording
@@ -624,19 +626,40 @@ class WorldModel(AccessCarlaDataProviderMixin):
         except Exception:
             pass
 
-    def render(self, display):
-        """Render world"""
-        self.camera_manager.render(display)
-        self.rss_bounding_box_visualizer.render(display, self.camera_manager.current_frame)
-        self.rss_unstructured_scene_visualizer.render(display)
+    def finalize_render(self, display):
+        """
+        Draws the HUD and saves the image if recording is enabled.
+        
+        Assumes render(..., finalize=False) was called before,
+        use this function if you want to render something in between.
+        """
         self.hud.render(display)
-
         if self.recording:
             try:
                 pygame.image.save(display, self.recording_file_format % (self.recording_dir_num, self.recording_frame_num))
             except Exception as e:
                 logger.error("Could not save image format: `%s` % (self.recording_dir_num, self.recording_frame_num): %s", self.recording_file_format, e)
             self.recording_frame_num += 1
+
+    def render(self, display, finalize=True):
+        """
+        Render world
+        
+        Recording should be done at the end of the render method,
+        however camera_manager.render is called first to render the camera.
+        
+        Call with finalize=False to only render the camera.
+        
+        Afterwards applying other render features call `finalize_render` 
+        to draw the HUD and save the image if recording is enabled.
+        """
+        self.camera_manager.render(display)
+        self.rss_bounding_box_visualizer.render(display, self.camera_manager.current_frame)
+        self.rss_unstructured_scene_visualizer.render(display)
+        if finalize:
+            self.finalize_render(display)
+
+        
 
     def destroy_sensors(self): # TODO only camera_manager, should be renamed.
         """Destroy sensors"""
