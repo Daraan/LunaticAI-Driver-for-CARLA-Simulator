@@ -1019,6 +1019,21 @@ class DataMatrixSettings(AgentConfig):
     The interval in frames after which the data matrix should be updated. Sync must be true.
     """
 
+    hud : dict[str] = field(default_factory={
+                    'draw': True,
+                    'values': True,
+                    'vertical' : True,
+                    'imshow_settings': {'cmap': 'jet'},
+                    'text_settings' : {'color': 'orange'} 
+                    })
+    """
+    Keyword arguments for `DataMatrix.render`
+    NOTE: The default_settings substitute this with an interpolation that might not work,
+    as it relies on the parent LaunchConfig that is currently removed.
+    
+    `camera.hud.data_matrix` is preferred.
+    """
+
 
 
 # ---------------------

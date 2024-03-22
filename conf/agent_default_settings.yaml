@@ -80,3 +80,6 @@ data_matrix:
   sync : true
   # The interval in frames after which the data matrix should be updated. Sync must be true.
   sync_interval: 5
+  hud : ${camera.hud.data_matrix}
+  # drawing_options -> see camera.yaml
+  # NOTE: this interpolation might fail if the parent has been removed!

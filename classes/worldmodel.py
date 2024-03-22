@@ -235,8 +235,9 @@ class GameFramework(AccessCarlaDataProviderMixin):
         self.world_model.tick(self.clock) # TODO # CRITICAL maybe has to tick later
         self.world_model.render(self.display)
         self.controller.render(self.display)
-        if self.agent:
-            self.agent.render_road_matrix(self.display)
+        options = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
+        if options and self.agent:
+            self.agent.render_road_matrix(self.display, options)
         
     @staticmethod
     def skip_rest_of_loop(message="GameFrameWork.end_loop"):
