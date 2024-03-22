@@ -233,11 +233,11 @@ class GameFramework(AccessCarlaDataProviderMixin):
     def render_everything(self):
         """Update render and hud"""
         self.world_model.tick(self.clock) # TODO # CRITICAL maybe has to tick later
-        self.world_model.render(self.display)
         self.controller.render(self.display)
         options = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
         if options and self.agent:
             self.agent.render_road_matrix(self.display, options)
+        self.world_model.render(self.display) #NOTE: THIS HAS TO BE BE LAST, as recording is done here.
         
     @staticmethod
     def skip_rest_of_loop(message="GameFrameWork.end_loop"):
@@ -599,11 +599,12 @@ class WorldModel(AccessCarlaDataProviderMixin):
             while os.path.exists(dir_name_formatted):
                 self.recording_dir_num += 1
                 dir_name_formatted = dir_name % self.recording_dir_num
-            self.recording_file_format = os.path.join(dir_name, filename)
+            self.recording_file_format = os.path.join(dir_name, filename) # keep unformatted.
             self.recording_frame_num = 0
             os.makedirs(dir_name_formatted)
+            self.hud.notification('Started recording (folder: %s)' % dir_name_formatted)
         else:
-            self.hud.notification('Recording finished (folder: _out%04d)' % self.recording_dir_num)
+            self.hud.notification('Recording finished (folder: %s)' % dir_name_formatted)
         
         self.recording = not self.recording
     
