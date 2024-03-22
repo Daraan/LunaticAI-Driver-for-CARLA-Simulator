@@ -12,7 +12,7 @@ from enum import Enum
 from functools import partial, wraps
 from dataclasses import dataclass, field, asdict, is_dataclass
 import typing
-from typing import TYPE_CHECKING, Callable, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast
 
 # from typing import ParamSpec, Concatenate, TypeAlias
 #Param = ParamSpec("Param")
@@ -41,11 +41,12 @@ __all__ = ["AgentConfig",
            "BasicAgentSettings", 
            "BehaviorAgentSettings", 
            "SimpleBasicAgentSettings", 
-           "SimpleBehaviorAgentSettings"
+           "SimpleBehaviorAgentSettings",
            "LunaticAgentSettings",
            "SimpleLunaticAgentSettings",
            "AutopilotBehavior",
            
+           "CameraConfig",
            "LaunchConfig",
         ]
 
@@ -1021,7 +1022,7 @@ class DataMatrixSettings(AgentConfig):
     The interval in frames after which the data matrix should be updated. Sync must be true.
     """
 
-    hud : dict[str] = field(default_factory={
+    hud : Dict[str, Any] = field(default_factory={
                     'draw': True,
                     'values': True,
                     'vertical' : True,
