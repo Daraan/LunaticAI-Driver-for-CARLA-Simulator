@@ -3,7 +3,9 @@ matplotlib.use('Agg')
 
 import threading
 import time
-from typing import Dict, List
+from typing import Dict, List, TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Literal # For Python 3.8
 
 import asyncio
 
@@ -130,12 +132,24 @@ class DataMatrix:
             return None
         return np.array(self.to_list())  
     
-    def render(self, display : pygame.Surface):
-        if self.matrix is None:
+    def render(self, display : pygame.Surface, 
+               imshow_settings={'cmap':'jet'},
+               vertical=True, 
+               values=True,
+               text_settings={'color':'orange'},
+               *,
+               draw=True):
+        if self.matrix is None or not draw:
             return
         ax : pylab.Axes
         fig, ax = pylab.subplots(figsize=(2, 2), dpi=100)
-        ax.imshow(np.rot90(self.to_numpy()), cmap='jet')
+        matrix = self.to_numpy() # lanes are horizontal, OneLane: left to right, Left Lane at the top.
+        if vertical:
+            matrix = np.rot90(matrix) # 1st/3rd perspective
+        ax.imshow(matrix, **imshow_settings)
+        if values:
+            for (i, j), val in np.ndenumerate(matrix):
+                ax.text(j, i, val, ha='center', va='center', **text_settings)
         ax.axis('off')
         fig.tight_layout(pad=0)
         canvas = agg.FigureCanvasAgg(fig)
