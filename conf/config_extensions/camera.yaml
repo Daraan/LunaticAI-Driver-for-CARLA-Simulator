@@ -10,6 +10,8 @@ recorder:
   output_path: '_recorder/session%03d/%08d.bmp'
   # Describe how many frames to skip before saving the next one
   frame_interval: 8
+# Cameras that are attached to the ego vehicle.
+# TODO: Make a sensors config
 camera_blueprints:
   - TODO
   - 'Camera RGB' : 
