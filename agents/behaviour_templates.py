@@ -251,6 +251,13 @@ config_based_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
                                 action=accept_rss_updates,
                                 description="Sets random waypoint when done")
 
+config_based_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
+                                rule=if_config("rss.always_accept_update", True),
+                                action=accept_rss_updates,
+                                description="Sets random waypoint when done")
+
+
+
 default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, set_close_waypoint_when_done, config_based_rss_updates, random_lane_change_rule]
 
 
