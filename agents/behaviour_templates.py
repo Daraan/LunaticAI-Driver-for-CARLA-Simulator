@@ -84,7 +84,7 @@ normal_speed_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
 
 # ----------- Avoid Beeing tailgated -----------
 
-def avoid_tailgator(ctx : "Context"):
+def avoid_tailgator(self : Rule, ctx : "Context"):
     """
     If a tailgator is detected, move to the left/right lane if possible
 
@@ -287,6 +287,12 @@ if __name__ == "__main__" or DEBUG_RULES:
         rule = context_method
         action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
 
+    class ReverseWhenCollide(Rule):
+        phases = Phase.COLLISION | Phase.END
+        rule = context_method
+        def action(ctx : Context): 
+            ctx.control.reverse = True
+    
     @Rule
     class SimpleRule1B:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
@@ -297,8 +303,6 @@ if __name__ == "__main__" or DEBUG_RULES:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = eval_context_method
         action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
-
-
 
 
     class DebugRuleWithEval(Rule):
