@@ -544,9 +544,17 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim, gamma_correction=self._gamma) # TODO: use args instead of gamma
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
         if self._config.rss.enabled and AD_RSS_AVAILABLE:
+            log_level = self._config.rss.log_level
+            if not isinstance(log_level, carla.RssLogLevel):
+                if isinstance(log_level, str):
+                    log_level = carla.RssLogLevel.names[log_level]
+                else:
+                    log_level = carla.RssLogLevel(log_level)
+                logger.debug("Carla Log level was not a RssLogLevel. Now: %s (%s)", log_level, type(log_level))
             self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer,
-                                    visualizer_mode=self._config.rss.debug_visualization_mode)
+                                    visualizer_mode=self._config.rss.debug_visualization_mode,
+                                    log_level=log_level)
             self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
         else: 
             self.rss_sensor = None
@@ -711,7 +719,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
         if not AD_RSS_AVAILABLE:
             return None
         
-        if self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
+        if self.rss_sensor.log_level <= carla.RssLogLevel.warn and self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
             print("Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route))
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None

@@ -68,7 +68,7 @@ class RssStateInfo(object):
 
 class RssSensor(object):
 
-    def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer:"RssUnstructuredSceneVisualizer", bounding_box_visualizer, state_visualizer, *, visualizer_mode=RssDebugVisualizationMode.Off,routing_targets=None):
+    def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer:"RssUnstructuredSceneVisualizer", bounding_box_visualizer, state_visualizer, *, visualizer_mode=RssDebugVisualizationMode.Off, routing_targets=None, log_level=carla.RssLogLevel.warn):
         self.sensor = None
         self.unstructured_scene_visualizer = unstructured_scene_visualizer
         self.bounding_box_visualizer = bounding_box_visualizer
@@ -108,14 +108,15 @@ class RssSensor(object):
         if not inspect.getmembers(carla, check_rss_class):
             raise RuntimeError('CARLA PythonAPI not compiled in RSS variant, please "make PythonAPI.rss"')
 
-        self.log_level = carla.RssLogLevel.warn
-        self.map_log_level = carla.RssLogLevel.warn
+        self.log_level = log_level
+        self.map_log_level = log_level
 
         self.set_default_parameters()
 
         self.sensor.register_actor_constellation_callback(self._on_actor_constellation_request)
 
         self.sensor.listen(self._on_rss_response)
+        assert isinstance(log_level, carla.RssLogLevel)
         self.sensor.set_log_level(self.log_level)
         self.sensor.set_map_log_level(self.map_log_level)
 
