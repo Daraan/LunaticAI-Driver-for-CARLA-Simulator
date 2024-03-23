@@ -59,7 +59,7 @@ def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5
         color = kwargs.pop('color', (255, 0, 0))
         if not isinstance(color, carla.Color):
             color = carla.Color(*color)
-        colors = [color]*len(waypoints)
+        colors = [color] * len(waypoints)
     kwargs.setdefault('life_time', 1.0)
     kwargs.setdefault('arrow_size', 0.3)
     for wpt, color in zip(waypoints, colors):

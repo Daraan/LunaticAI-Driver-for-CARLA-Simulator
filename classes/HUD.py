@@ -149,7 +149,7 @@ class HUD(object):
 
         vehicles = [(dist(x.get_location()), x) for x in vehicles if x.id != world.player.id]
 
-        for dist, vehicle in sorted(vehicles):
+        for dist, vehicle in sorted(vehicles): # TODO TypeError: '<' not supported between instances of 'Vehicle' and 'Vehicle'
             if dist > 200.0:
                 break
             vehicle_type = get_actor_display_name(vehicle, truncate=22)

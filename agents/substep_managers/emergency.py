@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
 
-def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", reason : str):
+def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", reasons:"set[str]"):
     """
     Modifies the control values to perform an emergency stop.
     The steering remains unchanged to avoid going out of the lane during turns.
@@ -13,7 +13,7 @@ def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", r
     :param control: (carla.VehicleControl) control to be modified
     :param enable_random_steer: (bool, optional) Flag to enable random steering
     """
-    print("Emergency stop", reason)
+    print("Emergency stop", reasons)
     if control is None:
         control = self._local_planner.run_step(debug=self.debug)
 

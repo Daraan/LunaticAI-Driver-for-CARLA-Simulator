@@ -84,7 +84,7 @@ normal_speed_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
 
 # ----------- Avoid Beeing tailgated -----------
 
-def avoid_tailgator(ctx : "Context"):
+def avoid_tailgator(self : Rule, ctx : "Context"):
     """
     If a tailgator is detected, move to the left/right lane if possible
 
@@ -251,6 +251,13 @@ config_based_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
                                 action=accept_rss_updates,
                                 description="Sets random waypoint when done")
 
+config_based_rss_updates = Rule(Phase.RSS_EVALUATION | Phase.END,
+                                rule=if_config("rss.always_accept_update", True),
+                                action=accept_rss_updates,
+                                description="Sets random waypoint when done")
+
+
+
 default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, set_close_waypoint_when_done, config_based_rss_updates, random_lane_change_rule]
 
 
@@ -280,6 +287,12 @@ if __name__ == "__main__" or DEBUG_RULES:
         rule = context_method
         action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
 
+    class ReverseWhenCollide(Rule):
+        phases = Phase.COLLISION | Phase.END
+        rule = context_method
+        def action(ctx : Context): 
+            ctx.control.reverse = True
+    
     @Rule
     class SimpleRule1B:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
@@ -290,8 +303,6 @@ if __name__ == "__main__" or DEBUG_RULES:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = eval_context_method
         action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
-
-
 
 
     class DebugRuleWithEval(Rule):
