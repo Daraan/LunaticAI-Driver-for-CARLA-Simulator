@@ -521,7 +521,7 @@ class LunaticAgent(BehaviorAgent):
                 # TODO: overhaul -> this might not be the best place to do this
                 #TODO HIGH: This is doubled in react_to_hazard!
                 self.execute_phase(Phase.EMERGENCY | Phase.END, prior_results=pedestrians_or_traffic_light, control=control)
-                return control
+                return self.get_control()
     
         # ----------------------------
         # Phase 3 - Detection of Cars
@@ -543,7 +543,7 @@ class LunaticAgent(BehaviorAgent):
             self.execute_phase(Phase.CAR_DETECTED | Phase.BEGIN, prior_results=detection_result)
             control = self.car_following_behavior(*detection_result) # NOTE: can currently go into EMEGENCY phase
             self.execute_phase(Phase.CAR_DETECTED | Phase.END, control=control, prior_results=detection_result)
-            return control
+            return self.get_control()
         
         #TODO: maybe new phase instead of END or remove CAR_DETECTED and handle as rules (maybe better)
         self.execute_phase(Phase.DETECT_CARS | Phase.END, prior_results=None) # NOTE: avoiding tailgate here
@@ -559,7 +559,7 @@ class LunaticAgent(BehaviorAgent):
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, prior_results=None)
             control = self._local_planner.run_step(debug=debug)
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, control=control, prior_results=None)
-            return control
+            return self.get_control()
 
         # ----------------------------
         # Phase 4 - Plan Path normally
@@ -572,7 +572,7 @@ class LunaticAgent(BehaviorAgent):
 
         # Leave loop and apply controls outside 
         # DISCUSS: Should we apply the controls here?
-        return control
+        return self.get_control()
     
     def apply_control(self, control: Optional[carla.VehicleControl]=None):
         # Set automatic control-related vehicle lights
