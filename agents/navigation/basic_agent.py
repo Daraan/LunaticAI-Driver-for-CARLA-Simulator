@@ -138,7 +138,7 @@ class BasicAgent(object):
         """Get method for protected member local planner"""
         return self._global_planner
 
-    def set_destination(self, end_location, start_location=None):
+    def set_destination(self, end_location, start_location=None, clean_queue=True):
         """
         This method creates a list of waypoints between a starting and ending location,
         based on the route returned by the global router, and adds it to the local planner.
@@ -149,11 +149,15 @@ class BasicAgent(object):
             :param start_location (carla.Location): starting location of the route
         """
         if not start_location:
-            start_location = self._local_planner.target_waypoint.transform.location
+            if self._local_planner.target_waypoint:
+                start_location = self._local_planner.target_waypoint.transform.location # waypoint at queue[0] at run_step
+            else:
+                start_location = self._vehicle.get_location()
             clean_queue = True
         else:
-            start_location = self._vehicle.get_location()
-            clean_queue = False
+            pass
+            #start_location = self._vehicle.get_location()
+            #clean_queue = False
 
         start_waypoint = self._map.get_waypoint(start_location)
         end_waypoint = self._map.get_waypoint(end_location) if isinstance(end_location, carla.Location) else end_location
