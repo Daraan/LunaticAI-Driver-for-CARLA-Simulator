@@ -125,7 +125,7 @@ class RSSKeyboardControl(object):
         #self._control = carla.VehicleControl()
         self._lights = carla.VehicleLightState.NONE
         #self._restrictor = carla.RssRestrictor() # Moved to worldmodel
-        self._restrictor = None
+        self._restrictor : carla.RssRestrictor = None
         self._vehicle_physics = world_model.player.get_physics_control()
         world_model.player.set_light_state(self._lights)
         self._steer_cache = 0.0
@@ -214,11 +214,11 @@ class RSSKeyboardControl(object):
                 elif event.key == K_F3:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.decrease_log_level()
-                        self._restrictor.set_log_level(self._world_model.rss_sensor.log_level)
+                        self._world_model._restrictor.set_log_level(self._world_model.rss_sensor.log_level)
                 elif event.key == K_F4:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.increase_log_level()
-                        self._restrictor.set_log_level(self._world_model.rss_sensor.log_level)
+                        self._world_model._restrictor.set_log_level(self._world_model.rss_sensor.log_level)
                 elif event.key == K_F5:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.decrease_map_log_level()

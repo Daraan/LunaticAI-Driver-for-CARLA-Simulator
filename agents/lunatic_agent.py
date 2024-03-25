@@ -622,11 +622,11 @@ class LunaticAgent(BehaviorAgent):
 
         # TODO: PRIORITY: let execute_phase handle end_loop
         self.execute_phase(Phase.EMERGENCY | Phase.BEGIN, prior_results=hazard_detected)
-        control = self.add_emergency_stop(control)
+        control = self.add_emergency_stop(control, reasons=hazard_detected)
         # TODO: Let a rule decide if the loop should end
         self.execute_phase(Phase.EMERGENCY | Phase.END, control=control, prior_results=hazard_detected)
         # self.ctx.end_loop = True # TODO: ³ IDEA: work in
-        print("Emergency controls", control)
+        #print("Emergency controls", control)
         return control, end_loop
     
     # ------------------ Behaviors ------------------ #
@@ -701,7 +701,7 @@ class LunaticAgent(BehaviorAgent):
 
     #@override
     # TODO: Port this to a rule that is used during emergencies.
-    def add_emergency_stop(self, control, reason:str=None) -> carla.VehicleControl:
+    def add_emergency_stop(self, control, reasons:"set[str]"=None) -> carla.VehicleControl:
         """
         Modifies the control values to perform an emergency stop.
         The steering remains unchanged to avoid going out of the lane during turns.
@@ -709,7 +709,7 @@ class LunaticAgent(BehaviorAgent):
         :param control: (carla.VehicleControl) control to be modified
         :param enable_random_steer: (bool, optional) Flag to enable random steering
         """
-        return substep_managers.emergency_manager(self, control, reason)
+        return substep_managers.emergency_manager(self, control, reasons)
     
     def lane_change(self, direction: "Literal['left'] | Literal['right']", same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """

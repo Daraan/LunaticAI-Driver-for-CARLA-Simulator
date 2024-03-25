@@ -108,9 +108,13 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
         
         # Spawn Others
+        how_many = 33
+        ego_spawn = 3
         traffic_manager = game_framework.init_traffic_manager()
         spawn_commands = []
-        for sp in spawn_points[1:4]:
+        for i, sp in enumerate(spawn_points[:how_many+1]):
+            if i == ego_spawn:
+                continue
             spawn_commands.append(carla.command.SpawnActor(car_bp, sp).then(
                             carla.command.SetAutopilot(carla.command.FutureActor, True)))
 
@@ -118,7 +122,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         spawned_vehicles = list(game_framework.world.get_actors([x.actor_id for x in response]))
         
         # Spawn Ego
-        start : carla.libcarla.Transform = spawn_points[0]
+        start : carla.libcarla.Transform = spawn_points[ego_spawn]
         ego = game_framework.world.spawn_actor(ego_bp, start)
         spawned_vehicles.append(ego)
         

@@ -64,7 +64,9 @@ emergency:
   - -0.25
   - 0.25
 rss:
-  enabled: false
+  enabled: true
+  # This is a default rule. If false a custom rule needs to be in place to accept it.
+  always_accept_update: false
 
   # For fast vehicles RSS currently is unreliable, disables rss updates when the vehicle is faster than this. TODO: Implement
   rss_max_speed: 30.0
