@@ -3,7 +3,7 @@ import sys
 import carla
 
 import launch_tools
-from DataGathering.run_matrix import DataMatrix
+from data_gathering.car_detection_matrix.run_matrix import DataMatrix
 from classes.carla_service import CarlaService
 # TODO: maybe we can merge these or make them more unfied
 from classes.driver import Driver

@@ -5,9 +5,9 @@ from asyncio import Queue
 
 import carla
 
-from DataGathering.informationUtils import get_all_road_lane_ids
-from DataGathering.matrix_wrap import get_car_coords
-from DataGathering.run_matrix import DataMatrix
+from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
+from data_gathering.car_detection_matrix.matrix_wrap import get_car_coords
+from data_gathering.car_detection_matrix.run_matrix import DataMatrix
 from classes.camera_manager import camera_function
 from VehicleSpawning.vehicle_spawner import VehicleSpawner
 

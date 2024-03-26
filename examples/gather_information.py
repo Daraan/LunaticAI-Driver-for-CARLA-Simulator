@@ -2,7 +2,7 @@ import time
 
 from classes.constants import StreetType
 import launch_tools
-from DataGathering.informationUtils import *
+from data_gathering.car_detection_matrix.informationUtils import *
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
