@@ -311,6 +311,8 @@ class Rule(_GroupRule):
     # i.e.  rule(ctx) in actions was False 
     NOT_APPLICABLE : ClassVar = object()
     """Object that indicates that no action was executed."""
+    
+    priority: RulePriority = RulePriority.NORMAL
 
     def clone(self):
         """

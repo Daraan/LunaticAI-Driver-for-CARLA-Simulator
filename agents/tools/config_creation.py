@@ -54,6 +54,10 @@ __all__ = ["AgentConfig",
 # Helper methods
 # ---------------------
 
+OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
+OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
+OmegaConf.register_new_resolver("min", lambda *els: min(els))
+
 class class_or_instance_method:
     """Decorator to transform a method into both a regular and class method"""
     
@@ -66,10 +70,6 @@ class class_or_instance_method:
             return self._wrapper(partial(self.__wrapped__, owner))
         return self._wrapper(partial(self.__wrapped__, instance)) # called on instance
 
-
-OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
-OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
-OmegaConf.register_new_resolver("min", lambda *els: min(els))
 
 def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
     """
