@@ -353,9 +353,13 @@ class WorldModel(AccessCarlaDataProviderMixin):
         self.radar_sensor = None # from interactive
         self.camera_manager = None
         
-        self._weather_presets = find_weather_presets()
+        if CarlaDataProvider:
+            self._weather_presets = CarlaDataProvider.find_weather_presets()
+        else:
+            self._weather_presets = ["CarlaDataProvider for weather presets"] # TODO: remove and make srunner a necessary module.
         self._weather_index = 0
         self.weather = None
+        
         
 
         self.actors = []
@@ -667,8 +671,6 @@ class WorldModel(AccessCarlaDataProviderMixin):
         if finalize:
             self.finalize_render(display)
 
-        
-
     def destroy_sensors(self): # TODO only camera_manager, should be renamed.
         """Destroy sensors"""
         self.camera_manager.sensor.destroy()
@@ -711,7 +713,6 @@ class WorldModel(AccessCarlaDataProviderMixin):
                 except RuntimeError:
                     print("Warning: Could not destroy actor: " + str(actor))
                     #raise
-
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control
@@ -731,14 +732,3 @@ class WorldModel(AccessCarlaDataProviderMixin):
             self.hud.allowed_steering_ranges = self.rss_sensor.get_steering_ranges()     
             return proposed_vehicle_control
         return None
-
-
-def find_weather_presets():
-    """Method to find weather presets"""
-    import re
-    rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
-
-    def name(x): return ' '.join(m.group(0) for m in rgx.finditer(x))
-
-    presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
-    return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
