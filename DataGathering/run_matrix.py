@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     from typing import Literal # For Python 3.8
 
 import asyncio
+import threading
+import time
 
 import numpy as np
 import matplotlib.backends.backend_agg as agg

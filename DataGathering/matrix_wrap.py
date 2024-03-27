@@ -5,8 +5,6 @@ from classes.constants import StreetType
 
 def wrap_matrix_functionalities(ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids,
                                 radius=100, highway_shape=None):
-
-    matrix = []
     ego_location = ego_vehicle.get_location()
     ego_waypoint = world_map.get_waypoint(ego_location)
     ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)
