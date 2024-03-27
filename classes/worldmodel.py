@@ -31,15 +31,7 @@ from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
 from agents.tools.logging import logger
 
-try:
-    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider # type: ignore
-    logger.info("Using CarlaDataProvider from srunner module.")
-except ImportError:
-    try:
-        from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-    except ImportError:
-        logger.warning("CarlaDataProvider not available: ScenarioManager (srunner module) not found in path. Make sure it is in your PYTHONPATH or PATH variable.")
-        CarlaDataProvider = None
+from launch_tools import CarlaDataProvider
 
 class AccessCarlaDataProviderMixin:
     """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
