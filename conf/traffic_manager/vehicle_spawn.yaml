@@ -1,8 +1,3 @@
-carla_service:
-  map: "Town04"
-  ip: "127.0.0.1"
-  port: 2000
-
 driver:
   config: "conf/traffic_manager/default_driver.json"
 

@@ -10,7 +10,8 @@ from launch_tools import CarlaDataProvider
 
 
 class VehicleSpawner(CarlaDataProvider):
-    def __init__(self, config_file):
+    def __init__(self, launch_config, config_file):
+        self.launch_config = self.read_config(launch_config)
         self.config = self.read_config(config_file)
         self.client = None
         self.vehicles = []
@@ -21,8 +22,7 @@ class VehicleSpawner(CarlaDataProvider):
             return yaml.safe_load(file)
 
     def initialize_carla_service(self):
-        carla_config = self.config['carla_service']
-        return initialize_carla(carla_config['map'], carla_config['ip'], carla_config['port'])
+        return initialize_carla(self.launch_config['map'], self.launch_config['host'], self.launch_config['port'])
 
     def prepare_vehicles(self, world):
         driver_config_path = self.config['driver']['config']
