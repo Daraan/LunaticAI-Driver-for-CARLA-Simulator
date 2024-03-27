@@ -1,7 +1,7 @@
 import yaml
 
 import launch_tools
-from Rules.ApplyRules import RuleInterpreter
+from classes.rule_interpreter import RuleInterpreter
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
@@ -55,6 +55,7 @@ class VehicleSpawner:
         return ego.actor
 
     def spawn_traffic(self, world, car_bp, spawn_points, driver1, ego_vehicle):
+        # NOTE: Duplicate in CarlaFunction
         for sp in spawn_points[1:5]:
             v = Vehicle(world, car_bp)
             v.spawn(sp)

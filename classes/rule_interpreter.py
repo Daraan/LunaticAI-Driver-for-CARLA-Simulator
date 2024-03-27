@@ -4,8 +4,10 @@ import xml.etree.ElementTree as ET
 
 import yaml
 
-
 class RuleInterpreter:
+    """
+    This is a second way of implementing rules from files and not via the Rule interface.
+    """
     def __init__(self, filename):
         self.filename = filename
         self.functions = self.load_functions(filename)
@@ -62,4 +64,5 @@ class RuleInterpreter:
                     results[function_name] = func_result if func_result is not None else "No return value"
             except Exception as e:
                 results[function_name] = f"Error executing function: {e}"
+                raise
         return results
