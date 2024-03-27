@@ -1,5 +1,4 @@
 import carla
-from requests import get
 
 from agents.tools.logging import logger
 
