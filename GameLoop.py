@@ -6,7 +6,7 @@ import carla
 
 from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
 from data_gathering.car_detection_matrix.matrix_wrap import get_car_coords
-from data_gathering.car_detection_matrix.run_matrix import DataMatrix
+from data_gathering.car_detection_matrix.run_matrix import AsyncDataMatrix, DataMatrix
 from classes.camera_manager import camera_function
 from VehicleSpawning.vehicle_spawner import VehicleSpawner
 
@@ -28,23 +28,23 @@ def main():
     ego_vehicle = spawner.assign_drivers(ego, driver1)
 
     # Spawn traffic
-    vehicles, tm = spawner.spawn_traffic(world, car_bp, spawn_points, driver1, ego.vehicle)
-
+    vehicles, tm = spawner.spawn_traffic(world, car_bp, spawn_points, driver1, ego_vehicle)
     # Initialize loop variables
     world.tick()
     road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
     t_end = time.time() + 10000
 
     # Create a thread for the camera functionality
-    camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
-    camera_thread.start()
+    try:
+        camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
+        camera_thread.start()
 
-    # Initialize matrix thread
-    data_matrix = DataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+        # Initialize matrix thread
+        data_matrix = AsyncDataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+        data_matrix.start()
 
-    while time.time() < t_end:
-        try:
-            pass
+        print("Starting game loop")
+        while time.time() < t_end:
             # Retrieve the latest matrix from the matrix thread
             matrix = data_matrix.getMatrix()
 
@@ -88,12 +88,9 @@ def main():
                 print("Random lane change")
                 continue
 
-        except Exception as e:
-            print(e.__str__())
-
-    input("press any key to end...")
-    data_matrix.stop()
-    camera_thread.join()
+    finally:
+        data_matrix.stop()
+        camera_thread.join()
 
 
 if __name__ == '__main__':

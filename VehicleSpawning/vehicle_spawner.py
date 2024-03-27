@@ -78,4 +78,4 @@ class VehicleSpawner:
                             min_front_distance=driver1.distance_range[0])
         tm.init_lunatic_driver()
         tm.start_drive()
-        return tm
+        return self.vehicles, tm
