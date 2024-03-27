@@ -29,17 +29,10 @@ if TYPE_CHECKING:
 
 from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
+from launch_tools import carla_service
 from agents.tools.logging import logger
 
-try:
-    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider # type: ignore
-    logger.info("Using CarlaDataProvider from srunner module.")
-except ImportError:
-    try:
-        from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-    except ImportError:
-        logger.warning("CarlaDataProvider not available: ScenarioManager (srunner module) not found in path. Make sure it is in your PYTHONPATH or PATH variable.")
-        CarlaDataProvider = None
+from launch_tools import CarlaDataProvider
 
 class AccessCarlaDataProviderMixin:
     """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
@@ -108,6 +101,36 @@ class GameFramework(AccessCarlaDataProviderMixin):
     display : ClassVar[pygame.Surface]
     controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
     
+    # ----- Init Functions -----
+    
+    # Hydra Tools
+    # TODO: this could be some launch_tools MixinClass
+    @staticmethod
+    def initialize_hydra(config_dir: str="./conf", config_name: str="launch_config", version_base=None, *, job_name="LunaticAgentJob") -> "LaunchConfig":
+        """
+        Use this function only if no hydra.main is available.
+        
+        Usage:
+            args = GameFramework.initialize_hydra(config_dir=<abs_path_of_conf>, config_name="launch_config")
+            game_framework = GameFramework(args)
+        """
+        config_dir = os.path.abspath(config_dir)
+        from hydra import initialize_config_dir
+        # Not save-guarding this against multiple calls, expose the hydra error
+        # todo: low-prio check if config dir and the other parameters are the same.
+        initialize_config_dir(version_base=version_base, 
+                                        config_dir=config_dir, 
+                                        job_name=job_name)
+        GameFramework.__hydra_initialized = True
+        return GameFramework.load_hydra_config(config_name)
+    
+    @staticmethod
+    def load_hydra_config(config_name: str="launch_config") -> "LaunchConfig":
+        from hydra import compose
+        return compose(config_name=config_name)
+    
+    # 
+    
     def __init__(self, args: "LaunchConfig", config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
             random.seed(args.seed)
@@ -135,31 +158,8 @@ class GameFramework(AccessCarlaDataProviderMixin):
             pygame.HWSURFACE | pygame.DOUBLEBUF)
         return clock, display
     
-    def init_carla(self, args, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
-        if self.client is None: # TODO: Note this maybe prevents usage of two different ports
-            self.client = carla.Client(args.host, args.port, worker_threads)
-            self.client.set_timeout(timeout)
-        else:
-            assert isinstance(self.client, carla.Client)
-        
-        if self.world is None:
-            self.world = self.client.get_world()
-        else:
-            assert isinstance(self.world, carla.World)
-            
-        if self.map is None:
-            self.map = self.world.get_map()
-        else:
-            assert isinstance(self.map, carla.Map)
-        
-        world_name = args.map
-        if world_name and self.map.name != "Carla/Maps/" + world_name:
-            logger.info(f"Loading world: {world_name}")
-            self.world = self.client.load_world(world_name, map_layers=map_layers)
-            if not self.map: # Note: CarlaDataProvider.set_world handles this.
-                self.map = self.world.get_map()
-        else:
-            logger.debug("skipped loading world, already loaded. map_layers ignored.") # todo: remove?
+    def init_carla(self, args: "LaunchConfig", timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+        client, world, world_map = carla_service.initialize_carla(args.map, args.host, args.port, timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
         
         # Apply world settings
         if args.sync is not None: # Else let this be handled by someone else
@@ -187,8 +187,12 @@ class GameFramework(AccessCarlaDataProviderMixin):
         traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a config variable
         return traffic_manager
     
-    def set_config(self, config:DictConfig):
-        self.config = config
+    def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", config:"LunaticAgentSettings"=None, overwrites:Optional[Dict[str, Any]]=None):
+        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, map_inst=self.map, config=config, overwrites=overwrites)
+        self.config = self.agent.config
+        controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
+        self.world_model.game_framework = weakref.proxy(self)
+        return self.agent, self.world_model, self.global_planner, controller
     
     def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         self.world_model = WorldModel(config, self._args, player=player)
@@ -200,35 +204,18 @@ class GameFramework(AccessCarlaDataProviderMixin):
         self.controller: controller_class = weakref.proxy(controller) # note type not correct. TODO: proxy a good idea?
         return controller # NOTE: does not return the proxy object.
     
+    # ----- Setters -----
+    
     def set_controller(self, controller):
         self.controller = controller
     
+    def set_config(self, config:DictConfig):
+        self.config = config
+    
+    # ----- UI Functions -----
+    
     def parse_rss_controller_events(self, final_controls:carla.VehicleControl):
         return self.controller.parse_events(final_controls)
-
-    def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", config:"LunaticAgentSettings"=None, overwrites:Optional[Dict[str, Any]]=None):
-        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, map_inst=self.map, config=config, overwrites=overwrites)
-        self.config = self.agent.config
-        controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
-        self.world_model.game_framework = weakref.proxy(self)
-        return self.agent, self.world_model, self.global_planner, controller
-
-    def __enter__(self):
-        if self.agent is None:
-            raise ValueError("Agent not initialized.")
-        if self.world_model is None:
-            raise ValueError("World Model not initialized.")
-        if self.controller is None:
-            raise ValueError("Controller not initialized.")
-        
-        self.clock.tick() # self.args.fps)
-        if self._args.handle_ticks:
-            if self._args.sync is not None:
-                if self._args.sync:
-                    self.world_model.world.tick()
-                else:
-                    self.world_model.world.wait_for_tick()
-        return self
     
     def render_everything(self):
         """Update render and hud"""
@@ -252,6 +239,29 @@ class GameFramework(AccessCarlaDataProviderMixin):
         """
         # TODO: add option that still allows for rss.
         raise ContinueLoopException(message)
+    
+    # -------- Tools --------
+    
+    spawn_actor = carla_service.spawn_actor
+    
+    # -------- Context Manager --------
+
+    def __enter__(self):
+        if self.agent is None:
+            raise ValueError("Agent not initialized.")
+        if self.world_model is None:
+            raise ValueError("World Model not initialized.")
+        if self.controller is None:
+            raise ValueError("Controller not initialized.")
+        
+        self.clock.tick() # self.args.fps)
+        if self._args.handle_ticks:
+            if self._args.sync is not None:
+                if self._args.sync:
+                    self.world_model.world.tick()
+                else:
+                    self.world_model.world.wait_for_tick()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cooldown_framework.__exit__(exc_type, exc_val, exc_tb)

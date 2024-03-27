@@ -1,4 +1,4 @@
-import __allow_imports_from_root
+from examples import __allow_imports_from_root
 import random
 import sys
 
@@ -7,11 +7,11 @@ import carla
 import launch_tools
 # To import a basic agent
 from agents.navigation.basic_agent import BasicAgent
-from classes.carla_service import CarlaService
+from launch_tools.carla_service import initialize_carla
 # TODO: maybe we can merge these or make them more unified
 from classes.driver import Driver
 # Import Autopilot, # TODO: remove this
-from classes.traffic_manager_daniel import TrafficManagerD
+from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
 
 # To import a behavior agent
@@ -21,11 +21,8 @@ vehicles = []
 
 def main(args):
     global client
-    carla_service = CarlaService("Town04", args.host, args.port)
-    client = carla_service.client
+    client, world, world_map = initialize_carla("Town04", "127.0.0.1", 2000)
 
-    world = carla_service.get_world()
-    level = world.get_map()
     ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)
 
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
@@ -37,10 +34,10 @@ def main(args):
     ego = Vehicle(world, ego_bp)
     ego.spawn(spawn_points[0])
     vehicles.append(ego)
-    carla_service.assignDriver(ego, driver1)
+    #carla_service.assignDriver(ego, driver1)
     agent = BasicAgent(ego.actor)
 
-    wp_start = level.get_waypoint(ego.actor.get_location())
+    wp_start = world_map.get_waypoint(ego.actor.get_location())
     next_wps: list = wp_start.next(200)
 
     destination = next_wps[-1].transform.location
@@ -54,7 +51,7 @@ def main(args):
         vehicles.append(v)
         # v.setVelocity(1)
         print(v.actor)
-        ap = TrafficManagerD(client, v.actor)
+        ap = TrafficManager(client, v.actor)
         ap.init_passive_driver()
         ap.start_drive()
 
