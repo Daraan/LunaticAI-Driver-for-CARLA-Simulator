@@ -6,6 +6,7 @@ from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
+from launch_tools import CarlaDataProvider
 
 
 class VehicleSpawner:
@@ -23,11 +24,10 @@ class VehicleSpawner:
     def initialize_carla_service(self):
         carla_config = self.config['carla_service']
         self.carla_service = CarlaService(carla_config['map'], carla_config['ip'], carla_config['port'])
-        self.client = self.carla_service.client
 
     def setup_world(self):
         world = self.carla_service.get_world()
-        world_map = world.get_map()
+        world_map = self.carla_service.get_map()
         return world, world_map
 
     def prepare_vehicles(self, world):
@@ -47,7 +47,9 @@ class VehicleSpawner:
             ego.spawn(spawn_points[0])
         except Exception as e:
             print(e.__str__())
-        self.vehicles.append(ego)
+        else:
+            CarlaDataProvider.register_actor(ego.actor, spawn_points[0])
+            self.vehicles.append(ego)
         return ego
 
     def assign_drivers(self, ego, driver1):
@@ -56,11 +58,12 @@ class VehicleSpawner:
 
     def spawn_traffic(self, world, car_bp, spawn_points, driver1, ego_vehicle):
         # NOTE: Duplicate in CarlaFunction
+        client = CarlaDataProvider.get_client()
         for sp in spawn_points[1:5]:
             v = Vehicle(world, car_bp)
             v.spawn(sp)
             self.vehicles.append(v)
-            ap = TrafficManager(self.client, v.actor, speed_limit_scale=-driver1.speed_range[1],
+            ap = TrafficManager(v.actor, speed_limit_scale=-driver1.speed_range[1],
                                 min_front_distance=driver1.distance_range[0])
             ap.init_lunatic_driver()
             ap.start_drive()
@@ -69,11 +72,11 @@ class VehicleSpawner:
             v = Vehicle(world, car_bp)
             v.spawn(sp)
             self.vehicles.append(v)
-            ap = TrafficManager(self.client, v.actor, speed_limit_scale=60, min_front_distance=8)
+            ap = TrafficManager(v.actor, speed_limit_scale=60, min_front_distance=8)
             ap.init_passive_driver()
             ap.start_drive()
 
-        tm = TrafficManager(self.client, ego_vehicle,
+        tm = TrafficManager(ego_vehicle,
                             speed_limit_scale=-driver1.speed_range[1],
                             min_front_distance=driver1.distance_range[0])
         tm.init_lunatic_driver()

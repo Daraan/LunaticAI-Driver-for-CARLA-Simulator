@@ -44,11 +44,11 @@ def main():
         vehicles.append(v)
         # v.setVelocity(1)
         print(v.actor)
-        ap = TrafficManager(client, v.actor)
+        ap = TrafficManager(v.actor)
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManager(client, ego.actor,
+    tm = TrafficManager(ego.actor,
                          # config="json/driver1.json" # Not implemented yet
                          )
     tm.init_lunatic_driver()
