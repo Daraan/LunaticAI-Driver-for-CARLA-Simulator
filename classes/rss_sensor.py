@@ -68,7 +68,7 @@ class RssStateInfo(object):
 
 class RssSensor(object):
 
-    def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer:"RssUnstructuredSceneVisualizer", bounding_box_visualizer, state_visualizer, *, visualizer_mode=RssDebugVisualizationMode.Off, routing_targets=None, log_level=carla.RssLogLevel.warn):
+    def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer:"RssUnstructuredSceneVisualizer", bounding_box_visualizer, state_visualizer, *, visualizer_mode=RssDebugVisualizationMode.Off, routing_targets=None, log_level=carla.RssLogLevel.warn if AD_RSS_AVAILABLE else "warn"):
         self.sensor = None
         self.unstructured_scene_visualizer = unstructured_scene_visualizer
         self.bounding_box_visualizer = bounding_box_visualizer

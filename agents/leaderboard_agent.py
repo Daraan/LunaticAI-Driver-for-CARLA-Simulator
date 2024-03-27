@@ -26,7 +26,7 @@ from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 if TYPE_CHECKING:
     from srunner.autoagents.sensor_interface import SensorInterface
     from agents.navigation.local_planner import RoadOption
-    from DataGathering.run_matrix import DataMatrix
+    from data_gathering.car_detection_matrix.run_matrix import DataMatrix
 
 hydra_initialized = False
 import logging

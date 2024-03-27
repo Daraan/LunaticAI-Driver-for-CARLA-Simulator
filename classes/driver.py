@@ -4,7 +4,7 @@ from typing import Union, Optional
 
 import carla
 
-TRAFFIC_MANAGER_CONFIG_SUBDIR = "traffic_manager"
+TRAFFIC_MANAGER_CONFIG_SUBDIR = ""
 
 
 class Driver:

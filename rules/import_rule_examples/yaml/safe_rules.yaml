@@ -1,0 +1,29 @@
+required_imports:
+  - random
+  - time
+
+maintain_distance:
+  description: "Function to maintain a safe distance."
+  logic: |
+    if matrix[i_car][j_car + 1] == 2 or matrix[i_car][j_car + 2] == 2:
+        driver.vehicle.setBrake(random.uniform(0.2, 0.5))
+        print('Maintaining distance')
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm
+
+drive_cautiously:
+  description: "Function for cautious driving."
+  logic: |
+    if random.randint(1, 60) <= driver.overtake_mistake_chance:
+        driver.vehicle.setThrottle(random.uniform(0.4, 0.6))
+        print('Driving cautiously')
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm

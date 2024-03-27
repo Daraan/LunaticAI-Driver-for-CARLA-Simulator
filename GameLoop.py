@@ -1,13 +1,12 @@
-import random
 import threading
 import time
-from asyncio import Queue
+import random
 
 import carla
 
-from DataGathering.informationUtils import get_all_road_lane_ids
-from DataGathering.matrix_wrap import get_car_coords
-from DataGathering.run_matrix import DataMatrix
+from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
+from data_gathering.car_detection_matrix.matrix_wrap import get_car_coords
+from data_gathering.car_detection_matrix.run_matrix import AsyncDataMatrix, DataMatrix
 from classes.camera_manager import camera_function
 from VehicleSpawning.vehicle_spawner import VehicleSpawner
 
@@ -29,23 +28,23 @@ def main():
     ego_vehicle = spawner.assign_drivers(ego, driver1)
 
     # Spawn traffic
-    vehicles, tm = spawner.spawn_traffic(world, car_bp, spawn_points, driver1, ego.vehicle)
-
+    vehicles, tm = spawner.spawn_traffic(world, car_bp, spawn_points, driver1, ego_vehicle)
     # Initialize loop variables
     world.tick()
     road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
     t_end = time.time() + 10000
 
     # Create a thread for the camera functionality
-    camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
-    camera_thread.start()
+    try:
+        camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
+        camera_thread.start()
 
-    # Initialize matrix thread
-    data_matrix = DataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+        # Initialize matrix thread
+        data_matrix = AsyncDataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+        data_matrix.start()
 
-    while time.time() < t_end:
-        try:
-            pass
+        print("Starting game loop")
+        while time.time() < t_end:
             # Retrieve the latest matrix from the matrix thread
             matrix = data_matrix.getMatrix()
 
@@ -54,6 +53,24 @@ def main():
 
             (i_car, j_car) = get_car_coords(matrix)
             results = rule_interpreter.execute_all_functions(driver1, matrix, i_car, j_car, tm)
+
+            # NEW
+            if any(results.values()):
+                continue
+
+            # OLD:
+            # random brake check
+            brake_check_choice = random.randint(1, 100)
+            if (brake_check_choice <= driver1.brake_check_chance
+                    and (matrix[i_car][j_car - 1] == 2)
+            ):
+                driver1.vehicle.actor.set_autopilot(False)
+                driver1.vehicle.setThrottle(0)
+                driver1.vehicle.setBrake(10)
+                time.sleep(1.0)
+                print("Brake check")
+                driver1.vehicle.setBrake(0)
+                driver1.vehicle.actor.set_autopilot(True)
 
             overtake_direction = 0
             # Random lane change
@@ -71,33 +88,9 @@ def main():
                 print("Random lane change")
                 continue
 
-            if matrix[i_car + 1][j_car + 1] == 0:
-                # print("can overtake on right")
-                overtake_direction = 1
-            if matrix[i_car - 1][j_car + 1] == 0:
-                # print("can overtake on left")
-                overtake_direction = -1
-
-            # Overtake logic
-            if matrix[i_car][j_car + 1] == 2 or matrix[i_car][j_car + 2] == 2:
-                overtake_choice = random.randint(1, 100)
-                if overtake_choice >= driver1.overtake_mistake_chance:
-                    tm.force_overtake(100, overtake_direction)
-                    print("overtake!")
-                    continue
-                else:
-                    print("overtake averted by chance")
-
-            # brake logic
-            if matrix[i_car][j_car + 1] == 2:
-                driver1.vehicle.setBrake(4)
-
-        except Exception as e:
-            print(e.__str__())
-
-    input("press any key to end...")
-    data_matrix.stop()
-    camera_thread.join()
+    finally:
+        data_matrix.stop()
+        camera_thread.join()
 
 
 if __name__ == '__main__':

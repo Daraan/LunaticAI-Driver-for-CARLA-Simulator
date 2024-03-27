@@ -1,0 +1,125 @@
+<rules>
+    <imports>
+        <import>random</import>
+        <import>time</import>
+    </imports>
+
+    <function name="go_crazy">
+        <description>Function to simulate erratic behavior when encountering obstacles.</description>
+        <logic>
+            disable_collision = random.randint(1, chances)
+            if disable_collision &lt;= driver.ignore_obstacle_chance:
+                driver.vehicle.actor.set_autopilot(False)
+                driver.vehicle.setThrottle(20)
+                print('Crazy')
+                time.sleep(1)
+                driver.vehicle.actor.set_autopilot(True)
+                driver.vehicle.setThrottle(0)
+                print('Crazy over')
+        </logic>
+        <parameters>
+            <param>driver</param>
+            <param>matrix</param>
+            <param>i_car</param>
+            <param>j_car</param>
+            <param>tm</param>
+        </parameters>
+        <optional_parameters>
+            <chances>1000</chances>
+        </optional_parameters>
+    </function>
+
+    <function name="brake_check">
+        <description>Function to perform a brake check based on certain conditions.</description>
+        <logic>
+            brake_check_choice = random.randint(1, chances)
+            if brake_check_choice &lt;= driver.brake_check_chance and matrix[i_car][j_car - 1] == 2:
+                driver.vehicle.actor.set_autopilot(False)
+                driver.vehicle.setThrottle(0)
+                driver.vehicle.setBrake(10)
+                time.sleep(1.0)
+                print('Brake check')
+                driver.vehicle.setBrake(0)
+                driver.vehicle.actor.set_autopilot(True)
+        </logic>
+        <parameters>
+            <param>driver</param>
+            <param>matrix</param>
+            <param>i_car</param>
+            <param>j_car</param>
+            <param>tm</param>
+        </parameters>
+        <optional_parameters>
+            <chances>100</chances>
+        </optional_parameters>
+    </function>
+
+    <function name="overtake_logic">
+        <description>Function to handle overtaking logic based on surroundings.</description>
+        <logic>
+            overtake_direction = 0
+            if matrix[i_car + 1][j_car + 1] == 0:
+                overtake_direction = 1
+            if matrix[i_car - 1][j_car + 1] == 0:
+                overtake_direction = -1
+            if matrix[i_car][j_car + 1] == 2 or matrix[i_car][j_car + 2] == 2:
+                overtake_choice = random.randint(1, chances)
+                if overtake_choice &gt;= driver.overtake_mistake_chance:
+                    tm.force_overtake(100, overtake_direction)
+                    print('overtake!')
+        </logic>
+        <parameters>
+            <param>driver</param>
+            <param>matrix</param>
+            <param>i_car</param>
+            <param>j_car</param>
+            <param>tm</param>
+        </parameters>
+        <optional_parameters>
+            <chances>100</chances>
+        </optional_parameters>
+    </function>
+
+    <function name="brake_logic">
+        <description>Function to apply brakes in certain conditions.</description>
+        <logic>
+            if matrix[i_car][j_car + 1] == 2:
+                driver.vehicle.setBrake(4)
+        </logic>
+        <parameters>
+            <param>driver</param>
+            <param>matrix</param>
+            <param>i_car</param>
+            <param>j_car</param>
+            <param>tm</param>
+        </parameters>
+    </function>
+
+    <function name="random_lane_change">
+        <description>Function to simulate a random lane change.</description>
+        <logic>
+            overtake_choice = random.randint(1, chances)
+            if overtake_choice &lt;= driver.risky_overtake_chance:
+                if matrix[i_car + 1][j_car + 1] == 3 and matrix[i_car - 1][j_car + 1] == 3:
+                    return False
+                elif matrix[i_car + 1][j_car + 1] == 3:
+                    tm.force_overtake(100, -1)
+                elif matrix[i_car - 1][j_car + 1] == 3:
+                    tm.force_overtake(100, 1)
+                else:
+                    overtake_direction = random.choice([-1, 1])
+                    tm.force_overtake(100, overtake_direction)
+                    print('Random lane change')
+        </logic>
+        <parameters>
+            <param>driver</param>
+            <param>matrix</param>
+            <param>i_car</param>
+            <param>j_car</param>
+            <param>tm</param>
+        </parameters>
+        <optional_parameters>
+            <chances>100</chances>
+        </optional_parameters>
+    </function>
+</rules>

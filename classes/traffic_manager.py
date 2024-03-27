@@ -8,11 +8,13 @@ import carla
 class TrafficManager:
     tm : ClassVar[carla.TrafficManager] = None
 
-    def __init__(self, client : carla.Client, actor, *,
+    def __init__(self, client : carla.Client, actor: carla.Actor, *,
                  speed_limit_scale,
                  min_front_distance,
                  seed=1):
         # TODO use a settings file
+        if not isinstance(actor, carla.Actor):
+            raise TypeError("`actor` must be a carla.Actor")
         if True or TrafficManager.tm is None:
             # TrafficManager.tm : carla.TrafficManager =\
             self.tm = client.get_trafficmanager()

@@ -1,10 +1,10 @@
-from functools import partial
+from functools import partial, wraps
 from typing import Callable, Any, Hashable, TYPE_CHECKING, Union, cast
 
 import inspect
 
 if TYPE_CHECKING:
-    from classes.rule import Context
+    from classes.rule import Context, Rule
 
 class EvaluationFunction:
     """
@@ -142,6 +142,21 @@ class EvaluationFunction:
             return action_function
         return decorator
 
+def TruthyEvaluationFunction(func):
+    """
+    Allows a rule to return any value, but will be converted to a boolean.
+    
+    TODO: Still does "store the result". Add a attribute to ctx that stores the last rule result.
+    
+    todo (low priority): instead of extra function make this a parameter of EvaluationFunction
+    """
+    @EvaluationFunction
+    @wraps(func)
+    def wrapper(self: "Rule", ctx : "Context"): 
+        result = func(self, ctx) # TODO: not method vs. function aware
+        ctx.rule_result = result # TODO: add to context
+        return bool(result)
+    return wrapper
 
 class ActionFunction(EvaluationFunction):
     def __init__(self, action_function: Callable[["Context"], Any], name="ActionFunction"):
