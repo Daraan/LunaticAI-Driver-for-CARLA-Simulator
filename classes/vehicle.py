@@ -5,12 +5,8 @@ from cmath import sqrt
 from typing import List
 
 import carla
-import matplotlib
-import plotly.graph_objs as go
-import plotly.subplots
 from carla import Vector3D
 
-matplotlib.use('TkAgg')
 
 
 def calculateDistance(location1, location2):
@@ -159,14 +155,6 @@ class VehicleBase:
         # Set the loop rate (e.g., 10 times per second)
         loop_rate = 5  # Hz
         loop_interval = 1.0 / loop_rate
-
-        fig = plotly.subplots.make_subplots()
-        trace = go.Scatter(x=[], y=[], mode='lines+markers')
-        fig.add_trace(trace)
-        fig.update_layout(
-            xaxis=dict(range=[0, 10]),  # Adjust the x-axis limits as needed
-            yaxis=dict(range=[0, 100])  # Adjust the y-axis limits as needed
-        )
 
         while True:
             # Check the distance to the car ahead
