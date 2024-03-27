@@ -103,6 +103,33 @@ class GameFramework(AccessCarlaDataProviderMixin):
     
     # ----- Init Functions -----
     
+    # Hydra Tools
+    # TODO: this could be some launch_tools MixinClass
+    @staticmethod
+    def initialize_hydra(config_dir: str="./conf", config_name: str="launch_config", version_base=None, *, job_name="LunaticAgentJob") -> "LaunchConfig":
+        """
+        Use this function only if no hydra.main is available.
+        
+        Usage:
+            args = GameFramework.initialize_hydra(config_dir=<abs_path_of_conf>, config_name="launch_config")
+            game_framework = GameFramework(args)
+        """
+        config_dir = os.path.abspath(config_dir)
+        from hydra import initialize_config_dir
+        # Not save-guarding this against multiple calls, expose the hydra error
+        # todo: low-prio check if config dir and the other parameters are the same.
+        initialize_config_dir(version_base=version_base, 
+                                        config_dir=config_dir, 
+                                        job_name=job_name)
+        GameFramework.__hydra_initialized = True
+        return GameFramework.load_hydra_config(config_name)
+    
+    @staticmethod
+    def load_hydra_config(config_name: str="launch_config") -> "LaunchConfig":
+        from hydra import compose
+        return compose(config_name=config_name)
+    
+    # 
     
     def __init__(self, args: "LaunchConfig", config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
