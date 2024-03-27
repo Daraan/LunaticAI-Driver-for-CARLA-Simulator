@@ -3,7 +3,7 @@ import time
 from classes.constants import StreetType
 import launch_tools
 from data_gathering.car_detection_matrix.informationUtils import *
-from classes.carla_service import CarlaService
+from launch_tools.carla_service import initialize_carla
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
@@ -13,11 +13,8 @@ vehicles = []
 
 def main():
     global client
-    carla_service = CarlaService("Town04", "127.0.0.1", 2000)
-    client = carla_service.client
+    client, world, world_map = initialize_carla("Town04", "127.0.0.1", 2000)
 
-    world = carla_service.get_world()
-    world_map = world.get_map()
     ego_bp, car_bp = launch_tools.prepare_blueprints(world)
 
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
@@ -32,7 +29,7 @@ def main():
         pass
 
     vehicles.append(ego)
-    carla_service.assignDriver(ego, driver1)
+    #carla_service.assignDriver(ego, driver1)
     ego_vehicle = ego.actor
 
     # spawn others

@@ -5,7 +5,7 @@ import carla
 import launch_tools
 from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car
 from data_gathering.car_detection_matrix.run_matrix import DataMatrix
-from classes.carla_service import CarlaService
+from launch_tools.carla_service import initialize_carla
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
@@ -20,11 +20,7 @@ If someone tries to repair this the problem is in the loop found in the DataMatr
 
 def main():
     global client
-    carla_service = CarlaService("Town04", "127.0.0.1", 2000)
-    client = carla_service.client
-
-    world = carla_service.get_world()
-    world_map = world.get_map()
+    client, world, world_map = initialize_carla("Town04", "127.0.0.1", 2000)
     ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)
 
     driver1 = Driver("../config/default_driver.json", traffic_manager=client)
@@ -39,7 +35,7 @@ def main():
         pass
 
     vehicles.append(ego)
-    carla_service.assignDriver(ego, driver1)
+    #carla_service.assignDriver(ego, driver1)
     ego_vehicle = ego.actor
 
     # spawn others

@@ -19,7 +19,7 @@ class TrafficManager:
             raise ValueError("Carla client is not initialized")
         # TODO use a settings file
         if not isinstance(actor, carla.Actor):
-            raise TypeError("`actor` must be a carla.Actor")
+            raise TypeError("`actor` must be a carla.Actor, not " + str(type(actor)))
         if TrafficManager.tm is None:
             # TrafficManager.tm : carla.TrafficManager =\
             TrafficManager.tm = client.get_trafficmanager(port=CarlaDataProvider.get_traffic_manager_port()) # TODO: Should this be different ports? Maybe it is the same traffic manager underneath even if different python instances.

@@ -1,8 +1,8 @@
-import __allow_imports_from_root  # add project root folder to path
+from examples import __allow_imports_from_root  # add project root folder to path
 import carla
 
 import launch_tools
-from classes.carla_service import CarlaService
+from launch_tools.carla_service import initialize_carla
 # TODO: maybe we can merge these or make them more unified & marge with agent
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager
@@ -10,18 +10,13 @@ from classes.vehicle import Vehicle
 
 vehicles = []
 
-
 def main(args={}):
     global client
-    carla_servicee = CarlaService("Town04", args.host, args.port)
-    client = carla_servicee.client
+    client, world, world_map = initialize_carla("Town04", args.host, args.port)
 
-    world = carla_servicee.get_world()
-    level = world.get_map()
     ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)
 
-    print(os.getcwd())
-    driver1 = Driver("config/default_driver.json", traffic_manager=client)
+    driver1 = Driver("conf/traffic_manager/default_driver.json", traffic_manager=client)
 
     spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
     car1 = carla_servicee.createCar("model3")

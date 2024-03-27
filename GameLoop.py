@@ -19,8 +19,7 @@ def main():
 
     # Initialise the class for vehicle spawning
     spawner = VehicleSpawner('VehicleSpawning/config/vehicle_spawn.yaml')
-    spawner.initialize_carla_service()
-    world, world_map = spawner.setup_world()
+    client, world, world_map, = spawner.initialize_carla_service()
     ego_bp, car_bp, driver1, spawn_points, rule_interpreter = spawner.prepare_vehicles(world)
 
     # Spawn vehicles and assign drivers
@@ -53,6 +52,7 @@ def main():
 
             (i_car, j_car) = get_car_coords(matrix)
             # NEW use RuleInterpreter
+            # NOTE: Currently this might not work, need to check back with @Bogdan Oprisiu
             results = rule_interpreter.execute_all_functions(driver1, matrix, i_car, j_car, tm)
 
             if any(results.values()):
