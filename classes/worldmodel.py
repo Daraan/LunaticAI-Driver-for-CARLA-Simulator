@@ -101,6 +101,9 @@ class GameFramework(AccessCarlaDataProviderMixin):
     display : ClassVar[pygame.Surface]
     controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
     
+    # ----- Init Functions -----
+    
+    
     def __init__(self, args: "LaunchConfig", config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
             random.seed(args.seed)
@@ -157,8 +160,12 @@ class GameFramework(AccessCarlaDataProviderMixin):
         traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a config variable
         return traffic_manager
     
-    def set_config(self, config:DictConfig):
-        self.config = config
+    def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", config:"LunaticAgentSettings"=None, overwrites:Optional[Dict[str, Any]]=None):
+        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, map_inst=self.map, config=config, overwrites=overwrites)
+        self.config = self.agent.config
+        controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
+        self.world_model.game_framework = weakref.proxy(self)
+        return self.agent, self.world_model, self.global_planner, controller
     
     def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
         self.world_model = WorldModel(config, self._args, player=player)
@@ -170,35 +177,18 @@ class GameFramework(AccessCarlaDataProviderMixin):
         self.controller: controller_class = weakref.proxy(controller) # note type not correct. TODO: proxy a good idea?
         return controller # NOTE: does not return the proxy object.
     
+    # ----- Setters -----
+    
     def set_controller(self, controller):
         self.controller = controller
     
+    def set_config(self, config:DictConfig):
+        self.config = config
+    
+    # ----- UI Functions -----
+    
     def parse_rss_controller_events(self, final_controls:carla.VehicleControl):
         return self.controller.parse_events(final_controls)
-
-    def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", config:"LunaticAgentSettings"=None, overwrites:Optional[Dict[str, Any]]=None):
-        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, map_inst=self.map, config=config, overwrites=overwrites)
-        self.config = self.agent.config
-        controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
-        self.world_model.game_framework = weakref.proxy(self)
-        return self.agent, self.world_model, self.global_planner, controller
-
-    def __enter__(self):
-        if self.agent is None:
-            raise ValueError("Agent not initialized.")
-        if self.world_model is None:
-            raise ValueError("World Model not initialized.")
-        if self.controller is None:
-            raise ValueError("Controller not initialized.")
-        
-        self.clock.tick() # self.args.fps)
-        if self._args.handle_ticks:
-            if self._args.sync is not None:
-                if self._args.sync:
-                    self.world_model.world.tick()
-                else:
-                    self.world_model.world.wait_for_tick()
-        return self
     
     def render_everything(self):
         """Update render and hud"""
@@ -227,6 +217,25 @@ class GameFramework(AccessCarlaDataProviderMixin):
     
     spawn_actor = carla_service.spawn_actor
     
+    # -------- Context Manager --------
+
+    def __enter__(self):
+        if self.agent is None:
+            raise ValueError("Agent not initialized.")
+        if self.world_model is None:
+            raise ValueError("World Model not initialized.")
+        if self.controller is None:
+            raise ValueError("Controller not initialized.")
+        
+        self.clock.tick() # self.args.fps)
+        if self._args.handle_ticks:
+            if self._args.sync is not None:
+                if self._args.sync:
+                    self.world_model.world.tick()
+                else:
+                    self.world_model.world.wait_for_tick()
+        return self
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cooldown_framework.__exit__(exc_type, exc_val, exc_tb)
         self.render_everything()
