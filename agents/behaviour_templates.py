@@ -8,7 +8,7 @@ import numpy as np
 from agents.navigation.local_planner import RoadOption
 
 from classes.constants import Phase
-from classes.rule import Rule, EvaluationFunction, Context, RulePriority, always_execute
+from classes.rule import Rule, EvaluationFunction, TruthyEvaluationFunction, Context, RulePriority, always_execute
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import ObstacleDetectionResult, get_speed
 from agents.tools.logging import logger
@@ -85,7 +85,7 @@ normal_speed_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
 # ----------- Avoid Beeing tailgated -----------
 
 
-@EvaluationFunction            
+@TruthyEvaluationFunction
 def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
     """
     Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
@@ -115,7 +115,7 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
     # If there is a tailgator check if faster
     # TODO: or evaluation a bit faster
     if check_behind.obstacle_was_found and ctx.agent.config.live_info.current_speed < get_speed(check_behind.obstacle):
-        return True
+        return check_behind
     return False
 
 @avoid_tailgator_check.register_action(True)

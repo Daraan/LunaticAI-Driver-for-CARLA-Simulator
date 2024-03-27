@@ -22,10 +22,10 @@ from enum import IntEnum
 from typing import Any, ClassVar, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
 from weakref import WeakSet
 
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 
 from classes.constants import Phase
-from classes.evaluation_function import EvaluationFunction
+from classes.evaluation_function import EvaluationFunction, TruthyEvaluationFunction
 from agents.tools.logging import logger
 
 if TYPE_CHECKING:
