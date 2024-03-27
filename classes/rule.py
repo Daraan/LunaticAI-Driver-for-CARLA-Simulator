@@ -403,7 +403,14 @@ class Rule(_GroupRule):
         
         # Check Actions
         if action is not None and actions is not None:
-            raise ValueError("Only one of 'action' and 'actions' can be set.")
+            try:
+                if len(actions) == 1 and action is actions[True]:
+                    logger.info("`action` and `actions` have been both been used when initializing %s. Did you use `rule.register_action`? Then you can omit the action parameter / attribute.", self)
+                    action = None
+                else:
+                    raise ValueError("Only one of 'action' and 'actions' can be set.")
+            except Exception as e:
+                raise ValueError("Either only one of 'action' and 'actions' can be set, or actions[True] must be the same as action - other actions are currently not supported.") from e
         if action is None and actions is None and not hasattr(self, "actions"):
             raise TypeError("%s.__init__() `action` and `actions` are both None. Provide at least one argument alternatively the class must have an `actions` attribute or an `action` function." % self.__class__.__name__)
 
@@ -487,7 +494,13 @@ class Rule(_GroupRule):
             @wraps(cls.__init__)
             def partial_init(self, phases=None, *args, **kwargs):
                 # Need phases as first argument
-                phases = getattr(cls, "phases")
+                phases = getattr(cls, "phases", None) # allow for both wordings
+                phase = getattr(cls, "phase", None)
+                if phases and phase:
+                    raise ValueError(f"Both 'phases' and 'phase' are set in class {cls.__name__}. Use only one.")
+                phases = phases or phase
+                if phases is None:
+                    raise ValueError(f"`phases` or `phase` must be provided for class {cls.__name__}")
                 # Removing rule to not overwrite it
                 kwargs.update({k:v for k,v in cls.__dict__.items() if k in params and k not in do_not_overwrite})
                 super(cls, self).__init__(phases, *args, **kwargs)

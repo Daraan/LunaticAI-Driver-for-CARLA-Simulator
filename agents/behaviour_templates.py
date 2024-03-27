@@ -118,6 +118,7 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
         return True
     return False
 
+@avoid_tailgator_check.register_action(True)
 def make_lane_change(ctx : "Context"):
     """
     If a tailgator is detected, move to the left/right lane if possible
@@ -166,9 +167,9 @@ def make_lane_change(ctx : "Context"):
 
 
 class AvoidTailgatorRule(Rule):
-    phases = Phase.DETECT_CARS | Phase.END
+    phase = Phase.DETECT_CARS | Phase.END
     rule = avoid_tailgator_check
-    action = make_lane_change
+    action = make_lane_change # NOTE: when using register_action you can omit this.
     cooldown_reset_value = 200
     group = "lane_change"
     priority = RulePriority.HIGH
