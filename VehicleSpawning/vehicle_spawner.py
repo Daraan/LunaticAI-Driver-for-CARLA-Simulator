@@ -13,7 +13,7 @@ class VehicleSpawner:
         self.config = self.read_config(config_file)
         self.client = None
         self.vehicles = []
-        self.carla_service = None
+        self.carla_service: CarlaService = None
 
     @staticmethod
     def read_config(file_path):
@@ -26,7 +26,7 @@ class VehicleSpawner:
         self.client = self.carla_service.client
 
     def setup_world(self):
-        world = self.carla_service.getWorld()
+        world = self.carla_service.get_world()
         world_map = world.get_map()
         return world, world_map
 

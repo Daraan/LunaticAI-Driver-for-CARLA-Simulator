@@ -13,10 +13,10 @@ vehicles = []
 
 def main(args={}):
     global client
-    carlaService = CarlaService("Town04", args.host, args.port)
-    client = carlaService.client
+    carla_servicee = CarlaService("Town04", args.host, args.port)
+    client = carla_servicee.client
 
-    world = carlaService.getWorld()
+    world = carla_servicee.get_world()
     level = world.get_map()
     ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)
 
@@ -24,13 +24,13 @@ def main(args={}):
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
     spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
-    car1 = carlaService.createCar("model3")
+    car1 = carla_servicee.createCar("model3")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)
     ego.spawn(spawn_points[0])
     vehicles.append(ego)
-    carlaService.assignDriver(ego, driver1)
+    carla_servicee.assignDriver(ego, driver1)
 
     # TODO: let Driver class manage autopilot and not the TrafficMangerD class
 
@@ -53,7 +53,7 @@ def main(args={}):
     # time.sleep(1)
     tm.start_drive()
 
-    # driver1.spawn(carlaService.getWorld().get_map().get_spawn_points()[123])
+    # driver1.spawn(carla_servicee.getWorld().get_map().get_spawn_points()[123])
     # driver1.vehicle.focusCamera()
     # ego.setThrottle(8)
     # time.sleep(4)
@@ -61,16 +61,16 @@ def main(args={}):
 
     """
     driver2 = Driver("json/driver1.json")
-    car2 = carlaService.createCar("coupe")
+    car2 = carla_service.createCar("coupe")
 
     driver3 = Driver("json/driver1.json")
-    car3 = carlaService.createCar("mustang")
+    car3 = carla_service.createCar("mustang")
 
-    carlaService.assignDriver(car1, driver1)
-    carlaService.assignDriver(car2, driver2)
-    carlaService.assignDriver(car3, driver3)
+    carla_service.assignDriver(car1, driver1)
+    carla_service.assignDriver(car2, driver2)
+    carla_service.assignDriver(car3, driver3)
 
-    spawnPoint = carlaService.getWorld().get_map().get_spawn_points()[123]
+    spawnPoint = carla_service.getWorld().get_map().get_spawn_points()[123]
     driver1.spawn(spawnPoint)
     spawnPoint.location.y += 8
     driver2.spawn(spawnPoint)
@@ -79,7 +79,7 @@ def main(args={}):
 
     # driver1.vehicle.focusCamera()
     car3.setThrottle(0.2)
-    driver1.drive(carlaService.vehicleList)
+    driver1.drive(carla_service.vehicleList)
     # car2.setThrottle(2)
 
 

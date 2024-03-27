@@ -13,10 +13,10 @@ vehicles = []
 
 def main():
     global client
-    carlaService = CarlaService("Town04", "127.0.0.1", 2000)
-    client = carlaService.client
+    carla_service = CarlaService("Town04", "127.0.0.1", 2000)
+    client = carla_service.client
 
-    world = carlaService.getWorld()
+    world = carla_service.get_world()
     world_map = world.get_map()
     ego_bp, car_bp = launch_tools.prepare_blueprints(world)
 
@@ -32,7 +32,7 @@ def main():
         pass
 
     vehicles.append(ego)
-    carlaService.assignDriver(ego, driver1)
+    carla_service.assignDriver(ego, driver1)
     ego_vehicle = ego.actor
 
     # spawn others
