@@ -8,7 +8,7 @@ from data_gathering.car_detection_matrix.informationUtils import get_all_road_la
 from data_gathering.car_detection_matrix.matrix_wrap import get_car_coords
 from data_gathering.car_detection_matrix.run_matrix import AsyncDataMatrix, DataMatrix
 from classes.camera_manager import camera_function
-from VehicleSpawning.vehicle_spawner import VehicleSpawner
+from classes.vehicle_spawner import VehicleSpawner
 
 spawner = None
 vehicles = []
@@ -18,7 +18,7 @@ def main():
     global spawner, vehicles
 
     # Initialise the class for vehicle spawning
-    spawner = VehicleSpawner('VehicleSpawning/config/vehicle_spawn.yaml')
+    spawner = VehicleSpawner('conf/traffic_manager/vehicle_spawn.yaml')
     client, world, world_map, = spawner.initialize_carla_service()
     ego_bp, car_bp, driver1, spawn_points, rule_interpreter = spawner.prepare_vehicles(world)
 

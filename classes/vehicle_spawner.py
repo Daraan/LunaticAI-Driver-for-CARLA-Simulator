@@ -63,7 +63,6 @@ class VehicleSpawner(CarlaDataProvider):
             ap.start_drive()
             #CarlaDataProvider.register_actor(v.actor, sp.transform)
 
-
         for sp in spawn_points[5:]:
             v = Vehicle(world, car_bp)
             v.spawn(sp)
