@@ -1,8 +1,3 @@
-carla_service:
-  map: "Town04"
-  ip: "127.0.0.1"
-  port: 2000
-
 driver:
   config: "conf/traffic_manager/default_driver.json"
 
@@ -10,4 +5,4 @@ spawn_points:
   file: "examples/highway_example_car_positions.csv"
 
 rule_interpreter:
-  config: "rules/import_rule_examples/yaml/default_rules.yaml"
+  config: "conf/rules/rule_interpreter_examples/yaml/default_rules.yaml"

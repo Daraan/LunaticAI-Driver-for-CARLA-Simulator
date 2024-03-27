@@ -3,6 +3,7 @@ import os
 from typing import Union, Optional
 
 import carla
+from launch_tools import CarlaDataProvider
 
 TRAFFIC_MANAGER_CONFIG_SUBDIR = ""
 
@@ -28,7 +29,7 @@ class Driver:
         if isinstance(traffic_manager, carla.TrafficManager):
             self.tm = traffic_manager  # Traffic manager short alias
         elif isinstance(traffic_manager, carla.Client):
-            self.tm: carla.TrafficManager = traffic_manager.get_trafficmanager()  # todo find out if there is a different to useing
+            self.tm: carla.TrafficManager = traffic_manager.get_trafficmanager(CarlaDataProvider.get_traffic_manager_port())  # todo find out if there is a different to useing
         elif traffic_manager is not None:
             raise TypeError("manager wrong type", type(traffic_manager))
         if path is not None:
@@ -64,7 +65,6 @@ class Driver:
             path_tm = os.path.join(dir, TRAFFIC_MANAGER_CONFIG_SUBDIR, self.config["use_traffic_manager"] + ".json", )
             with open(path_tm, 'r') as file:
                 self.tm_config = json.load(file)
-            # self.tm: carla.TrafficManager = client.get_trafficmanager()
 
     def spawn(self, transform):
         self.vehicle.spawn(transform)
@@ -87,6 +87,17 @@ class Driver:
         self.actor.set_autopilot(yes)
 
     def configure_autopilot(self):
+        """
+        Configures the autopilot of the vehicle, e.g. by calling these but based on the config file
+        
+        self.tm.auto_lane_change(self.actor, tmc["auto_lane_change"])
+        self.tm.distance_to_leading_vehicle(self.actor, tmc["distance_to_leading_vehicle"])
+        self.tm.vehicle_percentage_speed_difference(self.actor, tmc["vehicle_percentage_speed_difference"])
+        self.tm.keep_right_rule_percentage(self.actor, 0)
+        self.tm.random_right_lanechange_percentage(self.actor, 25)
+        self.tm.random_left_lanechange_percentage(self.actor, 50)
+        self.tm.ignore_vehicles_percentage(self.actor, 40)
+        """
         if self.tm is None:
             raise ValueError(
                 "To use the Traffic Manager the driver needs to be initialized with the client. Or set Driver.tm manually to a manager")
@@ -99,15 +110,4 @@ class Driver:
             setter(self.actor, v)
 
         # manual way:
-        """
-        self.tm.auto_lane_change(self.actor, tmc["auto_lane_change"])
-        self.tm.distance_to_leading_vehicle(self.actor, tmc["distance_to_leading_vehicle"])
-        self.tm.vehicle_percentage_speed_difference(self.actor, tmc["vehicle_percentage_speed_difference"])
-        self.tm.keep_right_rule_percentage(self.actor, 0)
-        self.tm.random_right_lanechange_percentage(self.actor, 25)
-        self.tm.random_left_lanechange_percentage(self.actor, 50)
-        self.tm.ignore_vehicles_percentage(self.actor, 40)
-        """
 
-    def goNuts(self):
-        pass

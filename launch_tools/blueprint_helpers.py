@@ -1,6 +1,8 @@
 import re
 from typing import List, Tuple, TYPE_CHECKING
 
+from launch_tools import CarlaDataProvider
+
 if TYPE_CHECKING:
     import carla
     try:
@@ -13,9 +15,10 @@ if TYPE_CHECKING:
 
 import carla
 
+create_blueprint = CarlaDataProvider.create_blueprint
 
-def get_contrasting_blueprints(world : carla.World, ego_vehicle="vehicle.lincoln.mkz_2020", ego_color="255,0,0") -> Tuple[
-    carla.ActorBlueprint, carla.ActorBlueprint]:
+def get_contrasting_blueprints(world: "carla.World", ego_vehicle="vehicle.lincoln.mkz_2020", ego_color: str="255,0,0") \
+    -> Tuple["carla.ActorBlueprint", carla.ActorBlueprint]:
     """
     Sets the color of NPC vehicles and marks the ego vehicle red.
 
@@ -48,8 +51,7 @@ def get_contrasting_blueprints(world : carla.World, ego_vehicle="vehicle.lincoln
 
 
 def get_actor_blueprints(world: carla.World, filter: str,
-                         generation: "Literal[1, 2, 'all']") -> List[
-    carla.ActorBlueprint]:
+                         generation: "Literal[1, 2, 'all']") -> List[carla.ActorBlueprint]:
     """
     Returns a list of actor blueprints filtered by the given filter and generation.
 
