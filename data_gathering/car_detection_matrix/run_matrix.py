@@ -18,8 +18,8 @@ import pylab
 import carla
 import pygame
 
-from DataGathering.informationUtils import get_all_road_lane_ids
-from DataGathering.matrix_wrap import wrap_matrix_functionalities
+from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
+from data_gathering.car_detection_matrix.matrix_wrap import wrap_matrix_functionalities
 
 
 async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_queue):

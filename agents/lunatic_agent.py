@@ -22,7 +22,7 @@ from omegaconf import DictConfig, OmegaConf
 import carla
 import omegaconf
 
-from DataGathering.run_matrix import AsyncDataMatrix, DataMatrix
+from data_gathering.car_detection_matrix.run_matrix import AsyncDataMatrix, DataMatrix
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
