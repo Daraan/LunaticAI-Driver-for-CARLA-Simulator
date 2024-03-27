@@ -8,9 +8,9 @@ import numpy as np
 from agents.navigation.local_planner import RoadOption
 
 from classes.constants import Phase
-from classes.rule import Rule, EvaluationFunction, Context, RulePriority, always_execute
+from classes.rule import Rule, EvaluationFunction, TruthyEvaluationFunction, Context, RulePriority, always_execute
 from agents.tools.lunatic_agent_tools import detect_vehicles
-from agents.tools.misc import get_speed
+from agents.tools.misc import ObstacleDetectionResult, get_speed
 from agents.tools.logging import logger
 
 from typing import TYPE_CHECKING, List
@@ -84,71 +84,106 @@ normal_speed_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
 
 # ----------- Avoid Beeing tailgated -----------
 
-def avoid_tailgator(self : Rule, ctx : "Context"):
+
+@TruthyEvaluationFunction
+def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
+    """
+    Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
+    and did not avoided tailgating in the last 200 steps
+    
+    ASSUMES: No car in front/side (which is a hazard in itself) found in DETECT_CARS phase
+    
+    # TODO: add option in rule to receive the result of the DETECT_CARS phase
+
+    Check if a lane change can happen is done in the action, combine two rules!
+    """
+    waypoint = ctx.agent._current_waypoint
+
+    # Cheap to get, do we plan to continue in the same lane? We are not at a junction and have some minimum speed
+    pre_conditions = (ctx.agent.config.live_info.direction == RoadOption.LANEFOLLOW \
+            and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10  #TODO Hardcoded
+            )
+    if not pre_conditions:
+        return False
+    # Detect if there is a car behind
+    vehicle_list = ctx.agent.vehicles_nearby
+    check_behind = detect_vehicles(ctx.agent, vehicle_list, 
+                                   max(ctx.agent.config.distance.min_proximity_threshold, 
+                                       ctx.agent.config.live_info.current_speed_limit / 2), 
+                                   up_angle_th=180, low_angle_th=160)
+    
+    # If there is a tailgator check if faster
+    # TODO: or evaluation a bit faster
+    if check_behind.obstacle_was_found and ctx.agent.config.live_info.current_speed < get_speed(check_behind.obstacle):
+        return check_behind
+    return False
+
+@avoid_tailgator_check.register_action(True)
+def make_lane_change(ctx : "Context"):
     """
     If a tailgator is detected, move to the left/right lane if possible
 
         :param waypoint: current waypoint of the agent
         :param vehicle_list: list of all the nearby vehicles
+        
+    Assumes:
+         (ctx.agent.config.live_info.direction == RoadOption.LANEFOLLOW \
+            and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10)
+        check_behind.obstacle_was_found and ctx.agent.config.live_info.current_speed < get_speed(check_behind.obstacle)
     """
     vehicle_list = ctx.agent.vehicles_nearby
     waypoint = ctx.agent._current_waypoint # todo use a getter
 
-    behind_vehicle_state, behind_vehicle, _ = detect_vehicles(ctx.agent, vehicle_list, max(
-        ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, low_angle_th=160)
-    if behind_vehicle_state and ctx.agent.config.live_info.current_speed < get_speed(behind_vehicle):
-        # There is a faster car behind us
+    # There is a faster car behind us
 
-        left_turn = waypoint.left_lane_marking.lane_change
-        right_turn = waypoint.right_lane_marking.lane_change
+    left_turn = waypoint.left_lane_marking.lane_change
+    right_turn = waypoint.right_lane_marking.lane_change
 
-        left_wpt = waypoint.get_left_lane()
-        right_wpt = waypoint.get_right_lane()
+    left_wpt = waypoint.get_left_lane()
+    right_wpt = waypoint.get_right_lane()
 
-        if (right_turn == carla.LaneChange.Right or right_turn ==
-            carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
-            
-            detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
-                ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=1)
-            if not detection_result.obstacle_was_found:
-                print("Tailgating, moving to the right!")
-                end_waypoint = ctx.agent._local_planner.target_waypoint
-                ctx.agent.set_destination(end_waypoint.transform.location,
-                                        right_wpt.transform.location)
+    if (right_turn == carla.LaneChange.Right or right_turn ==
+        carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
         
-        elif left_turn == carla.LaneChange.Left and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
-            detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
-                ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=-1)
-            
-            if  not detection_result.obstacle_was_found:
-                print("Tailgating, moving to the left!")
-                end_waypoint = ctx.agent._local_planner.target_waypoint
-                ctx.agent.set_destination(end_waypoint.transform.location,
-                                        left_wpt.transform.location)
-
-@EvaluationFunction            
-def avoid_tailgator_check(ctx : "Context") -> bool:
-    """
-    Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
-    and did not avoided tailgating in the last 200 steps
-
-    ASSUMES: No car in front/side (which is a hazard in itself) found in DETECT_CARS phase
+        # Detect if right lane is free
+        detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
+            ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=1)
+        if not detection_result.obstacle_was_found:
+            print("Tailgating, moving to the right!")
+            end_waypoint = ctx.agent._local_planner.target_waypoint
+            ctx.agent.set_destination(end_waypoint.transform.location,
+                                    right_wpt.transform.location)
     
-    # TODO: add option in rule to receive the result of the DETECT_CARS phase
-    """
-    waypoint = ctx.agent._current_waypoint
+    elif left_turn == carla.LaneChange.Left and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
+        # Check if left lane is free
+        detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
+            ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=-1)
+        if  not detection_result.obstacle_was_found:
+            print("Tailgating, moving to the left!")
+            end_waypoint = ctx.agent._local_planner.target_waypoint
+            ctx.agent.set_destination(end_waypoint.transform.location,
+                                    left_wpt.transform.location)
 
-    return (ctx.agent.config.live_info.direction == RoadOption.LANEFOLLOW \
-            and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10  #TODO Hardcoded
-            )
 
-avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,
-                            rule=avoid_tailgator_check,
-                            action=avoid_tailgator,
-                            cooldown_reset_value=200,
-                            group="lane_change",
-                            priority=RulePriority.HIGH,
-                            description="Avoid tailgating when followed by a faster car that is quite close.")
+
+class AvoidTailgatorRule(Rule):
+    phase = Phase.DETECT_CARS | Phase.END
+    rule = avoid_tailgator_check
+    action = make_lane_change # NOTE: when using register_action you can omit this.
+    cooldown_reset_value = 200
+    group = "lane_change"
+    priority = RulePriority.HIGH
+    description = "Avoid tailgating when followed by a faster car that is quite close."
+    _check_result: ObstacleDetectionResult = None
+
+avoid_tailgator_rule = AvoidTailgatorRule()
+#avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,
+#                            rule=avoid_tailgator_check,
+#                            action=avoid_tailgator,
+#                            cooldown_reset_value=200,
+#                            group="lane_change",
+#                            priority=RulePriority.HIGH,
+#                            description="Avoid tailgating when followed by a faster car that is quite close.")
 
 
 # ----------- Plan next waypoint -----------

@@ -206,6 +206,7 @@ class Vehicle(VehicleBase):
     def __init__(self, world: carla.World, make=""):
         super().__init__(world=world, make=make)
         self.vehicle = VehicleBase(world, make)
+        self.actor = self.vehicle.actor
 
     def __getattr__(self, attr):
         # Delegate attribute access to the CARLA Vehicle class
@@ -213,5 +214,3 @@ class Vehicle(VehicleBase):
             return getattr(self.actor, attr)
         raise AttributeError(f"'Invalid attribute {attr}'{attr}'")
 
-    def getCarlaVehicle(self):
-        return self.carlaVehicle

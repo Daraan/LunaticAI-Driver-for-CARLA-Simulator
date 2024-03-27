@@ -5,7 +5,7 @@ from copy import deepcopy
 from classes.constants import StreetType
 
 warnings.filterwarnings("ignore")
-from DataGathering.informationUtils import *
+from data_gathering.car_detection_matrix.informationUtils import *
 
 import sys
 import os

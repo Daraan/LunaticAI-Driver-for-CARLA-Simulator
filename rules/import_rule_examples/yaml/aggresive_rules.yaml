@@ -1,0 +1,36 @@
+required_imports:
+  - random
+  - time
+
+overtake_logic:
+  description: "Aggressive overtaking logic."
+  logic: |
+    overtake_direction = 0
+    if matrix[i_car + 1][j_car + 1] == 0:
+        overtake_direction = 1
+    if matrix[i_car - 1][j_car + 1] == 0:
+        overtake_direction = -1
+    if matrix[i_car][j_car + 1] == 2 or matrix[i_car][j_car + 2] == 2:
+        overtake_choice = random.randint(1, 10)
+        if overtake_choice >= driver.overtake_mistake_chance:
+            tm.force_overtake(100, overtake_direction)
+            print('Aggressive overtake!')
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm
+
+speed_up:
+  description: "Function for aggressive speed up."
+  logic: |
+    if random.randint(1, 2) <= driver.risky_overtake_chance:
+        driver.vehicle.setThrottle(random.uniform(0.7, 1.0))
+        print('Speed up!')
+  parameters:
+    - driver
+    - matrix
+    - i_car
+    - j_car
+    - tm

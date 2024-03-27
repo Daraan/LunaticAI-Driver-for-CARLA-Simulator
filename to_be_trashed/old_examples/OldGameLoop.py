@@ -3,11 +3,11 @@ import time
 import carla
 
 import launch_tools
-from DataGathering.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car
-from DataGathering.run_matrix import DataMatrix
+from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids, initialize_dataframe, follow_car
+from data_gathering.car_detection_matrix.run_matrix import DataMatrix
 from classes.carla_service import CarlaService
 from classes.driver import Driver
-from classes.traffic_manager_daniel import TrafficManagerD
+from classes.traffic_manager import TrafficManager
 from classes.vehicle import Vehicle
 
 vehicles = []
@@ -47,11 +47,11 @@ def main():
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        ap = TrafficManagerD(client, v.actor)
+        ap = TrafficManager(client, v.actor)
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManagerD(client, ego.actor)
+    tm = TrafficManager(client, ego.actor)
     tm.init_lunatic_driver()
     tm.start_drive()
 

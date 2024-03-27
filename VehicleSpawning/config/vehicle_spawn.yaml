@@ -4,10 +4,10 @@ carla_service:
   port: 2000
 
 driver:
-  config: "config/default_driver.json"
+  config: "conf/traffic_manager/default_driver.json"
 
 spawn_points:
-  file: "doc/highway_example_car_positions.csv"
+  file: "examples/highway_example_car_positions.csv"
 
 rule_interpreter:
-  config: "Rules/config/yaml/default_rules.yaml"
+  config: "rules/import_rule_examples/yaml/default_rules.yaml"
