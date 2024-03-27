@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
+from launch_tools import carla_service
 from agents.tools.logging import logger
 
 from launch_tools import CarlaDataProvider
@@ -127,31 +128,8 @@ class GameFramework(AccessCarlaDataProviderMixin):
             pygame.HWSURFACE | pygame.DOUBLEBUF)
         return clock, display
     
-    def init_carla(self, args, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
-        if self.client is None: # TODO: Note this maybe prevents usage of two different ports
-            self.client = carla.Client(args.host, args.port, worker_threads)
-            self.client.set_timeout(timeout)
-        else:
-            assert isinstance(self.client, carla.Client)
-        
-        if self.world is None:
-            self.world = self.client.get_world()
-        else:
-            assert isinstance(self.world, carla.World)
-            
-        if self.map is None:
-            self.map = self.world.get_map()
-        else:
-            assert isinstance(self.map, carla.Map)
-        
-        world_name = args.map
-        if world_name and self.map.name != "Carla/Maps/" + world_name:
-            logger.info(f"Loading world: {world_name}")
-            self.world = self.client.load_world(world_name, map_layers=map_layers)
-            if not self.map: # Note: CarlaDataProvider.set_world handles this.
-                self.map = self.world.get_map()
-        else:
-            logger.debug("skipped loading world, already loaded. map_layers ignored.") # todo: remove?
+    def init_carla(self, args: "LaunchConfig", timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+        client, world, world_map = carla_service.initialize_carla(args.map, args.host, args.port, timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
         
         # Apply world settings
         if args.sync is not None: # Else let this be handled by someone else
@@ -244,7 +222,11 @@ class GameFramework(AccessCarlaDataProviderMixin):
         """
         # TODO: add option that still allows for rss.
         raise ContinueLoopException(message)
-
+    
+    # -------- Tools --------
+    
+    spawn_actor = carla_service.spawn_actor
+    
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cooldown_framework.__exit__(exc_type, exc_val, exc_tb)
         self.render_everything()

@@ -9,10 +9,10 @@ get_client = CarlaDataProvider.get_client
 get_world = CarlaDataProvider.get_world
 get_map = CarlaDataProvider.get_map
 
-def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10.0, reload_world=False, reset_settings=True, map_layers=carla.MapLayer.All):
+def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10.0, worker_threads=0, reload_world=False, reset_settings=True, map_layers=carla.MapLayer.All):
     client = CarlaDataProvider.get_client()
     if client is None:
-        client = carla.Client(ip, port)
+        client = carla.Client(ip, port, worker_threads)
         client.set_timeout(timeout)
         CarlaDataProvider.set_client(client)
     if not CarlaDataProvider.get_world():
