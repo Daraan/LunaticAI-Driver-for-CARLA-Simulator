@@ -1,5 +1,5 @@
 import launch_tools
-from Rules.ApplyRules import RuleInterpreter
+from classes.rule_interpreter import RuleInterpreter
 from classes.carla_service import CarlaService
 from classes.driver import Driver
 from classes.traffic_manager import TrafficManager

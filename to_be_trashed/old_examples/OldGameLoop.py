@@ -47,11 +47,11 @@ def main():
         v = Vehicle(world, car_bp)
         v.spawn(sp)
         vehicles.append(v)
-        ap = TrafficManagerD(client, v.actor)
+        ap = TrafficManager(client, v.actor)
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManagerD(client, ego.actor)
+    tm = TrafficManager(client, ego.actor)
     tm.init_lunatic_driver()
     tm.start_drive()
 
