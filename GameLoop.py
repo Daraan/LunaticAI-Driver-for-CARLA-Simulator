@@ -52,9 +52,9 @@ def main():
                 continue
 
             (i_car, j_car) = get_car_coords(matrix)
+            # NEW use RuleInterpreter
             results = rule_interpreter.execute_all_functions(driver1, matrix, i_car, j_car, tm)
 
-            # NEW
             if any(results.values()):
                 continue
 

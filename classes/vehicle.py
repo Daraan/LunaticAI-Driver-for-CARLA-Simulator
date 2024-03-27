@@ -8,6 +8,7 @@ import carla
 from carla import Vector3D
 
 
+from launch_tools import CarlaDataProvider
 
 def calculateDistance(location1, location2):
     return sqrt(
@@ -46,6 +47,7 @@ class VehicleBase:
 
     def spawn(self, transform):
         self.actor: carla.Vehicle = self.world.spawn_actor(self.actorBlueprint, transform)
+        CarlaDataProvider.register_actor(self.actor, transform)
         self.actor.apply_control(self.control)
 
     def focusCamera(self):
