@@ -13,27 +13,27 @@ vehicles = []
 
 def main(args):
     global client
-    carlaService = CarlaService("Town04", args.host, args.port)
-    client = carlaService.client
+    carla_service = CarlaService("Town04", args.host, args.port)
+    client = carla_service.client
 
-    world = carlaService.getWorld()
+    world = carla_service.get_world()
     level = world.get_map()
     ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)  # ego is red the others default colors
 
     driver1 = Driver("config/default_driver.json")
-    car1 = carlaService.createCar("model3")
+    car1 = carla_service.createCar("model3")
 
     driver2 = Driver("config/default_driver.json")
-    car2 = carlaService.createCar("coupe")
+    car2 = carla_service.createCar("coupe")
 
     driver3 = Driver("config/default_driver.json")
-    car3 = carlaService.createCar("mustang")
+    car3 = carla_service.createCar("mustang")
 
-    carlaService.assignDriver(car1, driver1)
-    carlaService.assignDriver(car2, driver2)
-    carlaService.assignDriver(car3, driver3)
+    carla_service.assignDriver(car1, driver1)
+    carla_service.assignDriver(car2, driver2)
+    carla_service.assignDriver(car3, driver3)
 
-    spawnPoint = carlaService.getWorld().get_map().get_spawn_points()[123]
+    spawnPoint = carla_service.get_world().get_map().get_spawn_points()[123]
     driver1.spawn(spawnPoint)
     spawnPoint.location.y += 8
     driver2.spawn(spawnPoint)
@@ -42,7 +42,7 @@ def main(args):
 
     # driver1.vehicle.focusCamera()
     car3.setThrottle(0.2)
-    driver1.drive(carlaService.vehicleList)
+    driver1.drive(carla_service.vehicleList)
     # car2.setThrottle(2)
 
     time.sleep(1)

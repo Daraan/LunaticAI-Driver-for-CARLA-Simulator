@@ -21,23 +21,23 @@ vehicles = []
 
 def main(args):
     global client
-    carlaService = CarlaService("Town04", args.host, args.port)
-    client = carlaService.client
+    carla_service = CarlaService("Town04", args.host, args.port)
+    client = carla_service.client
 
-    world = carlaService.getWorld()
+    world = carla_service.get_world()
     level = world.get_map()
     ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(world)
 
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
     spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
-    # car1 = carlaService.createCar("model3")
+    # car1 = carla_service.createCar("model3")
 
     # Spawn Ego
     ego = Vehicle(world, ego_bp)
     ego.spawn(spawn_points[0])
     vehicles.append(ego)
-    carlaService.assignDriver(ego, driver1)
+    carla_service.assignDriver(ego, driver1)
     agent = BasicAgent(ego.actor)
 
     wp_start = level.get_waypoint(ego.actor.get_location())

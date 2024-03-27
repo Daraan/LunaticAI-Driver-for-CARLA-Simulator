@@ -76,7 +76,7 @@ def game_loop(args):
 
         hud = HUD(args.width, args.height)
 
-        # carlaService = CarlaService("Town04", "127.0.0.1", 2000)
+        # carla_service = CarlaService("Town04", "127.0.0.1", 2000)
 
         # Set the agent destination
         # import os
@@ -88,7 +88,7 @@ def game_loop(args):
             spawn_points = launch_tools.general.csv_to_transformations("../examples/highway_example_car_positions.csv")
         except FileNotFoundError:
             spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
-        # car1 = carlaService.createCar("model3")
+        # car1 = carla_service.createCar("model3")
 
         # Spawn Ego
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(sim_world)
@@ -104,7 +104,7 @@ def game_loop(args):
         controller = KeyboardControl(world)
         # world.set_actor(ego.actor)
 
-        # carlaService.assignDriver(ego, driver1)
+        # carla_service.assignDriver(ego, driver1)
         args.agent = "Lunatic"
 
         if True or args.agent == "Lunatic":
