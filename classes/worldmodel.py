@@ -242,7 +242,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
     
     # -------- Tools --------
     
-    spawn_actor = carla_service.spawn_actor
+    spawn_actor = staticmethod(carla_service.spawn_actor)
     
     # -------- Context Manager --------
 
