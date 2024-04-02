@@ -179,8 +179,8 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         return world_settings
     
-    def init_traffic_manager(self) -> carla.TrafficManager:
-        traffic_manager = self.client.get_trafficmanager()
+    def init_traffic_manager(self, port=8000) -> carla.TrafficManager:
+        traffic_manager = self.client.get_trafficmanager(port)
         if self._args.sync:
             traffic_manager.set_synchronous_mode(True)
         traffic_manager.set_hybrid_physics_mode(True) # Note default 50m

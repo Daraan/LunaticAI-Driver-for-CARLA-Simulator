@@ -163,6 +163,10 @@ class LunaticAgent(BehaviorAgent):
             self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
         self._vehicle : carla.Vehicle = world_model.player
+        try:
+            CarlaDataProvider.register_actor(self._vehicle) # assure that the vehicle is registered
+        except KeyError as e:
+            logger.info("Ignoring error of already registered actor: %s", e)
         self._world_model : WorldModel = world_model
         self._world : carla.World = world_model.world
         if map_inst:
