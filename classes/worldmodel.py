@@ -96,7 +96,7 @@ class AccessCarlaDataProviderMixin:
 # -- Game Framework ---------------------------------------------------------------
 # ==============================================================================
 
-class GameFramework(AccessCarlaDataProviderMixin):
+class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     clock : ClassVar[pygame.time.Clock]
     display : ClassVar[pygame.Surface]
     controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
@@ -277,7 +277,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
 # -- World ---------------------------------------------------------------
 # ==============================================================================
 
-class WorldModel(AccessCarlaDataProviderMixin):
+class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
     """ Class representing the surrounding environment """
 
     controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
@@ -576,7 +576,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
 
     def tick_server_world(self):
         if self._args.handle_ticks:
-            if self.sync: #TODO: What if ticks are handled externally?
+            if self.sync:
                 return self.world.tick()
             return self.world.wait_for_tick()
 

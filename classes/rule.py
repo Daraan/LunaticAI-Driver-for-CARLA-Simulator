@@ -8,6 +8,9 @@ except ImportError:
     from functools import singledispatch, update_wrapper
 
     def singledispatchmethod(func):
+        """
+        Works like functools.singledispatch, but for methods. Backward compatible code
+        """
         dispatcher = singledispatch(func)
         def wrapper(*args, **kw):
             return dispatcher.dispatch(args[1].__class__)(*args, **kw)
@@ -24,6 +27,7 @@ from weakref import WeakSet
 
 from omegaconf import OmegaConf
 
+from launch_tools import CarlaDataProvider
 from classes.constants import Phase
 from classes.evaluation_function import EvaluationFunction, TruthyEvaluationFunction
 from agents.tools.logging import logger
@@ -34,12 +38,15 @@ if TYPE_CHECKING:
     from agents.tools.config_creation import LunaticAgentSettings
 
 
-class Context:
+class Context(CarlaDataProvider):
     """
     Object to be passed as the first argument (instead of self) to rules, actions and evaluation functions.
     
+    The `Context` class derives from the scenario runner's `CarlaDataProvider` to allow access to the world, map, etc.
+    
     NOTE: That Context.config are the read-only settings for the given rule and actions with potential overwrites.
     """
+    
     agent : "LunaticAgent"
     config : "LunaticAgentSettings"
     """A copy of the agents config. Overwritten by the rule's settings."""
