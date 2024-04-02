@@ -112,16 +112,16 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         
         # Spawn Others
         how_many = 33
-        ego_spawn = 3
+        ego_spawn_idx = 3
         traffic_manager = game_framework.init_traffic_manager(CarlaDataProvider.get_traffic_manager_port())
         spawned_vehicles = CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3", 
                                                                       how_many, 
-                                                                      spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn], 
+                                                                      spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn_idx], 
                                                                       autopilot=True, 
                                                                       tick=False) 
         
         # Spawn Ego
-        start : carla.libcarla.Transform = spawn_points[ego_spawn]
+        start : carla.libcarla.Transform = spawn_points[ego_spawn_idx]
         ego = game_framework.spawn_actor(ego_bp, start)
         spawned_vehicles.append(ego)
         
