@@ -31,7 +31,8 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10
         logger.info("Reloaded world - map_layers ignored.")
     else:
         logger.info("skipped loading world, already loaded - map_layers and reset_settings ignored.")
-    return client, world, CarlaDataProvider.get_map()
+    map_ = CarlaDataProvider.get_map()
+    return client, world, map_
 
 
 def spawn_actor(bp: carla.ActorBlueprint, spawn_point: Union[carla.Waypoint, carla.Transform], must_spawn=True, attach_to: Optional[carla.Actor]=None, attachment_type: carla.AttachmentType=carla.AttachmentType.Rigid):
@@ -45,6 +46,7 @@ def spawn_actor(bp: carla.ActorBlueprint, spawn_point: Union[carla.Waypoint, car
         actor = world.try_spawn_actor(bp, spawn_point, attach_to, attachment_type)
         if actor is None:
             return None
+    CarlaDataProvider._carla_actor_pool[actor.id] = actor
     CarlaDataProvider.register_actor(actor, spawn_point)
     return actor
 

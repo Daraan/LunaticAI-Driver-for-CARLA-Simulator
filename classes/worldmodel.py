@@ -138,6 +138,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self._args = args
         self.clock, self.display = self.init_pygame(args)
         self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
+
         self.config = config
         self.agent = None
         self.world_model = None
@@ -161,22 +162,21 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     def init_carla(self, args: "LaunchConfig", timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         client, world, world_map = carla_service.initialize_carla(args.map, args.host, args.port, timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
         
+        world_settings = self.world.get_settings()
         # Apply world settings
         if args.sync is not None: # Else let this be handled by someone else
             if args.sync:
                 logger.debug("Using synchronous mode.")
                 # apply synchronous mode if wanted
-                world_settings = self.world.get_settings()
                 world_settings.synchronous_mode = True
                 world_settings.fixed_delta_seconds = 1/args.fps # 0.05
                 self.world.apply_settings(world_settings)
             else:
                 logger.debug("Using asynchronous mode.")
-                world_settings = self.world.get_settings()
-        else:
-            world_settings = self.world.get_settings()
-            print("World Settings:", world_settings)
-        
+                world_settings.synchronous_mode = False
+            world.apply_settings(world_settings)
+        print("World Settings:", world_settings)
+        CarlaDataProvider._sync_flag = world_settings.synchronous_mode
         return world_settings
     
     def init_traffic_manager(self, port=8000) -> carla.TrafficManager:
