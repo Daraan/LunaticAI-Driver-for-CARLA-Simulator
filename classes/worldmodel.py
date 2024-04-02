@@ -261,6 +261,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
                     self.world_model.world.tick()
                 else:
                     self.world_model.world.wait_for_tick()
+            CarlaDataProvider.on_carla_tick()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
