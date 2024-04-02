@@ -52,7 +52,7 @@ agent: ???
 # -------------------------------------------------
 # Hydra DefaultList
 # See https://hydra.cc/docs/advanced/defaults_list/
-# For the Grammer syntax see https://hydra.cc/docs/advanced/override_grammar/basic/
+# For the Grammar syntax see https://hydra.cc/docs/advanced/override_grammar/basic/
 # -------------------------------------------------
 
 defaults:
@@ -73,7 +73,7 @@ defaults:
 
   # -------------------------------------------
   # Extensions to the default settings
-  # These files are utility or not often used settings
+  # These files are for utility or not often used settings (e.g. the planner)
   # -------------------------------------------
   
   # LocalPlanner settings

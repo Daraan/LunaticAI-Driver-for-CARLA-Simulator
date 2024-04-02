@@ -32,6 +32,8 @@ from omegaconf import MISSING, DictConfig, OmegaConf
 import carla 
     
 import launch_tools
+from launch_tools import CarlaDataProvider
+
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
 from classes.rule import Context, Rule
@@ -72,6 +74,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     world_model : WorldModel = None # Set for finally block
     agent : LunaticAgent = None # Set for finally block
     ego : carla.Vehicle = None # Set for finally block
+    spawned_vehicles : List[carla.Actor] = [] # Set for finally block
     
     args.seed = 631 # TEMP
 
@@ -109,21 +112,17 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         
         # Spawn Others
         how_many = 33
-        ego_spawn = 3
-        traffic_manager = game_framework.init_traffic_manager()
-        spawn_commands = []
-        for i, sp in enumerate(spawn_points[:how_many+1]):
-            if i == ego_spawn:
-                continue
-            spawn_commands.append(carla.command.SpawnActor(car_bp, sp).then(
-                            carla.command.SetAutopilot(carla.command.FutureActor, True)))
-
-        response = game_framework.client.apply_batch_sync(spawn_commands)
-        spawned_vehicles = list(game_framework.world.get_actors([x.actor_id for x in response]))
+        ego_spawn_idx = 3
+        traffic_manager = game_framework.init_traffic_manager(CarlaDataProvider.get_traffic_manager_port())
+        spawned_vehicles = CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3", 
+                                                                      how_many, 
+                                                                      spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn_idx], 
+                                                                      autopilot=True, 
+                                                                      tick=False) 
         
         # Spawn Ego
-        start : carla.libcarla.Transform = spawn_points[ego_spawn]
-        ego = game_framework.world.spawn_actor(ego_bp, start)
+        start : carla.libcarla.Transform = spawn_points[ego_spawn_idx]
+        ego = game_framework.spawn_actor(ego_bp, start)
         spawned_vehicles.append(ego)
         
         # TEMP # Test external actor, do not pass ego
@@ -242,6 +241,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         if game_framework is not None:
             game_framework.client.apply_batch([carla.command.DestroyActor(x) for x in spawned_vehicles])
             ego = None
+        CarlaDataProvider.cleanup() # NOTE: unsets world, map, client
         
         try: # NOTE: Currently not used
             if ego is not None:

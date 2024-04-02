@@ -96,7 +96,7 @@ class AccessCarlaDataProviderMixin:
 # -- Game Framework ---------------------------------------------------------------
 # ==============================================================================
 
-class GameFramework(AccessCarlaDataProviderMixin):
+class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     clock : ClassVar[pygame.time.Clock]
     display : ClassVar[pygame.Surface]
     controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
@@ -138,6 +138,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
         self._args = args
         self.clock, self.display = self.init_pygame(args)
         self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
+
         self.config = config
         self.agent = None
         self.world_model = None
@@ -161,26 +162,25 @@ class GameFramework(AccessCarlaDataProviderMixin):
     def init_carla(self, args: "LaunchConfig", timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         client, world, world_map = carla_service.initialize_carla(args.map, args.host, args.port, timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
         
+        world_settings = self.world.get_settings()
         # Apply world settings
         if args.sync is not None: # Else let this be handled by someone else
             if args.sync:
                 logger.debug("Using synchronous mode.")
                 # apply synchronous mode if wanted
-                world_settings = self.world.get_settings()
                 world_settings.synchronous_mode = True
                 world_settings.fixed_delta_seconds = 1/args.fps # 0.05
                 self.world.apply_settings(world_settings)
             else:
                 logger.debug("Using asynchronous mode.")
-                world_settings = self.world.get_settings()
-        else:
-            world_settings = self.world.get_settings()
-            print("World Settings:", world_settings)
-        
+                world_settings.synchronous_mode = False
+            world.apply_settings(world_settings)
+        print("World Settings:", world_settings)
+        CarlaDataProvider._sync_flag = world_settings.synchronous_mode
         return world_settings
     
-    def init_traffic_manager(self) -> carla.TrafficManager:
-        traffic_manager = self.client.get_trafficmanager()
+    def init_traffic_manager(self, port=8000) -> carla.TrafficManager:
+        traffic_manager = self.client.get_trafficmanager(port)
         if self._args.sync:
             traffic_manager.set_synchronous_mode(True)
         traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
@@ -242,7 +242,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
     
     # -------- Tools --------
     
-    spawn_actor = carla_service.spawn_actor
+    spawn_actor = staticmethod(carla_service.spawn_actor)
     
     # -------- Context Manager --------
 
@@ -261,6 +261,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
                     self.world_model.world.tick()
                 else:
                     self.world_model.world.wait_for_tick()
+            CarlaDataProvider.on_carla_tick()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -277,7 +278,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
 # -- World ---------------------------------------------------------------
 # ==============================================================================
 
-class WorldModel(AccessCarlaDataProviderMixin):
+class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
     """ Class representing the surrounding environment """
 
     controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
@@ -576,7 +577,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
 
     def tick_server_world(self):
         if self._args.handle_ticks:
-            if self.sync: #TODO: What if ticks are handled externally?
+            if self.sync:
                 return self.world.tick()
             return self.world.wait_for_tick()
 

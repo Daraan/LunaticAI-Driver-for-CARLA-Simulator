@@ -390,10 +390,31 @@ class SimpleConfig(object):
 
 @dataclass
 class LiveInfo(AgentConfig):
+    use_srunner_data_provider : bool = True
+    """
+    If enabled makes use of the scenario_runner CarlaDataProvider assuming 
+    that its information is up to date and complete, e.g. tracks all actors.
+    
+    NOTE: Turning this off is not fully supported.
+    """
+    
+    velocity_vector : "carla.Vector3D" = MISSING
+    """
+    3D Vector of the current velocity of the vehicle.
+    """
+    
     current_speed : float = MISSING
+    """
+    Velocity of the vehicle in km/h.
+    
+    Note if use_srunner_data_provider is True the z component is ignored.
+    """
+    
+    current_transform : "carla.Transform" = MISSING
+    current_location : "carla.Location" = MISSING
+    
     current_speed_limit : float = MISSING
     direction : RoadOption = MISSING
-    velocity_vector : "carla.Vector3D" = MISSING
     
     # NOTE: Not ported to OmegaConf
     @property

@@ -79,7 +79,11 @@ class LunaticAgent(BehaviorAgent):
     _base_settings : "ClassVar[type[AgentConfig]]" = LunaticAgentSettings
     
     rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
-    _world_model : WorldModel = None
+    """
+    The rules of the this agent class. When initialized the rules of the class are copied.
+    """
+    
+    _world_model : WorldModel = None # TODO: maybe as weakref
     ctx : "Context"
     
     # todo: rename in the future
@@ -163,6 +167,10 @@ class LunaticAgent(BehaviorAgent):
             self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
         self._vehicle : carla.Vehicle = world_model.player
+        try:
+            CarlaDataProvider.register_actor(self._vehicle) # assure that the vehicle is registered
+        except KeyError as e:
+            logger.info("Ignoring error of already registered actor: %s", e)
         self._world_model : WorldModel = world_model
         self._world : carla.World = world_model.world
         if map_inst:
@@ -305,11 +313,19 @@ class LunaticAgent(BehaviorAgent):
         
         Assumes: second_pass == True => agent.done() == False
         """
-        # Information that needs to be updated after the plan / route was changed.
+        # --------------------------------------------------------------------------
+        # Information that is CONSTANT DURING THIS TICK and INDEPENDENT OF THE ROUTE
+        # --------------------------------------------------------------------------
         if not second_pass:
             # For heavy and tick-constant information
-            self.location = self._vehicle.get_location()
-            self.live_info.current_speed = get_speed(self._vehicle)
+            if self.live_info.use_srunner_data_provider:
+                self.live_info.current_speed = CarlaDataProvider.get_velocity(self._vehicle) * 3.6
+                self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
+                self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
+            else:
+                self.live_info.current_transform = self._vehicle.get_transform()
+                self.live_info.current_location = self.live_info.current_transform.location
+                self.live_info.current_speed = get_speed(self._vehicle)
             self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
             
             self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
@@ -330,7 +346,9 @@ class LunaticAgent(BehaviorAgent):
                     logger.debug("Not updating Road Matrix")        
             self._previous_direction = self._incoming_direction
         
-        # This info might change after PLAN_PATH and DONE
+        # -------------------------------------------------------------------
+        # Information that NEEDS TO BE UPDATED AFTER a plan / ROUTE CHANGE.
+        # -------------------------------------------------------------------
         if not self.done():
             self.live_info.direction = assure_type(RoadOption, self._local_planner.target_road_option) # TODO: This might lack one tick behind? updated in run_step
             assert self.live_info.direction is not None, "Direction is None; this should not happen."
@@ -342,7 +360,7 @@ class LunaticAgent(BehaviorAgent):
             assert self._incoming_direction is not None, "Incoming direction is None; this should not happen."
             # self._incoming_direction = RoadOption.LANEFOLLOW
             if exact_waypoint and not second_pass:
-                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.location)
+                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.live_info.current_location)
             elif not exact_waypoint:
                 self._current_waypoint : carla.Waypoint = self._incoming_waypoint
             # else: exact waypoint from first pass
@@ -350,7 +368,7 @@ class LunaticAgent(BehaviorAgent):
             assert second_pass == False, "In the second pass the agent should have replaned and agent.done() should be False"
             # Assumes second_pass is False
             if exact_waypoint:
-                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.location)
+                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.live_info.current_location)
             else:
                 self._current_waypoint : carla.Waypoint = self._incoming_waypoint # NOTE: this is from the last tick
             # Queue is empty
