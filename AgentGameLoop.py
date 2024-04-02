@@ -74,6 +74,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     world_model : WorldModel = None # Set for finally block
     agent : LunaticAgent = None # Set for finally block
     ego : carla.Vehicle = None # Set for finally block
+    spawned_vehicles : List[carla.Actor] = [] # Set for finally block
     
     args.seed = 631 # TEMP
 
@@ -112,15 +113,12 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         # Spawn Others
         how_many = 33
         ego_spawn = 3
-        traffic_manager = game_framework.init_traffic_manager()
-        spawn_commands = []
-        for i, sp in enumerate(spawn_points[:how_many+1]):
-            if i == ego_spawn:
-                continue
-            spawn_commands.append(carla.command.SpawnActor(car_bp, sp).then(
-                            carla.command.SetAutopilot(carla.command.FutureActor, True)))
-
-        spawned_vehicles = game_framework.handle_actor_batch(spawn_commands, tick=True) # note CarlaDataProvder command
+        traffic_manager = game_framework.init_traffic_manager(CarlaDataProvider.get_traffic_manager_port())
+        spawned_vehicles = CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3", 
+                                                                      how_many, 
+                                                                      spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn], 
+                                                                      autopilot=True, 
+                                                                      tick=False) 
         
         # Spawn Ego
         start : carla.libcarla.Transform = spawn_points[ego_spawn]
@@ -243,6 +241,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         if game_framework is not None:
             game_framework.client.apply_batch([carla.command.DestroyActor(x) for x in spawned_vehicles])
             ego = None
+        CarlaDataProvider.cleanup() # NOTE: unsets world, map, client
         
         try: # NOTE: Currently not used
             if ego is not None:
