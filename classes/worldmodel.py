@@ -22,6 +22,7 @@ from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
 from classes.keyboard_controls import RSSKeyboardControl
+from data_gathering.processor import InformationManager
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
@@ -262,6 +263,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
                 else:
                     self.world_model.world.wait_for_tick()
             CarlaDataProvider.on_carla_tick()
+        InformationManager.global_tick() # This is internal from us
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -407,7 +409,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         else:
             self._restrictor = None
 
-        logger.debug("Calling WorldModel.restart()")
+        logger.info("Calling WorldModel.restart()")
         self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
