@@ -71,6 +71,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     ticking the agent and, if needed, the world.
     """
     game_framework : GameFramework = None # Set for finally block
+    traffic_manager : carla.TrafficManager = None # Set for finally block
     world_model : WorldModel = None # Set for finally block
     agent : LunaticAgent = None # Set for finally block
     ego : carla.Vehicle = None # Set for finally block
@@ -229,17 +230,25 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     finally:
         print("Quitting. - Destroying actors and stopping world.")
         if agent is not None:
-            agent.destroy_sensor()
-        if game_framework is not None:
-            world_settings = game_framework.world.get_settings()
-            world_settings.synchronous_mode = False
-            world_settings.fixed_delta_seconds = None
-            game_framework.world.apply_settings(world_settings)
-            traffic_manager.set_synchronous_mode(False)
+            agent.destroy()
         if world_model is not None:
             world_model.destroy(destroy_ego=False)
-
+        
+        if game_framework is not None:
+            # save world for usage after CDP cleanup
+            world = game_framework.world
+        else:
+            world = None
         CarlaDataProvider.cleanup() # NOTE: unsets world, map, client, destroys actors
+        
+        if world is not None:
+            # Disable Synchronous Mode
+            world_settings = world.get_settings()
+            world_settings.synchronous_mode = False
+            world_settings.fixed_delta_seconds = None
+            world.apply_settings(world_settings)
+            if traffic_manager is not None:
+                traffic_manager.set_synchronous_mode(False)
 
         pygame.quit()
 

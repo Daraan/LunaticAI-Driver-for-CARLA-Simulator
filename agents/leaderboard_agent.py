@@ -120,7 +120,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("World Model setup")
         self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         print("Initializing agent")
-        LunaticAgent.__init__(self, config, self.world_model, map_inst=map_inst, grp_inst=CarlaDataProvider.get_global_route_planner())
+        LunaticAgent.__init__(self, config, self.world_model, map_inst=map_inst)
         print("LunaticAgent initialized")
         self._local_planner_set_plan(self._global_plan_waypoints)
         

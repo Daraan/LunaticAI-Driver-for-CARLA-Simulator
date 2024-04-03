@@ -15,12 +15,12 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10
         client = carla.Client(ip, port, worker_threads)
         client.set_timeout(timeout)
         CarlaDataProvider.set_client(client)
-    if not CarlaDataProvider.get_world():
+    
+    world = CarlaDataProvider.get_world()
+    if not world:
         world = client.get_world()
         CarlaDataProvider.set_world(world)
-    else:
-        world = CarlaDataProvider.get_world()
-        assert world # for type hint
+    
     if map_name and CarlaDataProvider.get_map().name != "Carla/Maps/" + map_name:
         world = client.load_world(map_name, reset_settings, map_layers)
         CarlaDataProvider.set_world(world)
@@ -28,8 +28,16 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10
         world = client.reload_world(reset_settings)
         CarlaDataProvider.set_world(world)
         logger.info("Reloaded world - map_layers ignored.")
+    elif not CarlaDataProvider._map: # only if no map_name is provided & world exists somehow. This should actually not happen.
+        logger.error("CarlaDataProvider._map is None. This should not happen.")
+        CarlaDataProvider.set_world(world)
     else:
-        logger.info("skipped loading world, already loaded - map_layers and reset_settings ignored.")
+        logger.info("skipped loading world %s, already loaded - map_layers and reset_settings ignored.", CarlaDataProvider.get_map().name)
+    # These are all set if set_world was executed, will only fail if _world was set without set_world
+    assert CarlaDataProvider._grp
+    assert CarlaDataProvider._spawn_points is not None # can be empty
+    assert CarlaDataProvider._traffic_light_map is not None # can be empty
+    
     map_ = CarlaDataProvider.get_map()
     return client, world, map_
 
