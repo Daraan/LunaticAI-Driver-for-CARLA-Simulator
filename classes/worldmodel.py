@@ -561,10 +561,13 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         if self._config.rss.enabled and AD_RSS_AVAILABLE:
             log_level = self._config.rss.log_level
             if not isinstance(log_level, carla.RssLogLevel):
-                if isinstance(log_level, str):
-                    log_level = carla.RssLogLevel.names[log_level]
-                else:
-                    log_level = carla.RssLogLevel(log_level)
+                try:
+                    if isinstance(log_level, str):
+                        log_level = carla.RssLogLevel.names[log_level]
+                    else:
+                        log_level = carla.RssLogLevel(log_level)
+                except Exception as e:
+                    raise KeyError("Could not convert '%s' to RssLogLevel must be in %s" % (log_level, list(carla.RssLogLevel.names.keys()))) from e
                 logger.debug("Carla Log level was not a RssLogLevel. Now: %s (%s)", log_level, type(log_level))
             self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer,
@@ -704,11 +707,11 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         if self.camera_manager is not None:
             self.destroy_sensors()
         if destroy_ego and not self.player in self.actors: # do not destroy external actors.
-            print("Destroying player")
+            logger.debug("Destroying player")
             self.actors.append(self.player)
         elif not destroy_ego and self.player in self.actors:
             logger.warning("destroy_ego=False, but player is in actors list. Destroying the actor from within WorldModel.destroy.")
-        print("to destroy", list(map(str, self.actors)))
+        logger.info("to destroy", list(map(str, self.actors)))
         while self.actors:
             actor = self.actors.pop(0)
             if actor is not None:
@@ -722,7 +725,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                     x = actor.destroy()
                     print(x)
                 except RuntimeError:
-                    print("Warning: Could not destroy actor: " + str(actor))
+                    logger.warning("Could not destroy actor: " + str(actor))
                     #raise
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
@@ -732,7 +735,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
             return None
         
         if self.rss_sensor.log_level <= carla.RssLogLevel.warn and self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
-            print("Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route))
+            logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route))
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:

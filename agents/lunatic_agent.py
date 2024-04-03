@@ -326,14 +326,13 @@ class LunaticAgent(BehaviorAgent):
                 self.live_info.current_transform = self._vehicle.get_transform()
                 self.live_info.current_location = self.live_info.current_transform.location
                 self.live_info.current_speed = get_speed(self._vehicle)
+                # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
+                # TODO: Use CarlaDataProvider
+                _actors = self._world.get_actors()
+                self.vehicles_nearby : List[carla.Vehicle] = _actors.filter("*vehicle*")
+                self.walkers_nearby : List[carla.Walker] = _actors.filter("*walker.pedestrian*")
             self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
             
-            self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
-            
-            # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
-            # TODO: Use CarlaDataProvider
-            self.vehicles_nearby : List[carla.Vehicle] = self._world.get_actors().filter("*vehicle*")
-            self.walkers_nearby : List[carla.Walker] = self._world.get_actors().filter("*walker.pedestrian*")
             
             # Data Matrix
             if self._road_matrix_updater and self._road_matrix_updater.sync:
@@ -343,8 +342,10 @@ class LunaticAgent(BehaviorAgent):
                     # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
                     self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
                 else:
-                    logger.debug("Not updating Road Matrix")        
+                    logger.debug("Not updating Road Matrix")
+            
             self._previous_direction = self._incoming_direction
+            self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
         
         # -------------------------------------------------------------------
         # Information that NEEDS TO BE UPDATED AFTER a plan / ROUTE CHANGE.
@@ -352,9 +353,8 @@ class LunaticAgent(BehaviorAgent):
         if not self.done():
             self.live_info.direction = assure_type(RoadOption, self._local_planner.target_road_option) # TODO: This might lack one tick behind? updated in run_step
             assert self.live_info.direction is not None, "Direction is None; this should not happen."
-            self.live_info.direction = RoadOption.LANEFOLLOW
 
-                    # NOTE: This should be called after 
+            # NOTE: This should be called after 
             self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
                 steps=self._look_ahead_steps)
             assert self._incoming_direction is not None, "Incoming direction is None; this should not happen."
@@ -374,6 +374,10 @@ class LunaticAgent(BehaviorAgent):
             # Queue is empty
             self._incoming_waypoint = None
             self._incoming_direction = RoadOption.VOID
+        
+        # Information that requires updated waypoint and route information:
+        self.live_info.is_taking_turn = self.is_taking_turn()
+        self.live_info.is_changing_lane = self.is_changing_lane()
             
         #logger.debug(f"Incoming Direction: {str(self._incoming_direction):<20} - Second Pass: {second_pass}")
 

@@ -14,6 +14,7 @@ except ImportError:
     AD_RSS_AVAILABLE = False
 from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisualizer, RssUnstructuredSceneVisualizer # pylint: disable=relative-import
 
+from agents.tools.logging import logger
 
 # ==============================================================================
 # -- RssSensor -----------------------------------------------------------------
@@ -117,6 +118,7 @@ class RssSensor(object):
 
         self.sensor.listen(self._on_rss_response)
         assert isinstance(log_level, carla.RssLogLevel)
+        logger.info("Setting log level to {}".format(log_level))
         self.sensor.set_log_level(self.log_level)
         self.sensor.set_map_log_level(self.map_log_level)
 
@@ -295,21 +297,21 @@ class RssSensor(object):
 
     def destroy(self):
         if self.sensor:
-            print("Stopping RSS sensor")
+            logger.debug("Stopping RSS sensor")
             self.sensor.stop()
-            print("Deleting Scene Visualizer")
+            logger.info("Deleting Scene Visualizer")
             self.unstructured_scene_visualizer = None
-            print("Destroying RSS sensor")
+            logger.info("Destroying RSS sensor")
             if self.sensor.destroy():
-                print("Destroyed RSS sensor")
+                logger.debug("Destroyed RSS sensor")
             else:
-                print("Destroying RSS sensor not successful")
+                logger.warning("Destroying RSS sensor not successful")
 
     def toggle_debug_visualization_mode(self):
         self.debug_visualizer.toggleMode()
 
     def increase_log_level(self):
-        print("inccrease {}".format(self.log_level))
+        print("increase {}".format(self.log_level))
         if self.log_level < carla.RssLogLevel.off:
             self.log_level = self.log_level+1
         self.sensor.set_log_level(self.log_level)
@@ -363,7 +365,7 @@ class RssSensor(object):
         return ego_dynamics
 
     def set_default_parameters(self):
-        print("Use 'default' RSS Parameters")
+        logger.info("Use 'default' RSS Parameters")
         self.current_vehicle_parameters = self.get_default_parameters()
 
     @staticmethod
@@ -450,4 +452,4 @@ class RssSensor(object):
                                        self.individual_rss_states, self.ego_dynamics_on_route)
 
         else:
-            print("ignore outdated response {}".format(delta_time))
+            print("ignore outdated RSS response {}".format(delta_time))

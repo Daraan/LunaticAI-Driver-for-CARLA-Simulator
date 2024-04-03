@@ -71,7 +71,7 @@ rss:
   # For fast vehicles RSS currently is unreliable, disables rss updates when the vehicle is faster than this. TODO: Implement
   rss_max_speed: 30.0
   use_stay_on_road_feature: 'On'
-  log_level: info
+  log_level: warn
   debug_visualization_mode: RouteOnly
 data_matrix:
   enabled: true
