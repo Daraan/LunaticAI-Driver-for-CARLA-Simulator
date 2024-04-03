@@ -569,7 +569,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                         log_level = carla.RssLogLevel(log_level)
                 except Exception as e:
                     raise KeyError("Could not convert '%s' to RssLogLevel must be in %s" % (log_level, list(carla.RssLogLevel.names.keys()))) from e
-                logger.debug("Carla Log level was not a RssLogLevel. Now: %s (%s)", log_level, type(log_level))
+                logger.info("Carla Log level was not a RssLogLevel")
             self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer,
                                     visualizer_mode=self._config.rss.debug_visualization_mode,

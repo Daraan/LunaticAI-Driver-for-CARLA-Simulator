@@ -359,7 +359,7 @@ class LunaticAgent(BehaviorAgent):
                     # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
                     self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
                 else:
-                    logger.debug("Not updating Road Matrix")
+                    logger.info("Not updating Road Matrix")
             
             self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
             self.live_info.executed_direction = assure_type(RoadOption, self._local_planner.target_road_option) # NOTE: This is the direction used by the planner in the *last* step.
@@ -648,7 +648,7 @@ class LunaticAgent(BehaviorAgent):
         # TODO: # CRITICAL: needs creative overhaul
         # Stop indicates if the loop shoul
 
-        print("Hazard(s) detected: ", hazard_detected)
+        logger.info("Hazard(s) detected: ", hazard_detected)
         end_loop = True
         
         if "pedestrian" in hazard_detected:
