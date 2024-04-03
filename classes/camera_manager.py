@@ -208,6 +208,8 @@ def follow_car(ego_vehicle : carla.Actor, world : carla.World):
     world.get_spectator().set_transform(spectator_transform)
 
 
+# TODO: # CRITICAL: this does not allow thread.join!
+# Solutions see: https://stackoverflow.com/questions/69107143/how-to-end-a-while-loop-in-another-thread
 def camera_function(ego_vehicle : carla.Actor, world : carla.World):
     while True:
         follow_car(ego_vehicle, world)

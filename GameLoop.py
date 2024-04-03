@@ -53,10 +53,12 @@ def main():
             (i_car, j_car) = get_car_coords(matrix)
             # NEW use RuleInterpreter
             # NOTE: Currently this might not work, need to check back with @Bogdan Oprisiu
+            """
             results = rule_interpreter.execute_all_functions(driver1, matrix, i_car, j_car, tm)
 
             if any(results.values()):
                 continue
+            """
 
             # OLD:
             # random brake check

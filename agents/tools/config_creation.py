@@ -139,7 +139,7 @@ class AgentConfig:
         if not isinstance(options, DictConfig) and not resolve and not yaml:
             return asdict(options)
         if not isinstance(options, DictConfig):
-            options = OmegaConf.structured(options)
+            options = OmegaConf.structured(options, flags={"allow_objects": True})
         if yaml:
             return OmegaConf.to_yaml(options, resolve=resolve, **kwargs)
         return OmegaConf.to_container(options, resolve=resolve, **kwargs)
@@ -390,10 +390,58 @@ class SimpleConfig(object):
 
 @dataclass
 class LiveInfo(AgentConfig):
-    current_speed : float = MISSING
-    current_speed_limit : float = MISSING
-    direction : RoadOption = MISSING
+    use_srunner_data_provider : bool = True
+    """
+    If enabled makes use of the scenario_runner CarlaDataProvider assuming 
+    that its information is up to date and complete, e.g. tracks all actors.
+    
+    NOTE: Turning this off is not fully supported.
+    """
+    
     velocity_vector : "carla.Vector3D" = MISSING
+    """
+    3D Vector of the current velocity of the vehicle.
+    """
+    
+    current_speed : float = MISSING
+    """
+    Velocity of the vehicle in km/h.
+    
+    Note if use_srunner_data_provider is True the z component is ignored.
+    """
+    
+    current_transform : "carla.Transform" = MISSING
+    current_location : "carla.Location" = MISSING
+    
+    current_speed_limit : float = MISSING
+    
+    executed_direction : RoadOption = MISSING
+    """
+    Direction that was executed in the last step by the local planner
+    
+    planner.target_road_option is the option last executed by the planner (constant)
+    incoming direction is the next *planned* direction subject to change (variable)
+    """
+    
+    incoming_direction : RoadOption = MISSING
+    """
+    RoadOption that will used for the current step
+    """
+    
+    incoming_waypoint : "carla.Waypoint" = MISSING
+    """
+    Waypoint that is planned to be targeted in this step.
+    """
+    
+    is_taking_turn : bool = MISSING
+    """
+    incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
+    """
+    
+    is_changing_lane : bool = MISSING
+    """
+    incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
+    """
     
     # NOTE: Not ported to OmegaConf
     @property
@@ -982,7 +1030,7 @@ class RssSettings(AgentConfig):
         use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : RssLogLevel = carla.RssLogLevel.info # type: ignore
+        log_level : RssLogLevel = carla.RssLogLevel.warn # type: ignore
         """Set the initial log level of the RSSSensor"""
     else:
         enabled = False
@@ -990,7 +1038,7 @@ class RssSettings(AgentConfig):
         use_stay_on_road_feature : "RssRoadBoundariesMode" = True # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : "RssLogLevel" = "info" # type: ignore
+        log_level : "RssLogLevel" = "warn" # type: ignore
         """Set the initial log level of the RSSSensor"""
     
     def _clean_options(self):

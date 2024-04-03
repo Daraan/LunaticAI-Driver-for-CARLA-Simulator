@@ -96,7 +96,7 @@ class AccessCarlaDataProviderMixin:
 # -- Game Framework ---------------------------------------------------------------
 # ==============================================================================
 
-class GameFramework(AccessCarlaDataProviderMixin):
+class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     clock : ClassVar[pygame.time.Clock]
     display : ClassVar[pygame.Surface]
     controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
@@ -138,6 +138,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
         self._args = args
         self.clock, self.display = self.init_pygame(args)
         self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
+
         self.config = config
         self.agent = None
         self.world_model = None
@@ -161,26 +162,25 @@ class GameFramework(AccessCarlaDataProviderMixin):
     def init_carla(self, args: "LaunchConfig", timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         client, world, world_map = carla_service.initialize_carla(args.map, args.host, args.port, timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
         
+        world_settings = self.world.get_settings()
         # Apply world settings
         if args.sync is not None: # Else let this be handled by someone else
             if args.sync:
                 logger.debug("Using synchronous mode.")
                 # apply synchronous mode if wanted
-                world_settings = self.world.get_settings()
                 world_settings.synchronous_mode = True
                 world_settings.fixed_delta_seconds = 1/args.fps # 0.05
                 self.world.apply_settings(world_settings)
             else:
                 logger.debug("Using asynchronous mode.")
-                world_settings = self.world.get_settings()
-        else:
-            world_settings = self.world.get_settings()
-            print("World Settings:", world_settings)
-        
+                world_settings.synchronous_mode = False
+            world.apply_settings(world_settings)
+        print("World Settings:", world_settings)
+        CarlaDataProvider._sync_flag = world_settings.synchronous_mode
         return world_settings
     
-    def init_traffic_manager(self) -> carla.TrafficManager:
-        traffic_manager = self.client.get_trafficmanager()
+    def init_traffic_manager(self, port=8000) -> carla.TrafficManager:
+        traffic_manager = self.client.get_trafficmanager(port)
         if self._args.sync:
             traffic_manager.set_synchronous_mode(True)
         traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
@@ -219,7 +219,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
     
     def render_everything(self):
         """Update render and hud"""
-        self.world_model.tick(self.clock) # TODO # CRITICAL maybe has to tick later
+        self.world_model.tick(self.clock) # Note: only ticks the HUD.
         self.world_model.render(self.display, finalize=False)
         self.controller.render(self.display)
         options = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
@@ -242,7 +242,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
     
     # -------- Tools --------
     
-    spawn_actor = carla_service.spawn_actor
+    spawn_actor = staticmethod(carla_service.spawn_actor)
     
     # -------- Context Manager --------
 
@@ -261,6 +261,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
                     self.world_model.world.tick()
                 else:
                     self.world_model.world.wait_for_tick()
+            CarlaDataProvider.on_carla_tick()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -277,7 +278,7 @@ class GameFramework(AccessCarlaDataProviderMixin):
 # -- World ---------------------------------------------------------------
 # ==============================================================================
 
-class WorldModel(AccessCarlaDataProviderMixin):
+class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
     """ Class representing the surrounding environment """
 
     controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
@@ -560,10 +561,13 @@ class WorldModel(AccessCarlaDataProviderMixin):
         if self._config.rss.enabled and AD_RSS_AVAILABLE:
             log_level = self._config.rss.log_level
             if not isinstance(log_level, carla.RssLogLevel):
-                if isinstance(log_level, str):
-                    log_level = carla.RssLogLevel.names[log_level]
-                else:
-                    log_level = carla.RssLogLevel(log_level)
+                try:
+                    if isinstance(log_level, str):
+                        log_level = carla.RssLogLevel.names[log_level]
+                    else:
+                        log_level = carla.RssLogLevel(log_level)
+                except Exception as e:
+                    raise KeyError("Could not convert '%s' to RssLogLevel must be in %s" % (log_level, list(carla.RssLogLevel.names.keys()))) from e
                 logger.debug("Carla Log level was not a RssLogLevel. Now: %s (%s)", log_level, type(log_level))
             self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer,
@@ -576,7 +580,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
 
     def tick_server_world(self):
         if self._args.handle_ticks:
-            if self.sync: #TODO: What if ticks are handled externally?
+            if self.sync:
                 return self.world.tick()
             return self.world.wait_for_tick()
 
@@ -703,11 +707,11 @@ class WorldModel(AccessCarlaDataProviderMixin):
         if self.camera_manager is not None:
             self.destroy_sensors()
         if destroy_ego and not self.player in self.actors: # do not destroy external actors.
-            print("Destroying player")
+            logger.debug("Destroying player")
             self.actors.append(self.player)
         elif not destroy_ego and self.player in self.actors:
             logger.warning("destroy_ego=False, but player is in actors list. Destroying the actor from within WorldModel.destroy.")
-        print("to destroy", list(map(str, self.actors)))
+        logger.info("to destroy %s", list(map(str, self.actors)))
         while self.actors:
             actor = self.actors.pop(0)
             if actor is not None:
@@ -721,7 +725,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
                     x = actor.destroy()
                     print(x)
                 except RuntimeError:
-                    print("Warning: Could not destroy actor: " + str(actor))
+                    logger.warning("Could not destroy actor: " + str(actor))
                     #raise
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
@@ -731,7 +735,7 @@ class WorldModel(AccessCarlaDataProviderMixin):
             return None
         
         if self.rss_sensor.log_level <= carla.RssLogLevel.warn and self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
-            print("Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route))
+            logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route))
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:

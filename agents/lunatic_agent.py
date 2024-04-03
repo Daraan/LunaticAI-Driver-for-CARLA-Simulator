@@ -17,10 +17,9 @@ import random
 from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
 import weakref
 
-from omegaconf import DictConfig, OmegaConf
-
 import carla
 import omegaconf
+from omegaconf import DictConfig, OmegaConf
 
 from data_gathering.car_detection_matrix.run_matrix import AsyncDataMatrix, DataMatrix
 from agents.navigation.global_route_planner import GlobalRoutePlanner
@@ -45,6 +44,7 @@ from agents.tools.config_creation import AgentConfig, LiveInfo, LunaticAgentSett
 
 from classes.worldmodel import WorldModel, CarlaDataProvider
 from classes.keyboard_controls import RSSKeyboardControl
+from data_gathering.processor import InformationManager
 
 if TYPE_CHECKING:
     from typing import Literal # for Python 3.8
@@ -79,7 +79,11 @@ class LunaticAgent(BehaviorAgent):
     _base_settings : "ClassVar[type[AgentConfig]]" = LunaticAgentSettings
     
     rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
-    _world_model : WorldModel = None
+    """
+    The rules of the this agent class. When initialized the rules of the class are copied.
+    """
+    
+    _world_model : WorldModel = None # TODO: maybe as weakref
     ctx : "Context"
     
     # todo: rename in the future
@@ -163,6 +167,10 @@ class LunaticAgent(BehaviorAgent):
             self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
         self._vehicle : carla.Vehicle = world_model.player
+        try:
+            CarlaDataProvider.register_actor(self._vehicle) # assure that the vehicle is registered
+        except KeyError as e:
+            logger.info("Ignoring error of already registered actor: %s", e)
         self._world_model : WorldModel = world_model
         self._world : carla.World = world_model.world
         if map_inst:
@@ -198,10 +206,7 @@ class LunaticAgent(BehaviorAgent):
         # Parameters from BehaviorAgent ------------------------------------------
         # todo: check redefinitions
 
-        self._incoming_waypoint : carla.Waypoint = None
         self._look_ahead_steps = 0  # updated in _update_information used for local_planner.get_incoming_waypoint_and_direction
-        self._previous_direction : Optional[RoadOption] = None
-        self._incoming_direction : RoadOption = None
 
         # Initialize the planners
         self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=opt_dict, map_inst=world_model.map, world=self._world if self._world else "MISSING", rss_sensor=world_model.rss_sensor)
@@ -237,10 +242,11 @@ class LunaticAgent(BehaviorAgent):
         self._road_matrix_counter = 0 # TODO: Todo make this nicer and maybe get ticks from world.
         
         # Vehicle information
-        self.live_info.current_speed = 0
-        self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
-        self.live_info.velocity_vector = self._vehicle.get_velocity()
-        self.live_info.direction = self._local_planner.target_road_option
+        #self.live_info.current_speed = 0
+        #self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
+        #self.live_info.velocity_vector = self._vehicle.get_velocity()
+        #self.live_info.executed_direction = RoadOption.VOID
+        #self.live_info.incoming_direction = self._local_planner.target_road_option
         
     def set_vehicle(self, vehicle:carla.Vehicle):
         self._vehicle = vehicle
@@ -305,19 +311,35 @@ class LunaticAgent(BehaviorAgent):
         
         Assumes: second_pass == True => agent.done() == False
         """
-        # Information that needs to be updated after the plan / route was changed.
+        # --------------------------------------------------------------------------
+        # Information that is CONSTANT DURING THIS TICK and INDEPENDENT OF THE ROUTE
+        # --------------------------------------------------------------------------
         if not second_pass:
             # For heavy and tick-constant information
-            self.location = self._vehicle.get_location()
-            self.live_info.current_speed = get_speed(self._vehicle)
+            InformationManager.tick()
             self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
-            
-            self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
-            
-            # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
-            # TODO: Use CarlaDataProvider
-            self.vehicles_nearby : List[carla.Vehicle] = self._world.get_actors().filter("*vehicle*")
-            self.walkers_nearby : List[carla.Walker] = self._world.get_actors().filter("*walker.pedestrian*")
+            self.live_info.velocity_vector = self._vehicle.get_velocity()
+            if self.live_info.use_srunner_data_provider:
+                # Own properties
+                # NOTE: That transform.location and location are similar but not identical!
+                # NOTE: get_velocity does not take the z axis into account.
+                self.live_info.current_speed = CarlaDataProvider.get_velocity(self._vehicle) * 3.6
+                self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
+                self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
+                
+                # TODO: distance is not filtered, assumed managed by the scenario_runner
+                self.vehicles_nearby : List[carla.Vehicle] = InformationManager.vehicles
+                self.walkers_nearby : List[carla.Walker] = InformationManager.walkers
+            else:
+                # Own properties
+                self.live_info.current_speed = get_speed(self._vehicle)
+                self.live_info.current_transform = self._vehicle.get_transform()
+                self.live_info.current_location = self.live_info.current_transform.location
+                
+                # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
+                _actors = self._world.get_actors()
+                self.vehicles_nearby : List[carla.Vehicle] = _actors.filter("*vehicle*")
+                self.walkers_nearby : List[carla.Walker] = _actors.filter("*walker.pedestrian*")
             
             # Data Matrix
             if self._road_matrix_updater and self._road_matrix_updater.sync:
@@ -327,47 +349,51 @@ class LunaticAgent(BehaviorAgent):
                     # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
                     self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
                 else:
-                    logger.debug("Not updating Road Matrix")        
-            self._previous_direction = self._incoming_direction
+                    logger.debug("Not updating Road Matrix")
+            
+            self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
+            self.live_info.executed_direction = assure_type(RoadOption, self._local_planner.target_road_option) # NOTE: This is the direction used by the planner in the *last* step.
         
-        # This info might change after PLAN_PATH and DONE
+        assert self.live_info.executed_direction == self._local_planner.target_road_option, "Executed direction should not change."
+        
+        # -------------------------------------------------------------------
+        # Information that NEEDS TO BE UPDATED AFTER a plan / ROUTE CHANGE.
+        # -------------------------------------------------------------------
         if not self.done():
-            self.live_info.direction = assure_type(RoadOption, self._local_planner.target_road_option) # TODO: This might lack one tick behind? updated in run_step
-            assert self.live_info.direction is not None, "Direction is None; this should not happen."
-            self.live_info.direction = RoadOption.LANEFOLLOW
-
-                    # NOTE: This should be called after 
-            self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
+            # NOTE: This should be called after 
+            self.live_info.incoming_waypoint, self.live_info.incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
                 steps=self._look_ahead_steps)
-            assert self._incoming_direction is not None, "Incoming direction is None; this should not happen."
-            # self._incoming_direction = RoadOption.LANEFOLLOW
             if exact_waypoint and not second_pass:
-                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.location)
+                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.live_info.current_location)
             elif not exact_waypoint:
-                self._current_waypoint : carla.Waypoint = self._incoming_waypoint
-            # else: exact waypoint from first pass
+                self._current_waypoint : carla.Waypoint = self.live_info.incoming_waypoint
+            # note: else: exact waypoint from first pass
         else:
-            assert second_pass == False, "In the second pass the agent should have replaned and agent.done() should be False"
+            assert second_pass == False, "In the second pass the agent should have replanned and agent.done() should be False"
             # Assumes second_pass is False
             if exact_waypoint:
-                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.location)
+                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.live_info.current_location)
             else:
-                self._current_waypoint : carla.Waypoint = self._incoming_waypoint # NOTE: this is from the last tick
+                self._current_waypoint : carla.Waypoint = self.live_info.incoming_waypoint # NOTE: this is from the last tick, as not retrieved from planner unlike above
             # Queue is empty
-            self._incoming_waypoint = None
-            self._incoming_direction = RoadOption.VOID
+            self.live_info.incoming_waypoint = None
+            self.live_info.incoming_direction  = RoadOption.VOID
+        
+        # Information that requires updated waypoint and route information:
+        self.live_info.is_taking_turn = self.is_taking_turn()
+        self.live_info.is_changing_lane = self.is_changing_lane()
             
-        #logger.debug(f"Incoming Direction: {str(self._incoming_direction):<20} - Second Pass: {second_pass}")
+        #logger.debug(f"Incoming Direction: {str(self.live_info.incoming_direction):<20} - Second Pass: {second_pass}")
 
         # RSS
         # todo uncomment if agent is created after world model
         #self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
     
     def is_taking_turn(self) -> bool:
-        return self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
+        return self.live_info.incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
     
     def is_changing_lane(self) -> bool:
-        return self._incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
+        return self.live_info.incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
 
     # ------------------ Step & Loop Logic ------------------ #
 
@@ -552,8 +578,8 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.DETECT_CARS | Phase.END, prior_results=None) # NOTE: avoiding tailgate here
         
         # Intersection behavior
-        # NOTE: is_taking_turn == self._incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
-        if self._incoming_waypoint.is_junction and self.is_taking_turn():
+        # NOTE: is_taking_turn <- incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
+        if self.live_info.incoming_waypoint.is_junction and self.is_taking_turn():
 
             # ----------------------------
             # Phase Turning at Junction
