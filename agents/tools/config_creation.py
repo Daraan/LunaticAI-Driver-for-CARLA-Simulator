@@ -1003,7 +1003,7 @@ class RssSettings(AgentConfig):
         use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : RssLogLevel = carla.RssLogLevel.info # type: ignore
+        log_level : RssLogLevel = carla.RssLogLevel.warn # type: ignore
         """Set the initial log level of the RSSSensor"""
     else:
         enabled = False
@@ -1011,7 +1011,7 @@ class RssSettings(AgentConfig):
         use_stay_on_road_feature : "RssRoadBoundariesMode" = True # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : "RssLogLevel" = "info" # type: ignore
+        log_level : "RssLogLevel" = "warn" # type: ignore
         """Set the initial log level of the RSSSensor"""
     
     def _clean_options(self):

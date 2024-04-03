@@ -238,17 +238,8 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             traffic_manager.set_synchronous_mode(False)
         if world_model is not None:
             world_model.destroy(destroy_ego=False)
-        if game_framework is not None:
-            game_framework.client.apply_batch([carla.command.DestroyActor(x) for x in spawned_vehicles])
-            ego = None
-        CarlaDataProvider.cleanup() # NOTE: unsets world, map, client
-        
-        try: # NOTE: Currently not used
-            if ego is not None:
-                ego.destroy()
-        except (NameError, AttributeError) as e:
-            print("Ego actor not found", e)
-            pass
+
+        CarlaDataProvider.cleanup() # NOTE: unsets world, map, client, destroys actors
 
         pygame.quit()
 
