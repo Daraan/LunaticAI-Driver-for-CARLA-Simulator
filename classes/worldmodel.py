@@ -219,7 +219,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     
     def render_everything(self):
         """Update render and hud"""
-        self.world_model.tick(self.clock) # TODO # CRITICAL maybe has to tick later
+        self.world_model.tick(self.clock) # Note: only ticks the HUD.
         self.world_model.render(self.display, finalize=False)
         self.controller.render(self.display)
         options = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
