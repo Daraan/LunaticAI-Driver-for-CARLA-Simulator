@@ -243,12 +243,7 @@ class LunaticAgent(BehaviorAgent):
             self._road_matrix_updater = None
         self._road_matrix_counter = 0 # TODO: Todo make this nicer and maybe get ticks from world.
         
-        # Vehicle information
-        #self.live_info.current_speed = 0
-        #self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
-        #self.live_info.velocity_vector = self._vehicle.get_velocity()
-        #self.live_info.executed_direction = RoadOption.VOID
-        #self.live_info.incoming_direction = self._local_planner.target_road_option
+        self.information_manager = InformationManager(self._vehicle)
         
     def set_vehicle(self, vehicle:carla.Vehicle):
         self._vehicle = vehicle
@@ -325,10 +320,15 @@ class LunaticAgent(BehaviorAgent):
         # Information that is CONSTANT DURING THIS TICK and INDEPENDENT OF THE ROUTE
         # --------------------------------------------------------------------------
         if not second_pass:
-            # For heavy and tick-constant information
-            InformationManager.tick()
+            # First Pass for expensive and tick-constant information
+
+            self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
+            self.live_info.next_traffic_light = self.information_manager.relevant_traffic_light
+            self.live_info.next_traffic_light_distance = self.information_manager.relevant_traffic_light_distance
+            
             self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
             self.live_info.velocity_vector = self._vehicle.get_velocity()
+            
             if self.live_info.use_srunner_data_provider:
                 # Own properties
                 # NOTE: That transform.location and location are similar but not identical!
@@ -630,6 +630,9 @@ class LunaticAgent(BehaviorAgent):
         tlight_detection_result = self.traffic_light_manager()
         if tlight_detection_result.traffic_light_was_found:
             hazard_detected.add(Hazard.TRAFFIC_LIGHT)             #TODO: Currently cannot give fine grained priority results
+            if self.live_info.next_traffic_light.id == tlight_detection_result.traffic_light.id:
+                logger.warning("Next traffic light is not the same as the detected one. %s != %s", self.live_info.next_traffic_light.id, tlight_detection_result.traffic_light.id)
+                
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.END, prior_results=tlight_detection_result)
 
         # Pedestrian avoidance behaviors
