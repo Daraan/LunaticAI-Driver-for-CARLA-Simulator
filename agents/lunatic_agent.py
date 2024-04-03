@@ -328,11 +328,10 @@ class LunaticAgent(BehaviorAgent):
                 self.live_info.current_speed = get_speed(self._vehicle)
                 # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
                 # TODO: Use CarlaDataProvider
-                _actors = self._world.get_actors()
-                self.vehicles_nearby : List[carla.Vehicle] = _actors.filter("*vehicle*")
-                self.walkers_nearby : List[carla.Walker] = _actors.filter("*walker.pedestrian*")
+            _actors = self._world.get_actors()
+            self.vehicles_nearby : List[carla.Vehicle] = _actors.filter("*vehicle*")
+            self.walkers_nearby : List[carla.Walker] = _actors.filter("*walker.pedestrian*")
             self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
-            
             
             # Data Matrix
             if self._road_matrix_updater and self._road_matrix_updater.sync:
