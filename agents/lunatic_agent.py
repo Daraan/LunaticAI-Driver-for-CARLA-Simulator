@@ -554,7 +554,6 @@ class LunaticAgent(BehaviorAgent):
             # TODO: needs overhaul 
             # ----------------------------
 
-            print("Hazard detected", pedestrians_or_traffic_light)
             (control, end_loop) = self.react_to_hazard(control=None, hazard_detected=pedestrians_or_traffic_light)
             # Other behaviors based on hazard detection
             if end_loop: # Likely emergency stop
@@ -632,6 +631,7 @@ class LunaticAgent(BehaviorAgent):
         if tlight_detection_result.traffic_light_was_found:
             hazard_detected.add(Hazard.TRAFFIC_LIGHT)             #TODO: Currently cannot give fine grained priority results
             if self.live_info.next_traffic_light.id == tlight_detection_result.traffic_light.id:
+                # TODO: #26 detect when this is the case, can it be fixed and how serve is it? - Maybe because we just passed a traffic light (detected) != next in line?
                 logger.warning("Next traffic light is not the same as the detected one. %s != %s", self.live_info.next_traffic_light.id, tlight_detection_result.traffic_light.id)
                 
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.END, prior_results=tlight_detection_result)
@@ -652,7 +652,7 @@ class LunaticAgent(BehaviorAgent):
         # TODO: # CRITICAL: needs creative overhaul
         # Stop indicates if the loop shoul
 
-        logger.info("Hazard(s) detected: ", hazard_detected)
+        logger.info("Hazard(s) detected: %s", hazard_detected)
         end_loop = True
         
         if "pedestrian" in hazard_detected:

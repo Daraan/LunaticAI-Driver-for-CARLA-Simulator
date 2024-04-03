@@ -409,7 +409,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         else:
             self._restrictor = None
 
-        logger.debug("Calling WorldModel.restart()")
+        logger.info("Calling WorldModel.restart()")
         self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)

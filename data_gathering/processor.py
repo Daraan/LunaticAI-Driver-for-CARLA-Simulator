@@ -50,5 +50,5 @@ class InformationManager:
         if not self.relevant_traffic_light or self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._actor)) > self.relevant_traffic_light_distance:
             # Update if the distance increased, and we might need to target another one; # TODO: This might be circumvented by passing and intersection
             if self.relevant_traffic_light and self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._actor)) > self.relevant_traffic_light_distance:
-                logger.debug("Traffic light distance increased, updating.")
+                logger.debug("Traffic light distance increased %s, updating.", self.relevant_traffic_light_distance)
             self._get_next_traffic_light()
