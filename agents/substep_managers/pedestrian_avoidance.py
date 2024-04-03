@@ -27,13 +27,13 @@ def pedestrian_detection_manager(self : "LunaticAgent", waypoint : "carla.Waypoi
     # TODO: Make this a parameter
     walker_list = [w for w in self.walkers_nearby if dist(w) < 10]
 
-    if self.config.live_info.direction == RoadOption.CHANGELANELEFT:
+    if self.config.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
         detection_result = detect_vehicles(self, walker_list, 
                                            max(self.config.distance.min_proximity_threshold, 
                                                self.config.live_info.current_speed_limit / 2), 
                                             up_angle_th=self.config.obstacles.detection_angles.walkers_lane_change[1], 
                                             lane_offset=-1)
-    elif self.config.live_info.direction == RoadOption.CHANGELANERIGHT:
+    elif self.config.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
         detection_result = detect_vehicles(self, walker_list, 
                                             max(self.config.distance.min_proximity_threshold, 
                                                 self.config.live_info.current_speed_limit / 2), 

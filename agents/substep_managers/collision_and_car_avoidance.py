@@ -8,7 +8,7 @@ from agents.tools.lunatic_agent_tools import detect_vehicles
 from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
     import carla
-    from agents import LunaticAgent
+    from agents.lunatic_agent import LunaticAgent
 
 def collision_detection_manager(self : "LunaticAgent", waypoint: carla.Waypoint) -> ObstacleDetectionResult:
         """
@@ -32,13 +32,13 @@ def collision_detection_manager(self : "LunaticAgent", waypoint: carla.Waypoint)
         vehicle_list : List[carla.Vehicle] = [v for v in self.vehicles_nearby if dist(v) < 45 and v.id != self._vehicle.id]
 
         # Triple (<is there an obstacle> , )
-        if self.config.live_info.direction == RoadOption.CHANGELANELEFT:
+        if self.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
             detection_result : ObstacleDetectionResult = detect_vehicles(self, vehicle_list, 
                                                                 max(self.config.distance.min_proximity_threshold, 
                                                                     self.config.live_info.current_speed_limit / 2), 
                                                                 up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1], 
                                                                 lane_offset=-1)
-        elif self.config.live_info.direction == RoadOption.CHANGELANERIGHT:
+        elif self.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
             detection_result : ObstacleDetectionResult = detect_vehicles(self, vehicle_list,
                                                                 max(self.config.distance.min_proximity_threshold, 
                                                                     self.config.live_info.current_speed_limit / 2), 

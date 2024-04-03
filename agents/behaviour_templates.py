@@ -100,7 +100,7 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
     waypoint = ctx.agent._current_waypoint
 
     # Cheap to get, do we plan to continue in the same lane? We are not at a junction and have some minimum speed
-    pre_conditions = (ctx.agent.config.live_info.direction == RoadOption.LANEFOLLOW \
+    pre_conditions = (ctx.agent.config.live_info.executed_direction == RoadOption.LANEFOLLOW \
             and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10  #TODO Hardcoded
             )
     if not pre_conditions:
@@ -127,7 +127,7 @@ def make_lane_change(ctx : "Context"):
         :param vehicle_list: list of all the nearby vehicles
         
     Assumes:
-         (ctx.agent.config.live_info.direction == RoadOption.LANEFOLLOW \
+         (ctx.agent.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \
             and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10)
         check_behind.obstacle_was_found and ctx.agent.config.live_info.current_speed < get_speed(check_behind.obstacle)
     """
