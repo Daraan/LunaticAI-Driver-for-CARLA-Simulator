@@ -218,8 +218,8 @@ class LunaticAgent(BehaviorAgent):
             CarlaDataProvider._grp = self._global_planner 
 
         # Get the static elements of the scene
-        # TODO: This could be done globally and not for each instance :/
-        self._lights_list : List[carla.TrafficLight] = self._world.get_actors().filter("*traffic_light*")
+        self._traffic_light_map: Dict[carla.TrafficLight, carla.Transform] = CarlaDataProvider._traffic_light_map
+        self._lights_list = CarlaDataProvider._traffic_light_map.keys()
         self._lights_map : Dict[int, carla.Waypoint] = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
 
         # Vehicle Lights
