@@ -630,9 +630,11 @@ class LunaticAgent(BehaviorAgent):
         tlight_detection_result = self.traffic_light_manager()
         if tlight_detection_result.traffic_light_was_found:
             hazard_detected.add(Hazard.TRAFFIC_LIGHT)             #TODO: Currently cannot give fine grained priority results
-            if self.live_info.next_traffic_light.id == tlight_detection_result.traffic_light.id:
+            #assert self.live_info.next_traffic_light.id == tlight_detection_result.traffic_light.id, "Next assumed traffic light should be the same as the detected one." # TEMP
+            if self.live_info.next_traffic_light.id != tlight_detection_result.traffic_light.id:
                 # TODO: #26 detect when this is the case, can it be fixed and how serve is it? - Maybe because we just passed a traffic light (detected) != next in line?
-                logger.warning("Next traffic light is not the same as the detected one. %s != %s", self.live_info.next_traffic_light.id, tlight_detection_result.traffic_light.id)
+                logger.error("Next traffic light is not the same as the detected one. %s != %s", self.live_info.next_traffic_light.id, tlight_detection_result.traffic_light.id)
+                print("Distances: ", self.live_info.next_traffic_light.get_location().distance(self.live_info.current_location), tlight_detection_result.traffic_light.get_location().distance(self.live_info.current_location))
                 
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.END, prior_results=tlight_detection_result)
 
