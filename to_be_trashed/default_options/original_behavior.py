@@ -42,7 +42,7 @@ class BasicAgentSettings(BaseCategories): # _AnnotationChecker,
     
     live_info.current_speed : float = None
     live_info.current_speed_limit : float = None
-    live_info.direction : "RoadOption" = None 
+    live_info.incoming_direction : "RoadOption" = None 
 
     # --------------------------
     # Agent Level
