@@ -288,6 +288,14 @@ class LunaticAgent(BehaviorAgent):
             self._collision_sensor.destroy()
             self._collision_sensor = None
             
+    def destroy(self):
+        self.destroy_sensor()
+        self._world_model = None
+        self._world = None
+        self._map = None
+        self.ctx.agent = None
+        self.ctx = None
+            
     #@property
     #def ctx(self) -> Union[Context, None]:
     #    print("Getting Context", self._ctx())
