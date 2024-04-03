@@ -188,7 +188,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         return traffic_manager
     
     def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", config:"LunaticAgentSettings"=None, overwrites:Optional[Dict[str, Any]]=None):
-        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, map_inst=self.map, config=config, overwrites=overwrites)
+        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, config=config, overwrites=overwrites)
         self.config = self.agent.config
         controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         self.world_model.game_framework = weakref.proxy(self)
@@ -312,7 +312,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                 logger.warning("Warning: Ignoring the given map as it is not a 'carla.Map'")
         if self.map is None:
             try:
-                self.map = self.world.get_map()
+                self.set_world(self.world) # CDP function
             except RuntimeError as error:
                 print('RuntimeError: {}'.format(error))
                 print('  The server could not send the OpenDRIVE (.xodr) file:')
@@ -321,11 +321,12 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         self._config = config
         if not isinstance(args, Mapping):
-            # Args is expeced to be a string here
-            # NOTE: THis does NOT INCLUDE CLI OVERWRITES
+            # Args is expected to be a string here
+            # NOTE: This does NOT INCLUDE CLI OVERWRITES
             args = OmegaConf.load(args)
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
         self._args : LaunchConfig = args
+        
         self.hud = HUD(args.width, args.height, self.world)
         self.sync : bool = args.sync
         self.dim = (args.width, args.height)

@@ -40,7 +40,7 @@ from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, D
 from classes.constants import Phase, Hazard
 from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import Context, Rule
-from agents.tools.config_creation import AgentConfig, LiveInfo, LunaticAgentSettings
+from agents.tools.config_creation import AgentConfig, LaunchConfig, LiveInfo, LunaticAgentSettings
 
 from classes.worldmodel import WorldModel, CarlaDataProvider
 from classes.keyboard_controls import RSSKeyboardControl
@@ -89,7 +89,9 @@ class LunaticAgent(BehaviorAgent):
     # todo: rename in the future
     
     @classmethod
-    def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args, settings_archtype: "Optional[type[AgentConfig]]"=None, config:LunaticAgentSettings=None, overwrites: Dict[str, Any]={}, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None):
+    def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args: LaunchConfig, 
+                               settings_archtype: "Optional[type[AgentConfig]]"=None, config: "LunaticAgentSettings"=None, 
+                               overwrites: Dict[str, Any]={}):
         
         if config is None:
             if settings_archtype is not None and not isinstance(settings_archtype, type):
@@ -106,13 +108,13 @@ class LunaticAgent(BehaviorAgent):
             logger.debug("A config was passed, using it as is.")
         
         #world_model = WorldModel(config, args, carla_world=sim_world, player=vehicle, map_inst=map_inst)
-        world_model = WorldModel(config, args=args, carla_world=sim_world, player=vehicle, map_inst=map_inst) # TEST: without args
+        world_model = WorldModel(config, args=args, carla_world=sim_world, player=vehicle) # TEST: without args
         config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
-        agent = cls(config, world_model, grp_inst=grp_inst)
+        agent = cls(config, world_model)
         return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None, overwrite_options: dict = {}):
+    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, map_inst: carla.Map=None, overwrite_options: dict = {}):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -121,7 +123,6 @@ class LunaticAgent(BehaviorAgent):
             :param opt_dict: dictionary in case some of its parameters want to be changed.
                 This also applies to parameters related to the LocalPlanner.
             :param map_inst: carla.Map instance to avoid the expensive call of getting it.
-            :param grp_inst: GlobalRoutePlanner instance to avoid the expensive call of getting it.
 
         """
         # TODO s: Always expect a behavior.opt_dict
@@ -194,8 +195,7 @@ class LunaticAgent(BehaviorAgent):
         self.live_info : LiveInfo = self.config.live_info
 
         #config.speed.min_speed = 5
-        self.config.speed.min_speed
-        #config.planner.sampling_resolution = 4.5  # NOTE also set in behaviors
+        self.config.speed.min_speed # TODO: This is not set
 
         # Original Setup ---------------------------------------------------------
         
@@ -210,10 +210,12 @@ class LunaticAgent(BehaviorAgent):
 
         # Initialize the planners
         self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=opt_dict, map_inst=world_model.map, world=self._world if self._world else "MISSING", rss_sensor=world_model.rss_sensor)
-        if grp_inst:
-            self._global_planner = grp_inst
-        else:
-            self._global_planner = GlobalRoutePlanner(world_model.map, self.config.planner.sampling_resolution)
+        self._global_planner = CarlaDataProvider.get_global_route_planner() # NOTE: THIS does not use self.config.planner.sampling_resolution
+        assert self._global_planner, "Global Route Planner not set - This should not happen, if the CarlaDataProvider has been initialized."
+        if not self._global_planner:
+            # This should not happen, as the global planner is set in the CarlaDataProvider at set_world
+            self._global_planner = GlobalRoutePlanner(CarlaDataProvider.get_map(), self.config.planner.sampling_resolution)
+            CarlaDataProvider._grp = self._global_planner 
 
         # Get the static elements of the scene
         # TODO: This could be done globally and not for each instance :/
