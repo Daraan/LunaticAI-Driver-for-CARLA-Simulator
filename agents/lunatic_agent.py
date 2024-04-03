@@ -288,7 +288,8 @@ class LunaticAgent(BehaviorAgent):
         self._world_model = None
         self._world = None
         self._map = None
-        self.ctx.agent = None
+        if self.ctx:
+            self.ctx.agent = None
         self.ctx = None
             
     #@property
