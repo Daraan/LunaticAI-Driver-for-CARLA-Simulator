@@ -711,7 +711,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
             self.actors.append(self.player)
         elif not destroy_ego and self.player in self.actors:
             logger.warning("destroy_ego=False, but player is in actors list. Destroying the actor from within WorldModel.destroy.")
-        logger.info("to destroy", list(map(str, self.actors)))
+        logger.info("to destroy %s", list(map(str, self.actors)))
         while self.actors:
             actor = self.actors.pop(0)
             if actor is not None:
