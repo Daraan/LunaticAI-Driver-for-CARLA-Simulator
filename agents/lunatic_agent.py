@@ -307,6 +307,14 @@ class LunaticAgent(BehaviorAgent):
         return ctx
 
     # ------------------ Information functions ------------------ #
+    
+    def _clear_live_info(self): # DEBUG
+        """Clears the live_info attribute, for debugging purposes."""
+        from omegaconf import MISSING
+        for k in self.live_info.keys():
+            if k == "use_srunner_data_provider":
+                continue
+            self.live_info[k] = MISSING
 
     def _update_information(self, exact_waypoint=True, second_pass=False):
         """
@@ -322,6 +330,10 @@ class LunaticAgent(BehaviorAgent):
         # Information that is CONSTANT DURING THIS TICK and INDEPENDENT OF THE ROUTE
         # --------------------------------------------------------------------------
         if not second_pass:
+            if self._debug:
+                self._clear_live_info() # assure that every value is filled again (or None)
+                assert self._lights_list
+
             # First Pass for expensive and tick-constant information
 
             self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
@@ -400,6 +412,9 @@ class LunaticAgent(BehaviorAgent):
         # RSS
         # todo uncomment if agent is created after world model
         #self.rss_set_road_boundaries_mode() # in case this was adjusted during runtime. # TODO: maybe implement this update differently. As here it is called unnecessarily often.
+        
+        if self._debug:
+            OmegaConf.to_container(self.live_info, resolve=True, throw_on_missing=True)
     
     def is_taking_turn(self) -> bool:
         return self.live_info.incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
