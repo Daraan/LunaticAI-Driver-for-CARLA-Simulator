@@ -38,6 +38,8 @@ class InformationManager:
             self._relevant_traffic_light_location = None
             self.relevant_traffic_light_distance = None
             logger.debug("No traffic light found - at intersection?")
+        # TODO: Assure that the traffic light is not behind the actor, but in front of it.
+        # TODO: Do not use the CDP but use the planned route instead.
            
     @staticmethod
     def global_tick():
@@ -47,8 +49,8 @@ class InformationManager:
     def tick(self):
         # Next relevant traffic light
         # NOTE: Does not check for planned path but current route along waypoints, might not be exact.
-        if not self.relevant_traffic_light or self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._actor)) > self.relevant_traffic_light_distance:
+        if not self.relevant_traffic_light or self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._actor)) > self.relevant_traffic_light_distance * 1.01: # 1% tolerance to prevent permanent updates when far away from a traffic light
             # Update if the distance increased, and we might need to target another one; # TODO: This might be circumvented by passing and intersection
-            if self.relevant_traffic_light and self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._actor)) > self.relevant_traffic_light_distance:
+            if self.relevant_traffic_light and self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._actor)) > self.relevant_traffic_light_distance * 1.01:
                 logger.debug("Traffic light distance increased %s, updating.", self.relevant_traffic_light_distance)
             self._get_next_traffic_light()
