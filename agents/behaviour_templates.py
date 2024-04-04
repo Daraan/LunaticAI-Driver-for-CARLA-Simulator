@@ -84,8 +84,7 @@ normal_speed_rule = Rule(Phase.TAKE_NORMAL_STEP | Phase.BEGIN,
 
 # ----------- Avoid Beeing tailgated -----------
 
-
-@TruthyEvaluationFunction
+@EvaluationFunction(truthy=True)
 def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
     """
     Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
@@ -255,7 +254,6 @@ class RandomLaneChangeRule(Rule):
                             other_lane_time=ctx.config.lane_change.other_lane_time,
                             lane_change_time=ctx.config.lane_change.lane_change_time)
         
-        print("Resetting cooldown")
         self.reset_cooldown(ctx.config.lane_change.random_lane_change_interval)
 
 random_lane_change_rule = RandomLaneChangeRule()
@@ -297,47 +295,62 @@ default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailga
 
 
 if __name__ == "__main__" or DEBUG_RULES:
+    
+    class_like = EvaluationFunction(truthy=True)
+    instance = EvaluationFunction(int)
+    
+    def assert_type(instance, cls):
+        assert isinstance(instance, cls)
+        return instance
+    
     def context_method(self, ctx : "Context") -> bool:
+        assert isinstance(self, Rule)
+        assert isinstance(ctx, Context)
         return True
 
     def context_function(ctx : "Context") -> bool:
+        assert isinstance(ctx, Context)
         return True
     
     @EvaluationFunction
     def eval_context_method(self, ctx : "Context") -> bool:
+        assert isinstance(self, Rule)
+        assert isinstance(ctx, Context)
         return True
 
     @EvaluationFunction
     def eval_context_function(ctx : "Context") -> bool:
+        assert isinstance(ctx, Context)
         return True
 
     @Rule
     class SimpleRule1:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = context_function
-        action = lambda ctx: print("ONLY CTX", ctx)
+        action = lambda ctx: assert_type(ctx, Context)
     
     class SimpleRule(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = context_method
-        action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
+        action = lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context))
 
     class ReverseWhenCollide(Rule):
         phases = Phase.COLLISION | Phase.END
         rule = context_method
         def action(ctx : Context): 
+            assert_type(ctx, Context)
             ctx.control.reverse = True
     
     @Rule
     class SimpleRule1B:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = eval_context_function
-        action = lambda ctx: print("ONLY CTX", ctx)
+        action = lambda ctx: assert_type(ctx, Context)
     
     class SimpleRuleB(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = eval_context_method
-        action = lambda self, ctx: print("NO AND CTX", self, "with context", ctx)
+        action = lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context))
 
 
     class DebugRuleWithEval(Rule):
@@ -345,21 +358,22 @@ if __name__ == "__main__" or DEBUG_RULES:
         
         @EvaluationFunction("AlwaysTrue")
         def rule(self, ctx : "Context") -> bool:
-            print("Called rule", "self:", type(self), "ctx:", ctx)
-            return True
+            assert isinstance(ctx, Context)
+            assert isinstance(self, DebugRuleWithEval)
         
         @rule.register_action(True)
         def true_action(self, ctx : "Context"):
-            print("Executing NEW RULE action of", self)
-            print("Context", ctx)
+            assert isinstance(ctx, Context)
+            assert isinstance(self, DebugRuleWithEval)
+
         
     class Another(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         
         rule = always_execute
         
-        actions = {True: lambda self, ctx: print("ANOTHER FROM DICT Executing action of", self, "with context", ctx),
-                False: lambda ctx: print("ANOTHER False function.", ctx)}
+        actions = {True: lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context)),
+                False: lambda ctx: assert_type(ctx, Context)}
 
     new_rule = DebugRuleWithEval()
     #new_rule.action

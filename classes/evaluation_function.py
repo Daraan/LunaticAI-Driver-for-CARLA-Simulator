@@ -1,5 +1,5 @@
-from functools import partial, wraps
-from typing import Callable, Any, Hashable, TYPE_CHECKING, Union, cast
+from functools import partial, update_wrapper, wraps
+from typing import Callable, Any, ClassVar, Hashable, TYPE_CHECKING, Optional, Union
 
 import inspect
 
@@ -46,16 +46,22 @@ class EvaluationFunction:
                                 })
     """
     
-    def __new__(cls, first_argument: Union[str, Callable[["Context"], Hashable]], name="EvaluationFunction"):
+    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="EvaluationFunction", *, truthy=False) -> "type[EvaluationFunction]":
+        # @EvaluationFunction("name")
         if isinstance(first_argument, str):
-            return partial(cls, name=first_argument) # Calling decorator with a string
-        
+            return partial(cls, name=first_argument, truthy=truthy) # Calling decorator with a string
+        # @EvaluationFunction(name="name") or @EvaluationFunction(truthy=True)
+        if first_argument is None:
+            return partial(cls, name=name, truthy=truthy)
+        assert isinstance(first_argument, Callable), f"First argument must be a callable, not {type(first_argument)}"
+        # @EvaluationFunction or EvaluationFunction(function)
         instance = super().__new__(cls)
-        instance.__init__(first_argument, name)
         return instance
     
-    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction"):
+    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction", *, truthy=False):
+        update_wrapper(self, evaluation_function, assigned=("__qualname__", "__module__", "__annotations__", "__doc__"))
         self.evaluation_function = evaluation_function
+        self.truthy = truthy
         if name != "EvaluationFunction":
             self.name = name
         elif hasattr(evaluation_function, "__name__"):
@@ -64,12 +70,25 @@ class EvaluationFunction:
             self.name = str(evaluation_function)
         self.actions = {}
 
-    def __call__(self, ctx: "Context", *args, **kwargs) -> Hashable:
-        result = self.evaluation_function(ctx, *args, **kwargs)
-        assert isinstance(result, Hashable), f"evaluation_function must return a hashable type, not {type(result)}"
-        return result
+    def __call__(self, ctx: "Context | Rule", *args, **kwargs) -> Hashable:
+        """
+        NOTE: CRITICAL: 
+        To handle the method vs. function difference depending on __get__ 
+        `ctx` can be either a Context (rule as function) or a Rule (rule as method),
+        In the method case the real Context object is args[0]
+        """
+        rule_result = self.evaluation_function(ctx, *args, **kwargs)
+        # Handle function vs. method
+        if not isinstance(ctx, Context):
+            ctx = args[0]
+            assert isinstance(ctx, Context), f"This should not happen: In the method case the argument must be a Context object, not {type(ctx)}"
+        ctx.rule_result = rule_result
+        if self.truthy:
+            return bool(rule_result)
+        assert isinstance(rule_result, Hashable), f"evaluation_function must return a hashable type, not {type(rule_result)}"
+        return rule_result
     
-    def __get__(self, instance, owner): # for in class usage class.rule
+    def __get__(self, instance: "Optional[Rule]", owner): # pylint: disable=unused-argument # for in class usage like Rule.rule
         # NOTE: instance.rule is not an EvaluationFunction, it is a partial of one.
         if instance is None:
             return self # called on class
@@ -99,8 +118,13 @@ class EvaluationFunction:
     
     def __repr__(self):
         if self.name == "EvaluationFunction":
-            return self.__class__.__name__ + f"({self.evaluation_function})"
-        return self.__class__.__name__ + f'(name="{self.name}", evaluation_function={self.evaluation_function})'
+            s = self.__class__.__name__ + f"({self.evaluation_function}"
+        else:
+            s = self.__class__.__name__ + f'(name="{self.name}", evaluation_function={self.evaluation_function}'
+        if self.truthy:
+            s += ", truthy=True"
+        s += ")"
+        return s
 
     @classmethod
     def AND(cls, func1, func2):
@@ -134,17 +158,19 @@ class EvaluationFunction:
     def __invert__(self):
         return self.NOT(self)
     
-    def register_action(self, key:Hashable=True):
+    _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
+    
+    def register_action(self, key: Hashable=True):
         def decorator(action_function):
-            if action_function.__name__ in ('action', 'actions', 'false_action'):
-                raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in ('action', 'actions', 'false_action'), got '{action_function.__name__}'.")
+            if action_function.__name__ in EvaluationFunction._INVALID_NAMES:
+                raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in {EvaluationFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
             if key in self.actions:
                 print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
             self.actions[key] = action_function # register action
             return action_function
         return decorator
 
-def TruthyEvaluationFunction(func):
+def TruthyEvaluationFunction(func: Callable) -> EvaluationFunction:
     """
     Allows a rule to return any value, but will be converted to a boolean.
     
@@ -152,6 +178,8 @@ def TruthyEvaluationFunction(func):
     
     todo (low priority): instead of extra function make this a parameter of EvaluationFunction
     """
+    return EvaluationFunction(func, truthy=True)
+    
     @EvaluationFunction
     @wraps(func)
     def wrapper(self: "Rule", ctx : "Context"): 
