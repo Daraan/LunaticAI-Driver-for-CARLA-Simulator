@@ -114,7 +114,7 @@ class LunaticAgent(BehaviorAgent):
         agent = cls(config, world_model)
         return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, map_inst: carla.Map=None, overwrite_options: dict = {}):
+    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, map_inst: carla.Map=None, overwrite_options: dict = {}, debug=True):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -124,8 +124,9 @@ class LunaticAgent(BehaviorAgent):
                 This also applies to parameters related to the LocalPlanner.
             :param map_inst: carla.Map instance to avoid the expensive call of getting it.
 
+            :debug: boolean to activate the debug mode. In the debug mode more settings will be validated.
         """
-        # TODO s: Always expect a behavior.opt_dict
+        self._debug = debug
         # low prio todo: update description.
 
         # OURS: Fusing behavior
