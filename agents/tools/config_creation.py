@@ -1332,3 +1332,7 @@ class LaunchConfig:
     agent : LunaticAgentSettings = MISSING
     
     camera : CameraConfig = field(default_factory=CameraConfig)
+
+
+with open("conf/config_extensions/live_info.yaml", "w") as f:
+    f.write(LiveInfo.to_yaml())
