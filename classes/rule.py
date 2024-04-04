@@ -128,7 +128,7 @@ class RulePriority(IntEnum):
     HIGHEST = 16
 
 @EvaluationFunction
-def always_execute(ctx : Context):
+def always_execute(ctx : Context): # pylint: disable=unused-argument
     return True
 
 
@@ -733,3 +733,9 @@ class RandomRule(MultiRule):
             rules.remove(rule)
             weights = list(accumulate(r.priority.value for r in rules))
         return result
+
+# Provide necessary imports for the evaluation_function module but prevents circular imports
+
+import classes.evaluation_function as __evaluation_function
+__evaluation_function.Rule = Rule
+__evaluation_function.Context = Context

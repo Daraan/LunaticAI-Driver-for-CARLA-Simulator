@@ -4,7 +4,9 @@ from typing import Callable, Any, Hashable, TYPE_CHECKING, Union, cast
 import inspect
 
 if TYPE_CHECKING:
-    from classes.rule import Context, Rule
+    from classes.rule import Context, Rule # circular import
+# NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
+
 
 class EvaluationFunction:
     """
