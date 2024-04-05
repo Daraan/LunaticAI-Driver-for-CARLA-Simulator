@@ -227,3 +227,19 @@ class RoadOptionColor(metaclass=__ItemAccess):
     LANEFOLLOW = carla.Color(0, 128, 0)  # Green
     CHANGELANELEFT = carla.Color(128, 32, 0)  # Orange
     CHANGELANERIGHT = carla.Color(0, 32, 128) # Dark Cyan
+    
+    
+class AgentState(Flag):
+    DRIVING = auto()
+    STOPPED = auto()
+    _parked = auto() # hide it to avoid confusion
+    REVERSE = auto()
+    
+    OVERTAKING = auto()
+    
+    AGAINST_LANE_DIRECTION = auto()
+    
+    PARKED = _parked | STOPPED # we want this to be a combination of the two
+    
+    # Mabye more states like CAR_IN_FRONT
+        
