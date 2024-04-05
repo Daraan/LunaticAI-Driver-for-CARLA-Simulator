@@ -398,7 +398,7 @@ class LiveInfo(AgentConfig):
     NOTE: Turning this off is not fully supported.
     """
     
-    velocity_vector : "carla.Vector3D" = MISSING
+    velocity_vector : carla.Vector3D = MISSING
     """
     3D Vector of the current velocity of the vehicle.
     """
@@ -410,8 +410,8 @@ class LiveInfo(AgentConfig):
     Note if use_srunner_data_provider is True the z component is ignored.
     """
     
-    current_transform : "carla.Transform" = MISSING
-    current_location : "carla.Location" = MISSING
+    current_transform : carla.Transform = MISSING
+    current_location : carla.Location = MISSING
     
     current_speed_limit : float = MISSING
     
@@ -428,7 +428,7 @@ class LiveInfo(AgentConfig):
     RoadOption that will used for the current step
     """
     
-    incoming_waypoint : "carla.Waypoint" = MISSING
+    incoming_waypoint : carla.Waypoint = MISSING
     """
     Waypoint that is planned to be targeted in this step.
     """
@@ -443,7 +443,7 @@ class LiveInfo(AgentConfig):
     incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
     """
     
-    next_traffic_light : "carla.TrafficLight | None" = MISSING
+    next_traffic_light : Union[carla.TrafficLight, None] = MISSING
     """
     Traffic light that is closest to the next intersection.
     
@@ -457,6 +457,10 @@ class LiveInfo(AgentConfig):
     Distance to the assumed next traffic light.
     """
     
+    last_applied_controls: carla.VehicleControl = MISSING
+    """
+    VehicleControls 
+    """
     
     # NOTE: Not ported to OmegaConf
     @property

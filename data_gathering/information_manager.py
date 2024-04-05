@@ -91,7 +91,8 @@ class InformationManager:
         """
         Determines if in the last tick the VehicleControl.reverse flag was set.
         """
-        return self.last_tick_controls.reverse
+        # TODO: can this be detected differently e.g. through the vehicle
+        return self.live_info.last_applied_controls.reverse
     
     @_check_state(AgentState.AGAINST_LANE_DIRECTION)
     def detect_driving_against_lane_direction(self):
@@ -152,7 +153,7 @@ class InformationManager:
         self.global_tick(snapshot.frame)
         
         # --- Vehicle Information ---
-        self.last_tick_controls = self._vehicle.get_control()
+        self.live_info.last_applied_controls = self._vehicle.get_control()
         
         # - Speed -
         # NOTE: get_velocity does not take the z axis into account.
