@@ -44,7 +44,7 @@ from agents.tools.config_creation import AgentConfig, LaunchConfig, LiveInfo, Lu
 
 from classes.worldmodel import WorldModel, CarlaDataProvider
 from classes.keyboard_controls import RSSKeyboardControl
-from data_gathering.processor import InformationManager
+from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from typing import Literal # for Python 3.8

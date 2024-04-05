@@ -22,7 +22,7 @@ from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
 from classes.keyboard_controls import RSSKeyboardControl
-from data_gathering.processor import InformationManager
+from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
