@@ -15,10 +15,11 @@ from typing import NamedTuple, TYPE_CHECKING
 
 import carla
 
+from classes.constants import RoadOptionColor # pylint: disable=unused-import
+
 if TYPE_CHECKING:
     from agents.navigation.local_planner import RoadOption
     # also checkout RoadOptionColor
-    from classes.constants import RoadOptionColor # pylint: disable=unused-import
 
 __all__ = [
     'ObstacleDetectionResult',
@@ -72,6 +73,7 @@ def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5
         world.debug.draw_arrow(begin, end, color=color, **kwargs)
         
 def roadoption_color(option: "RoadOption") -> carla.Color:
+    return RoadOptionColor(option)
     from agents.navigation.local_planner import RoadOption # TODO: move to constants to avoid circular import
     if option == RoadOption.LEFT:  # Yellow
         return carla.Color(128, 128, 0)

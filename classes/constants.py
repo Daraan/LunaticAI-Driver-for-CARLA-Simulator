@@ -217,7 +217,7 @@ class __ItemAccess(type):
         return getattr(cls, key)
     
     def __call__(cls, option: "RoadOption") -> carla.Color:
-        return getattr(cls, option.value)
+        return getattr(cls, option.name)
 
 class RoadOptionColor(metaclass=__ItemAccess):
     VOID = carla.Color(0, 128, 0)  # Green
