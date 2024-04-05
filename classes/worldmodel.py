@@ -257,20 +257,20 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         self.clock.tick() # self.args.fps)
         frame = None
-        if self._args.handle_ticks:
-            if self._args.sync is not None:
-                if self._args.sync:
-                    frame = self.world_model.world.tick()
-                else:
-                    snapshot = self.world_model.world.wait_for_tick()
-                    frame = snapshot.frame
+        if self._args.handle_ticks: # i.e. no scenario runner doing it for us
+            if CarlaDataProvider.is_sync_mode():
+                frame = self.world_model.world.tick()
             else:
-                logger.warning("sync is None. Not ticking nor waiting for tick")
+                frame = self.world_model.world.wait_for_tick().frame
             CarlaDataProvider.on_carla_tick()
 
-        if frame is None:
-            frame = self.get_world().get_snapshot().frame
-        InformationManager.global_tick(frame) # This is internal from us
+        if CarlaDataProvider.is_sync_mode():
+            # We do this only in sync mode as frames could pass between gathering this information
+            # and an agent calling InformationManager.tick(), which in turn calls global_tick
+            # with possibly a DIFFERENT frame wasting computation.
+            if frame is None:
+                frame = self.get_world().get_snapshot().frame
+            InformationManager.global_tick(frame)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

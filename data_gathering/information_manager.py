@@ -183,7 +183,7 @@ class InformationManager:
 
     @staticmethod
     def global_tick(frame=None):
-        # Assure to call this only once:
+        # Assure to call this only once
         if frame is None:
             frame = CarlaDataProvider.get_world().get_snapshot().frame
         else:
