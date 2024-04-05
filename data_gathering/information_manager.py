@@ -33,7 +33,7 @@ class InformationManager:
     _relevant_traffic_light_location : carla.Location = None
     
     state_counter: "dict[AgentState, int]"
-    vehicle_speed : float # m/s
+    _vehicle_speed : float # m/s
     
     gathered_information : "dict[str, Any]"
     
@@ -52,26 +52,14 @@ class InformationManager:
     
     def __init__(self, agent: "LunaticAgent", update_information: bool = True):
         self._agent = agent
-        self._actor = agent._vehicle # maybe use a property
+        self.live_info = agent.live_info
+        
+        self._vehicle = agent._vehicle # maybe use a property
         
         self.state_counter = {s: 0 for s in AgentState}
         self._states_checked = {s: False for s in AgentState}
         if update_information:
             self.tick()
- 
-            
-    def _get_next_traffic_light(self):
-        self.relevant_traffic_light = CarlaDataProvider.get_next_traffic_light(self._actor)
-        if self.relevant_traffic_light:
-            self._relevant_traffic_light_location = self.relevant_traffic_light.get_location()
-            self.relevant_traffic_light_distance = self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._actor))
-        else:
-            # Is at an intersection
-            self._relevant_traffic_light_location = None
-            self.relevant_traffic_light_distance = None
-            logger.debug("No traffic light found - at intersection?")
-        # TODO: Assure that the traffic light is not behind the actor, but in front of it.
-        # TODO: Do not use the CDP but use the planned route instead.
     
     # AgentState detection
     
@@ -92,11 +80,11 @@ class InformationManager:
     
     @_check_state(AgentState.DRIVING)
     def detect_driving_state(self):
-        return self.vehicle_speed >= DRIVING_SPEED_THRESHOLD
+        return self._vehicle_speed >= DRIVING_SPEED_THRESHOLD
     
     @_check_state(AgentState.STOPPED)
     def detect_stopped_state(self):
-        return self.vehicle_speed < STOPPED_SPEED_THRESHOLD
+        return self._vehicle_speed < STOPPED_SPEED_THRESHOLD
     
     @_check_state(AgentState.REVERSE)
     def detect_reverse_state(self):
@@ -115,7 +103,6 @@ class InformationManager:
     def detect_overtaking_state(self):
         NotImplemented # Can probably not be done easily, and must be done from outside
     
-    
     def check_states(self):
         # Updates are handles trough the decorators
         self.detect_driving_state()
@@ -124,31 +111,68 @@ class InformationManager:
 
     # --- Traffic Light ---
     
+    def _get_next_traffic_light(self):
+        self.relevant_traffic_light = CarlaDataProvider.get_next_traffic_light(self._vehicle)
+        if self.relevant_traffic_light:
+            self._relevant_traffic_light_location = self.relevant_traffic_light.get_location()
+            self.relevant_traffic_light_distance = self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._vehicle))
+        else:
+            # Is at an intersection
+            self._relevant_traffic_light_location = None
+            self.relevant_traffic_light_distance = None
+            logger.debug("No traffic light found - at intersection?")
+        # TODO: Assure that the traffic light is not behind the actor, but in front of it.
+        # TODO: Do not use the CDP but use the planned route instead.
+    
+    
     def detect_next_traffic_light(self):
         """
         Next relevant traffic light
         NOTE: Does not check for planned path but current route along waypoints, might not be exact.
         """
-        if not self.relevant_traffic_light or self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._actor)) > self.relevant_traffic_light_distance * 1.01: # 1% tolerance to prevent permanent updates when far away from a traffic light
+        if self.relevant_traffic_light_distance:
+            tlight_distance = self._relevant_traffic_light_location.distance(self.live_info.current_location)
+        else:
+            tlight_distance = None
+        
+        # Search for a traffic light if none is given or if the distance to the current one increased
+        # 1% tolerance to prevent permanent updates when far away from a traffic light
+        if not self.relevant_traffic_light or tlight_distance > self.relevant_traffic_light_distance * 1.01: 
             # Update if the distance increased, and we might need to target another one; # TODO: This might be circumvented by passing and intersection
-            if self.relevant_traffic_light and self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._actor)) > self.relevant_traffic_light_distance * 1.01:
-                logger.debug("Traffic light distance increased %s, updating.", self.relevant_traffic_light_distance)
+            if self.relevant_traffic_light and tlight_distance > self.relevant_traffic_light_distance * 1.01:
+                logger.debug("Traffic light distance increased %s, did slow update.", self.relevant_traffic_light_distance)
             self._get_next_traffic_light()
+        elif self.relevant_traffic_light:
+            self.relevant_traffic_light_distance = tlight_distance
     
     # ---- Tick ----
         
     def tick(self):
-        import time
-        start = time.perf_counter()
         snapshot = CarlaDataProvider.get_world().get_snapshot()
-        end = time.perf_counter()
-        print(f"Snapshot took {end-start} seconds")
         self.global_tick(snapshot.frame)
         
-        self.vehicle_speed = CarlaDataProvider.get_velocity(self._actor)
-        self.last_tick_controls = self._actor.get_control()
+        # --- Vehicle Information ---
+        self.last_tick_controls = self._vehicle.get_control()
+        
+        # - Speed -
+        # NOTE: get_velocity does not take the z axis into account.
+        self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
+        
+        self.live_info.velocity_vector = self._vehicle.get_velocity()
+        
+        self._vehicle_speed = CarlaDataProvider.get_velocity(self._vehicle) # used for AgentState Checks
+        self.live_info.current_speed = self._vehicle_speed * 3.6 # km/h
+        
+        # - Location -
+        # NOTE: That transform.location and location are similar but not identical.
+        self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
+        self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
 
+        # Traffic Light
+        # NOTE: Must be AFTER the location update
         self.detect_next_traffic_light()
+        self.live_info.next_traffic_light = self.relevant_traffic_light
+        self.live_info.next_traffic_light_distance = self.relevant_traffic_light_distance
         
         return {
             "relevant_traffic_light": self.relevant_traffic_light,
@@ -172,4 +196,12 @@ class InformationManager:
         
         InformationManager.vehicles = [a for a in CarlaDataProvider._carla_actor_pool.values() if a.is_alive and fnmatch(a.type_id, "*vehicle*")]
         InformationManager.walkers = [a for a in CarlaDataProvider._carla_actor_pool.values() if a.is_alive and fnmatch(a.type_id, "*walker.pedestrian*")]
+        
+    @staticmethod
+    def get_vehicles():
+        return InformationManager.vehicles
+    
+    @staticmethod
+    def get_walkers():
+        return InformationManager.walkers
             

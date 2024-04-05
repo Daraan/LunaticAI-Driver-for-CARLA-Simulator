@@ -340,16 +340,13 @@ class LunaticAgent(BehaviorAgent):
             self.live_info.next_traffic_light = self.information_manager.relevant_traffic_light
             self.live_info.next_traffic_light_distance = self.information_manager.relevant_traffic_light_distance
             
-            self.live_info.current_speed_limit = self._vehicle.get_speed_limit()
-            self.live_info.velocity_vector = self._vehicle.get_velocity()
-            
             if self.live_info.use_srunner_data_provider:
                 # Own properties
-                # NOTE: That transform.location and location are similar but not identical!
-                # NOTE: get_velocity does not take the z axis into account.
-                self.live_info.current_speed = CarlaDataProvider.get_velocity(self._vehicle) * 3.6
-                self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
-                self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
+                
+                # Handled by InformationManager
+                #self.live_info.current_speed = CarlaDataProvider.get_velocity(self._vehicle) * 3.6
+                #self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
+                #self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
                 
                 # TODO: distance is not filtered, assumed managed by the scenario_runner
                 self.vehicles_nearby : List[carla.Vehicle] = InformationManager.vehicles

@@ -443,6 +443,21 @@ class LiveInfo(AgentConfig):
     incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
     """
     
+    next_traffic_light : "carla.TrafficLight | None" = MISSING
+    """
+    Traffic light that is closest to the next intersection.
+    
+    Is `None` if the agent is at an intersection.
+    
+    + NOTE: This might not be in the path or infront of the vehicle.
+    """
+    
+    next_traffic_light_distance : float = MISSING
+    """
+    Distance to the assumed next traffic light.
+    """
+    
+    
     # NOTE: Not ported to OmegaConf
     @property
     def speed(self):
