@@ -244,7 +244,7 @@ class LunaticAgent(BehaviorAgent):
             self._road_matrix_updater = None
         self._road_matrix_counter = 0 # TODO: Todo make this nicer and maybe get ticks from world.
         
-        self.information_manager = InformationManager(self._vehicle)
+        self.information_manager = InformationManager(self)
         
     def set_vehicle(self, vehicle:carla.Vehicle):
         self._vehicle = vehicle

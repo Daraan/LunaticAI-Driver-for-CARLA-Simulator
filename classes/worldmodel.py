@@ -259,11 +259,25 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         if self._args.handle_ticks:
             if self._args.sync is not None:
                 if self._args.sync:
-                    self.world_model.world.tick()
+                    frame = self.world_model.world.tick()
                 else:
-                    self.world_model.world.wait_for_tick()
+                    snapshot = self.world_model.world.wait_for_tick()
+                    frame = snapshot.frame
+            else:
+                logger.debug("sync is None. Not ticking nor waiting for tick")
+                snapshot = self.get_world().get_snapshot()
+                frame = snapshot.frame
             CarlaDataProvider.on_carla_tick()
-        InformationManager.global_tick() # This is internal from us
+            InformationManager.global_tick(frame)
+        else:
+            # Wait for tick? Make a SNapshot to get the frame?
+            # TEMP:
+            import time
+            start = time.perf_counter()
+            snapshot = self.get_world().get_snapshot()
+            end = time.perf_counter()
+            print("Time to get snapshot:", end-start)
+            InformationManager.global_tick(snapshot.frame) # This is internal from us
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
