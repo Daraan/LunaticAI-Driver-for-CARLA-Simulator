@@ -22,7 +22,7 @@ from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
 from classes.keyboard_controls import RSSKeyboardControl
-from data_gathering.processor import InformationManager
+from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
@@ -256,14 +256,21 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             raise ValueError("Controller not initialized.")
         
         self.clock.tick() # self.args.fps)
-        if self._args.handle_ticks:
-            if self._args.sync is not None:
-                if self._args.sync:
-                    self.world_model.world.tick()
-                else:
-                    self.world_model.world.wait_for_tick()
+        frame = None
+        if self._args.handle_ticks: # i.e. no scenario runner doing it for us
+            if CarlaDataProvider.is_sync_mode():
+                frame = self.world_model.world.tick()
+            else:
+                frame = self.world_model.world.wait_for_tick().frame
             CarlaDataProvider.on_carla_tick()
-        InformationManager.global_tick() # This is internal from us
+
+        if CarlaDataProvider.is_sync_mode():
+            # We do this only in sync mode as frames could pass between gathering this information
+            # and an agent calling InformationManager.tick(), which in turn calls global_tick
+            # with possibly a DIFFERENT frame wasting computation.
+            if frame is None:
+                frame = self.get_world().get_snapshot().frame
+            InformationManager.global_tick(frame)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
