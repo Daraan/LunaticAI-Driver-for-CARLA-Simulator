@@ -212,6 +212,7 @@ class InformationManager:
             return
         InformationManager.frame = frame
         
+        # Todo compare speed with global ActorList filter
         InformationManager.vehicles = [a for a in CarlaDataProvider._carla_actor_pool.values() if a.is_alive and fnmatch(a.type_id, "*vehicle*")]
         InformationManager.walkers = [a for a in CarlaDataProvider._carla_actor_pool.values() if a.is_alive and fnmatch(a.type_id, "*walker.pedestrian*")]
         

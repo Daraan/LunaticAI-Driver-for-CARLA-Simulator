@@ -339,28 +339,8 @@ class LunaticAgent(BehaviorAgent):
             information: InformationManager.Information = self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
             self._current_waypoint = information.current_waypoint
             
-            
-            if self.live_info.use_srunner_data_provider:
-                # Own properties
-                
-                # Handled by InformationManager
-                #self.live_info.current_speed = CarlaDataProvider.get_velocity(self._vehicle) * 3.6
-                #self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
-                #self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
-                
-                # TODO: distance is not filtered, assumed managed by the scenario_runner
-                self.vehicles_nearby : List[carla.Vehicle] = InformationManager.vehicles
-                self.walkers_nearby : List[carla.Walker] = InformationManager.walkers
-            else:
-                # Own properties
-                self.live_info.current_speed = get_speed(self._vehicle)
-                self.live_info.current_transform = self._vehicle.get_transform()
-                self.live_info.current_location = self.live_info.current_transform.location
-                
-                # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
-                _actors = self._world.get_actors()
-                self.vehicles_nearby : List[carla.Vehicle] = _actors.filter("*vehicle*")
-                self.walkers_nearby : List[carla.Walker] = _actors.filter("*walker.pedestrian*")
+            self.vehicles_nearby: List[carla.Vehicle] = information.vehicles
+            self.walkers_nearby: List[carla.Walker] = information.walkers
             
             # Data Matrix
             if self._road_matrix_updater and self._road_matrix_updater.sync:
