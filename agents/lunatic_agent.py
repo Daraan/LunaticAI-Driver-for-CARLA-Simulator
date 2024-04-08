@@ -337,8 +337,8 @@ class LunaticAgent(BehaviorAgent):
             # First Pass for expensive and tick-constant information
 
             information: InformationManager.Information = self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
-            self.live_info.next_traffic_light = self.information_manager.relevant_traffic_light
-            self.live_info.next_traffic_light_distance = self.information_manager.relevant_traffic_light_distance
+            self._current_waypoint = information.current_waypoint
+            
             
             if self.live_info.use_srunner_data_provider:
                 # Own properties
@@ -384,18 +384,9 @@ class LunaticAgent(BehaviorAgent):
             # NOTE: This should be called after 
             self.live_info.incoming_waypoint, self.live_info.incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
                 steps=self._look_ahead_steps)
-            if exact_waypoint and not second_pass:
-                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.live_info.current_location)
-            elif not exact_waypoint:
-                self._current_waypoint : carla.Waypoint = self.live_info.incoming_waypoint
-            # note: else: exact waypoint from first pass
         else:
             assert second_pass == False, "In the second pass the agent should have replanned and agent.done() should be False"
             # Assumes second_pass is False
-            if exact_waypoint:
-                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.live_info.current_location)
-            else:
-                self._current_waypoint : carla.Waypoint = self.live_info.incoming_waypoint # NOTE: this is from the last tick, as not retrieved from planner unlike above
             # Queue is empty
             self.live_info.incoming_waypoint = None
             self.live_info.incoming_direction  = RoadOption.VOID

@@ -169,16 +169,23 @@ class InformationManager:
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
         self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
 
+        # Only exact waypoint. TODO: update in agent
+        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(self.live_info.current_location)
+        
         # Traffic Light
         # NOTE: Must be AFTER the location update
         self.detect_next_traffic_light()
         self.live_info.next_traffic_light = self.relevant_traffic_light
         self.live_info.next_traffic_light_distance = self.relevant_traffic_light_distance
         
-        return {
+        # TODO, use dataclass, typed dict or namedtuple as return value
         info = {
             "relevant_traffic_light": self.relevant_traffic_light,
             "relevant_traffic_light_distance": self.relevant_traffic_light_distance,
+            "current_waypoint": current_waypoint,
+            "current_speed": self.live_info.current_speed,
+            "vehicles": self.vehicles,
+            "walkers": self.walkers
         }
         return self.Information(**info)
 
