@@ -336,7 +336,7 @@ class LunaticAgent(BehaviorAgent):
 
             # First Pass for expensive and tick-constant information
 
-            self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
+            information: InformationManager.Information = self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
             self.live_info.next_traffic_light = self.information_manager.relevant_traffic_light
             self.live_info.next_traffic_light_distance = self.information_manager.relevant_traffic_light_distance
             

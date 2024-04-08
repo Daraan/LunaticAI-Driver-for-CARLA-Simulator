@@ -7,7 +7,7 @@ i.e. distill the information from the data and return high level information
 
 from fnmatch import fnmatch
 from functools import wraps
-from typing import Any, ClassVar, TYPE_CHECKING
+from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple
 import carla
 
 if TYPE_CHECKING:
@@ -176,9 +176,19 @@ class InformationManager:
         self.live_info.next_traffic_light_distance = self.relevant_traffic_light_distance
         
         return {
+        info = {
             "relevant_traffic_light": self.relevant_traffic_light,
             "relevant_traffic_light_distance": self.relevant_traffic_light_distance,
         }
+        return self.Information(**info)
+
+    class Information(NamedTuple):
+        current_waypoint: carla.Waypoint
+        relevant_traffic_light: carla.TrafficLight
+        relevant_traffic_light_distance: float
+        current_speed: float
+        vehicles: "list[carla.Vehicle]"
+        walkers: "list[carla.Walker]"
 
     # ---- Global Information ----
 
