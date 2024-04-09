@@ -76,17 +76,15 @@ class LunaticAgent(BehaviorAgent):
 
     # using a ClassVar which allows to define preset rules for a child class
     # NOTE: Use deepcopy to avoid shared state between instances
-    _base_settings : "ClassVar[type[AgentConfig]]" = LunaticAgentSettings
+    BASE_SETTINGS: "ClassVar[type[AgentConfig]]" = LunaticAgentSettings
     
-    rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
+    rules: ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
     """
     The rules of the this agent class. When initialized the rules of the class are copied.
     """
     
     _world_model : WorldModel = None # TODO: maybe as weakref
     ctx : "Context"
-    
-    # todo: rename in the future
     
     @classmethod
     def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args: LaunchConfig, 
@@ -102,8 +100,8 @@ class LunaticAgent(BehaviorAgent):
                 behavior = settings_archtype(overwrites)
                 config = behavior.make_config()
             else:
-                logger.debug("Using %s._base_settings %s to create config.", cls.__name__, cls._base_settings)
-                config = cls._base_settings.make_config()
+                logger.debug("Using %s._base_settings %s to create config.", cls.__name__, cls.BASE_SETTINGS)
+                config = cls.BASE_SETTINGS.make_config()
         else:
             logger.debug("A config was passed, using it as is.")
         
