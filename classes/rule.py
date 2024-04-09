@@ -1,7 +1,7 @@
-from __future__ import annotations 
+from __future__ import annotations # todo: can this be removed?
+
 from collections.abc import Mapping
 from functools import partial, wraps
-import inspect
 try: # Python 3.8+
     from functools import singledispatchmethod
 except ImportError:
@@ -18,9 +18,10 @@ except ImportError:
         update_wrapper(wrapper, func)
         return wrapper
     
+import random
+import inspect
 from inspect import isclass
 from itertools import accumulate
-import random
 from enum import IntEnum
 from typing import Any, ClassVar, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
 from weakref import WeakSet
