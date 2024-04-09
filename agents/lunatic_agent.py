@@ -193,7 +193,7 @@ class LunaticAgent(BehaviorAgent):
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
         self.ctx = None
 
-        self.live_info : LiveInfo = self.config.live_info
+        self._live_info : LiveInfo = self.config.live_info # Accessible via property
 
         #config.speed.min_speed = 5
         self.config.speed.min_speed # TODO: This is not set
@@ -257,6 +257,10 @@ class LunaticAgent(BehaviorAgent):
         else:
             self._road_matrix_updater = None
         self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=self.config, map_inst=self._world_model.map, world=self._world_model.world, rss_sensor=self._world_model.rss_sensor)
+
+    @property
+    def live_info(self) -> LiveInfo:
+        return self._live_info
 
     @property
     def road_matrix(self):
