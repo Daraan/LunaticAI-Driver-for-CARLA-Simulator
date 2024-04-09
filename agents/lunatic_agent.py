@@ -112,7 +112,7 @@ class LunaticAgent(BehaviorAgent):
         agent = cls(config, world_model)
         return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, map_inst: carla.Map=None, overwrite_options: dict = {}, debug=True):
+    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, overwrite_options: dict = {}, debug=True):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -163,30 +163,16 @@ class LunaticAgent(BehaviorAgent):
         logger.info("\n\nAgent config is %s", OmegaConf.to_yaml(self.config))
         
         if world_model is None:
-            world_model = WorldModel(self.config, player=vehicle, map_inst=map_inst)
+            world_model = WorldModel(self.config, player=vehicle)
             self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
+        self._world_model : WorldModel = world_model
+        self._world : carla.World = world_model.world
         
         self._vehicle : carla.Vehicle = world_model.player
         try:
             CarlaDataProvider.register_actor(self._vehicle) # assure that the vehicle is registered
         except KeyError as e:
             logger.info("Ignoring error of already registered actor: %s", e)
-        self._world_model : WorldModel = world_model
-        self._world : carla.World = world_model.world
-        if map_inst:
-            if world_model.map and map_inst != world_model.map:
-                raise ValueError("Passed Map instance does not match the map instance of the world model.") # TEMP: Turn into warning
-            if isinstance(map_inst, carla.Map):
-                self._map = map_inst
-            else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-                self._map = self._world.get_map()
-                world_model.map = self._map
-        elif world_model.map is None:
-            self._map = self._world.get_map()
-            world_model.map = self._map
-        else:
-            self._map = world_model.map
         
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
         self.ctx = None
