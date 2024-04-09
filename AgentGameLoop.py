@@ -43,7 +43,7 @@ from agents.tools.logging import logger
 from agents.tools.misc import draw_waypoints
 
 from agents.lunatic_agent import LunaticAgent
-from agents import behaviour_templates
+from agents.rules import behaviour_templates
 
 # ==============================================================================
 # TEMP # Remove
