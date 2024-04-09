@@ -21,6 +21,7 @@ import pygame
 from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
 from data_gathering.car_detection_matrix.matrix_wrap import wrap_matrix_functionalities
 
+from launch_tools import CarlaDataProvider
 
 async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_queue):
     while True:
@@ -30,11 +31,11 @@ async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_q
         await asyncio.sleep(1)
 
 class DataMatrix:
-    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids=None):
+    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids=None):
         self.ego_vehicle = ego_vehicle
         self.world = world
-        self.world_map = world_map
-        self.road_lane_ids = road_lane_ids or get_all_road_lane_ids(world_map=world_map)
+        self.world_map = CarlaDataProvider.get_map()
+        self.road_lane_ids = road_lane_ids or get_all_road_lane_ids(world_map=CarlaDataProvider._map)
         self.matrix : Dict[int, List[int]] = None
         self.running = True
         self._sync = True
@@ -107,8 +108,8 @@ class DataMatrix:
         return self._sync
 
 class AsyncDataMatrix(DataMatrix):
-    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids=None, *, sleep_time=0.1):
-        super().__init__(ego_vehicle, world, world_map, road_lane_ids)
+    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids=None, *, sleep_time=0.1):
+        super().__init__(ego_vehicle, world, road_lane_ids)
         self._sync = False
         self.sleep_time = sleep_time
         self.lock = threading.Lock()
