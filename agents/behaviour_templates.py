@@ -5,17 +5,18 @@ from omegaconf._impl import select_node
 
 import carla
 import numpy as np
-from agents.navigation.local_planner import RoadOption
+
+from launch_tools import CarlaDataProvider
 
 from classes.constants import Phase
 from classes.rule import Rule, EvaluationFunction, TruthyEvaluationFunction, Context, RulePriority, always_execute
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import ObstacleDetectionResult, get_speed
 from agents.tools.logging import logger
+from agents.navigation.local_planner import RoadOption
 
 from typing import TYPE_CHECKING, List
 
-from classes.rule import always_execute
 if TYPE_CHECKING:
     from agents import LunaticAgent
 
@@ -187,18 +188,18 @@ avoid_tailgator_rule = AvoidTailgatorRule()
 
 # ----------- Plan next waypoint -----------
 
-def set_random_waypoint(ctx : "Context", waypoints : List[carla.Waypoint]=None):
+def set_random_waypoint(ctx: "Context", waypoints: List[carla.Waypoint]=None):
     """
     Set a random waypoint as the next target.
     """
     print("The target has been reached, searching for another target")
     ctx.agent._world_model.hud.notification("Target reached", seconds=4.0)
     if waypoints is None:
-        waypoints = ctx.agent._map.get_spawn_points()
+        waypoints = ctx.get_map().get_spawn_points()
     ctx.agent.set_destination(random.choice(waypoints))
     
 @EvaluationFunction
-def is_agent_done(ctx : Context) -> bool:
+def is_agent_done(ctx: Context) -> bool:
     """
     Agent has reached its destination.
     """
