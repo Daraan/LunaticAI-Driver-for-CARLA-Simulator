@@ -546,7 +546,7 @@ class Rule(_GroupRule):
                 else:
                     super(cls, self).__init__(phases, *args, **kwargs)
             except IndexError: # functools <= python3.10
-                logger.error("Error in __init__ of %s. Possible reason: Check if the __init__ method has the correct signature. `phases` must be a positional argument.", cls.__name__)
+                logger.error("\nError in __init__ of %s. Possible reason: Check if the __init__ method has the correct signature. `phases` must be a positional argument.\n", cls.__name__)
                 raise
         cls.__init__ = partial_init
     

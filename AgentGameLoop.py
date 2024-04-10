@@ -43,7 +43,7 @@ from agents.tools.logging import logger
 from agents.tools.misc import draw_waypoints
 
 from agents.lunatic_agent import LunaticAgent
-from agents.rules import behaviour_templates
+from agents.rules import create_default_rules
 
 # ==============================================================================
 # TEMP # Remove
@@ -131,7 +131,12 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:
-        agent.add_rules(behaviour_templates.default_rules)
+        default_rules = create_default_rules()
+        from agents.rules.lane_changes import RandomLaneChangeRule
+        for rule in default_rules:
+            if isinstance(rule, RandomLaneChangeRule):
+                rule.enabled = False
+        agent.add_rules(default_rules)
         if PRINT_RULES: # TEMP
             print("Lunatic Agent Rules")
             pprint(agent.rules)
