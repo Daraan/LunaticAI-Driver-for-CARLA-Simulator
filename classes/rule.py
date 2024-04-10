@@ -469,17 +469,20 @@ class Rule(_GroupRule):
                 raise ValueError("When using @Rule the class must not be a subclass of Rule. Consider subclassing Rule instead.")
             decorated_class = phases
 
-            # Create the new class
-            new_rule_class = type(decorated_class.__name__, (cls,), decorated_class.__dict__.copy()) # > calls init_subclass; copy() for correct type!
+            # Create the new class, # NOTE: goes to __init_subclass__
+            new_rule_class = type(decorated_class.__name__, (cls,), decorated_class.__dict__.copy(), init_by_decorator=True) # > calls init_subclass; copy() for correct type!
             return super().__new__(new_rule_class)
         return super().__new__(cls)
     
-    def __init_subclass__(cls):
+    def __init_subclass__(cls, init_by_decorator=False):
         """
         Automatically creates a __init__ function to allow for a simple to use class-interface to create rule classes.
         
         By setting __auto_init_ = True in the class definition, the automatic __init__ creation is disabled.
         """
+        if hasattr(cls, "phases") and hasattr(cls, "phase") and cls.phases and cls.phase:
+            raise ValueError(f"Both 'phases' and 'phase' are set in class {cls.__name__}. Use only one. %s, %s" % (cls.phases, cls.phase))
+        
         if "__init__" in cls.__dict__:
             custom_init = cls.__dict__["__init__"]
         else:
@@ -531,11 +534,14 @@ class Rule(_GroupRule):
         @wraps(cls.__init__)
         def partial_init(self, phases=None, /, *args, **kwargs):
             # Need phases as first argument
-            phases = getattr(cls, "phases", None) # allow for both wordings
-            phase = getattr(cls, "phase", None)
-            if phases and phase:
-                raise ValueError(f"Both 'phases' and 'phase' are set in class {cls.__name__}. Use only one.")
-            phases = phases or phase
+            cls_phases = getattr(cls, "phases", None) # allow for both wordings
+            cls_phase = getattr(cls, "phase", None)
+            if init_by_decorator:
+                # phases as first argument is the class
+                phases = cls_phases or cls_phase
+            else:
+                if phases is None: # NOTE: Could be Phase.NONE
+                    phases = cls_phases or cls_phase
             if phases is None:
                 raise ValueError(f"`phases` or `phase` must be provided for class {cls.__name__}")
             # Removing rule to not overwrite it
@@ -544,7 +550,7 @@ class Rule(_GroupRule):
                 if custom_init:
                     custom_init(self, phases, *args, **kwargs)
                 else:
-                    super(cls, self).__init__(phases, *args, **kwargs)
+                    super(cls, self).__init__(phases, *args, **kwargs) # note: could be single dispatch function
             except IndexError: # functools <= python3.10
                 logger.error("\nError in __init__ of %s. Possible reason: Check if the __init__ method has the correct signature. `phases` must be a positional argument.\n", cls.__name__)
                 raise

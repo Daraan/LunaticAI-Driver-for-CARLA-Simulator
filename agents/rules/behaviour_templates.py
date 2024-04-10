@@ -260,9 +260,10 @@ if __name__ == "__main__" or DEBUG_RULES:
 
     @Rule
     class SimpleRule1:
-        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+        phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = context_function
         action = lambda ctx: assert_type(ctx, Context)
+        description = "Simple Rule 1"
     
     class SimpleRule(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
@@ -321,13 +322,13 @@ if __name__ == "__main__" or DEBUG_RULES:
     class CustomInitRule(Rule):
         def __init__(self, phases=None):
             # NOTE: The 
-            super().__init__(phases=phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, rule=always_execute, action=lambda ctx: assert_type(ctx, Context))
+            super().__init__(phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, rule=always_execute, action=lambda ctx: assert_type(ctx, Context))
             self._custom = True
         
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         
         _cooldown = 0
-        rule = lambda ctx: [][1] # This should not be executed
+        rule = lambda ctx: [][1] # This should not be executed, overwritten in the custom Init
         
         actions = {True: lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context)),
                 False: lambda ctx: assert_type(ctx, Context)}
@@ -338,12 +339,20 @@ if __name__ == "__main__" or DEBUG_RULES:
     simple_ruleB = SimpleRuleB()
     another_rule = Another()
     custom_rule = CustomInitRule()
+    assert custom_rule._custom
     
     # Check Doc -> Descritpion
     
     class CheckDescription(Rule):
         """This is my description"""
+        phase = Phase.BEGIN
         
     assert CheckDescription.description == """This is my description"""
-    assert CheckDescription().description == """This is my description"""
+    cd_rule = CheckDescription(Phase.END, action=lambda ctx: assert_type(ctx, Context), rule=lambda self, ctx: (assert_type(self, Rule)))
+    print(cd_rule.phases)
+    phase = cd_rule.phases.pop()
+    print(cd_rule.phases, cd_rule.phase)
+    assert phase == Phase.END, f"Expected {Phase.END} but got {phase}"
+    assert not cd_rule.phases
+    assert cd_rule.description == """This is my description"""
 
