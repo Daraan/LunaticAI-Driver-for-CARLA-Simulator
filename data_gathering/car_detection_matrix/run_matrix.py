@@ -114,6 +114,8 @@ class AsyncDataMatrix(DataMatrix):
         self.sleep_time = sleep_time
         self.lock = threading.Lock()
         self.worker_thread = threading.Thread(target=self._worker)
+        
+    # TODO: add signal handler to interrupt the thread faster
     
     def update(self):
         NotImplemented

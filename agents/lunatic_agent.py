@@ -113,6 +113,7 @@ class LunaticAgent(BehaviorAgent):
         if world_model is None and vehicle is None:
             raise ValueError("Must pass vehicle when not providing the world.")
         
+        # TODO: Move this to an outside function
         opt_dict : LunaticAgentSettings
         if behavior is None and world_model and world_model._config is not None:
             logger.debug("Using world model config")

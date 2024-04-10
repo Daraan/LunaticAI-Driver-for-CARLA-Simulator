@@ -106,9 +106,6 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             print(OmegaConf.to_yaml(args))
         self.args = args
         
-        #sim_world = CarlaDataProvider.get_world()
-        map_inst = CarlaDataProvider.get_map()
-        
         config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True)
         config.planner.dt = 1/20 # TODO: maybe get from somewhere
         
@@ -122,6 +119,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("Initializing agent")
         LunaticAgent.__init__(self, config, self.world_model)
         print("LunaticAgent initialized")
+        
+        # Set plan
         self._local_planner_set_plan(self._global_plan_waypoints)
         
         self.game_framework.agent = self # TODO: Remove this circular reference
