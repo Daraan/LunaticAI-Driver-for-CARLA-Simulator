@@ -280,6 +280,14 @@ class _GroupRule(_CountdownRule):
 
 
 class Rule(_GroupRule):
+    _auto_init_: ClassVar[bool] = True
+    """
+    If set to False the automatic __init__ creation is disabled when subclassing.
+    This automatic __init__ will fix parameters like `phases` and `rule` to the class.
+    
+    Providing an `__init__` has the same effect as setting `_auto_init_` to False.
+    """
+    
     rule : EvaluationFunction
     """
     The condition that determines if the rule's actions should be executed.
@@ -324,6 +332,7 @@ class Rule(_GroupRule):
     @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
+                 /, # phases must be positional
                  rule : Optional[Callable[[Context], Hashable]]=None, 
                  action: Optional[Union[Callable[[Context], Any], Dict[Any, Callable]]] = None,
                  false_action: Optional[Callable[[Context], Any]] = None,
@@ -371,8 +380,8 @@ class Rule(_GroupRule):
         - ValueError: If `action` is a Mapping and either `false_action` or `actions` is not None.
         - ValueError: If an action function is not callable.
         - ValueError: If `description` is not a string.
-
         """
+        
         # Check phases
         if not phases:
             raise ValueError("phases must not be empty or None")
@@ -389,13 +398,19 @@ class Rule(_GroupRule):
         # Check Rule
         if rule is None and not hasattr(self, "rule"):
             raise TypeError("%s.__init__() missing 1 required positional argument: 'rule'. Alternatively the class must implement a `rule` function." % self.__class__.__name__)
-        #if rule is not None and not isinstance(rule, EvaluationFunction) \
-        #    and (isinstance(rule, partial) and not isinstance(rule.func, EvaluationFunction)):
-        #    raise TypeError(f"rule must be of type EvaluationFunction or a partial of a , not {type(rule)}")
+        
         if rule is not None and not hasattr(self, "rule"):
             self.rule = rule
         elif rule is not None and hasattr(self, "rule"):
-            logger.debug(f"Warning 'rule' argument passed but class {self.__class__.__name__} already implements 'self.rule'. Overwriting 'self.rule' with passed rule.")
+            # Warn if cls.rule and passes rule are different
+            self_func = getattr(self.rule, "__func__", getattr(self.rule, "func", self.rule))
+            if self_func != rule: # Compare method with function
+                logger.warning(f"Warning 'rule' argument passed but class {self.__class__.__name__} already implements a different function 'self.rule'. Overwriting {self.rule} with passed rule {getattr(rule, '__name__', str(rule))}. This might lead to undesired results.")
+            
+            # NOTE: IMPORTANT: self.rule = rule overwrites methods with functions
+            # To keep methods as methods the rule parameter is removed with 
+            # `do_not_overwrite.append("rule")` used during __init_subclass__
+            # Could move this check also to here, however, it will then not be checked during class creation
             self.rule = rule
         
         # Check Actions
@@ -433,6 +448,7 @@ class Rule(_GroupRule):
             if not callable(func):
                 raise ValueError(f"Action for key {key} must be callable, not {type(func)}")
             if len(inspect.signature(func).parameters) >= 2:
+                # NOTE: can use types.MethodType
                 self.actions[key] = partial(func, self) # bind to self
         
         # Check Description
@@ -444,7 +460,7 @@ class Rule(_GroupRule):
         
         self.overwrite_settings = overwrite_settings or {}
     
-    def __new__(cls, phases=None, *args, **kwargs):
+    def __new__(cls, phases=None, /, *args, **kwargs):
         """
         The @Rule decorator allows to instantiate a Rule class directly for easier out-of-the-box usage.
         """
@@ -462,51 +478,81 @@ class Rule(_GroupRule):
         """
         Automatically creates a __init__ function to allow for a simple to use class-interface to create rule classes.
         
-        By setting __no_auto_init = True in the class definition, the automatic __init__ creation is disabled.
+        By setting __auto_init_ = True in the class definition, the automatic __init__ creation is disabled.
         """
-        if not "__init__" in cls.__dict__ and not cls.__dict__.get("__no_auto_init", False):
-            do_not_overwrite = ["phases"]
-            if hasattr(cls, "rule"):
-                
-                # Check if the rule should be treated as a method or function
-                if isinstance(cls.rule, EvaluationFunction):
-                    rule_func = cls.rule.evaluation_function
+        if "__init__" in cls.__dict__:
+            custom_init = cls.__dict__["__init__"]
+        else:
+            custom_init = False
+            
+        if not cls._auto_init_:
+            return
+        
+        do_not_overwrite = ["phases"]
+        if hasattr(cls, "rule"):
+            # Check if the rule should be treated as a method or function
+            if isinstance(cls.rule, EvaluationFunction):
+                rule_func = cls.rule.evaluation_function
+            else:
+                rule_func = cls.rule
+            
+            # Decide method(self, ctx) vs. function(ctx)
+            if hasattr(cls.rule, "use_self") and cls.rule.use_self is not None:
+                rule_as_method = cls.rule.use_self # User decides
+            else:
+                params = len(inspect.signature(rule_func).parameters)
+                if params >= 2:
+                    if params > 2:
+                        logger.warning(f"Rule {cls.rule.__name__} has more than 2 parameters. Treating it as a method(self, ctx, *args) with self argument! To avoid this message or use it as a function use EvaluationFunction(use_self=True|False) explicitly.")
+                    rule_as_method = True
                 else:
-                    rule_func = cls.rule
-                if len(inspect.signature(rule_func).parameters) >= 2:
-                    # If it has two arguments it will not be overwritten -> method(self, ctx)
-                    # Else with one argument function(ctx), self.rule = rule will overwrite it
-                    do_not_overwrite.append("rule")
+                    rule_as_method = False
+            if rule_as_method:
+                logger.debug("Implementing %s as method(self, ctx) - If you need it as a function(ctx, *args) decorate use @EvaluationFunction(use_self=False).", cls.rule.__name__)
+                do_not_overwrite.append("rule")
+            else:
+                # If the signature has only one parameter its clear it has to be a function; else its user decision.
+                logger.info("Implementing %s as function(ctx) without a self argument - If you need it as a method(self, ctx, *args) decorate use @EvaluationFunction(use_self=True).", cls.rule.__name__)
+            
+            # Actions provided by rule.actions, e.g. EvaluationFunction.register_action
+            if hasattr(cls.rule, "actions") and cls.rule.actions:
+                if hasattr(cls, "actions") and cls.actions:
+                    raise ValueError(f"Class {cls.__name__} already has an 'actions' attribute. It will be overwritten by the 'actions' attribute of the rule. This is the case if EvaluationFunction.register_action has been used.")
+                cls.actions = cls.rule.actions
                 
-                #if not isinstance(cls.rule, EvaluationFunction):# and (isinstance(cls.rule, partial) and not isinstance(cls.rule.func, EvaluationFunction)):
-                #    raise TypeError(f"{cls.__name__}.rule must be of type EvaluationFunction. Decorate it with @EvaluationFunction.")
-                if hasattr(cls.rule, "actions") and cls.rule.actions:
-                    if hasattr(cls, "actions") and cls.actions:
-                        raise ValueError(f"Class {cls.__name__} already has an 'actions' attribute. It will be overwritten by the 'actions' attribute of the rule.")
-                    cls.actions = cls.rule.actions
-            
-            # Create a __init__ function that sets some of the parameters.
-            params = inspect.signature(cls.__init__).parameters # find overlapping parameters
-            
-            @wraps(cls.__init__)
-            def partial_init(self, phases=None, *args, **kwargs):
-                # Need phases as first argument
-                phases = getattr(cls, "phases", None) # allow for both wordings
-                phase = getattr(cls, "phase", None)
-                if phases and phase:
-                    raise ValueError(f"Both 'phases' and 'phase' are set in class {cls.__name__}. Use only one.")
-                phases = phases or phase
-                if phases is None:
-                    raise ValueError(f"`phases` or `phase` must be provided for class {cls.__name__}")
-                # Removing rule to not overwrite it
-                kwargs.update({k:v for k,v in cls.__dict__.items() if k in params and k not in do_not_overwrite})
-                super(cls, self).__init__(phases, *args, **kwargs)
-            
-            cls.__init__ = partial_init
+        if not hasattr(cls, "description"):
+            cls.description = cls.__doc__
+            if not cls.description:
+                cls.description = "No description provided."
+        
+        # Create a __init__ function that sets some of the parameters.
+        params = inspect.signature(cls.__init__).parameters # find overlapping parameters
+        
+        @wraps(cls.__init__)
+        def partial_init(self, phases=None, /, *args, **kwargs):
+            # Need phases as first argument
+            phases = getattr(cls, "phases", None) # allow for both wordings
+            phase = getattr(cls, "phase", None)
+            if phases and phase:
+                raise ValueError(f"Both 'phases' and 'phase' are set in class {cls.__name__}. Use only one.")
+            phases = phases or phase
+            if phases is None:
+                raise ValueError(f"`phases` or `phase` must be provided for class {cls.__name__}")
+            # Removing rule to not overwrite it
+            kwargs.update({k:v for k,v in cls.__dict__.items() if k in params and k not in do_not_overwrite})
+            try:
+                if custom_init:
+                    custom_init(self, phases, *args, **kwargs)
+                else:
+                    super(cls, self).__init__(phases, *args, **kwargs)
+            except IndexError: # functools <= python3.10
+                logger.error("Error in __init__ of %s. Possible reason: Check if the __init__ method has the correct signature. `phases` must be a positional argument.", cls.__name__)
+                raise
+        cls.__init__ = partial_init
     
     @__init__.register(_CountdownRule)
     @__init__.register(type)
-    def __init_by_decorating_class(self, cls):
+    def __init_by_decorating_class(self, cls, /): # pylint: disable=unused-argument
         """
         Initialize by passing a Rule or class object to the __init__ method.
         
@@ -517,7 +563,8 @@ class Rule(_GroupRule):
         self.__init__(phases, cls.rule, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
         
     @__init__.register
-    def __init_from_mapping(self, cls:Mapping):
+    def __init_from_mapping(self, cls:Mapping, /):
+        # NOTE: This is weakly tested and not much supported.
         self.__init__(cls.get("phases", cls.get("phase")), cls["rule"], cls.get("action"), cls.get("false_action"), actions=cls.get("actions"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True))        
 
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable]:
@@ -559,7 +606,7 @@ class Rule(_GroupRule):
             return self.__class__.__name__ + f"(description='{self.description}', phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, rule={self.rule.__name__}, cooldown={self.cooldown})" 
         except AttributeError as e:
             logger.warning(str(e))
-            return self.__class__.__name__ + ("Error in rule.__str__: Rule has not been initialized correctly. Missing attributes: " + str(e))
+            return self.__class__.__name__ + "(Error in rule.__str__: Rule has not been initialized correctly. Missing attributes: " + str(e) + ")"
 
     def __repr__(self) -> str:
         return str(self)
@@ -580,6 +627,7 @@ class MultiRule(Rule):
     @singledispatchmethod
     def __init__(self, 
                  phases: Union["Phase", Iterable], 
+                /, # phases must be positional
                  rules: List[Rule], 
                  rule : Callable[[Context], Any] = always_execute,
                  *,
@@ -631,14 +679,14 @@ class MultiRule(Rule):
             
     @__init__.register(_CountdownRule) # For Rule(some_rule), easier cloning
     @__init__.register(type) # For @Rule class MyRule: ...
-    def __init_by_decorating_class(self, cls):
+    def __init_by_decorating_class(self, cls, /):
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         
         self.__init__(phases, cls.rules, cls.rule, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), sort_rules_by_priority=getattr(cls, "sort_rules_by_priority", True), execute_all_rules=getattr(cls, "execute_all_rules", False), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
     
     @__init__.register(Mapping)
-    def __init_from_mapping(self, cls:Mapping):
+    def __init_from_mapping(self, cls:Mapping, /):
         self.__init__(cls.get("phases", cls.get("phase")), cls["rules"], cls.get("rule"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
 
     
@@ -665,7 +713,7 @@ class RandomRule(MultiRule):
 
     @singledispatchmethod
     def __init__(self, 
-                 phases : Union["Phase", Iterable], 
+                 phases : Union["Phase", Iterable], /, # phases must be positional
                  rules : Union[Dict[Rule, float], List[Rule]], 
                  repeat_if_not_applicable : bool = True,
                  rule = always_execute, 
@@ -678,14 +726,11 @@ class RandomRule(MultiRule):
                  cooldown_reset_value : Optional[int] = None,
                  group : Optional[str] = None,
                  enabled: bool = True,
-                 weights: List[float] = None
+                 weights: Optional[List[float]] = None
                  ):
-        #if amount < 1:
-        #    raise ValueError("Amount must be at least 1")
-        #self.amount = amount 
         if isinstance(rules, dict):
             if weights is not None:
-                raise ValueError("When passing rules a dict with weights, the weights argument must be None")
+                raise ValueError("When passing rules as a dict with weights, the weights argument must be None")
             self.weights = list(accumulate(rules.values())) # cumulative weights for random.choices are more efficient
             self.rules = list(rules.keys())
         else:
@@ -696,14 +741,14 @@ class RandomRule(MultiRule):
 
     @__init__.register(_CountdownRule)
     @__init__.register(type)
-    def __init_by_decorating_class(self, cls):
+    def __init_by_decorating_class(self, cls, /):
         phases = getattr(cls, "phases", getattr(cls, "phase", None))
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         
         self.__init__(phases, cls.rules, repeat_if_not_applicable=cls.repeat_if_not_applicable, rule=cls.rule, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
     
     @__init__.register(Mapping)
-    def __init_from_mapping(self, cls:Mapping):
+    def __init_from_mapping(self, cls:Mapping, /):
         self.__init__(cls.get("phases"), cls["rules"], repeat_if_not_applicable=cls.get("repeat_if_not_applicable", True), rule=cls.get("rule"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
 
 
@@ -729,3 +774,4 @@ class RandomRule(MultiRule):
 import classes.evaluation_function as __evaluation_function
 __evaluation_function.Rule = Rule
 __evaluation_function.Context = Context
+del __evaluation_function

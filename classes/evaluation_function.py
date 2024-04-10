@@ -54,19 +54,19 @@ class EvaluationFunction:
                                 })
     """
     
-    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="EvaluationFunction", *, truthy=False) -> "type[EvaluationFunction]":
+    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="EvaluationFunction", *, truthy=False, use_self=None) -> "type[EvaluationFunction]":
         # @EvaluationFunction("name")
         if isinstance(first_argument, str):
-            return partial(cls, name=first_argument, truthy=truthy) # Calling decorator with a string
+            return partial(cls, name=first_argument, truthy=truthy, use_self=use_self) # Calling decorator with a string
         # @EvaluationFunction(name="name") or @EvaluationFunction(truthy=True)
         if first_argument is None:
-            return partial(cls, name=name, truthy=truthy)
+            return partial(cls, name=name, truthy=truthy, use_self=use_self)
         assert isinstance(first_argument, Callable), f"First argument must be a callable, not {type(first_argument)}"
         # @EvaluationFunction or EvaluationFunction(function)
         instance = super().__new__(cls)
         return instance
     
-    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction", *, truthy=False):
+    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction", *, truthy=False, use_self: Optional[bool]=None):
         update_wrapper(self, evaluation_function, assigned=("__qualname__", "__module__", "__annotations__", "__doc__"))
         self.evaluation_function = evaluation_function
         self.truthy = truthy
@@ -76,6 +76,7 @@ class EvaluationFunction:
             self.name = evaluation_function.__name__
         else:
             self.name = str(evaluation_function)
+        self.use_self = use_self
         self.actions = {}
 
     def __call__(self, ctx: "Context | Rule", *args, **kwargs) -> Hashable:
@@ -85,7 +86,11 @@ class EvaluationFunction:
         `ctx` can be either a Context (rule as function) or a Rule (rule as method),
         In the method case the real Context object is args[0]
         """
-        rule_result = self.evaluation_function(ctx, *args, **kwargs)
+        try:
+            rule_result = self.evaluation_function(ctx, *args, **kwargs)
+        except Exception:
+            print(f"ERROR: in rule {self.name} with function {self.evaluation_function}")
+            raise
         # Handle function vs. method
         if not isinstance(ctx, Context):
             ctx = args[0]
