@@ -199,9 +199,9 @@ class LunaticAgent(BehaviorAgent):
         # Data Matrix
         if self.config.data_matrix.enabled:
             if self.config.data_matrix.sync and self._world_model.world_settings.synchronous_mode:
-                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world)
             else:
-                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world)
             self._road_matrix_updater.start()  # TODO maybe find a nicer way
         else:
             self._road_matrix_updater = None
