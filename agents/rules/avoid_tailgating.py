@@ -44,8 +44,8 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
 
 class AvoidTailgatorRule(Rule):
     phase = Phase.DETECT_CARS | Phase.END
-    rule = avoid_tailgator_check
-    avoid_tailgator_check.register_action(make_lane_change, True)
+    rule = avoid_tailgator_check.copy()
+    rule.register_action(make_lane_change, True)
     #action = make_lane_change # NOTE: when using register_action you can omit this.
     cooldown_reset_value = 200
     group = "lane_change"

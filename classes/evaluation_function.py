@@ -106,6 +106,19 @@ class EvaluationFunction:
         if instance is None:
             return self # called on class
         return partial(self, instance) # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
+    
+    def copy(self, copy_actions=False):
+        """
+        Copies the class by creating a new instance.
+        
+        If copy_actions is True, the actions dictionary is copied as well. 
+        Be aware that the actions themselves are not copied they identical and shared.
+        """
+        instance = super().__new__(self.__class__)
+        self.__class__.__init__(instance, self.evaluation_function, self.name, truthy=self.truthy, use_self=self.use_self)
+        if copy_actions:
+            instance.actions = self.actions.copy()
+        return instance
 
     #Helpers to extract a useful string representation of the function
     @staticmethod
