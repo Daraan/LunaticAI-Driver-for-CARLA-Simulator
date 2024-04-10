@@ -5,18 +5,7 @@ from functools import partial, wraps
 try: # Python 3.8+
     from functools import singledispatchmethod
 except ImportError:
-    from functools import singledispatch, update_wrapper
-
-    def singledispatchmethod(func):
-        """
-        Works like functools.singledispatch, but for methods. Backward compatible code
-        """
-        dispatcher = singledispatch(func)
-        def wrapper(*args, **kw):
-            return dispatcher.dispatch(args[1].__class__)(*args, **kw)
-        wrapper.register = dispatcher.register
-        update_wrapper(wrapper, func)
-        return wrapper
+    from launch_tools import singledispatchmethod
     
 import random
 import inspect
