@@ -178,22 +178,20 @@ class InformationManager:
         self.live_info.next_traffic_light = self.relevant_traffic_light
         self.live_info.next_traffic_light_distance = self.relevant_traffic_light_distance
         
-        # TODO, use dataclass, typed dict or namedtuple as return value
-        info = {
-            "relevant_traffic_light": self.relevant_traffic_light,
-            "relevant_traffic_light_distance": self.relevant_traffic_light_distance,
-            "current_waypoint": current_waypoint,
-            "current_speed": self.live_info.current_speed,
-            "vehicles": self.vehicles,
-            "walkers": self.walkers
-        }
-        return self.Information(**info)
+        return self.Information(
+            current_waypoint= current_waypoint,
+            current_speed= self.live_info.current_speed,
+            relevant_traffic_light=self.relevant_traffic_light, 
+            relevant_traffic_light_distance=self.relevant_traffic_light_distance,
+            vehicles= self.vehicles,
+            walkers = self.walkers
+        )
 
     class Information(NamedTuple):
         current_waypoint: carla.Waypoint
+        current_speed: float
         relevant_traffic_light: carla.TrafficLight
         relevant_traffic_light_distance: float
-        current_speed: float
         vehicles: "list[carla.Vehicle]"
         walkers: "list[carla.Walker]"
 
