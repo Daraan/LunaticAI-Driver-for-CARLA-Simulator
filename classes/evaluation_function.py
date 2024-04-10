@@ -1,5 +1,13 @@
 from functools import partial, update_wrapper, wraps
+
+try: # Python 3.8+
+    from functools import singledispatchmethod
+except ImportError:
+    from launch_tools import singledispatchmethod
+
+
 from typing import Callable, Any, ClassVar, Hashable, TYPE_CHECKING, Optional, Union
+from collections import abc
 
 import inspect
 
@@ -160,15 +168,24 @@ class EvaluationFunction:
     
     _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
     
+    def _check_action(self, action_function, key):
+        if action_function.__name__ in EvaluationFunction._INVALID_NAMES:
+            raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in {EvaluationFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
+        if key in self.actions:
+            print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
+    
+    @singledispatchmethod
     def register_action(self, key: Hashable=True):
         def decorator(action_function):
-            if action_function.__name__ in EvaluationFunction._INVALID_NAMES:
-                raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in {EvaluationFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
-            if key in self.actions:
-                print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
+            self._check_action(action_function, key)
             self.actions[key] = action_function # register action
             return action_function
         return decorator
+    
+    @register_action.register(abc.Callable)
+    def _register_action_directly(self, action_function: Callable[["Union[Context, Rule]"], Any], key: Hashable=True):
+        self._check_action(action_function, key)
+        self.actions[key] = action_function # register action
 
 def TruthyEvaluationFunction(func: Callable) -> EvaluationFunction:
     """
