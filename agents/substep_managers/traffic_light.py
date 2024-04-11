@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, List
 
 import carla
 from carla import TrafficLightState
+from agents.tools import logger
 from agents.tools.misc import (is_within_distance,
                                get_trafficlight_trigger_location, TrafficLightDetectionResult)
 
@@ -27,6 +28,8 @@ def affected_by_traffic_light(self : "LunaticAgent",
             return TrafficLightDetectionResult(False, None)
 
         if not lights_list:
+            if self._world_model._args.debug:
+                logger.warning("No traffic lights list provided, using all traffic lights in the scene.") # TODO: turn into debug
             lights_list = self._world.get_actors().filter("*traffic_light*")
 
         if not max_distance:

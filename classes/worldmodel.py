@@ -22,6 +22,7 @@ from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
 from classes.keyboard_controls import RSSKeyboardControl
+from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
@@ -188,7 +189,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         return traffic_manager
     
     def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", config:"LunaticAgentSettings"=None, overwrites:Optional[Dict[str, Any]]=None):
-        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, map_inst=self.map, config=config, overwrites=overwrites)
+        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, config=config, overwrites=overwrites)
         self.config = self.agent.config
         controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         self.world_model.game_framework = weakref.proxy(self)
@@ -255,13 +256,21 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             raise ValueError("Controller not initialized.")
         
         self.clock.tick() # self.args.fps)
-        if self._args.handle_ticks:
-            if self._args.sync is not None:
-                if self._args.sync:
-                    self.world_model.world.tick()
-                else:
-                    self.world_model.world.wait_for_tick()
+        frame = None
+        if self._args.handle_ticks: # i.e. no scenario runner doing it for us
+            if CarlaDataProvider.is_sync_mode():
+                frame = self.world_model.world.tick()
+            else:
+                frame = self.world_model.world.wait_for_tick().frame
             CarlaDataProvider.on_carla_tick()
+
+        if CarlaDataProvider.is_sync_mode():
+            # We do this only in sync mode as frames could pass between gathering this information
+            # and an agent calling InformationManager.tick(), which in turn calls global_tick
+            # with possibly a DIFFERENT frame wasting computation.
+            if frame is None:
+                frame = self.get_world().get_snapshot().frame
+            InformationManager.global_tick(frame)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -312,7 +321,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                 logger.warning("Warning: Ignoring the given map as it is not a 'carla.Map'")
         if self.map is None:
             try:
-                self.map = self.world.get_map()
+                self.set_world(self.world) # CDP function
             except RuntimeError as error:
                 print('RuntimeError: {}'.format(error))
                 print('  The server could not send the OpenDRIVE (.xodr) file:')
@@ -321,11 +330,12 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         self._config = config
         if not isinstance(args, Mapping):
-            # Args is expeced to be a string here
-            # NOTE: THis does NOT INCLUDE CLI OVERWRITES
+            # Args is expected to be a string here
+            # NOTE: This does NOT INCLUDE CLI OVERWRITES
             args = OmegaConf.load(args)
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
         self._args : LaunchConfig = args
+        
         self.hud = HUD(args.width, args.height, self.world)
         self.sync : bool = args.sync
         self.dim = (args.width, args.height)
@@ -406,7 +416,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         else:
             self._restrictor = None
 
-        logger.debug("Calling WorldModel.restart()")
+        logger.info("Calling WorldModel.restart()")
         self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
@@ -568,7 +578,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                         log_level = carla.RssLogLevel(log_level)
                 except Exception as e:
                     raise KeyError("Could not convert '%s' to RssLogLevel must be in %s" % (log_level, list(carla.RssLogLevel.names.keys()))) from e
-                logger.debug("Carla Log level was not a RssLogLevel. Now: %s (%s)", log_level, type(log_level))
+                logger.info("Carla Log level was not a RssLogLevel")
             self.rss_sensor = RssSensor(self.player, self.world,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer,
                                     visualizer_mode=self._config.rss.debug_visualization_mode,

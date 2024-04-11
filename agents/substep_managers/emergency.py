@@ -1,5 +1,7 @@
 import random
 
+from agents.tools import logger
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import carla
@@ -13,7 +15,7 @@ def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", r
     :param control: (carla.VehicleControl) control to be modified
     :param enable_random_steer: (bool, optional) Flag to enable random steering
     """
-    print("Emergency stop", reasons)
+    logger.debug("Emergency Manager: Stopping because of %s", reasons)
     if control is None:
         control = self._local_planner.run_step(debug=self.debug)
 
