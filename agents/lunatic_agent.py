@@ -290,13 +290,30 @@ class LunaticAgent(BehaviorAgent):
                 self._clear_live_info() # assure that every value is filled again (or None)
                 assert self._lights_list
 
+            # ----------------------------
             # First Pass for expensive and tick-constant information
-
+            
+            # --- InformationManager ---
             information: InformationManager.Information = self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
             self._current_waypoint = information.current_waypoint
             
-            self.vehicles_nearby: List[carla.Vehicle] = information.vehicles
-            self.walkers_nearby: List[carla.Walker] = information.walkers
+            # Find vehicles and walkers nearby
+            self.all_vehicles: List[carla.Vehicle] = information.vehicles
+            self.all_walkers: List[carla.Walker] = information.walkers
+            
+            # NOTE: # is it more efficient to use an extra function here, why not utils.dist_to_waypoint(v, waypoint)?
+            _current_loc = self.live_info.current_location
+            def dist(v : carla.Actor): 
+                return v.get_location().distance(_current_loc)
+
+            # Filer Vehicles and Walkers to be nearby
+            _v_filter_dist = self.config.obstacles.nearby_vehicles_max_distance
+            self.vehicles_nearby : List[carla.Vehicle] = [v for v in self.all_vehicles if dist(v) < _v_filter_dist and v.id != self._vehicle.id]
+            
+            _v_filter_dist = self.config.obstacles.nearby_walkers_max_distance
+            self.nearby_walkers : List[carla.Walker] = [w for w in self.all_walkers if dist(w) < _v_filter_dist]
+            
+            # ----------------------------
             
             # Data Matrix
             if self._road_matrix_updater and self._road_matrix_updater.sync:
@@ -507,7 +524,7 @@ class LunaticAgent(BehaviorAgent):
         # ----------------------------
             
         self.execute_phase(Phase.DETECT_CARS | Phase.BEGIN, prior_results=None) # TODO: Maybe add some prio result
-        detection_result :ObstacleDetectionResult = substep_managers.collision_detection_manager(self, self._current_waypoint)
+        detection_result: ObstacleDetectionResult = substep_managers.collision_detection_manager(self)
         # TODO: add a way to let the execution overwrite
         if detection_result.obstacle_was_found:
 
@@ -617,7 +634,7 @@ class LunaticAgent(BehaviorAgent):
     def pedestrian_avoidance_behavior(self, ego_vehicle_wp : carla.Waypoint) -> Tuple[bool, ObstacleDetectionResult]:
         # TODO: # CRITICAL: This for some reasons also detects vehicles as pedestrians
         # note ego_vehicle_wp is the current waypoint self._current_waypoint
-        detection_result = substep_managers.pedestrian_detection_manager(self, ego_vehicle_wp)
+        detection_result = substep_managers.pedestrian_detection_manager(self)
         if (detection_result.obstacle_was_found
             and (detection_result.distance - max(detection_result.obstacle.bounding_box.extent.y, 
                                                  detection_result.obstacle.bounding_box.extent.x)

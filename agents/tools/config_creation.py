@@ -762,11 +762,17 @@ class BasicAgentObstacleSettings(AgentConfig):
     
     detection_angles : BasicAgentObstacleDetectionAngles = field(default_factory=BasicAgentObstacleDetectionAngles)
     """Defines detection angles used when checking for obstacles."""
-    
+
 
 @dataclass
 class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
-    pass
+    
+    nearby_vehicles_max_distance = 45
+    """For performance filters out vehicles that are further away than this distance in meters"""
+    
+    nearby_walkers_max_distance = 10
+    """For performance filters out pedestrians that are further away than this distance in meters"""
+
 
 @dataclass
 class AutopilotObstacleSettings(AgentConfig):
