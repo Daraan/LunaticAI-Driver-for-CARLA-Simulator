@@ -50,6 +50,9 @@ __all__ = ["AgentConfig",
            "LaunchConfig",
         ]
 
+_class_annotations = None
+_file_path = __file__
+
 # ---------------------
 # Helper methods
 # ---------------------
@@ -109,19 +112,23 @@ class AgentConfig:
         return cls
     
     @class_or_instance_method
-    def export_options(cls_or_self, path, category=None, resolve=False) -> None:
+    def export_options(cls_or_self, path, category=None, resolve=False, with_comments=False) -> None:
         """Exports the options to a yaml file."""
         if category is None:
             options = cls_or_self
         else:
             options = cls_or_self[category]
+        if with_comments:
+            string = cls_or_self.to_yaml(path, resolve=resolve, yaml_commented=True)
+            with open(path, "w") as f:
+                f.write(string)
         if not isinstance(options, DictConfig): 
             # TODO: look how we can do this directly from dataclass
             options = OmegaConf.create(options, flags={"allow_objects": True})
         OmegaConf.save(options, path, resolve=resolve) # NOTE: This might raise if options is structured, for export structured this is actually not necessary.
         
     @class_or_instance_method
-    def simplify_options(cls_or_self, category=None, *, resolve, yaml=False, **kwargs):
+    def simplify_options(cls_or_self, category=None, *, resolve, yaml=False, yaml_commented=True, **kwargs):
         """
         Returns a dictionary of all options or a string in yaml format.
         
@@ -139,15 +146,97 @@ class AgentConfig:
         if not isinstance(options, DictConfig) and not resolve and not yaml:
             return asdict(options)
         if not isinstance(options, DictConfig):
-            options = OmegaConf.structured(options, flags={"allow_objects": True})
+            #options = OmegaConf.structured(options, flags={"allow_objects": True})
+            pass
+        
         if yaml:
-            return OmegaConf.to_yaml(options, resolve=resolve, **kwargs)
+            # Simple YAML
+            import yaml
+            
+            """
+            from omegaconf._utils import get_omega_conf_dumper
+            Dumper = get_omega_conf_dumper()
+            org_func = Dumper.str_representer
+            def str_representer(dumper, data: str):
+                result = org_func(dumper, data)
+                return result
+            
+            Dumper.add_representer(str, str_representer)
+            string = yaml.dump(  # type: ignore
+                container,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=kwargs.get("sort_keys", False),
+                Dumper=Dumper,
+            )
+            """
+            from omegaconf._utils import _ensure_container, get_omega_conf_dumper
+            cfg = OmegaConf.create(cls_or_self, flags={"allow_objects": True})
+            container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
+            string = yaml.dump(  # type: ignore
+                container,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False,
+                Dumper=get_omega_conf_dumper(),
+            )
+            if not yaml_commented:
+                return string
+            # Extend 
+            
+            # Get documentations
+            global _class_annotations
+            if _class_annotations is None:
+                import ast
+                with open(_file_path, "r") as f:
+                    tree = ast.parse(f.read(), type_comments=True)
+                    _class_annotations = {}
+                    extract_annotations(tree, docs=_class_annotations)
+            
+            if isinstance(cls_or_self, type): # is class
+                cls = cls_or_self
+            else:
+                cls = cls_or_self.__class__
+            
+            from ruamel.yaml import YAML
+            from ruamel.yaml.comments import CommentedBase
+            yaml2 = YAML(typ='rt')
+            #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
+            data: CommentedBase = yaml2.load(string)
+            
+            cls_doc = _class_annotations[cls.__name__]
+            
+            # First line
+            data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
+            
+            # add comments to all other attributes
+            def add_comments(container, data, lookup, indent=0):
+                for key, value in container.items():
+                    if isinstance(value, dict) and isinstance(cls_doc.get(key, None), dict):
+                        add_comments(value, data[key], cls_doc[key], indent=indent+2)
+                        comment_txt:str = "\n"+cls_doc[key].get("__doc__", "")
+                    else:
+                        comment_txt = lookup.get(key, None)
+                    if comment_txt is None:
+                        continue
+                    comment_txt=comment_txt.replace("\n\n","\n \n")
+                    if comment_txt.count("\n") > 0:
+                        comment_txt = "\n"+comment_txt
+                    data.yaml_set_comment_before_after_key(key, comment_txt, indent=indent)
+            add_comments(container, data, cls_doc)
+            # data.yaml_add_eol_comment(comment_txt, key = key)
+
+            import io
+            stream = io.StringIO()
+            yaml2.dump(data, stream)
+            stream.seek(0)
+            return stream.read()
         return OmegaConf.to_container(options, resolve=resolve, **kwargs)
     
     @class_or_instance_method
-    def to_yaml(cls_or_self, resolve=False) ->  str:
-        return cls_or_self.simplify_options(resolve=resolve, yaml=True)
-    
+    def to_yaml(cls_or_self, resolve=False, yaml_commented=True) ->  str:
+        return cls_or_self.simplify_options(resolve=resolve, yaml=True, yaml_commented=yaml_commented)
+        
     @classmethod
     def from_yaml(cls, path, category : Optional[str]=None, *, merge=True):
         """Loads the options from a yaml file."""
@@ -390,6 +479,8 @@ class SimpleConfig(object):
 
 @dataclass
 class LiveInfo(AgentConfig):
+    """Keeps track of information that changes during the simulation."""
+    
     use_srunner_data_provider : bool = True
     """
     If enabled makes use of the scenario_runner CarlaDataProvider assuming 
@@ -1095,13 +1186,14 @@ class DataMatrixSettings(AgentConfig):
     The interval in frames after which the data matrix should be updated. Sync must be true.
     """
 
-    hud : Dict[str, Any] = field(default_factory={
+    __hud_default = {
                     'draw': True,
                     'values': True,
                     'vertical' : True,
                     'imshow_settings': {'cmap': 'jet'},
                     'text_settings' : {'color': 'orange'} 
-                    })
+                    }
+    hud: Dict[str, Any] = field(default_factory=__hud_default.copy)
     """
     Keyword arguments for `DataMatrix.render`
     NOTE: The default_settings substitute this with an interpolation that might not work,
@@ -1109,7 +1201,6 @@ class DataMatrixSettings(AgentConfig):
     
     `camera.hud.data_matrix` is preferred.
     """
-
 
 
 # ---------------------
@@ -1178,7 +1269,7 @@ class AutopilotBehavior(AgentConfig):
  
 @dataclass
 class BasicAgentSettings(AgentConfig):
-    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False) # type: Optional[Dict[str, Union[dict|AgentConfig]]]
+    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
     live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
     speed : BasicAgentSpeedSettings = field(default_factory=BasicAgentSpeedSettings, init=False)
     distance : BasicAgentDistanceSettings = field(default_factory=BasicAgentDistanceSettings, init=False)
@@ -1191,7 +1282,7 @@ class BasicAgentSettings(AgentConfig):
     
 @dataclass
 class BehaviorAgentSettings(AgentConfig):
-    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False) # type: Optional[Dict[str, Union[dict|AgentConfig]]]
+    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
     live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
     speed : BehaviorAgentSpeedSettings = field(default_factory=BehaviorAgentSpeedSettings, init=False)
     distance : BehaviorAgentDistanceSettings = field(default_factory=BehaviorAgentDistanceSettings, init=False)
@@ -1202,21 +1293,30 @@ class BehaviorAgentSettings(AgentConfig):
     emergency : BehaviorAgentEmergencySettings = field(default_factory=BehaviorAgentEmergencySettings, init=False)
     avoid_tailgators : bool = True
 
+
 @dataclass
 class LunaticAgentSettings(AgentConfig):
     overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
     live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
+    """replace:>>>LiveInfo<<<"""
     speed : LunaticAgentSpeedSettings = field(default_factory=LunaticAgentSpeedSettings, init=False)
+    """replace:>>>LunaticAgentSpeedSettings<<<"""
     distance : LunaticAgentDistanceSettings = field(default_factory=LunaticAgentDistanceSettings, init=False)
+    """replace:>>>LunaticAgentDistanceSettings<<<"""
     lane_change : LunaticAgentLaneChangeSettings = field(default_factory=LunaticAgentLaneChangeSettings, init=False)
+    """replace:>>>LunaticAgentLaneChangeSettings<<<"""
     obstacles : LunaticAgentObstacleSettings = field(default_factory=LunaticAgentObstacleSettings, init=False)
+    """replace:>>>LunaticAgentObstacleSettings<<<"""
     controls : LunaticAgentControllerSettings = field(default_factory=LunaticAgentControllerSettings, init=False)
+    """replace:>>>LunaticAgentControllerSettings<<<"""
     planner : LunaticAgentPlannerSettings = field(default_factory=LunaticAgentPlannerSettings, init=False)
+    """replace:>>>LunaticAgentPlannerSettings<<<"""
     emergency : LunaticAgentEmergencySettings = field(default_factory=LunaticAgentEmergencySettings, init=False)
+    """replace:>>>LunaticAgentEmergencySettings<<<"""
     rss : RssSettings = field(default_factory=RssSettings, init=False)
+    """replace:>>>RssSettings<<<"""
     data_matrix : DataMatrixSettings = field(default_factory=DataMatrixSettings, init=False)
-    
-    
+    """replace:>>>DataMatrixSettings<<<"""
 
 @dataclass
 class SimpleBasicAgentSettings(SimpleConfig, LiveInfo, BasicAgentSpeedSettings, BasicAgentDistanceSettings, BasicAgentLaneChangeSettings, BasicAgentObstacleSettings, BasicAgentControllerSettings, BasicAgentPlannerSettings, BasicAgentEmergencySettings):
@@ -1235,41 +1335,26 @@ class SimpleLunaticAgentSettings(SimpleConfig, LiveInfo, LunaticAgentSpeedSettin
 class SimpleAutopilotAgentSettings(SimpleConfig, AutopilotSpeedSettings, AutopilotDistanceSettings, AutopilotLaneChangeSettings, AutopilotObstacleSettings, AutopilotControllerSettings):
     base_settings :ClassVar[AutopilotBehavior] = AutopilotBehavior
 
-if __name__ == "__main__":
-    #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
-    #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
-    lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags={"allow_objects": True})
-    
-    c : LunaticAgentSettings = LunaticAgentSettings().make_config()
-    d : LunaticAgentSettings = LunaticAgentSettings.make_config()
-    try:
-        c.rss.log_level = "asda"
-        raise TypeError("Should only raise if AD_RSS_AVAILABLE is False")
-    except ValueError as e:
-        print("Correct ValueError", e)
-        print("Correctly raised")
-        pass
-    #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
-    LunaticAgentSettings.export_options("lunatic_agent_settings.yaml")
-
 # ---------------------
 
 @dataclass
-class CameraConfig:
+class CameraConfig(AgentConfig):
+    """Camera Settings"""
     
     width: int = 1280
     height: int = 720
     gamma: float = 2.2
     """Gamma correction of the camera"""
     
-    camera_blueprints : List[CameraBlueprint] = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
+    camera_blueprints : List[CameraBlueprint] = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")]) # type: list[CameraBlueprint]
     
     @dataclass
     class RecorderSettings:
         """
         Recorder settings for the camera.
         """
-        enabled : bool = NotImplemented
+        
+        enabled : bool = MISSING
         """
         Whether the recorder is enabled
         
@@ -1287,6 +1372,7 @@ class CameraConfig:
         """Interval to record the camera"""
         
     recorder : RecorderSettings = field(default_factory=RecorderSettings)
+    """replace:>>>RecorderSettings<<<"""
     
     @dataclass
     class DataMatrixHudConfig:
@@ -1310,9 +1396,44 @@ class CameraConfig:
         
         text_settings : dict = field(default_factory=lambda: {'color': 'orange'})
         """Settings for the text"""
-        
+
     data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
+    """replace:>>>DataMatrixHudConfig<<<"""
+        
     
+@dataclass
+class _test(AgentConfig):
+        """Class Doc"""
+        
+        test_single : str
+        "Single descritpion"
+        
+        case_c :float
+        """Case C"""
+
+        test_match1 = 1
+        
+        """11111"""
+        
+        test_match12: int = 2
+        """22222"""
+        
+        test_no_match :float = 3.0
+        test_no_match2 :float = 4.0
+        """YYYYY"""
+        
+        test_avoid_comment : str = "Avoid comment"
+        # This is bad
+        "Found it"
+        
+        case_a = True
+        """Case A"""
+        
+        case_b: int = 2
+        """Case B"""
+        
+
+
 
 
 @dataclass
@@ -1359,5 +1480,85 @@ class LaunchConfig:
     camera : CameraConfig = field(default_factory=CameraConfig)
 
 
-with open("conf/config_extensions/live_info.yaml", "w") as f:
-    f.write(LiveInfo.to_yaml())
+
+import ast
+import inspect
+
+def extract_annotations(parent, docs):
+    for main_body in parent.body:
+        # Skip non-classes
+        if not isinstance(main_body, ast.ClassDef):
+            continue
+        if main_body.name in ("AgentConfig", "SimpleConfig", "class_or_instance_method"):
+            continue
+        docs[main_body.name] = {}
+        for base in reversed(main_body.bases):
+            # Fill in parent information
+            docs[main_body.name].update(docs.get(base.id, {}))
+        for i, body in enumerate(main_body.body):
+            if isinstance(body, ast.ClassDef):
+                # Nested classes, extract recursive
+                extract_annotations(ast.Module([body]), docs[main_body.name])
+                continue
+            elif isinstance(body, ast.AnnAssign):
+                target = body.target.id
+                continue
+            elif isinstance(body, ast.Assign):
+                target = body.targets[0].id
+                continue
+            elif isinstance(body, ast.Expr):
+                if i == 0: # Docstring of class
+                    target = "__doc__"
+                doc: str = body.value.value
+                assert isinstance(doc, str)
+            else:
+                continue
+            
+            if doc.startswith("replace:>>>") and doc.endswith("<<<"):
+                key = doc[11:-3]
+                try:
+                    docs[main_body.name][target] = docs[main_body.name][key]
+                except KeyError as e:
+                    try:
+                        # Do global look up
+                        docs[main_body.name][target] = _class_annotations[key]
+                        continue
+                    except:
+                        pass
+                    raise NameError(f"{key} needs to be defined before {target} or globally") from e
+                continue
+            docs[main_body.name][target] = inspect.cleandoc(doc)
+            del target # delete to get better errors
+            del doc
+
+
+if __name__ == "__main__":
+
+    if _class_annotations is None:
+        _class_annotations = {}
+    
+    with open(__file__, "r") as f:
+        tree = ast.parse(f.read())
+    extract_annotations(tree, _class_annotations)
+    print(_class_annotations)
+        
+    with open("conf/config_extensions/live_info.yaml", "w") as f:
+        f.write(LiveInfo.to_yaml())
+    
+
+if __name__ == "__main__":
+    #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
+    #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
+    lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags={"allow_objects": True})
+    
+    c : LunaticAgentSettings = LunaticAgentSettings().make_config()
+    d : LunaticAgentSettings = LunaticAgentSettings.make_config()
+    try:
+        c.rss.log_level = "asda"
+        raise TypeError("Should only raise if AD_RSS_AVAILABLE is False")
+    except ValueError as e:
+        print("Correct ValueError", e)
+        print("Correctly raised")
+        pass
+    #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
+    LunaticAgentSettings.export_options("conf/lunatic_agent_settings.yaml", with_comments=True)
