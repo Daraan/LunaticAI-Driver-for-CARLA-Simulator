@@ -1,13 +1,13 @@
 
-from agents.rules.avoid_tailgating import AvoidTailgatorRule
 from agents.rules.behaviour_templates import SetNextWaypointNearby, SlowDownAtIntersectionRule, NormalSpeedRule, ConfigBasedRSSUpdates, DEBUG_RULES
 from agents.rules.lane_changes import *
 
 def create_default_rules():
 
     random_lane_change_rule = RandomLaneChangeRule()
-    
     avoid_tailgator_rule = AvoidTailgatorRule()
+    #simple_overtake_rule = SimpleOvertakeRule()
+    
     set_close_waypoint_when_done = SetNextWaypointNearby()
     normal_intersection_speed_rule = SlowDownAtIntersectionRule()
     normal_speed_rule = NormalSpeedRule()
