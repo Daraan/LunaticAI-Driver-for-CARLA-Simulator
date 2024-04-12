@@ -208,6 +208,18 @@ obstacles:
     cars_same_lane:
     - 0.0
     - 30.0
+    walkers_angle_adjust_chance: 0.0
+    walkers_adjust_angle:
+    - 20.0
+    - -20.0
+    cars_angle_adjust_chance: 0.0
+    cars_adjust_angle:
+    - 20.0
+    - -50.0
+  # For performance filters out vehicles that are further away than this distance in meters
+  nearby_vehicles_max_distance: 45.0
+  # For performance filters out pedestrians that are further away than this distance in meters
+  nearby_walkers_max_distance: 10.0
   # Percentage of time to ignore traffic lights
   ignore_lights_percentage: 0.0
   # Percentage of time to ignore stop signs
@@ -232,8 +244,10 @@ controls:
   max_throttle: 0.75
   # maximum steering applied to the vehicle
   max_steering: 0.8
-  # distance between the route waypoints and the center of the lane
-  vehicle_lane_offset: ${planner.offset}
+
+  # Sets a lane offset displacement from the center line. Positive values imply a right offset while negative ones mean a left one.
+  # Default is 0. Numbers high enough to cause the vehicle to drive through other lanes might break the controller.
+  vehicle_lane_offset: 0.0
 
 
 # PID controller using the following semantics:
@@ -272,7 +286,7 @@ planner:
   #  
   # Positive values imply a right offset while negative ones mean a left one. Numbers high enough
   # to cause the vehicle to drive through other lanes might break the controller.
-  offset: 0.0
+  offset: ${controls.vehicle_lane_offset}
 
   # Distance between waypoints when planning a path in `local_planner._compute_next_waypoints`
   #  
@@ -316,6 +330,12 @@ rss:
   enabled: true
   use_stay_on_road_feature: On
   log_level: warn
+  # Sets the visualization mode that should be rendered on the screen.
+  debug_visualization_mode: RouteOnly
+  # Setting for the default rule to always accept RSS updates if they are valid
+  always_accept_update: false
+  # For fast vehicles RSS currently is unreliable, disables rss updates when the vehicle is faster than this.
+  rss_max_speed: ???
 
 data_matrix:
   # Use the DataMatrix
@@ -329,6 +349,15 @@ data_matrix:
   # The interval in frames after which the data matrix should be updated. Sync must be true.
   sync_interval: 5
 
+  # XXX
+  #  
+  # TODO: do not have this in Agent config but in
+  # hud : ${camera.hud.data_matrix}
+  #  #drawing_options -> see camera.yaml
+  #  #NOTE: this interpolation might fail if the parent has been removed!
+  #  
+  # ---
+  #     
   # Keyword arguments for `DataMatrix.render`
   # NOTE: The default_settings substitute this with an interpolation that might not work,
   # as it relies on the parent LaunchConfig that is currently removed.

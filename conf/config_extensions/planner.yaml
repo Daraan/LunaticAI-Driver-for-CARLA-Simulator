@@ -1,16 +1,54 @@
+# PID controller using the following semantics:
+#         K_P -- Proportional term
+#         K_D -- Differential term
+#         K_I -- Integral term
+#         dt -- time differential in seconds
+# offset: If different than zero, the vehicle will drive displaced from the center line.
+# Positive values imply a right offset while negative ones mean a left one. 
+# Numbers high enough to cause the vehicle to drive through other lanes might break the controller.
+#  
+# Notes:
+# `sampling_resolution` is used by the global planner to build a graph of road segments, also to get a path of waypoints from A to B
+#  
+# `sampling_radius` is similar but only used only by the local_planner to compute the next waypoints forward. The distance of those is the sampling_radius.
+
+# time differential in seconds
+#  
+# NOTE: Should set from main script.
 dt: ???
+# values of the lateral PID controller
 lateral_control_dict:
   K_P: 1.95
   K_D: 0.2
   K_I: 0.05
   dt: ${${..dt}}
+# values of the longitudinal PID controller
 longitudinal_control_dict:
   K_P: 1.0
   K_D: 0.0
   K_I: 0.05
   dt: ${${..dt}}
-sampling_radius: 2.0
-sampling_resolution: 4.5
-min_distance_next_waypoint: 3.0
-next_waypoint_distance_ratio: 0.5
+
+# If different than zero, the vehicle will drive displaced from the center line.
+#  
+# Positive values imply a right offset while negative ones mean a left one. Numbers high enough
+# to cause the vehicle to drive through other lanes might break the controller.
 offset: ${controls.vehicle_lane_offset}
+
+# Distance between waypoints when planning a path in `local_planner._compute_next_waypoints`
+#  
+# Used with Waypoint.next(sampling_radius)
+sampling_radius: 2.0
+
+# Distance between waypoints in `BasicAgent._generate_lane_change_path`
+# and GlobalRoutePlanner to build the topology and path planning.
+#  
+# Used with the Waypoint.next(sampling_radius)
+sampling_resolution: 4.5
+
+# Removes waypoints from the queue that are too close to the vehicle.
+#  
+# Usage: min_distance = min_distance_next_waypoint + next_waypoint_distance_ratio * vehicle_speed 
+min_distance_next_waypoint: 3.0
+# Increases the minimum distance to the next waypoint based on the vehicles speed.
+next_waypoint_distance_ratio: 0.5
