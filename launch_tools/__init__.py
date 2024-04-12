@@ -11,7 +11,7 @@ except ImportError as e:
 
 # Import scenario runner from submodule or SCEANRIO_RUNNER_ROOT
 from ._import_carla_data_provider import CarlaDataProvider  # noqa # pylint: disable=unused-import
-from ._version_handling import Literal, singledispatchmethod# noqa # pylint: disable=unused-import
+from ._version_handling import *
 
 from . import argument_parsing                              # noqa # pylint: disable=unused-import
 from . import blueprint_helpers

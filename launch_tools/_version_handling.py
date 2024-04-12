@@ -1,4 +1,4 @@
-__all__ = ['singledispatchmethod', 'Literal']
+__all__ = ['singledispatchmethod', 'Literal', 'ast_parse']
 
 try:
     from functools import singledispatchmethod # Python 3.8+
@@ -36,4 +36,11 @@ except ImportError:
         class Literal(metaclass=__LiteralMeta):
             pass
             
-        
+from ast import parse
+from functools import partial
+import sys
+
+if sys.version_info >= (3, 8):
+    ast_parse = partial(parse, type_comments=True)
+else:
+    ast_parse = parse

@@ -1,7 +1,8 @@
 # DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
 
-from collections.abc import Mapping
 import sys
+from collections.abc import Mapping
+
 
 from classes.camera_manager import CameraBlueprint
 from classes.rss_visualization import RssDebugVisualizationMode
@@ -34,6 +35,9 @@ SI Use this for String interpolation, for example "http://${host}:${port}"
 
 import carla
 
+import ast
+import inspect
+from launch_tools import ast_parse
 from agents.navigation.local_planner import RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
@@ -193,9 +197,8 @@ class AgentConfig:
             # Get documentations
             global _class_annotations
             if _class_annotations is None:
-                import ast
                 with open(_file_path, "r") as f:
-                    tree = ast.parse(f.read(), type_comments=True)
+                    tree = ast_parse(f.read())
                     _class_annotations = {}
                     extract_annotations(tree, docs=_class_annotations)
             
@@ -1515,10 +1518,6 @@ class LaunchConfig:
     camera : CameraConfig = field(default_factory=CameraConfig)
 
 
-
-import ast
-import inspect
-
 def extract_annotations(parent, docs):
     for main_body in parent.body:
         # Skip non-classes
@@ -1544,7 +1543,11 @@ def extract_annotations(parent, docs):
             elif isinstance(body, ast.Expr):
                 if i == 0: # Docstring of class
                     target = "__doc__"
-                doc: str = body.value.value
+                try:
+                    doc: str = body.value.value # NOTE: This is different for <Python3.8; this is ast.Str
+                except AttributeError:
+                    # Try < 3.8 code
+                    doc = body.value.s
                 assert isinstance(doc, str)
             else:
                 continue
