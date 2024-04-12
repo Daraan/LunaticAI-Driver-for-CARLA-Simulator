@@ -311,7 +311,7 @@ class LunaticAgent(BehaviorAgent):
             self.vehicles_nearby : List[carla.Vehicle] = [v for v in self.all_vehicles if dist(v) < _v_filter_dist and v.id != self._vehicle.id]
             
             _v_filter_dist = self.config.obstacles.nearby_walkers_max_distance
-            self.nearby_walkers : List[carla.Walker] = [w for w in self.all_walkers if dist(w) < _v_filter_dist]
+            self.walkers_nearby : List[carla.Walker] = [w for w in self.all_walkers if dist(w) < _v_filter_dist]
             
             # ----------------------------
             
