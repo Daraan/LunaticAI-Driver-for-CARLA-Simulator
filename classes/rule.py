@@ -332,7 +332,7 @@ class Rule(_GroupRule):
     @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
-                 /, # phases must be positional
+                 #/, # phases must be positional; python3.8+ only
                  rule : Optional[Callable[[Context], Hashable]]=None, 
                  action: Optional[Union[Callable[[Context], Any], Dict[Any, Callable]]] = None,
                  false_action: Optional[Callable[[Context], Any]] = None,
@@ -460,7 +460,7 @@ class Rule(_GroupRule):
         
         self.overwrite_settings = overwrite_settings or {}
     
-    def __new__(cls, phases=None, /, *args, **kwargs):
+    def __new__(cls, phases=None, *args, **kwargs):
         """
         The @Rule decorator allows to instantiate a Rule class directly for easier out-of-the-box usage.
         """
@@ -532,7 +532,7 @@ class Rule(_GroupRule):
         params = inspect.signature(cls.__init__).parameters # find overlapping parameters
         
         @wraps(cls.__init__)
-        def partial_init(self, phases=None, /, *args, **kwargs):
+        def partial_init(self, phases=None, *args, **kwargs):
             # Need phases as first argument
             cls_phases = getattr(cls, "phases", None) # allow for both wordings
             cls_phase = getattr(cls, "phase", None)
@@ -558,7 +558,7 @@ class Rule(_GroupRule):
     
     @__init__.register(_CountdownRule)
     @__init__.register(type)
-    def __init_by_decorating_class(self, cls, /): # pylint: disable=unused-argument
+    def __init_by_decorating_class(self, cls): # pylint: disable=unused-argument
         """
         Initialize by passing a Rule or class object to the __init__ method.
         
@@ -569,7 +569,7 @@ class Rule(_GroupRule):
         self.__init__(phases, cls.rule, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
         
     @__init__.register
-    def __init_from_mapping(self, cls:Mapping, /):
+    def __init_from_mapping(self, cls:Mapping):
         # NOTE: This is weakly tested and not much supported.
         self.__init__(cls.get("phases", cls.get("phase")), cls["rule"], cls.get("action"), cls.get("false_action"), actions=cls.get("actions"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True))        
 
@@ -633,7 +633,7 @@ class MultiRule(Rule):
     @singledispatchmethod
     def __init__(self, 
                  phases: Union["Phase", Iterable], 
-                /, # phases must be positional
+                 #/, # phases must be positional; python3.8+ only
                  rules: List[Rule], 
                  rule : Callable[[Context], Any] = always_execute,
                  *,
@@ -685,14 +685,14 @@ class MultiRule(Rule):
             
     @__init__.register(_CountdownRule) # For Rule(some_rule), easier cloning
     @__init__.register(type) # For @Rule class MyRule: ...
-    def __init_by_decorating_class(self, cls, /):
+    def __init_by_decorating_class(self, cls):
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         
         self.__init__(phases, cls.rules, cls.rule, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), sort_rules_by_priority=getattr(cls, "sort_rules_by_priority", True), execute_all_rules=getattr(cls, "execute_all_rules", False), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
     
     @__init__.register(Mapping)
-    def __init_from_mapping(self, cls:Mapping, /):
+    def __init_from_mapping(self, cls:Mapping):
         self.__init__(cls.get("phases", cls.get("phase")), cls["rules"], cls.get("rule"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
 
     
@@ -719,7 +719,7 @@ class RandomRule(MultiRule):
 
     @singledispatchmethod
     def __init__(self, 
-                 phases : Union["Phase", Iterable], /, # phases must be positional
+                 phases : Union["Phase", Iterable], #/, # phases must be positional; python3.8+ only
                  rules : Union[Dict[Rule, float], List[Rule]], 
                  repeat_if_not_applicable : bool = True,
                  rule = always_execute, 
@@ -747,14 +747,14 @@ class RandomRule(MultiRule):
 
     @__init__.register(_CountdownRule)
     @__init__.register(type)
-    def __init_by_decorating_class(self, cls, /):
+    def __init_by_decorating_class(self, cls):
         phases = getattr(cls, "phases", getattr(cls, "phase", None))
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         
         self.__init__(phases, cls.rules, repeat_if_not_applicable=cls.repeat_if_not_applicable, rule=cls.rule, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
     
     @__init__.register(Mapping)
-    def __init_from_mapping(self, cls:Mapping, /):
+    def __init_from_mapping(self, cls:Mapping):
         self.__init__(cls.get("phases"), cls["rules"], repeat_if_not_applicable=cls.get("repeat_if_not_applicable", True), rule=cls.get("rule"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
 
 
