@@ -111,9 +111,6 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         logger.setLevel(logging.DEBUG)
         self.args = args
         
-        #sim_world = CarlaDataProvider.get_world()
-        map_inst = CarlaDataProvider.get_map()
-        
         config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True)
         config.planner.dt = 1/20 # TODO: maybe get from somewhere
         
@@ -125,8 +122,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("World Model setup")
         self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         print("Initializing agent")
-        LunaticAgent.__init__(self, config, self.world_model, map_inst=map_inst)
+        LunaticAgent.__init__(self, config, self.world_model)
         print("LunaticAgent initialized")
+        
+        # Set plan
         self._local_planner_set_plan(self._global_plan_waypoints)
         
         self.game_framework.agent = self # TODO: Remove this circular reference

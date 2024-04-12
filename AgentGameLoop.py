@@ -7,8 +7,6 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
-from collections.abc import Mapping
-from dataclasses import is_dataclass
 import signal
 import sys
 import argparse
@@ -36,23 +34,16 @@ from launch_tools import CarlaDataProvider
 
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
-from classes.rule import Context, Rule
-
 from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from classes.constants import Phase
-from classes.HUD import HUD
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
-from classes.vehicle import Vehicle
 
 from agents.tools.logging import logger
 from agents.tools.misc import draw_waypoints
-from agents.navigation.basic_agent import BasicAgent  
-from agents.navigation.behavior_agent import BehaviorAgent 
-from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 
 
 from agents.lunatic_agent import LunaticAgent
-from agents import behaviour_templates
+from agents.rules import create_default_rules
 
 # ==============================================================================
 # TEMP # Remove
@@ -107,7 +98,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         
         # -- Spawn Vehicles --
         all_spawn_points = game_framework.map.get_spawn_points()
-        spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
+        spawn_points = launch_tools.csv_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
         
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
         
@@ -140,7 +131,12 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:
-        agent.add_rules(behaviour_templates.default_rules)
+        default_rules = create_default_rules()
+        from agents.rules.lane_changes import RandomLaneChangeRule
+        for rule in default_rules:
+            if isinstance(rule, RandomLaneChangeRule):
+                rule.enabled = False
+        agent.add_rules(default_rules)
         if PRINT_RULES: # TEMP
             print("Lunatic Agent Rules")
             pprint(agent.rules)
@@ -169,18 +165,22 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                     continue
                 # Agent Loop
                 with game_framework:
+                    # ------ Run step ------
                     final_control = agent.run_step(debug=True)
                     
+                    # ------ Apply / Handle User Input ------
                     agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=final_control)
                     if isinstance(world_model.controller, RSSKeyboardControl):
                         if controller.parse_events(agent.get_control()):
                             return
                     agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
                     
+                    # ------ Apply Control ------
                     agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=final_control)
                     agent.apply_control() # Note Uses control from agent.ctx.control in case of last Phase changed it.
                     agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None)
                     
+                    # DEBUG
                     try:
                         destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
                         destination = destination + carla.Vector3D(0, 0, 1.5) # elevate to be not in road

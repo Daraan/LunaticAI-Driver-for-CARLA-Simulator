@@ -7,10 +7,9 @@ from carla.libcarla import Location, Rotation, Transform
 
 __all__ = ["transform_to_pandas", "vehicle_location_to_dataframe", "csv_to_transformations"]
 
+
 # A dataframe template to store the locations of vehicles
 LOC_DF = pd.DataFrame(columns=["x", "y", "z", "pitch", "yaw", "roll"])
-
-
 
 # -----------------------------------
 

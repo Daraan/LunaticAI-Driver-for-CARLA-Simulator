@@ -1,5 +1,13 @@
 from functools import partial, update_wrapper, wraps
+
+try: # Python 3.8+
+    from functools import singledispatchmethod
+except ImportError:
+    from launch_tools import singledispatchmethod
+
+
 from typing import Callable, Any, ClassVar, Hashable, TYPE_CHECKING, Optional, Union
+from collections import abc
 
 import inspect
 
@@ -46,19 +54,19 @@ class EvaluationFunction:
                                 })
     """
     
-    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="EvaluationFunction", *, truthy=False) -> "type[EvaluationFunction]":
+    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="EvaluationFunction", *, truthy=False, use_self=None) -> "type[EvaluationFunction]":
         # @EvaluationFunction("name")
         if isinstance(first_argument, str):
-            return partial(cls, name=first_argument, truthy=truthy) # Calling decorator with a string
+            return partial(cls, name=first_argument, truthy=truthy, use_self=use_self) # Calling decorator with a string
         # @EvaluationFunction(name="name") or @EvaluationFunction(truthy=True)
         if first_argument is None:
-            return partial(cls, name=name, truthy=truthy)
+            return partial(cls, name=name, truthy=truthy, use_self=use_self)
         assert isinstance(first_argument, Callable), f"First argument must be a callable, not {type(first_argument)}"
         # @EvaluationFunction or EvaluationFunction(function)
         instance = super().__new__(cls)
         return instance
     
-    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction", *, truthy=False):
+    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction", *, truthy=False, use_self: Optional[bool]=None):
         update_wrapper(self, evaluation_function, assigned=("__qualname__", "__module__", "__annotations__", "__doc__"))
         self.evaluation_function = evaluation_function
         self.truthy = truthy
@@ -68,6 +76,7 @@ class EvaluationFunction:
             self.name = evaluation_function.__name__
         else:
             self.name = str(evaluation_function)
+        self.use_self = use_self
         self.actions = {}
 
     def __call__(self, ctx: "Context | Rule", *args, **kwargs) -> Hashable:
@@ -77,7 +86,11 @@ class EvaluationFunction:
         `ctx` can be either a Context (rule as function) or a Rule (rule as method),
         In the method case the real Context object is args[0]
         """
-        rule_result = self.evaluation_function(ctx, *args, **kwargs)
+        try:
+            rule_result = self.evaluation_function(ctx, *args, **kwargs)
+        except Exception:
+            print(f"ERROR: in rule {self.name} with function {self.evaluation_function}")
+            raise
         # Handle function vs. method
         if not isinstance(ctx, Context):
             ctx = args[0]
@@ -93,6 +106,19 @@ class EvaluationFunction:
         if instance is None:
             return self # called on class
         return partial(self, instance) # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
+    
+    def copy(self, copy_actions=False):
+        """
+        Copies the class by creating a new instance.
+        
+        If copy_actions is True, the actions dictionary is copied as well. 
+        Be aware that the actions themselves are not copied they identical and shared.
+        """
+        instance = super().__new__(self.__class__)
+        self.__class__.__init__(instance, self.evaluation_function, self.name, truthy=self.truthy, use_self=self.use_self)
+        if copy_actions:
+            instance.actions = self.actions.copy()
+        return instance
 
     #Helpers to extract a useful string representation of the function
     @staticmethod
@@ -160,15 +186,24 @@ class EvaluationFunction:
     
     _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
     
+    def _check_action(self, action_function, key):
+        if action_function.__name__ in EvaluationFunction._INVALID_NAMES:
+            raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in {EvaluationFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
+        if key in self.actions:
+            print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
+    
+    @singledispatchmethod
     def register_action(self, key: Hashable=True):
         def decorator(action_function):
-            if action_function.__name__ in EvaluationFunction._INVALID_NAMES:
-                raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in {EvaluationFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
-            if key in self.actions:
-                print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
+            self._check_action(action_function, key)
             self.actions[key] = action_function # register action
             return action_function
         return decorator
+    
+    @register_action.register(abc.Callable)
+    def _register_action_directly(self, action_function: Callable[["Union[Context, Rule]"], Any], key: Hashable=True):
+        self._check_action(action_function, key)
+        self.actions[key] = action_function # register action
 
 def TruthyEvaluationFunction(func: Callable) -> EvaluationFunction:
     """

@@ -50,22 +50,6 @@ if TYPE_CHECKING:
     from typing import Literal # for Python 3.8
     import pygame
 
-# As Reference:
-'''
-class RoadOption(IntEnum):
-    """
-    RoadOption represents the possible topological configurations 
-    when moving from a segment of lane to other.
-    """
-    VOID = -1
-    LEFT = 1
-    RIGHT = 2
-    STRAIGHT = 3
-    LANEFOLLOW = 4
-    CHANGELANELEFT = 5
-    CHANGELANERIGHT = 6
-'''
-
 class LunaticAgent(BehaviorAgent):
     """
     BasicAgent implements an agent that navigates the scene.
@@ -76,17 +60,15 @@ class LunaticAgent(BehaviorAgent):
 
     # using a ClassVar which allows to define preset rules for a child class
     # NOTE: Use deepcopy to avoid shared state between instances
-    _base_settings : "ClassVar[type[AgentConfig]]" = LunaticAgentSettings
+    BASE_SETTINGS: "ClassVar[type[AgentConfig]]" = LunaticAgentSettings
     
-    rules : ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
+    rules: ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
     """
     The rules of the this agent class. When initialized the rules of the class are copied.
     """
     
     _world_model : WorldModel = None # TODO: maybe as weakref
     ctx : "Context"
-    
-    # todo: rename in the future
     
     @classmethod
     def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args: LaunchConfig, 
@@ -102,19 +84,18 @@ class LunaticAgent(BehaviorAgent):
                 behavior = settings_archtype(overwrites)
                 config = behavior.make_config()
             else:
-                logger.debug("Using %s._base_settings %s to create config.", cls.__name__, cls._base_settings)
-                config = cls._base_settings.make_config()
+                logger.debug("Using %s._base_settings %s to create config.", cls.__name__, cls.BASE_SETTINGS)
+                config = cls.BASE_SETTINGS.make_config()
         else:
             logger.debug("A config was passed, using it as is.")
         
-        #world_model = WorldModel(config, args, carla_world=sim_world, player=vehicle, map_inst=map_inst)
         world_model = WorldModel(config, args=args, carla_world=sim_world, player=vehicle) # TEST: without args
         config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
         agent = cls(config, world_model)
         return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, map_inst: carla.Map=None, overwrite_options: dict = {}, debug=True):
+    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, overwrite_options: dict = {}, debug=True):
         """
         Initialization the agent parameters, the local and the global planner.
 
@@ -127,13 +108,12 @@ class LunaticAgent(BehaviorAgent):
             :debug: boolean to activate the debug mode. In the debug mode more settings will be validated.
         """
         self._debug = debug
-        # low prio todo: update description.
 
-        # OURS: Fusing behavior
         # Settings ---------------------------------------------------------------
         if world_model is None and vehicle is None:
             raise ValueError("Must pass vehicle when not providing the world.")
         
+        # TODO: Move this to an outside function
         opt_dict : LunaticAgentSettings
         if behavior is None and world_model and world_model._config is not None:
             logger.debug("Using world model config")
@@ -164,41 +144,24 @@ class LunaticAgent(BehaviorAgent):
         
         logger.info("\n\nAgent config is %s", OmegaConf.to_yaml(self.config))
         
+        # World Model
         if world_model is None:
-            world_model = WorldModel(self.config, player=vehicle, map_inst=map_inst)
+            world_model = WorldModel(self.config, player=vehicle)
             self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
+        self._world_model : WorldModel = world_model
+        self._world : carla.World = world_model.world
         
+        # Register Vehicle
         self._vehicle : carla.Vehicle = world_model.player
         try:
             CarlaDataProvider.register_actor(self._vehicle) # assure that the vehicle is registered
         except KeyError as e:
             logger.info("Ignoring error of already registered actor: %s", e)
-        self._world_model : WorldModel = world_model
-        self._world : carla.World = world_model.world
-        if map_inst:
-            if world_model.map and map_inst != world_model.map:
-                raise ValueError("Passed Map instance does not match the map instance of the world model.") # TEMP: Turn into warning
-            if isinstance(map_inst, carla.Map):
-                self._map = map_inst
-            else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-                self._map = self._world.get_map()
-                world_model.map = self._map
-        elif world_model.map is None:
-            self._map = self._world.get_map()
-            world_model.map = self._map
-        else:
-            self._map = world_model.map
         
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
         self.ctx = None
 
-        self.live_info : LiveInfo = self.config.live_info
-
-        #config.speed.min_speed = 5
-        self.config.speed.min_speed # TODO: This is not set
-
-        # Original Setup ---------------------------------------------------------
+        self._live_info : LiveInfo = self.config.live_info # Accessible via property
         
         self._last_traffic_light : carla.TrafficLight = None  # Current red traffic light
 
@@ -221,13 +184,13 @@ class LunaticAgent(BehaviorAgent):
         # Get the static elements of the scene
         self._traffic_light_map: Dict[carla.TrafficLight, carla.Transform] = CarlaDataProvider._traffic_light_map
         self._lights_list = CarlaDataProvider._traffic_light_map.keys()
-        self._lights_map : Dict[int, carla.Waypoint] = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
+        self._lights_map: Dict[int, carla.Waypoint] = {}  # Dictionary mapping a traffic light to a wp corresponding to its trigger volume location
 
         # Vehicle Lights
         self._lights = carla.VehicleLightState.NONE
 
         # Collision Sensor # TODO: duplicated in WorldModel, maybe can be shared.
-        self._collision_sensor : carla.Sensor = None
+        self._collision_sensor: carla.Sensor = None
         self._set_collision_sensor()
 
         #Rule Framework
@@ -236,27 +199,20 @@ class LunaticAgent(BehaviorAgent):
         # Data Matrix
         if self.config.data_matrix.enabled:
             if self.config.data_matrix.sync and self._world_model.world_settings.synchronous_mode:
-                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world)
             else:
-                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world)
             self._road_matrix_updater.start()  # TODO maybe find a nicer way
         else:
             self._road_matrix_updater = None
         self._road_matrix_counter = 0 # TODO: Todo make this nicer and maybe get ticks from world.
         
+        # Information Manager
         self.information_manager = InformationManager(self)
-        
-    def set_vehicle(self, vehicle:carla.Vehicle):
-        self._vehicle = vehicle
-        # Data Matrix
-        if self.config.data_matrix.enabled:
-            if self._world_model.world_settings.synchronous_mode:
-                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
-            else:
-                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
-        else:
-            self._road_matrix_updater = None
-        self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=self.config, map_inst=self._world_model.map, world=self._world_model.world, rss_sensor=self._world_model.rss_sensor)
+    
+    @property
+    def live_info(self) -> LiveInfo:
+        return self._live_info
 
     @property
     def road_matrix(self):
@@ -334,33 +290,30 @@ class LunaticAgent(BehaviorAgent):
                 self._clear_live_info() # assure that every value is filled again (or None)
                 assert self._lights_list
 
+            # ----------------------------
             # First Pass for expensive and tick-constant information
-
-            self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
-            self.live_info.next_traffic_light = self.information_manager.relevant_traffic_light
-            self.live_info.next_traffic_light_distance = self.information_manager.relevant_traffic_light_distance
             
-            if self.live_info.use_srunner_data_provider:
-                # Own properties
-                
-                # Handled by InformationManager
-                #self.live_info.current_speed = CarlaDataProvider.get_velocity(self._vehicle) * 3.6
-                #self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
-                #self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
-                
-                # TODO: distance is not filtered, assumed managed by the scenario_runner
-                self.vehicles_nearby : List[carla.Vehicle] = InformationManager.vehicles
-                self.walkers_nearby : List[carla.Walker] = InformationManager.walkers
-            else:
-                # Own properties
-                self.live_info.current_speed = get_speed(self._vehicle)
-                self.live_info.current_transform = self._vehicle.get_transform()
-                self.live_info.current_location = self.live_info.current_transform.location
-                
-                # TODO: Filter this to only contain relevant vehicles # i.e. certain radius and or lanes around us. Avoid this slow call.
-                _actors = self._world.get_actors()
-                self.vehicles_nearby : List[carla.Vehicle] = _actors.filter("*vehicle*")
-                self.walkers_nearby : List[carla.Walker] = _actors.filter("*walker.pedestrian*")
+            # --- InformationManager ---
+            information: InformationManager.Information = self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
+            self._current_waypoint = information.current_waypoint
+            
+            # Find vehicles and walkers nearby
+            self.all_vehicles: List[carla.Vehicle] = information.vehicles
+            self.all_walkers: List[carla.Walker] = information.walkers
+            
+            # NOTE: # is it more efficient to use an extra function here, why not utils.dist_to_waypoint(v, waypoint)?
+            _current_loc = self.live_info.current_location
+            def dist(v : carla.Actor): 
+                return v.get_location().distance(_current_loc)
+
+            # Filer Vehicles and Walkers to be nearby
+            _v_filter_dist = self.config.obstacles.nearby_vehicles_max_distance
+            self.vehicles_nearby : List[carla.Vehicle] = [v for v in self.all_vehicles if dist(v) < _v_filter_dist and v.id != self._vehicle.id]
+            
+            _v_filter_dist = self.config.obstacles.nearby_walkers_max_distance
+            self.walkers_nearby : List[carla.Walker] = [w for w in self.all_walkers if dist(w) < _v_filter_dist]
+            
+            # ----------------------------
             
             # Data Matrix
             if self._road_matrix_updater and self._road_matrix_updater.sync:
@@ -384,18 +337,9 @@ class LunaticAgent(BehaviorAgent):
             # NOTE: This should be called after 
             self.live_info.incoming_waypoint, self.live_info.incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
                 steps=self._look_ahead_steps)
-            if exact_waypoint and not second_pass:
-                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.live_info.current_location)
-            elif not exact_waypoint:
-                self._current_waypoint : carla.Waypoint = self.live_info.incoming_waypoint
-            # note: else: exact waypoint from first pass
         else:
             assert second_pass == False, "In the second pass the agent should have replanned and agent.done() should be False"
             # Assumes second_pass is False
-            if exact_waypoint:
-                self._current_waypoint : carla.Waypoint = self._map.get_waypoint(self.live_info.current_location)
-            else:
-                self._current_waypoint : carla.Waypoint = self.live_info.incoming_waypoint # NOTE: this is from the last tick, as not retrieved from planner unlike above
             # Queue is empty
             self.live_info.incoming_waypoint = None
             self.live_info.incoming_direction  = RoadOption.VOID
@@ -580,7 +524,7 @@ class LunaticAgent(BehaviorAgent):
         # ----------------------------
             
         self.execute_phase(Phase.DETECT_CARS | Phase.BEGIN, prior_results=None) # TODO: Maybe add some prio result
-        detection_result :ObstacleDetectionResult = substep_managers.collision_detection_manager(self, self._current_waypoint)
+        detection_result: ObstacleDetectionResult = substep_managers.collision_detection_manager(self)
         # TODO: add a way to let the execution overwrite
         if detection_result.obstacle_was_found:
 
@@ -690,7 +634,7 @@ class LunaticAgent(BehaviorAgent):
     def pedestrian_avoidance_behavior(self, ego_vehicle_wp : carla.Waypoint) -> Tuple[bool, ObstacleDetectionResult]:
         # TODO: # CRITICAL: This for some reasons also detects vehicles as pedestrians
         # note ego_vehicle_wp is the current waypoint self._current_waypoint
-        detection_result = substep_managers.pedestrian_detection_manager(self, ego_vehicle_wp)
+        detection_result = substep_managers.pedestrian_detection_manager(self)
         if (detection_result.obstacle_was_found
             and (detection_result.distance - max(detection_result.obstacle.bounding_box.extent.y, 
                                                  detection_result.obstacle.bounding_box.extent.x)
@@ -817,6 +761,18 @@ class LunaticAgent(BehaviorAgent):
 
     # ------------------ Setter Function ------------------ #
     
+    def set_vehicle(self, vehicle:carla.Vehicle):
+        self._vehicle = vehicle
+        # Data Matrix
+        if self.config.data_matrix.enabled:
+            if self._world_model.world_settings.synchronous_mode:
+                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+            else:
+                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+        else:
+            self._road_matrix_updater = None
+        self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=self.config, map_inst=CarlaDataProvider.get_map(), world=self._world_model.world, rss_sensor=self._world_model.rss_sensor)
+    
     #@override 
     def set_target_speed(self, speed : float):
         """
@@ -882,7 +838,7 @@ class LunaticAgent(BehaviorAgent):
 
     #def done(self): # from base class self._local_planner.done()
 
-    #def set_destination(self, end_location, start_location=None):
+    def set_destination(self, end_location, start_location=None, clean_queue=True):
         """
         This method creates a list of waypoints between a starting and ending location,
         based on the route returned by the global router, and adds it to the local planner.
@@ -892,6 +848,21 @@ class LunaticAgent(BehaviorAgent):
             :param end_location (carla.Location): final location of the route
             :param start_location (carla.Location): starting location of the route
         """
+        if not start_location:
+            if self._local_planner.target_waypoint:
+                start_location = self._local_planner.target_waypoint.transform.location # waypoint at queue[0] at run_step
+            else:
+                start_location = self._vehicle.get_location()
+            clean_queue = True
+        else:
+            pass
+            #start_location = self._vehicle.get_location()
+            #clean_queue = False
+        start_waypoint = CarlaDataProvider.get_map().get_waypoint(start_location)
+        end_waypoint = CarlaDataProvider._map.get_waypoint(end_location) if isinstance(end_location, carla.Location) else end_location
+
+        route_trace = self.trace_route(start_waypoint, end_waypoint)
+        self._local_planner.set_global_plan(route_trace, clean_queue=clean_queue)
         
     #def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
         """

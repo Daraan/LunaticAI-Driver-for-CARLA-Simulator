@@ -232,7 +232,12 @@ class RoadOptionColor(metaclass=__ItemAccess):
 class AgentState(Flag):
     DRIVING = auto()
     STOPPED = auto()
-    _parked = auto() # hide it to avoid confusion
+    _parked = auto() # hide it to avoid confusion, used further down for PARKED
+    
+    BLOCKED_BY_VEHICLE = auto()
+    BLOCKED_RED_LIGHT = auto()
+    BLOCKED_OTHER = auto()
+    
     REVERSE = auto()
     
     OVERTAKING = auto()
@@ -240,6 +245,7 @@ class AgentState(Flag):
     AGAINST_LANE_DIRECTION = auto()
     
     PARKED = _parked | STOPPED # we want this to be a combination of the two
+    BLOCKED = BLOCKED_OTHER | BLOCKED_BY_VEHICLE | BLOCKED_RED_LIGHT
     
     # Mabye more states like CAR_IN_FRONT
         

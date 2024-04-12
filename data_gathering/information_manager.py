@@ -7,7 +7,7 @@ i.e. distill the information from the data and return high level information
 
 from fnmatch import fnmatch
 from functools import wraps
-from typing import Any, ClassVar, TYPE_CHECKING
+from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple
 import carla
 
 if TYPE_CHECKING:
@@ -169,16 +169,31 @@ class InformationManager:
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
         self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
 
+        # Only exact waypoint. TODO: update in agent
+        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(self.live_info.current_location)
+        
         # Traffic Light
         # NOTE: Must be AFTER the location update
         self.detect_next_traffic_light()
         self.live_info.next_traffic_light = self.relevant_traffic_light
         self.live_info.next_traffic_light_distance = self.relevant_traffic_light_distance
         
-        return {
-            "relevant_traffic_light": self.relevant_traffic_light,
-            "relevant_traffic_light_distance": self.relevant_traffic_light_distance,
-        }
+        return self.Information(
+            current_waypoint= current_waypoint,
+            current_speed= self.live_info.current_speed,
+            relevant_traffic_light=self.relevant_traffic_light, 
+            relevant_traffic_light_distance=self.relevant_traffic_light_distance,
+            vehicles= self.vehicles,
+            walkers = self.walkers
+        )
+
+    class Information(NamedTuple):
+        current_waypoint: carla.Waypoint
+        current_speed: float
+        relevant_traffic_light: carla.TrafficLight
+        relevant_traffic_light_distance: float
+        vehicles: "list[carla.Vehicle]"
+        walkers: "list[carla.Walker]"
 
     # ---- Global Information ----
 
@@ -195,6 +210,7 @@ class InformationManager:
             return
         InformationManager.frame = frame
         
+        # Todo compare speed with global ActorList filter
         InformationManager.vehicles = [a for a in CarlaDataProvider._carla_actor_pool.values() if a.is_alive and fnmatch(a.type_id, "*vehicle*")]
         InformationManager.walkers = [a for a in CarlaDataProvider._carla_actor_pool.values() if a.is_alive and fnmatch(a.type_id, "*walker.pedestrian*")]
         

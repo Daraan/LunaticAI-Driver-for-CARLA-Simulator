@@ -6,7 +6,7 @@ from agents.navigation.local_planner import RoadOption
 from agents.tools.misc import (is_within_distance,
                                compute_distance, ObstacleDetectionResult)
 
-
+from launch_tools import CarlaDataProvider
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -71,8 +71,8 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
         max_distance = self.config.obstacles.base_vehicle_threshold
 
     ego_transform = self._vehicle.get_transform()
-    ego_location = ego_transform.location
-    ego_wpt = self._map.get_waypoint(ego_location)
+    ego_location = ego_transform.location # NOTE: property access creates a new location object, i.e. ego_location != ego_front_transform
+    ego_wpt = CarlaDataProvider.get_map().get_waypoint(ego_location)
 
     # Get the right offset
     if ego_wpt.lane_id < 0 and lane_offset != 0:
@@ -97,7 +97,7 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
         if target_transform.location.distance(ego_location) > max_distance:
             continue
 
-        target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
+        target_wpt = CarlaDataProvider.get_map().get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
 
         # General approach for junctions and vehicles invading other lanes due to the offset
         if (use_bbs or target_wpt.is_junction) and route_polygon:
@@ -130,7 +130,7 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
 
             if is_within_distance(target_rear_transform, ego_front_transform, max_distance,
                                     [low_angle_th, up_angle_th]):
-                return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
+                return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_rear_transform.location, ego_front_transform.location))
 
     return ObstacleDetectionResult(False, None, -1)
 

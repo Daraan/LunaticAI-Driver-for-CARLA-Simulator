@@ -7,6 +7,8 @@ from agents.tools import logger
 from agents.tools.misc import (is_within_distance,
                                get_trafficlight_trigger_location, TrafficLightDetectionResult)
 
+from launch_tools import CarlaDataProvider
+
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     
@@ -43,14 +45,14 @@ def affected_by_traffic_light(self : "LunaticAgent",
                 return TrafficLightDetectionResult(True, self._last_traffic_light)
 
         ego_vehicle_location = self._vehicle.get_location()
-        ego_vehicle_waypoint = self._map.get_waypoint(ego_vehicle_location)
+        ego_vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_vehicle_location)
 
         for traffic_light in filter(_is_red_light, lights_list):
             if traffic_light.id in self._lights_map:
                 trigger_wp = self._lights_map[traffic_light.id]
             else:
                 trigger_location = get_trafficlight_trigger_location(traffic_light)
-                trigger_wp = self._map.get_waypoint(trigger_location)
+                trigger_wp = CarlaDataProvider.get_map().get_waypoint(trigger_location)
                 self._lights_map[traffic_light.id] = trigger_wp
 
             if trigger_wp.transform.location.distance(ego_vehicle_location) > max_distance:

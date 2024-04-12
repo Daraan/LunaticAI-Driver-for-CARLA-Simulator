@@ -1,9 +1,19 @@
 overwrites: {}
 live_info:
-  current_speed: ???
-  current_speed_limit: ???
-  direction: ???
+  use_srunner_data_provider: true
   velocity_vector: ???
+  current_speed: ???
+  current_transform: ???
+  current_location: ???
+  current_speed_limit: ???
+  executed_direction: ???
+  incoming_direction: ???
+  incoming_waypoint: ???
+  is_taking_turn: ???
+  is_changing_lane: ???
+  next_traffic_light: ???
+  next_traffic_light_distance: ???
+  last_applied_controls: ???
 speed:
   current_speed: ${live_info.current_speed}
   current_speed_limit: ${live_info.current_speed_limit}
@@ -92,4 +102,16 @@ emergency:
 rss:
   enabled: true
   use_stay_on_road_feature: 'On'
-  log_level: info
+  log_level: warn
+data_matrix:
+  enabled: true
+  sync: true
+  sync_interval: 5
+  hud:
+    draw: true
+    values: true
+    vertical: true
+    imshow_settings:
+      cmap: jet
+    text_settings:
+      color: orange
