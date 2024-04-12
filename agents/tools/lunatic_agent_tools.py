@@ -71,7 +71,7 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
         max_distance = self.config.obstacles.base_vehicle_threshold
 
     ego_transform = self._vehicle.get_transform()
-    ego_location = ego_transform.location
+    ego_location = ego_transform.location # NOTE: property access creates a new location object, i.e. ego_location != ego_front_transform
     ego_wpt = CarlaDataProvider.get_map().get_waypoint(ego_location)
 
     # Get the right offset
@@ -130,7 +130,7 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
 
             if is_within_distance(target_rear_transform, ego_front_transform, max_distance,
                                     [low_angle_th, up_angle_th]):
-                return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
+                return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_rear_transform.location, ego_front_transform.location))
 
     return ObstacleDetectionResult(False, None, -1)
 
