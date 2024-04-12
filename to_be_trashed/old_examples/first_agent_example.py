@@ -27,7 +27,7 @@ def main(args):
 
     driver1 = Driver("config/default_driver.json", traffic_manager=client)
 
-    spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
+    spawn_points = launch_tools.csv_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
     # car1 = carla_service.createCar("model3")
 
     # Spawn Ego

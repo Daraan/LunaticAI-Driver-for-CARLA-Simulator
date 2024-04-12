@@ -5,23 +5,7 @@ from typing import List
 import pandas as pd
 from carla.libcarla import Location, Rotation, Transform
 
-__all__ = ["transform_to_pandas", "vehicle_location_to_dataframe", "csv_to_transformations", "singledispatchmethod"]
-
-try:
-    from functools import singledispatchmethod # Python 3.8+
-except ImportError:
-    from functools import singledispatch, update_wrapper
-
-    def singledispatchmethod(func):
-        """
-        Works like functools.singledispatch, but for methods. Backward compatible code
-        """
-        dispatcher = singledispatch(func)
-        def wrapper(*args, **kw):
-            return dispatcher.dispatch(args[1].__class__)(*args, **kw)
-        wrapper.register = dispatcher.register
-        update_wrapper(wrapper, func)
-        return wrapper
+__all__ = ["transform_to_pandas", "vehicle_location_to_dataframe", "csv_to_transformations"]
 
 
 # A dataframe template to store the locations of vehicles
