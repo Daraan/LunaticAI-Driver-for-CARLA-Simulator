@@ -8,6 +8,7 @@ from carla import ColorConverter as cc
 from typing import TYPE_CHECKING, ClassVar, List, NamedTuple, Optional
 
 from classes._custom_sensor import CustomSensor
+from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
     from classes.HUD import HUD
@@ -78,7 +79,7 @@ class CameraManager(CustomSensor):
         # -> Move to globals or some config which should be used (also saves ressources)
         self.sensors = sensors if sensors else self.default_blueprints
         world = self._parent.get_world()
-        bp_library = world.get_blueprint_library()
+        bp_library = CarlaDataProvider._blueprint_library
         for i, item in enumerate(self.sensors):
             try:
                 if item.actual_blueprint is not None:
@@ -113,7 +114,7 @@ class CameraManager(CustomSensor):
             if self.sensor is not None:
                 self.destroy()
                 self.surface = None
-            self.sensor = self._parent.get_world().spawn_actor(
+            self.sensor = CarlaDataProvider.get_world().spawn_actor(
                 self.sensors[index][-1],
                 self._camera_transforms[self.transform_index][0],
                 attach_to=self._parent,
@@ -179,7 +180,7 @@ class CameraManager(CustomSensor):
         self.current_frame = image.frame
 
 
-def follow_car(ego_vehicle : carla.Actor, world : carla.World):
+def follow_car(ego_vehicle : carla.Actor):
     """
     Set the spectator's view to follow the ego vehicle.
 
@@ -210,11 +211,11 @@ def follow_car(ego_vehicle : carla.Actor, world : carla.World):
     # spectator_transform.rotation.yaw += 180 # Face the vehicle from behind
 
     # Set the spectator's transform in the world
-    world.get_spectator().set_transform(spectator_transform)
+    CarlaDataProvider.get_world().get_spectator().set_transform(spectator_transform)
 
 
 # TODO: # CRITICAL: this does not allow thread.join!
 # Solutions see: https://stackoverflow.com/questions/69107143/how-to-end-a-while-loop-in-another-thread
-def camera_function(ego_vehicle : carla.Actor, world : carla.World):
+def camera_function(ego_vehicle : carla.Actor):
     while True:
-        follow_car(ego_vehicle, world)
+        follow_car(ego_vehicle)

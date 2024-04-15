@@ -77,7 +77,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
 
     # TEMP
     import classes.worldmodel
-    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
+    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss and behavior.rss.enabled
     
     if PRINT_CONFIG:
         print("    \n\n\n")

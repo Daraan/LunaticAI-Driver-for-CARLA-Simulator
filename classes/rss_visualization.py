@@ -12,6 +12,8 @@ from typing import Tuple, Union, cast as assure_type
 
 import carla
 
+from launch_tools import CarlaDataProvider
+
 from classes._custom_sensor import CustomSensor
 try:
     from carla import ad
@@ -213,7 +215,7 @@ class RssUnstructuredSceneVisualizer(CustomSensor):
             self._calibration[0, 0] = self._calibration[1, 1] = self._dim[0] / \
             (2.0 * np.tan(90.0 * np.pi / 360.0))  # fov default: 90.0
 
-            bp_library = self._world.get_blueprint_library()
+            bp_library = CarlaDataProvider._blueprint_library
             bp : carla.ActorBlueprint = bp_library.find('sensor.camera.rgb')
             bp.set_attribute('image_size_x', str(self._dim[0]))
             bp.set_attribute('image_size_y', str(self._dim[1]))

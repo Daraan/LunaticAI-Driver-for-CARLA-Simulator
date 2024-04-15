@@ -12,6 +12,8 @@ try:
     AD_RSS_AVAILABLE = True
 except ImportError:
     AD_RSS_AVAILABLE = False
+    
+from launch_tools import CarlaDataProvider 
 from classes._custom_sensor import CustomSensor
 from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisualizer, RssUnstructuredSceneVisualizer # pylint: disable=relative-import
 

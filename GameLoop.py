@@ -35,7 +35,7 @@ def main():
 
     # Create a thread for the camera functionality
     try:
-        camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
+        camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, ))
         camera_thread.start()
 
         # Initialize matrix thread

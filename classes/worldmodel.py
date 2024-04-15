@@ -293,8 +293,9 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
     controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
     game_framework : Optional[GameFramework] = None # Set when world created via GameFramework. Uses weakref.proxy
 
-    def get_blueprint_library(self):
-        return self.world.get_blueprint_library()
+    @staticmethod
+    def get_blueprint_library():
+        return CarlaDataProvider._blueprint_library
 
     def __init__(self, config : "LunaticAgentSettings", args:"Union[LaunchConfig, Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""

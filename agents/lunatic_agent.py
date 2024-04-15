@@ -226,9 +226,9 @@ class LunaticAgent(BehaviorAgent):
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
         # and https://carla.readthedocs.io/en/latest/python_api/#carla.Sensor.listen
-        blueprint = self._world.get_blueprint_library().find('sensor.other.collision')
-        self._collision_sensor : carla.Sensor = assure_type(carla.Sensor, 
-                                                     self._world.spawn_actor(blueprint, carla.Transform(), attach_to=self._vehicle))
+        blueprint = CarlaDataProvider._blueprint_library.find('sensor.other.collision')
+        self._collision_sensor : carla.Sensor = assure_type(carla.Sensor, CarlaDataProvider.get_world().spawn_actor(
+                                                            blueprint, carla.Transform(), attach_to=self._vehicle))
         def collision_callback(event : carla.SensorData):
             self._collision_event(event)
         self._collision_sensor.listen(self._collision_event)
@@ -299,8 +299,8 @@ class LunaticAgent(BehaviorAgent):
             self._current_waypoint = information.current_waypoint
             
             # Find vehicles and walkers nearby
-            self.all_vehicles: List[carla.Vehicle] = information.vehicles
-            self.all_walkers: List[carla.Walker] = information.walkers
+            self.all_vehicles: List[carla.Vehicle] = InformationManager.get_vehicles()
+            self.all_walkers: List[carla.Walker] = InformationManager.get_walkers()
             
             # NOTE: # is it more efficient to use an extra function here, why not utils.dist_to_waypoint(v, waypoint)?
             _current_loc = self.live_info.current_location
@@ -324,7 +324,8 @@ class LunaticAgent(BehaviorAgent):
                     # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
                     self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
                 else:
-                    logger.info("Not updating Road Matrix")
+                    pass
+                    #logger.info("Not updating Road Matrix")
             
             self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
             self.live_info.executed_direction = assure_type(RoadOption, self._local_planner.target_road_option) # NOTE: This is the direction used by the planner in the *last* step.
