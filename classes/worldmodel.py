@@ -408,15 +408,18 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.rss_unstructured_scene_visualizer = None
         self.rss_bounding_box_visualizer = None
         
-        if config.rss.enabled and not self._actor_filter.startswith("vehicle."):
-            print('Error: RSS only supports vehicles as ego.')
-            sys.exit(1)
-        if config.rss.enabled and AD_RSS_AVAILABLE:
-            self._restrictor = carla.RssRestrictor()
+        if config.rss:
+            if config.rss.enabled and not self._actor_filter.startswith("vehicle."):
+                print('Error: RSS only supports vehicles as ego. Disable RSS or use a vehicle filter for the actor.')
+                sys.exit(1)
+            if AD_RSS_AVAILABLE and config.rss.enabled:
+                self._restrictor = carla.RssRestrictor()
+            else:
+                self._restrictor = None
         else:
             self._restrictor = None
 
-        logger.info("Calling WorldModel.restart()")
+            logger.info("Calling WorldModel.restart()")
         self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
@@ -568,7 +571,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim, gamma_correction=self._gamma) # TODO: use args instead of gamma
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
-        if self._config.rss.enabled and AD_RSS_AVAILABLE:
+        if AD_RSS_AVAILABLE and self._config.rss and self._config.rss.enabled:
             log_level = self._config.rss.log_level
             if not isinstance(log_level, carla.RssLogLevel):
                 try:

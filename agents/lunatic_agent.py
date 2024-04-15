@@ -197,7 +197,7 @@ class LunaticAgent(BehaviorAgent):
         self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
         
         # Data Matrix
-        if self.config.data_matrix.enabled:
+        if self.config.data_matrix and self.config.data_matrix.enabled:
             if self.config.data_matrix.sync and self._world_model.world_settings.synchronous_mode:
                 self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world)
             else:
@@ -469,7 +469,7 @@ class LunaticAgent(BehaviorAgent):
             planned_control.manual_gear_shift = False # TODO: turn into a rule
             
             ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
-            if AD_RSS_AVAILABLE and self.config.rss.enabled:
+            if AD_RSS_AVAILABLE and self.config.rss and self.config.rss.enabled:
                 rss_updated_controls = self._world_model.rss_check_control(ctx.control)
             else:
                 rss_updated_controls = None
