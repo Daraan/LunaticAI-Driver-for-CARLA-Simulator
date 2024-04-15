@@ -137,8 +137,8 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             random.seed(args.seed)
             np.random.seed(args.seed)
         self._args = args
-        self.clock, self.display = self.init_pygame(args)
         self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
+        self.clock, self.display = self.init_pygame(args)
 
         self.config = config
         self.agent = None
@@ -383,7 +383,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         
 
-        self.actors = []
+        self.actors: List[Union[carla.Actor, Any]] = []
         
         # From interactive:
         self.constant_velocity_enabled = False
@@ -700,25 +700,24 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
 
     def destroy_sensors(self): # TODO only camera_manager, should be renamed.
         """Destroy sensors"""
-        self.camera_manager.sensor.destroy()
-        self.camera_manager.sensor = None
-        self.camera_manager.index = None
-
-    def destroy(self, destroy_ego=False):
-        """Destroys all actors"""
-        # stop from ticking
-        if self.world_tick_id and self.world:
-            self.world.remove_on_tick(self.world_tick_id)
         if self.rss_sensor:
             self.rss_sensor.destroy()
             self.rss_sensor = None
         if self.rss_unstructured_scene_visualizer:
             self.rss_unstructured_scene_visualizer.destroy()
             self.rss_unstructured_scene_visualizer = None
-        if self.radar_sensor is not None:
-            self.toggle_radar()
         if self.camera_manager is not None:
-            self.destroy_sensors()
+            self.camera_manager.destroy()
+            self.camera_manager = None
+        if self.radar_sensor is not None:
+            self.toggle_radar() # destroys it if not None
+
+    def destroy(self, destroy_ego=False):
+        """Destroys all actors"""
+        # stop from ticking
+        if self.world_tick_id and self.world:
+            self.world.remove_on_tick(self.world_tick_id)
+        self.destroy_sensors()
         if destroy_ego and not self.player in self.actors: # do not destroy external actors.
             logger.debug("Destroying player")
             self.actors.append(self.player)
@@ -730,16 +729,24 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
             if actor is not None:
                 print("destroying actor: " + str(actor), end=" destroyed=")
                 try:
-                    if hasattr(actor, 'stop'):
+                    if hasattr(actor, 'stop'): # Sensors
                         actor.stop()
                 except AttributeError:
                     pass
                 try:
-                    x = actor.destroy()
+                    if hasattr(actor, 'is_alive'): # CarlaActors
+                        if actor.is_alive:
+                            x = actor.destroy()
+                        else:
+                            x = " Actor was already dead."
+                    else:
+                        x = actor.destroy() # Non carla instances
                     print(x)
                 except RuntimeError:
                     logger.warning("Could not destroy actor: " + str(actor))
                     #raise
+        if self.get_world():
+            self.get_world().tick()
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control

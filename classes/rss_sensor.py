@@ -12,6 +12,7 @@ try:
     AD_RSS_AVAILABLE = True
 except ImportError:
     AD_RSS_AVAILABLE = False
+from classes._custom_sensor import CustomSensor
 from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisualizer, RssUnstructuredSceneVisualizer # pylint: disable=relative-import
 
 from agents.tools.logging import logger
@@ -67,7 +68,7 @@ class RssStateInfo(object):
         return "RssStateInfo: object=" + str(self.rss_state.objectId) + " dangerous=" + str(self.is_dangerous)
 
 
-class RssSensor(object):
+class RssSensor(CustomSensor):
 
     def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer:"RssUnstructuredSceneVisualizer", bounding_box_visualizer, state_visualizer, *, visualizer_mode=RssDebugVisualizationMode.Off, routing_targets=None, log_level=carla.RssLogLevel.warn if AD_RSS_AVAILABLE else "warn"):
         self.sensor = None
@@ -97,9 +98,9 @@ class RssSensor(object):
                 self._max_steer_angle = wheel.max_steer_angle
         self._max_steer_angle = math.radians(self._max_steer_angle)
 
-        world = self._parent.get_world()
-        bp = world.get_blueprint_library().find('sensor.other.rss')
-        self.sensor : carla.RssSensor = assure_type(carla.RssSensor, world.spawn_actor(bp, carla.Transform(carla.Location(x=0.0, z=0.0)), attach_to=self._parent)) # for correct type hint
+        world = CarlaDataProvider.get_world()
+        bp = CarlaDataProvider._blueprint_library.find('sensor.other.rss')
+        self.sensor: carla.RssSensor = assure_type(carla.RssSensor, world.spawn_actor(bp, carla.Transform(carla.Location()), attach_to=self._parent)) # for correct type hint
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
 
@@ -296,16 +297,10 @@ class RssSensor(object):
         return actor_constellation_result
 
     def destroy(self):
-        if self.sensor:
-            logger.debug("Stopping RSS sensor")
-            self.sensor.stop()
-            logger.info("Deleting Scene Visualizer")
-            self.unstructured_scene_visualizer = None
-            logger.info("Destroying RSS sensor")
-            if self.sensor.destroy():
-                logger.debug("Destroyed RSS sensor")
-            else:
-                logger.warning("Destroying RSS sensor not successful")
+        logger.debug("Stopping RSS sensor")
+        if not super().destroy():
+            logger.warning("Destroying RSS sensor not successful")
+        self.unstructured_scene_visualizer = None
 
     def toggle_debug_visualization_mode(self):
         self.debug_visualizer.toggleMode()
