@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
 
+# TODO: Unify distance and obstacle thresholds
+
 def collision_detection_manager(self : "LunaticAgent") -> ObstacleDetectionResult:
         """
         This module is in charge of warning in case of a collision

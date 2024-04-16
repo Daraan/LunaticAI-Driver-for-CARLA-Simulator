@@ -92,56 +92,6 @@ class NormalSpeedRule(Rule):
     action = set_default_speed
     description = "Set speed to normal speed"
 
-# ----
-
-def make_lane_change(ctx : "Context"):
-    """
-    If a tailgator is detected, move to the left/right lane if possible
-
-        :param waypoint: current waypoint of the agent
-        :param vehicle_list: list of all the nearby vehicles
-        
-    Assumes:
-         (ctx.agent.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \
-            and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10)
-        check_behind.obstacle_was_found and ctx.agent.config.live_info.current_speed < get_speed(check_behind.obstacle)
-    """
-    vehicle_list = ctx.agent.vehicles_nearby
-    waypoint = ctx.agent._current_waypoint # todo use a getter
-
-    # There is a faster car behind us
-
-    left_turn = waypoint.left_lane_marking.lane_change
-    right_turn = waypoint.right_lane_marking.lane_change
-
-    left_wpt = waypoint.get_left_lane()
-    right_wpt = waypoint.get_right_lane()
-
-    if (right_turn == carla.LaneChange.Right or right_turn ==
-        carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
-        
-        # Detect if right lane is free
-        detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
-            ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=1)
-        if not detection_result.obstacle_was_found:
-            print("Tailgating, moving to the right!")
-            end_waypoint = ctx.agent._local_planner.target_waypoint
-            ctx.agent.set_destination(end_waypoint.transform.location,
-                                    right_wpt.transform.location)
-    
-    elif left_turn == carla.LaneChange.Left and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
-        # Check if left lane is free
-        detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
-            ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=-1)
-        if  not detection_result.obstacle_was_found:
-            print("Tailgating, moving to the left!")
-            end_waypoint = ctx.agent._local_planner.target_waypoint
-            ctx.agent.set_destination(end_waypoint.transform.location,
-                                    left_wpt.transform.location)
-
-
-
-
 # ----------- Plan next waypoint -----------
 
 def random_spawnpoint_destination(ctx: "Context", waypoints: List[carla.Waypoint]=None):
