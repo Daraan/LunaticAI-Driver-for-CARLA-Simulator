@@ -1,0 +1,10 @@
+site_name: LunaticAI 
+
+theme:
+  name: "readthedocs"
+
+exclude_docs: venv/
+
+nav:
+  - Home: index.md
+  - About: about.md
