@@ -142,7 +142,7 @@ class _CountdownRule:
     blocked : bool = False # NOTE: not a property
     """Indicates if the rule is blocked for this tick only. Reset to False after the tick."""
 
-    def __init__(self, cooldown_reset_value : Optional[int] = None, enabled: bool = True):
+    def __init__(self, cooldown_reset_value: Optional[int] = None, enabled: bool = True):
         self.instances.add(self)
         self._cooldown = self.start_cooldown
         self.max_cooldown = cooldown_reset_value or self.DEFAULT_COOLDOWN_RESET
@@ -221,7 +221,7 @@ class _GroupRule(_CountdownRule):
     Value is a list of the current cooldown, the max cooldown for reset and a WeakSet of all instances.
     """
     
-    def __init__(self, group :Optional[str]=None, cooldown_reset_value : Optional[int] = None, enabled: bool = True):
+    def __init__(self, group :Optional[str]=None, cooldown_reset_value: Optional[int] = None, enabled: bool = True):
         super().__init__(cooldown_reset_value, enabled)
         self.group = group
         if group is None:
@@ -599,7 +599,7 @@ class Rule(_GroupRule):
 
         ctx.evaluation_results[ctx.agent.current_phase] = result
         if result in self.actions:
-            self._cooldown = self.max_cooldown
+            self.reset_cooldown()
             action_result = self.actions[result](ctx) #todo allow priority, random chance
             ctx.action_results[ctx.agent.current_phase] = action_result
             return action_result
