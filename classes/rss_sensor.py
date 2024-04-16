@@ -299,9 +299,8 @@ class RssSensor(CustomSensor):
         return actor_constellation_result
 
     def destroy(self):
-        logger.debug("Stopping RSS sensor")
-        if not super().destroy():
-            logger.warning("Destroying RSS sensor not successful")
+        logger.info("Stopping RSS sensor")
+        super().destroy()
         self.unstructured_scene_visualizer = None
 
     def toggle_debug_visualization_mode(self):

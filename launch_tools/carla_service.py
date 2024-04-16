@@ -41,7 +41,7 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10
     map_ = CarlaDataProvider.get_map()
     return client, world, map_
 
-
+# Note: Overwritten
 def spawn_actor(bp: carla.ActorBlueprint, spawn_point: Union[carla.Waypoint, carla.Transform], must_spawn=False, track_physics=True, attach_to: Optional[carla.Actor]=None, attachment_type=carla.AttachmentType.Rigid):
     # type: (carla.ActorBlueprint, carla.Waypoint | carla.Transform, bool, bool, carla.Actor | None, carla.AttachmentType) -> carla.Actor | None
     """
@@ -87,3 +87,25 @@ def spawn_actor(bp: carla.ActorBlueprint, spawn_point: Union[carla.Waypoint, car
     if track_physics:
         CarlaDataProvider.register_actor(actor, spawn_point)
     return actor
+
+spawn_actor = CarlaDataProvider.spawn_actor
+
+def destroy_actors(actors: "list[carla.Actor]"):
+    batch = []
+    for actor in actors:
+        if isinstance(actor, carla.Sensor):
+            actor.stop()
+        if actor is not None and actor.is_alive:
+            batch.append(carla.command.DestroyActor(actor))
+        if CarlaDataProvider.actor_id_exists(actor.id):
+            logger.warning("Actor %s is registered in the CarlaActorPool, its to remove it with CarlaActorPool._cleanup")
+            del CarlaDataProvider._carla_actor_pool[actor.id] # remove by batch and not by individual command
+
+    if batch and CarlaDataProvider._client:
+        try:
+            CarlaDataProvider._client.apply_batch(batch)
+        except RuntimeError as e:
+            if "time-out" in str(e):
+                pass
+            else:
+                raise e

@@ -27,6 +27,7 @@ from data_gathering.information_manager import InformationManager
 if TYPE_CHECKING:
     from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
     from agents.lunatic_agent import LunaticAgent
+    from classes._custom_sensor import CustomSensor
 
 from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
@@ -245,6 +246,8 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     
     spawn_actor = staticmethod(carla_service.spawn_actor)
     
+    destroy_actors = staticmethod(carla_service.destroy_actors)
+    
     # -------- Context Manager --------
 
     def __enter__(self):
@@ -382,9 +385,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self._weather_index = 0
         self.weather = None
         
-        
-
-        self.actors: List[Union[carla.Actor, Any]] = []
+        self.actors: List[Union[carla.Actor, CustomSensor]] = []
         
         # From interactive:
         self.constant_velocity_enabled = False
@@ -720,33 +721,32 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
             self.world.remove_on_tick(self.world_tick_id)
         self.destroy_sensors()
         if destroy_ego and not self.player in self.actors: # do not destroy external actors.
-            logger.debug("Destroying player")
+            logger.debug("Adding player to destruction list.")
             self.actors.append(self.player)
         elif not destroy_ego and self.player in self.actors:
             logger.warning("destroy_ego=False, but player is in actors list. Destroying the actor from within WorldModel.destroy.")
+        
         logger.info("to destroy %s", list(map(str, self.actors)))
+        # Batch destroy in one simulation step
+        real_actors: List[carla.Actor] = [actor for actor in self.actors if isinstance(actor, carla.Actor)]
+        logger.info("WorldModel will destroy %d carla.Actors", len(real_actors))
+        GameFramework.destroy_actors(real_actors)
+        
+        self.actors: List[CustomSensor] = [actor for actor in self.actors if not isinstance(actor, carla.Actor)]
         while self.actors:
             actor = self.actors.pop(0)
             if actor is not None:
                 print("destroying actor: " + str(actor), end=" destroyed=")
                 try:
-                    if hasattr(actor, 'stop'): # Sensors
-                        actor.stop()
-                except AttributeError:
-                    pass
+                    actor.stop()
+                except AttributeError as e:
+                    logger.debug("Error with actor {}: {}", actor, e)
                 try:
-                    if hasattr(actor, 'is_alive'): # CarlaActors
-                        if actor.is_alive:
-                            x = actor.destroy()
-                        else:
-                            x = " Actor was already dead."
-                    else:
-                        x = actor.destroy() # Non carla instances
+                    x = actor.destroy() # Non carla instances
                     print(x)
                 except RuntimeError:
                     logger.warning("Could not destroy actor: " + str(actor))
-                    #raise
-        if self.get_world():
+        if self._args.handle_ticks and self.get_world():
             self.get_world().tick()
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
@@ -756,7 +756,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
             return None
         
         if self.rss_sensor.log_level <= carla.RssLogLevel.warn and self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
-            logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route))
+            logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route)[:97] + "...")
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:

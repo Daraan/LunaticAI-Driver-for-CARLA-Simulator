@@ -147,7 +147,6 @@ class AsyncDataMatrix(DataMatrix):
         try:
             from agents.tools.logging import logger
             if self.worker_thread.is_alive():
-                logger.info("Joining DataMatrix thread")
                 self.worker_thread.join()
             else:
                 logger.info("DataMatrix.stop called multiple times.")
