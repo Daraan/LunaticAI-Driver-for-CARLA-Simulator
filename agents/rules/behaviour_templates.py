@@ -207,6 +207,23 @@ if __name__ == "__main__" or DEBUG_RULES:
     def eval_context_function(ctx : "Context") -> bool:
         assert isinstance(ctx, Context)
         return True
+    
+    def ctx_action(ctx : Context):
+        assert_type(ctx, Context)
+        
+    def ctx_self_action(self, ctx : Context):
+        assert_type(self, Rule)
+        assert_type(ctx, Context)
+        
+    # TODO: # CRITICAL: >1 argument, treated as method
+    def ctx_action_kwargs(ctx : Context, arg1):
+        assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
+        assert_type(ctx, Context)
+        
+    def ctx_self_action_kwargs(self, ctx : Context, arg1):
+        assert_type(self, Rule)
+        assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
+        assert_type(ctx, Context)
 
     @Rule
     class SimpleRule1:
@@ -218,7 +235,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     class SimpleRule(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = context_method
-        action = lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context))
+        action = lambda self, ctx: ctx_self_action(self, ctx)
 
     class ReverseWhenCollide(Rule):
         phases = Phase.COLLISION | Phase.END
@@ -230,13 +247,13 @@ if __name__ == "__main__" or DEBUG_RULES:
     @Rule
     class SimpleRule1B:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
-        rule = eval_context_function
-        action = lambda ctx: assert_type(ctx, Context)
+        rule = eval_context_function.copy() # TODO: can I copy this via a __set__
+        rule.register_action(ctx_self_action_kwargs, arg1="arg1")
     
     class SimpleRuleB(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
-        rule = eval_context_method
-        action = lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context))
+        rule = eval_context_method.copy()
+        rule.register_action(ctx_action) 
 
 
     class DebugRuleWithEval(Rule):
@@ -246,9 +263,11 @@ if __name__ == "__main__" or DEBUG_RULES:
         def rule(self, ctx : "Context") -> bool:
             assert isinstance(ctx, Context)
             assert isinstance(self, DebugRuleWithEval)
+            return True
         
-        @rule.register_action(True)
-        def true_action(self, ctx : "Context"):
+        @rule.register_action(True, arg1="arg1")
+        def true_action(self, ctx : "Context", arg1):
+            assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
             assert isinstance(ctx, Context)
             assert isinstance(self, DebugRuleWithEval)
 
@@ -306,3 +325,4 @@ if __name__ == "__main__" or DEBUG_RULES:
     assert not cd_rule.phases
     assert cd_rule.description == """This is my description"""
 
+    debug_rules = [test, simple_rule, simple_ruleB, another_rule, custom_rule, new_rule, cd_rule]

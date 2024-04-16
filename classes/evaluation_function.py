@@ -54,6 +54,8 @@ class EvaluationFunction:
                                 })
     """
     
+    actions: ClassVar[dict[Hashable, Callable[["Union[Context, Rule]"], Any]]] = {}
+    
     def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="EvaluationFunction", *, truthy=False, use_self=None) -> "type[EvaluationFunction]":
         # @EvaluationFunction("name")
         if isinstance(first_argument, str):
@@ -77,7 +79,7 @@ class EvaluationFunction:
         else:
             self.name = str(evaluation_function)
         self.use_self = use_self
-        self.actions = {}
+        self.actions = self.actions.copy()
 
     def __call__(self, ctx: "Context | Rule", *args, **kwargs) -> Hashable:
         """
@@ -186,23 +188,27 @@ class EvaluationFunction:
     
     _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
     
-    def _check_action(self, action_function, key):
+    def _check_action(self, action_function: Callable[["Union[Context, Rule]"], Any], key, **kwargs):
         if action_function.__name__ in EvaluationFunction._INVALID_NAMES:
             raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in {EvaluationFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
         if key in self.actions:
             print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
+        if kwargs:
+            # TODO: # CRITICAL: are args problematic? 
+            action_function = partial(action_function, **kwargs)
+        return action_function
     
     @singledispatchmethod
-    def register_action(self, key: Hashable=True):
+    def register_action(self, key: Hashable=True, **kwargs):
         def decorator(action_function):
-            self._check_action(action_function, key)
+            action_function = self._check_action(action_function, key, **kwargs)
             self.actions[key] = action_function # register action
             return action_function
         return decorator
     
     @register_action.register(abc.Callable)
-    def _register_action_directly(self, action_function: Callable[["Union[Context, Rule]"], Any], key: Hashable=True):
-        self._check_action(action_function, key)
+    def _register_action_directly(self, action_function: Callable[["Union[Context, Rule]"], Any], key: Hashable=True, **kwargs):
+        action_function = self._check_action(action_function, key, **kwargs)
         self.actions[key] = action_function # register action
 
 def TruthyEvaluationFunction(func: Callable) -> EvaluationFunction:
