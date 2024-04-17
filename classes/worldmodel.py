@@ -12,6 +12,7 @@ import pygame
 
 import carla
 import numpy.random as random
+from agents.tools.config_creation import AgentConfig
 from agents.tools.lunatic_agent_tools import AgentDoneException, ContinueLoopException
 from classes.HUD import HUD
 
@@ -333,10 +334,14 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
-        if not isinstance(args, Mapping):
+        if not isinstance(args, (Mapping, DictConfig, AgentConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
-            args = OmegaConf.load(args)
+            try:
+                args = OmegaConf.load(args)
+            except Exception as e:
+                print("Problem with", type(args), args) 
+                raise e
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
         self._args : LaunchConfig = args
         

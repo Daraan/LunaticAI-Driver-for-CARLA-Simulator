@@ -54,7 +54,6 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context") -> bool:
     # TODO: Have some min speed difference to overtake
     #  Make some config to ignore speed limit for overtake
     if check_front.obstacle_was_found and ctx.agent.config.live_info.current_speed > get_speed(check_front.obstacle):
-        print("Obstacle found", check_front)
         return check_front
     return False
                 

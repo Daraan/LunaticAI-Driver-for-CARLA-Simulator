@@ -6,7 +6,7 @@ except ImportError:
     from launch_tools import singledispatchmethod
 
 
-from typing import Callable, Any, ClassVar, Hashable, TYPE_CHECKING, Optional, Union
+from typing import Callable, Any, ClassVar, Dict, Hashable, TYPE_CHECKING, Optional, Union
 from collections import abc
 
 import inspect
@@ -54,7 +54,7 @@ class EvaluationFunction:
                                 })
     """
     
-    actions: ClassVar[dict[Hashable, Callable[["Union[Context, Rule]"], Any]]] = {}
+    actions: ClassVar[Dict[Hashable, Callable[["Union[Context, Rule]"], Any]]] = {}
     
     def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="EvaluationFunction", *, truthy=False, use_self=None) -> "type[EvaluationFunction]":
         # @EvaluationFunction("name")

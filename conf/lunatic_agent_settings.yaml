@@ -193,7 +193,7 @@ obstacles:
   # Usage: base_threshold + detection_speed_ratio * vehicle_speed
   #  
   # #NOTE: Currently only applied to traffic lights
-  use_dynamic_speed_threshold: true
+  dynamic_threshold: true
   # Defines detection angles used when checking for obstacles.
   detection_angles:
     walkers_lane_change:
@@ -226,11 +226,6 @@ obstacles:
   ignore_signs_percentage: 0.0
   # Percentage of time to ignore pedestrians
   ignore_walkers_percentage: 0.0
-
-  # Whether or not to add `detection_speed_ratio * vehicle_speed` to `base_vehicle_threshold`
-  #  
-  # # NOTE: Part of BasicAgent overhaul
-  dynamic_threshold_by_speed: true
 
 
 # Limitations of the controls used one the PIDController Level

@@ -84,12 +84,15 @@ def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.Tr
         if random.random() < self.config.obstacles.ignore_lights_percentage:
             return TrafficLightDetectionResult(False, None)
 
-        if self.config.obstacles.dynamic_threshold_by_speed:
+        # Behavior setting:
+        max_tlight_distance = self.config.obstacles.base_tlight_threshold
+        if self.config.obstacles.dynamic_threshold:
             # Basic agent setting:
-            max_tlight_distance = self.config.obstacles.base_tlight_threshold + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
-        else:
-            # Behavior setting:
-            max_tlight_distance = self.config.obstacles.base_tlight_threshold
+            logger.info("Increased threshold for traffic light detection from {} to {}".format(max_tlight_distance, 
+                                                                                              max_tlight_distance + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed))
+            max_tlight_distance += self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
+            
+        # TODO: Time to pass the traffic light; i.e. can we pass it without stopping? -> How risky are we?
 
         # TODO check if lights should be copied.
         # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks

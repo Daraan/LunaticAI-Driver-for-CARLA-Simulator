@@ -94,7 +94,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     try:
         logger.info("Creating Game Framework ...")
         game_framework = GameFramework(args)
-        logger.debug("Created Game Framework.\n")
+        logger.info("Created Game Framework.\n")
         
         # -- Spawn Vehicles --
         all_spawn_points = game_framework.map.get_spawn_points()
