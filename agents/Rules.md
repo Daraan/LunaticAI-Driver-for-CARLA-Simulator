@@ -8,6 +8,12 @@ Rules have three main components
 
 There are three different ways to define a rule, with their own advantages and disadvantages.
 
+## Phases
+
+To see which phases are available and how they are defined, see the `Phase` class in [constants.py](./classes/constants.py#Phase).
+
+At the beginning (`Phase.BEGIN`) and end (`Phase.END`) of a phase associated rules are evaluated and depending on their outcome the agent will perform certain actions.
+
 ## Creation
 
 ### Functional API
@@ -190,6 +196,17 @@ def action(ctx: Context):
     ...
 
 foo.register_action(action, True)
+```
+
+## Adding Rules to an Agent
+
+A single rule can be added by calling `agent.add_rule(rule)` or multiple rules by calling `agent.add_rules(rules)`.
+
+For example:
+
+```python
+rules = [Rule1(), Rule2(), Rule3()]
+agent.add_rules(rules)
 ```
 
 ## Troubleshooting
