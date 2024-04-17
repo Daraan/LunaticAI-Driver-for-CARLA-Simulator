@@ -334,6 +334,51 @@ class AgentConfig:
                 behavior.__dict__["_parent"] = None # Remove parent from
         
         return cast(cls, behavior)
+    
+    if TYPE_CHECKING and sys.version_info >= (3, 8):
+        from typing import overload, Literal, TypeVar
+        CL = TypeVar("CL")
+        @overload
+        @classmethod
+        def check_config(cls, config: CL, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[False]") -> CL: ... 
+        
+        @overload
+        @classmethod
+        def check_config(cls: type[CL], config, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[True]") -> CL: ... 
+        
+        @overload
+        @classmethod
+        def check_config(cls: type[CL], config, strictness: int, as_dict_config=True) -> CL: ...
+    
+    @classmethod
+    def check_config(cls, config, strictness: int = 1, as_dict_config=True):
+        """
+        
+        strictness == 1: Will cast the config to this class, assuring all keys are present.
+            However the type and correctness of the field-contents are not checked.
+        - For strictness > 1 the config will be a DictConfig object. - 
+        
+        strictness == 2: Will assure that the *initial* types are correct.
+        For strictness > 2 will return the config as a structured config,
+        forcing the defined types during runtime as well.
+        """
+        if strictness < 1:
+            if as_dict_config and not isinstance(config, DictConfig):
+                return OmegaConf.create(config, flags={"allow_objects": True})
+            else:
+                return config
+        if strictness == 1:
+            config = cls(**config)
+            if as_dict_config and not isinstance(config, DictConfig):
+                return OmegaConf.create(config, flags={"allow_objects": True})
+            return config
+        config = cls.create_from_args(config, config_mode=SCMode.DICT_CONFIG, assure_copy=False)
+        if strictness == 2:
+            if as_dict_config and not isinstance(config, DictConfig):
+                return OmegaConf.create(config, flags={"allow_objects": True})
+            return config
+        config: cls = OmegaConf.structured(config)
+        return config
         
     
     @class_or_instance_method
@@ -1499,7 +1544,14 @@ class _test(AgentConfig):
 
 
 @dataclass
-class LaunchConfig:
+class LaunchConfig(AgentConfig):
+    strict_config: Union[bool, int] = 3
+    """
+    If enabled will assert that the loaded config is a subset of the `LaunchConfig` class.
+    
+    If set to >= 2, will assert that during runtime the types are correct.
+    """
+    
     verbose: bool = True
     debug: bool = True
     interactive: bool = False
