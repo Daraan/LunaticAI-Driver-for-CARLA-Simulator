@@ -1,12 +1,14 @@
 # LunaticAI Driver for CARLA-Simulator
 
-<link rel="shortcut icon" type="image/png" href="https://github.githubassets.com/favicons/favicon.svg">
-
 This repository offers a modularized rule-based agent system for the 
 [CARLA simulator](https://carla.org/)[<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/carla-simulator/carla)
 designed to be easily extendable and configurable.
-If you are familiar with the CARLA simulator, our agent builds up on the standard agents provided by the CARLA team but remodels and extends them in many ways.
 
+If you are familiar with the CARLA simulator, our agent builds up on the standard agents provided by the CARLA team but remodels and extends them in many ways. The key changes are:
+
+- Rule System: Customizing the agent's behavior by defining rules and actions.
+- Full, dynamic and transparent Configuration: Allowing to adjust the agent's behavior at runtime building up from a YAML configuration.
+- 
 
 ## Work in Progress
 
@@ -25,15 +27,19 @@ XXX
 
 ## Agent Classes
 
-At the core is the [`LunaticAgent`(./agents/lunatic_agent.py)](./agents/lunatic_agent.py) which offers full flexibility in terms of rules and actions and how you control it during a custom written game loop.
+At the core is the [`LunaticAgent`(agents/lunatic_agent.py)](./agents/lunatic_agent.py) which offers full flexibility in terms of rules and actions and how you control it during a custom written game loop.
 
-The [`LunaticChallenger`(./agents/leaderboard_agent.py)](./agents/leaderboard_agent.py) is a simplified version wrapped around the `LunaticAgent` to be compatible with the [carla/leaderboard-2.0](https://github.com/carla-simulator/leaderboard) interface, i.e. providing only a `setup` and `run_step` method.
+The [`LunaticChallenger`(agents/leaderboard_agent.py)](./agents/leaderboard_agent.py) is a simplified version wrapped version to be compatible with the [carla/leaderboard-2.0](https://github.com/carla-simulator/leaderboard) interface, i.e. providing only a `setup` and `run_step` method.
+
+You can look at the workflow diagram at the end of this document to see how the agent system is structured.
 
 ## Rule and Phase System
 
 ### Rules
 
-Rules for the agent can be designed in a class-based way. For example the following rule will slow down the agent when it is at a junction:
+Rules for the agent have three core components: a phase where it can be applied, a condition and lastly an action that is executed depending on the result of the condition.  
+
+For example, the following rule will slow down the agent when it is at a junction:
 
 ```python
 class SlowDownAtIntersectionRule(Rule):
