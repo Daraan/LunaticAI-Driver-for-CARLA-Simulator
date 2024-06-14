@@ -12,7 +12,7 @@ import inspect
 from inspect import isclass
 from itertools import accumulate
 from enum import IntEnum
-from typing import Any, ClassVar, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
+from typing import Any, ClassVar, FrozenSet, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
 from weakref import WeakSet
 
 from omegaconf import OmegaConf
@@ -285,7 +285,7 @@ class Rule(_GroupRule):
     If set to False the automatic __init__ creation is disabled when subclassing.
     This automatic __init__ will fix parameters like `phases` and `rule` to the class.
     
-    Providing an `__init__` has the same effect as setting `_auto_init_` to False.
+    Declaring an `__init__` method in the class has the same effect as setting `_auto_init_` to False.
     """
     
     rule : EvaluationFunction
@@ -309,7 +309,7 @@ class Rule(_GroupRule):
     overwrite_settings : Dict[str, Any]
     """Settings that should overwrite the agent's settings for this rule."""
     
-    phases : Set["Phase"]
+    phases : FrozenSet["Phase"]
     """The phase or phases in which the rule should be evaluated."""
 
     # Indicate that no rule was applicable in the current phase
@@ -385,15 +385,15 @@ class Rule(_GroupRule):
         # Check phases
         if not phases:
             raise ValueError("phases must not be empty or None")
-        if not isinstance(phases, set):
+        if not isinstance(phases, frozenset):
             if isinstance(phases, Iterable):
-                phases = set(phases)
+                phases = frozenset(phases)
             else:
-                phases = {phases}
+                phases = frozenset([phases]) # single element
         for p in phases:
             if not isinstance(p, Phase):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
-        self.phases = phases
+        self._phases = phases
         
         # Check Rule
         if rule is None and not hasattr(self, "rule"):
@@ -441,7 +441,6 @@ class Rule(_GroupRule):
                 self.actions[True] = action
             if false_action is not None:
                 self.actions[False] = false_action
-        
         
         # Assure that method(self, ctx) like functions are accessible like them
         for key, func in self.actions.items():
@@ -573,6 +572,10 @@ class Rule(_GroupRule):
         # NOTE: This is weakly tested and not much supported.
         self.__init__(cls.get("phases", cls.get("phase")), cls["rule"], cls.get("action"), cls.get("false_action"), actions=cls.get("actions"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True))        
 
+    # -----------------------
+    # Evaluation functions
+    # -----------------------
+
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable]:
         settings = self.overwrite_settings.copy()   
         if overwrite:
@@ -604,6 +607,12 @@ class Rule(_GroupRule):
             ctx.action_results[ctx.agent.current_phase] = action_result
             return action_result
         return self.NOT_APPLICABLE # No action was executed
+    
+    # 
+    
+    @property
+    def phases(self):
+        return self._phases
     
     def __str__(self) -> str:
         try:
