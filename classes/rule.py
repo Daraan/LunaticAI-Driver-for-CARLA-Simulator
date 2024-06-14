@@ -400,7 +400,7 @@ class Rule(_GroupRule):
         for p in phases:
             if not isinstance(p, Phase):
                 raise ValueError(f"phase must be of type Phases, not {type(p)}")
-        self._phases = phases
+        self.phases = phases
         
         # Check Rule
         if rule is None and not hasattr(self, "rule"):
@@ -617,10 +617,6 @@ class Rule(_GroupRule):
         return self.NOT_APPLICABLE # No action was executed
     
     # 
-    
-    @property
-    def phases(self):
-        return self._phases
     
     def __str__(self) -> str:
         try:
