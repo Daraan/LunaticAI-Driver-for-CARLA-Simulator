@@ -232,6 +232,7 @@ class _GroupRule(_CountdownRule):
 
     @property
     def cooldown(self) -> int:
+        """If 0 the rule is ready to be executed."""
         if self.group:
             return _GroupRule.group_instances[self.group][0]
         return super().cooldown
@@ -247,20 +248,23 @@ class _GroupRule(_CountdownRule):
             return
         super().cooldown = value
     
-    def set_cooldown_of_my_group(self, value: Optional[int]=None):
+    def set_my_group_cooldown(self, value: Optional[int]=None):
+        """Update the cooldown of the group this rule belong to"""
         if value is None:
             self.group_instances[self.group][0] = self.group_instances[self.group][1] # set to max
         else:
             self.group_instances[self.group][0] = value
 
     def reset_cooldown(self, value:Optional[int]=None):
+        """Reset or set the cooldown"""
         if self.group:
-            self.set_cooldown_of_my_group(value)
+            self.set_my_group_cooldown(value)
         else:
             super().reset_cooldown()
 
     @classmethod
-    def set_cool_down_of_group(cls, group : str, value: int):
+    def set_cooldown_of_group(cls, group: str, value: int):
+        """Updates the cooldown of the specified group."""
         if group in cls.group_instances:
             cls.group_instances[group][0] = value
         else:
@@ -271,6 +275,7 @@ class _GroupRule(_CountdownRule):
 
     @classmethod
     def update_all_cooldowns(cls):
+        """Globally updates all groups and rule instances"""
         # Update Groups
         for instance_data in cls.group_instances.values():
             if instance_data[0] > 0:
@@ -318,6 +323,8 @@ class Rule(_GroupRule):
     """Object that indicates that no action was executed."""
     
     priority: RulePriority = RulePriority.NORMAL
+    
+    # Initialization functions
 
     def clone(self):
         """
@@ -473,6 +480,7 @@ class Rule(_GroupRule):
             return super().__new__(new_rule_class)
         return super().__new__(cls)
     
+    # Called on subclass creation. Can be used for class API
     def __init_subclass__(cls, init_by_decorator=False):
         """
         Automatically creates a __init__ function to allow for a simple to use class-interface to create rule classes.
@@ -487,7 +495,7 @@ class Rule(_GroupRule):
         else:
             custom_init = False
             
-        if not cls._auto_init_:
+        if not cls._auto_init_: # TODO: Check for multirule, should _auto_init_ be set to False?
             return
         
         do_not_overwrite = ["phases"]
@@ -557,7 +565,7 @@ class Rule(_GroupRule):
     
     @__init__.register(_CountdownRule)
     @__init__.register(type)
-    def __init_by_decorating_class(self, cls): # pylint: disable=unused-argument
+    def __init_by_decorating_class(self, cls): # pylint: disable=unused-variable
         """
         Initialize by passing a Rule or class object to the __init__ method.
         
@@ -568,7 +576,7 @@ class Rule(_GroupRule):
         self.__init__(phases, cls.rule, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
         
     @__init__.register
-    def __init_from_mapping(self, cls:Mapping):
+    def __init_from_mapping(self, cls:Mapping): # pylint: disable=unused-variable
         # NOTE: This is weakly tested and not much supported.
         self.__init__(cls.get("phases", cls.get("phase")), cls["rule"], cls.get("action"), cls.get("false_action"), actions=cls.get("actions"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True))        
 
@@ -768,6 +776,13 @@ class RandomRule(MultiRule):
 
 
     def evaluate_children(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
+        """
+        Evaluate a random child rule.
+        If `self.repeat_if_not_applicable=False` and the randomly chosen rule is not applicable,
+        then no further rules are evaluated
+        For `self.repeat_if_not_applicable=False` possible rules are evaluated in a random fashion
+        until one rule was applicable.
+        """
         if self.repeat_if_not_applicable:
             rules = self.rules.copy()
             weights = self.weights.copy()
@@ -779,12 +794,14 @@ class RandomRule(MultiRule):
             rule = random.choices(rules, cum_weights=weights, k=1)[0]
             result = rule(ctx, overwrite, ignore_phase=self.ignore_phase) #NOTE: Context action/evaluation results only store result of LAST rule
             if not self.repeat_if_not_applicable or result is not Rule.NOT_APPLICABLE:
+                # break after the first rule of `self.repeat_if_not_applicable=False`
+                # else break if it was applicable.
                 break
             rules.remove(rule)
             weights = list(accumulate(r.priority.value for r in rules))
         return result
 
-# Provide necessary imports for the evaluation_function module but prevents circular imports
+# Provide necessary imports for the evaluation_function module and prevents circular imports
 
 import classes.evaluation_function as __evaluation_function
 __evaluation_function.Rule = Rule
