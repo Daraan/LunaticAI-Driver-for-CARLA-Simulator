@@ -1,5 +1,11 @@
 # LunaticAI Driver for CARLA-Simulator
 
+[![Documentation Status](https://readthedocs.org/projects/lunaticai-driver-for-carla-simulator/badge/?version=latest)](https://lunaticai-driver-for-carla-simulator.readthedocs.io/?badge=latest)
+
+The full documentation can be found online at [ReadTheDocs](https://lunaticai-driver-for-carla-simulator.readthedocs.io/).
+
+---
+
 This repository offers a modularized rule-based agent system for the
 [CARLA simulator](https://carla.org/)[<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/carla-simulator/carla)
 designed to be easily extendable and configurable.
