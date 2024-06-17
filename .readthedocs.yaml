@@ -11,6 +11,7 @@ python:
 
 sphinx:
   configuration: docs/conf.py
+  fail_on_warning: true
 
     # You can configure Sphinx to use a different builder, for instance use the dirhtml builder for simpler URLs
 
