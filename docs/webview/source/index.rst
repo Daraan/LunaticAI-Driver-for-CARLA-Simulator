@@ -13,6 +13,8 @@ Welcome to LunatiAI's documentation!
    Installation <docs/Install>
    agents/Agents
    Configuration <conf/ConfigFiles>
+   agents
+   classes
 
 Indices and tables
 ==================
