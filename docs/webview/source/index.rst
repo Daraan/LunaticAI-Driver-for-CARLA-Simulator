@@ -7,18 +7,12 @@ Welcome to LunatiAI's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
-   Install
-   README <readme_link>
-
-Usage
-=====
-   :doc:Install
-
-
-
+   Installation <docs/Install>
+   agents/Agents
+   Configuration <conf/ConfigFiles>
 
 Indices and tables
 ==================
@@ -26,3 +20,10 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+Readme
+======
+
+.. include:: readme_link.rst
+
+

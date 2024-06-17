@@ -16,8 +16,8 @@ pip install -r docs/requirements/requirements_leaderboard.txt
 
 ```bash
 # Navigate to a parent folder in which you want to store the repository
-git clone --recurse-submodules XXX.git
-cd XXX
+git clone --recurse-submodules https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator.git LunaticAI
+cd LunaticAI
 git submodule init 
 git submodule update
 ```
@@ -26,7 +26,8 @@ git submodule update
 
 ### Carla Folder
 
-Temporarily set the path variables with the following commands or register them permanently in your system, e.g. via `conda env var create`, for Linux you can modify `.bashrc` or `.bash_profile` and for Windows you can use the `setx` command to set them permanently.
+Temporarily set the path variables with the following commands or register them permanently in your system, e.g. via `conda env var create`.
+For Linux you can also modify your `.bashrc` or `.bash_profile` and for Windows you can use the `setx` command to set them permanently.
 
 #### Windows
 
@@ -39,9 +40,9 @@ Temporarily set the path variables with the following commands or register them 
 ### Python Path
 
 If you do not use a packaged (wheel) version of CARLA but the distributed `.egg` files locate the appropriate files and add them to your `PYTHONPATH` variable.
-You should find them in `${CARLA_ROOT}/PythonAPI/carla/dist`.
+You find them in `${CARLA_ROOT}/PythonAPI/carla/dist`.
 
-For example:
+Adjust the file name depending on your system and Python version, for example it could look like this:
 
 ```bash
 # Linux

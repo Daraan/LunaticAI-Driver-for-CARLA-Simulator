@@ -23,7 +23,7 @@ If you are familiar with the CARLA simulator, our agent builds up on the standar
 
 ## Installation
 
-XXX
+See the [Installation Guide](docs/Install.md) for more details.
 
 ## Agent Classes
 
