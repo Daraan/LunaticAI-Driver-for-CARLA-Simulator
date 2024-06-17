@@ -50,4 +50,4 @@ agent.add_rule(MyRule()) # Be sure that you instantiate your rules.
 
 The agent can be configures by passing any attribute supporting Mapping structure, e.g. nested [(data)classes](https://docs.python.org/3/library/dataclasses.html), [attrs](https://www.attrs.org/en/stable/index.html), or [omegaconf's DictConfig](https://omegaconf.readthedocs.io/en/2.3_branch/) which can extend on these two.
 
-For more info read the [ConfigFiles.md](conf/ConfigFiles.md) section.
+For more info read the [ConfigFiles.md](../conf/ConfigFiles) section.

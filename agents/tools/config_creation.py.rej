@@ -1,0 +1,8 @@
+diff a/agents/tools/config_creation.py b/agents/tools/config_creation.py	(rejected hunks)
+@@ -1,5 +1,6 @@
+ # DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
+ 
++import os
+ import sys
+ from collections.abc import Mapping
+ 

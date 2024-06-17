@@ -73,13 +73,8 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
 docs/docenv/
-# TODO: uncomment later
-docs/conf.py
-docs/index.rst
-docs/make.bat
-docs/Makefile
+
 
 # PyBuilder
 .pybuilder/

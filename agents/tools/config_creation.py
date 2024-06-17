@@ -1,7 +1,9 @@
 # DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
 
-from collections.abc import Mapping
+import os
 import sys
+from collections.abc import Mapping
+
 
 from classes.camera_manager import CameraBlueprint
 from classes.rss_visualization import RssDebugVisualizationMode
@@ -9,7 +11,7 @@ if __name__ == "__main__": # TEMP clean at the end, only here for testing
     import os
     sys.path.append(os.path.abspath("../"))
 
-from enum import Enum
+from enum import Enum, IntEnum
 from functools import partial, wraps
 from dataclasses import dataclass, field, asdict, is_dataclass
 import typing
@@ -34,6 +36,8 @@ SI Use this for String interpolation, for example "http://${host}:${port}"
 
 import carla
 
+import ast
+import inspect
 from agents.navigation.local_planner import RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
@@ -51,13 +55,19 @@ __all__ = ["AgentConfig",
            "LaunchConfig",
         ]
 
+_class_annotations = None
+_file_path = __file__
+
 # ---------------------
 # Helper methods
 # ---------------------
 
-OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
-OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
-OmegaConf.register_new_resolver("min", lambda *els: min(els))
+# need this check for readthedocs
+if os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
+    OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
+    OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
+    OmegaConf.register_new_resolver("min", lambda *els: min(els))
+    os.environ["_OMEGACONF_RESOLVERS_REGISTERED"] = "1"
 
 class class_or_instance_method:
     """Decorator to transform a method into both a regular and class method"""
@@ -110,7 +120,7 @@ class AgentConfig:
         return cls()
     
     @class_or_instance_method
-    def export_options(cls_or_self, path, category=None, resolve=False) -> None:
+    def export_options(cls_or_self, path, category=None, resolve=False, with_comments=False) -> None:
         """Exports the options to a yaml file."""
         if inspect.isclass(cls_or_self):
             cls_or_self = cls_or_self()
@@ -129,7 +139,7 @@ class AgentConfig:
         OmegaConf.save(options, path, resolve=resolve) # NOTE: This might raise if options is structured, for export structured this is actually not necessary.
         
     @class_or_instance_method
-    def simplify_options(cls_or_self, category=None, *, resolve, yaml=False, **kwargs):
+    def simplify_options(cls_or_self, category=None, *, resolve, yaml=False, yaml_commented=True, **kwargs):
         """
         Returns a dictionary of all options or a string in yaml format.
         
@@ -149,14 +159,14 @@ class AgentConfig:
         if not isinstance(options, DictConfig) and not resolve and not yaml:
             return asdict(options)
         if not isinstance(options, DictConfig):
-            options = OmegaConf.structured(options)
+            options = OmegaConf.structured(options, flags={"allow_objects": True})
         if yaml:
             return OmegaConf.to_yaml(options, resolve=resolve, **kwargs)
         return OmegaConf.to_container(options, resolve=resolve, **kwargs)
     
     @class_or_instance_method
-    def to_yaml(cls_or_self, resolve=False) ->  str:
-        return cls_or_self.simplify_options(resolve=resolve, yaml=True)
+    def to_yaml(cls_or_self, resolve=False, yaml_commented=True) ->  str:
+        return cls_or_self.simplify_options(resolve=resolve, yaml=True, yaml_commented=yaml_commented)
     
     @classmethod
     def from_yaml(cls, path, category : Optional[str]=None, *, merge=True):
@@ -171,7 +181,7 @@ class AgentConfig:
         return r
     
     @classmethod
-    def create_from_args(cls, args_agent:"Union[os.PathLike, dict, DictConfig, dataclass]", 
+    def create_from_args(cls, args_agent:"Union[os.PathLike, dict, DictConfig, Mapping]", 
                          overwrites:"Optional[Mapping]"=None, 
                          *,
                          assure_copy : bool = False,
@@ -209,18 +219,24 @@ class AgentConfig:
             logger.info("Using agent settings as is, as it is a dataclass or DictConfig.")
             if assure_copy:
                 behavior : cls = OmegaConf.create(args_agent, flags={"allow_objects": True})
+            elif isinstance(args_agent, type):
+                behavior = args_agent()
             else:
                 behavior = args_agent
         else:
             if config_mode is None or config_mode == SCMode.DICT:
                 logger.warning("Type `%s` of launch argument type `agent` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args_agent))
+            if isinstance(args_agent, type):
+                behavior = args_agent() # be sure to have an instance
             if assure_copy:
                 from copy import deepcopy
                 behavior = deepcopy(args_agent)
             else:
                 behavior = args_agent
         if config_mode is not None:
-            logger.debug("Converting agent settings to to container via %s", config_mode)
+            logger.debug("Converting agent settings (type: %s) to to container via %s", type(behavior), config_mode)
+            if not isinstance(behavior, DictConfig):
+                behavior = OmegaConf.create(behavior, flags={"allow_objects": True})
             behavior = OmegaConf.to_container(behavior, structured_config_mode=config_mode)
         
         if overwrites:
@@ -400,6 +416,8 @@ class SimpleConfig(object):
 
 @dataclass
 class LiveInfo(AgentConfig):
+    """Keeps track of information that changes during the simulation."""
+    
     use_srunner_data_provider : bool = True
     """
     If enabled makes use of the scenario_runner CarlaDataProvider assuming 
@@ -408,7 +426,7 @@ class LiveInfo(AgentConfig):
     NOTE: Turning this off is not fully supported.
     """
     
-    velocity_vector : "carla.Vector3D" = MISSING
+    velocity_vector : carla.Vector3D = MISSING
     """
     3D Vector of the current velocity of the vehicle.
     """
@@ -420,11 +438,57 @@ class LiveInfo(AgentConfig):
     Note if use_srunner_data_provider is True the z component is ignored.
     """
     
-    current_transform : "carla.Transform" = MISSING
-    current_location : "carla.Location" = MISSING
+    current_transform : carla.Transform = MISSING
+    current_location : carla.Location = MISSING
     
     current_speed_limit : float = MISSING
-    direction : RoadOption = MISSING
+    
+    executed_direction : RoadOption = MISSING
+    """
+    Direction that was executed in the last step by the local planner
+    
+    planner.target_road_option is the option last executed by the planner (constant)
+    incoming direction is the next *planned* direction subject to change (variable)
+    """
+    
+    incoming_direction : RoadOption = MISSING
+    """
+    RoadOption that will used for the current step
+    """
+    
+    incoming_waypoint : carla.Waypoint = MISSING
+    """
+    Waypoint that is planned to be targeted in this step.
+    """
+    
+    is_taking_turn : bool = MISSING
+    """
+    incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
+    """
+    
+    is_changing_lane : bool = MISSING
+    """
+    incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
+    """
+    
+    next_traffic_light : Union[carla.TrafficLight, None] = MISSING
+    """
+    Traffic light that is closest to the next intersection.
+    
+    Is `None` if the agent is at an intersection.
+    
+    + NOTE: This might not be in the path or infront of the vehicle.
+    """
+    
+    next_traffic_light_distance : Union[float, None] = MISSING
+    """
+    Distance to the assumed next traffic light.
+    """
+    
+    last_applied_controls: carla.VehicleControl = MISSING
+    """
+    VehicleControls 
+    """
     
     # NOTE: Not ported to OmegaConf
     @property
@@ -715,18 +779,20 @@ class BasicAgentObstacleSettings(AgentConfig):
     Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
     
-    use_dynamic_speed_threshold : bool = True
+    dynamic_threshold : bool = True
     """
     Whether to add a dynamic threshold based on the vehicle speed to the base threshold.
     
     Usage: base_threshold + detection_speed_ratio * vehicle_speed
     
-    #NOTE: Currently only applied to traffic lights
+    + NOTE: Currently only applied to traffic lights
+    
+    + NOTE: Part of the agent overhaul
     """
     
     detection_angles : BasicAgentObstacleDetectionAngles = field(default_factory=BasicAgentObstacleDetectionAngles)
     """Defines detection angles used when checking for obstacles."""
-    
+
 
 @dataclass
 class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
@@ -735,6 +801,7 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
     
     nearby_walkers_max_distance: float = 10
     """For performance filters out pedestrians that are further away than this distance in meters"""
+
 
 @dataclass
 class AutopilotObstacleSettings(AgentConfig):
@@ -780,11 +847,13 @@ class LunaticAgentObstacleDetectionAngles(BasicAgentObstacleDetectionAngles):
 
 @dataclass
 class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObstacleSettings):
-    dynamic_threshold_by_speed : bool = True
+    dynamic_threshold : bool = True
     """
-    Whether or not to add `detection_speed_ratio * vehicle_speed` to `base_vehicle_threshold`
+    Whether to add a dynamic threshold based on the vehicle speed to the base threshold.
     
-    # NOTE: Part of BasicAgent overhaul
+    Usage: base_threshold + detection_speed_ratio * vehicle_speed
+    
+    #NOTE: Currently only applied to traffic lights
     """
     
     detection_angles: LunaticAgentObstacleDetectionAngles = field(default_factory=LunaticAgentObstacleDetectionAngles)
@@ -1002,15 +1071,22 @@ class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
 # Boost.Python.enum cannot be used as annotations for omegaconf, replacing them by real enums,
 # Functional API is easier to create but cannot be used as type hints
 if AD_RSS_AVAILABLE:
-    RssRoadBoundariesMode = Enum("RssRoadBoundariesMode", {str(name):value for value, name in carla.RssRoadBoundariesMode.values.items()}, module=__name__)
-    RssLogLevel = Enum("RssLogLevel", {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)
+    RssRoadBoundariesModeAlias = IntEnum("RssRoadBoundariesModeAlias", {str(name):value for value, name in carla.RssRoadBoundariesMode.values.items()}, module=__name__)
+    RssLogLevelAlias = IntEnum("RssLogLevelAlias", {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)
+
+    for value, name in carla.RssRoadBoundariesMode.values.items():
+        assert RssRoadBoundariesModeAlias[str(name)] == value
+        
+    for value, name in carla.RssLogLevel.values.items():
+        assert RssLogLevelAlias[str(name)] == value
+
 elif TYPE_CHECKING and sys.version_info >= (3, 10):
     from typing import TypeAlias
-    RssLogLevel : TypeAlias = Union[int, str]
-    RssRoadBoundariesMode : TypeAlias = Union[int, str, bool]
+    RssLogLevelAlias : TypeAlias = Union[int, str]
+    RssRoadBoundariesModeAlias : TypeAlias = Union[int, str, bool]
 else:
-    RssLogLevel = Union[int, str]
-    RssRoadBoundariesMode = Union[int, str, bool]
+    RssLogLevelAlias = Union[int, str]
+    RssRoadBoundariesModeAlias = Union[int, str, bool]
     
 @dataclass
 class RssSettings(AgentConfig):
@@ -1024,18 +1100,18 @@ class RssSettings(AgentConfig):
     """
     
     if AD_RSS_AVAILABLE:
-        use_stay_on_road_feature : RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On # type: ignore
+        use_stay_on_road_feature : carla.RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On 
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : RssLogLevel = carla.RssLogLevel.info # type: ignore
+        log_level : carla.RssLogLevel = carla.RssLogLevel.warn 
         """Set the initial log level of the RSSSensor"""
     else:
         enabled = False
         
-        use_stay_on_road_feature : "RssRoadBoundariesMode" = True # type: ignore
+        use_stay_on_road_feature : "RssRoadBoundariesModeAlias" = "On" # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : "RssLogLevel" = "info" # type: ignore
+        log_level : "RssLogLevelAlias" = "warn" # type: ignore
         """Set the initial log level of the RSSSensor"""
         
     debug_visualization_mode: RssDebugVisualizationMode = RssDebugVisualizationMode.RouteOnly
@@ -1051,14 +1127,15 @@ class RssSettings(AgentConfig):
     
     def _clean_options(self):
         if AD_RSS_AVAILABLE:
-            if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesMode):
+            if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesModeAlias):
                 self.use_stay_on_road_feature = int(self.use_stay_on_road_feature)
-            if not isinstance(self.log_level, RssLogLevel):
+            if not isinstance(self.log_level, RssLogLevelAlias):
                 self.log_level = int(self.log_level)
         else:
             if not isinstance(self.use_stay_on_road_feature, (bool, str)):
                 self.use_stay_on_road_feature = bool(self.use_stay_on_road_feature)
                 
+
 
 @dataclass
 class DataMatrixSettings(AgentConfig):
@@ -1078,13 +1155,14 @@ class DataMatrixSettings(AgentConfig):
     The interval in frames after which the data matrix should be updated. Sync must be true.
     """
 
-    hud : Dict[str, Any] = field(default_factory={
+    __hud_default = {
                     'draw': True,
                     'values': True,
                     'vertical' : True,
                     'imshow_settings': {'cmap': 'jet'},
                     'text_settings' : {'color': 'orange'} 
-                    })
+                    }
+    hud: Dict[str, Any] = field(default_factory=__hud_default.copy)
     """
     XXX
     
@@ -1101,7 +1179,6 @@ class DataMatrixSettings(AgentConfig):
     
     `camera.hud.data_matrix` is preferred.
     """
-
 
 
 # ---------------------
@@ -1170,7 +1247,7 @@ class AutopilotBehavior(AgentConfig):
  
 @dataclass
 class BasicAgentSettings(AgentConfig):
-    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False) # type: Optional[Dict[str, Union[dict|AgentConfig]]]
+    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
     live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
     speed : BasicAgentSpeedSettings = field(default_factory=BasicAgentSpeedSettings, init=False)
     distance : BasicAgentDistanceSettings = field(default_factory=BasicAgentDistanceSettings, init=False)
@@ -1183,7 +1260,7 @@ class BasicAgentSettings(AgentConfig):
     
 @dataclass
 class BehaviorAgentSettings(AgentConfig):
-    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False) # type: Optional[Dict[str, Union[dict|AgentConfig]]]
+    overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
     live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
     speed : BehaviorAgentSpeedSettings = field(default_factory=BehaviorAgentSpeedSettings, init=False)
     distance : BehaviorAgentDistanceSettings = field(default_factory=BehaviorAgentDistanceSettings, init=False)
@@ -1193,6 +1270,7 @@ class BehaviorAgentSettings(AgentConfig):
     planner : BehaviorAgentPlannerSettings = field(default_factory=BehaviorAgentPlannerSettings, init=False)
     emergency : BehaviorAgentEmergencySettings = field(default_factory=BehaviorAgentEmergencySettings, init=False)
     avoid_tailgators : bool = True
+
 
 @dataclass
 class LunaticAgentSettings(AgentConfig):
@@ -1235,41 +1313,32 @@ class SimpleLunaticAgentSettings(SimpleConfig, LiveInfo, LunaticAgentSpeedSettin
 class SimpleAutopilotAgentSettings(SimpleConfig, AutopilotSpeedSettings, AutopilotDistanceSettings, AutopilotLaneChangeSettings, AutopilotObstacleSettings, AutopilotControllerSettings):
     base_settings :ClassVar[AutopilotBehavior] = AutopilotBehavior
 
-if __name__ == "__main__":
-    #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
-    #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
-    lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags={"allow_objects": True})
-    
-    c : LunaticAgentSettings = LunaticAgentSettings().make_config()
-    d : LunaticAgentSettings = LunaticAgentSettings.make_config()
-    try:
-        c.rss.log_level = "asda"
-        raise TypeError("Should only raise if AD_RSS_AVAILABLE is False")
-    except ValueError as e:
-        print("Correct ValueError", e)
-        print("Correctly raised")
-        pass
-    #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
-    LunaticAgentSettings.export_options("lunatic_agent_settings.yaml")
-
 # ---------------------
 
 @dataclass
-class CameraConfig:
+class CameraConfig(AgentConfig):
+    """Camera Settings"""
     
     width: int = 1280
     height: int = 720
     gamma: float = 2.2
     """Gamma correction of the camera"""
     
-    camera_blueprints : List[CameraBlueprint] = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
+    if TYPE_CHECKING:
+        camera_blueprints : List["CameraBlueprint"] = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
+    else:
+        # In structured mode named tuples and carla Types are problematic
+        camera_blueprints : list = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
+    
+    hud : dict = "???"
     
     @dataclass
     class RecorderSettings:
         """
         Recorder settings for the camera.
         """
-        enabled : bool = NotImplemented
+        
+        enabled : bool = MISSING
         """
         Whether the recorder is enabled
         
@@ -1338,6 +1407,7 @@ class LaunchConfig:
     If None the world settings for synchronous mode will not be adjusted, 
     assuming this is handled by the user / external system.
     """
+    
     handle_ticks: bool = True
     """
     Decide if the GameFramework & WoldModel are allowed to call carla.World.tick()
@@ -1345,27 +1415,46 @@ class LaunchConfig:
     """
 
     loop: bool = True
+    """
+    If True the agent will look for a new waypoint after the initial route is done.
+    - NOTE: Needs custom implementation in the main file.
+    """
 
     # camera:
     width: int = 1280
     height: int = 720
     gamma: float = 2.2
+    """
+    Gamma correction of the camera.
+    Depending on the weather and map this might need to be adjusted.
+    """
 
     # Actor
     externalActor: bool = True
+    """
+    If False will spawn a vehicle for the agent to control, using the `filter` and `generation` settings.
+    Otherwise will not spawn a vehicle but will wait until an actor with the name defined in `rolename` (default: "hero") is found.
+    
+    This vehicle needs to be spawned by another process, e.g. through the scenario runner.
+    """
     rolename: str = "hero"
+    """Actor name to wait for if `externalActor` is True."""
     filter: str = "vehicle.*"
     generation: int = 2
+    
     autopilot: bool = False
+    """
+    Whether or not to use the Carla's TraficManager to autpilot  the agent
+    - NOTE: This disables the usage of the LunaticAgent
+    """
     
     agent : LunaticAgentSettings = MISSING
+    """The Settings of the agent"""
     
     camera : CameraConfig = field(default_factory=CameraConfig)
+    """The camera settings"""
+    
 
-
-
-import ast
-import inspect
 
 def extract_annotations(parent, docs):
     for main_body in parent.body:
@@ -1392,7 +1481,11 @@ def extract_annotations(parent, docs):
             elif isinstance(body, ast.Expr):
                 if i == 0: # Docstring of class
                     target = "__doc__"
-                doc: str = body.value.value
+                try:
+                    doc: str = body.value.value # NOTE: This is different for <Python3.8; this is ast.Str
+                except AttributeError:
+                    # Try < 3.8 code
+                    doc = body.value.s
                 assert isinstance(doc, str)
             else:
                 continue
