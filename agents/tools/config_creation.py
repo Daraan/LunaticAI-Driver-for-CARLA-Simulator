@@ -38,7 +38,6 @@ import carla
 
 import ast
 import inspect
-from launch_tools import ast_parse
 from agents.navigation.local_planner import RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
@@ -166,8 +165,8 @@ class AgentConfig:
         return OmegaConf.to_container(options, resolve=resolve, **kwargs)
     
     @class_or_instance_method
-    def to_yaml(cls_or_self, resolve=False) ->  str:
-        return cls_or_self.simplify_options(resolve=resolve, yaml=True)
+    def to_yaml(cls_or_self, resolve=False, yaml_commented=True) ->  str:
+        return cls_or_self.simplify_options(resolve=resolve, yaml=True, yaml_commented=yaml_commented)
     
     @classmethod
     def from_yaml(cls, path, category : Optional[str]=None, *, merge=True):
