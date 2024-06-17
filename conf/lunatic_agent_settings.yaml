@@ -323,8 +323,8 @@ rss:
   # NOTE: Initializing with False and changing it to True is not supported.
   # If RSS is not available (no ad-rss library) this will be set to False.
   enabled: true
-  use_stay_on_road_feature: On
-  log_level: warn
+  use_stay_on_road_feature: 1
+  log_level: 3
   # Sets the visualization mode that should be rendered on the screen.
   debug_visualization_mode: RouteOnly
   # Setting for the default rule to always accept RSS updates if they are valid
