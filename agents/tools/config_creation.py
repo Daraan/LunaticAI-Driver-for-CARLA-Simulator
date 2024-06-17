@@ -4,6 +4,7 @@ from collections.abc import Mapping
 import sys
 
 from classes.camera_manager import CameraBlueprint
+from classes.rss_visualization import RssDebugVisualizationMode
 if __name__ == "__main__": # TEMP clean at the end, only here for testing
     import os
     sys.path.append(os.path.abspath("../"))
@@ -106,15 +107,22 @@ class AgentConfig:
     @classmethod
     def get_defaults(cls) -> "AgentConfig":
         """Returns the global default options."""
-        return cls
+        return cls()
     
     @class_or_instance_method
     def export_options(cls_or_self, path, category=None, resolve=False) -> None:
         """Exports the options to a yaml file."""
+        if inspect.isclass(cls_or_self):
+            cls_or_self = cls_or_self()
         if category is None:
             options = cls_or_self
         else:
             options = cls_or_self[category]
+        if with_comments:
+            string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True)
+            with open(path, "w") as f:
+                f.write(string)
+            return
         if not isinstance(options, DictConfig): 
             # TODO: look how we can do this directly from dataclass
             options = OmegaConf.create(options, flags={"allow_objects": True})
@@ -132,6 +140,8 @@ class AgentConfig:
         
         :return: The dictionary or str of options.
         """
+        if inspect.isclass(cls_or_self):
+            cls_or_self = cls_or_self()
         if category is None:
             options = cls_or_self
         else:
@@ -747,7 +757,11 @@ class BasicAgentObstacleSettings(AgentConfig):
 
 @dataclass
 class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
-    pass
+    nearby_vehicles_max_distance: float = 45
+    """For performance filters out vehicles that are further away than this distance in meters"""
+    
+    nearby_walkers_max_distance: float = 10
+    """For performance filters out pedestrians that are further away than this distance in meters"""
 
 @dataclass
 class AutopilotObstacleSettings(AgentConfig):
@@ -800,6 +814,8 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     # NOTE: Part of BasicAgent overhaul
     """
     
+    detection_angles: LunaticAgentObstacleDetectionAngles = field(default_factory=LunaticAgentObstacleDetectionAngles)
+    
 # ---------------------
 # Emergency
 # ---------------------
@@ -846,8 +862,7 @@ class AutopilotControllerSettings(AgentConfig):
     
 @dataclass
 class LunaticAgentControllerSettings(AutopilotControllerSettings, BehaviorAgentControllerSettings):
-    vehicle_lane_offset : float = II("planner.offset")
-    """distance between the route waypoints and the center of the lane"""
+    pass
 
 # ---------------------
 # PlannerSettings
@@ -967,6 +982,15 @@ class LunaticAgentPlannerSettings(BehaviorAgentPlannerSettings):
     # NOTE: two variables because originally used with two different names in different places
     longitudinal_control_dict : PIDControllerDict  = field(default_factory=partial(PIDControllerDict, **{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0, 'dt': II("${..dt}")}))
     """values of the longitudinal PID controller"""
+    
+    offset: float = II("controls.vehicle_lane_offset")
+    """
+    If different than zero, the vehicle will drive displaced from the center line.
+    
+    Positive values imply a right offset while negative ones mean a left one. Numbers high enough
+    to cause the vehicle to drive through other lanes might break the controller.
+    """
+
 
 # ---------------------
 # Emergency
@@ -1040,6 +1064,17 @@ class RssSettings(AgentConfig):
         
         log_level : "RssLogLevel" = "warn" # type: ignore
         """Set the initial log level of the RSSSensor"""
+        
+    debug_visualization_mode: RssDebugVisualizationMode = RssDebugVisualizationMode.RouteOnly
+    """Sets the visualization mode that should be rendered on the screen."""
+    
+    always_accept_update: bool = False
+    """Setting for the default rule to always accept RSS updates if they are valid"""
+    
+    rss_max_speed: float = MISSING # NotImplemented
+    """For fast vehicles RSS currently is unreliable, disables rss updates when the vehicle is faster than this."""
+    
+    # ------
     
     def _clean_options(self):
         if AD_RSS_AVAILABLE:
@@ -1078,6 +1113,15 @@ class DataMatrixSettings(AgentConfig):
                     'text_settings' : {'color': 'orange'} 
                     })
     """
+    XXX
+    
+    TODO: do not have this in Agent config but in
+    hud : ${camera.hud.data_matrix}
+     #drawing_options -> see camera.yaml
+     #NOTE: this interpolation might fail if the parent has been removed!
+    
+    ---
+        
     Keyword arguments for `DataMatrix.render`
     NOTE: The default_settings substitute this with an interpolation that might not work,
     as it relies on the parent LaunchConfig that is currently removed.
@@ -1181,17 +1225,25 @@ class BehaviorAgentSettings(AgentConfig):
 class LunaticAgentSettings(AgentConfig):
     overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
     live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
+    """<take doc:LiveInfo>"""
     speed : LunaticAgentSpeedSettings = field(default_factory=LunaticAgentSpeedSettings, init=False)
+    """<take doc:LunaticAgentSpeedSettings>"""
     distance : LunaticAgentDistanceSettings = field(default_factory=LunaticAgentDistanceSettings, init=False)
+    """<take doc:LunaticAgentDistanceSettings>"""
     lane_change : LunaticAgentLaneChangeSettings = field(default_factory=LunaticAgentLaneChangeSettings, init=False)
+    """<take doc:LunaticAgentLaneChangeSettings>"""
     obstacles : LunaticAgentObstacleSettings = field(default_factory=LunaticAgentObstacleSettings, init=False)
+    """<take doc:LunaticAgentObstacleSettings>"""
     controls : LunaticAgentControllerSettings = field(default_factory=LunaticAgentControllerSettings, init=False)
+    """<take doc:LunaticAgentControllerSettings>"""
     planner : LunaticAgentPlannerSettings = field(default_factory=LunaticAgentPlannerSettings, init=False)
+    """<take doc:LunaticAgentPlannerSettings>"""
     emergency : LunaticAgentEmergencySettings = field(default_factory=LunaticAgentEmergencySettings, init=False)
+    """<take doc:LunaticAgentEmergencySettings>"""
     rss : RssSettings = field(default_factory=RssSettings, init=False)
+    """<take doc:RssSettings>"""
     data_matrix : DataMatrixSettings = field(default_factory=DataMatrixSettings, init=False)
-    
-    
+    """<take doc:DataMatrixSettings>"""
 
 @dataclass
 class SimpleBasicAgentSettings(SimpleConfig, LiveInfo, BasicAgentSpeedSettings, BasicAgentDistanceSettings, BasicAgentLaneChangeSettings, BasicAgentObstacleSettings, BasicAgentControllerSettings, BasicAgentPlannerSettings, BasicAgentEmergencySettings):
@@ -1262,6 +1314,7 @@ class CameraConfig:
         """Interval to record the camera"""
         
     recorder : RecorderSettings = field(default_factory=RecorderSettings)
+    """<take doc:RecorderSettings>"""
     
     @dataclass
     class DataMatrixHudConfig:
@@ -1285,6 +1338,9 @@ class CameraConfig:
         
         text_settings : dict = field(default_factory=lambda: {'color': 'orange'})
         """Settings for the text"""
+
+    data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
+    """<take doc:DataMatrixHudConfig>"""
         
     data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
     
@@ -1332,3 +1388,86 @@ class LaunchConfig:
     agent : LunaticAgentSettings = MISSING
     
     camera : CameraConfig = field(default_factory=CameraConfig)
+
+
+
+import ast
+import inspect
+
+def extract_annotations(parent, docs):
+    for main_body in parent.body:
+        # Skip non-classes
+        if not isinstance(main_body, ast.ClassDef):
+            continue
+        if main_body.name in ("AgentConfig", "SimpleConfig", "class_or_instance_method"):
+            continue
+        docs[main_body.name] = {}
+        for base in reversed(main_body.bases):
+            # Fill in parent information
+            docs[main_body.name].update(docs.get(base.id, {}))
+        for i, body in enumerate(main_body.body):
+            if isinstance(body, ast.ClassDef):
+                # Nested classes, extract recursive
+                extract_annotations(ast.Module([body]), docs[main_body.name])
+                continue
+            elif isinstance(body, ast.AnnAssign):
+                target = body.target.id
+                continue
+            elif isinstance(body, ast.Assign):
+                target = body.targets[0].id
+                continue
+            elif isinstance(body, ast.Expr):
+                if i == 0: # Docstring of class
+                    target = "__doc__"
+                doc: str = body.value.value
+                assert isinstance(doc, str)
+            else:
+                continue
+            
+            if doc.startswith("<take doc:") and doc.endswith(">"):
+                key = doc[len("<take doc:"):-1]
+                try:
+                    docs[main_body.name][target] = docs[main_body.name][key]
+                except KeyError as e:
+                    try:
+                        # Do global look up
+                        docs[main_body.name][target] = _class_annotations[key]
+                        continue
+                    except:
+                        pass
+                    raise NameError(f"{key} needs to be defined before {target} or globally") from e
+                continue
+            docs[main_body.name][target] = inspect.cleandoc(doc)
+            del target # delete to get better errors
+            del doc
+
+
+if __name__ == "__main__":
+
+    if _class_annotations is None:
+        _class_annotations = {}
+    
+    with open(__file__, "r") as f:
+        tree = ast.parse(f.read())
+    extract_annotations(tree, _class_annotations)
+    print(_class_annotations)
+        
+    with open("conf/config_extensions/live_info.yaml", "w") as f:
+        f.write(LiveInfo.to_yaml())
+    
+#  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
+LunaticAgentSettings.export_options("conf/lunatic_agent_settings.yaml", with_comments=True)
+
+if __name__ == "__main__":
+    #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
+    #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
+    lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags={"allow_objects": True})
+    
+    c : LunaticAgentSettings = LunaticAgentSettings().make_config()
+    d : LunaticAgentSettings = LunaticAgentSettings.make_config()
+    try:
+        c.rss.log_level = "asda"
+        raise TypeError("Should only raise if AD_RSS_AVAILABLE is False")
+    except ValueError as e:
+        print("Correct ValueError", e)
+        pass
