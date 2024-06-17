@@ -245,7 +245,6 @@ class LunaticAgent(BehaviorAgent):
         self.destroy_sensor()
         self._world_model = None
         self._world = None
-        self._map = None
         if self.ctx:
             self.ctx.agent = None
         self.ctx = None

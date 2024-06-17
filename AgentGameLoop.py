@@ -110,12 +110,13 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                                                                       how_many, 
                                                                       spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn_idx], 
                                                                       autopilot=True, 
-                                                                      tick=False) 
+                                                                      tick=False)
         
         # Spawn Ego
         start : carla.libcarla.Transform = spawn_points[ego_spawn_idx]
-        ego = game_framework.spawn_actor(ego_bp, start)
+        ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)
         spawned_vehicles.append(ego)
+        
         
         # TEMP # Test external actor, do not pass ego
         logger.info("Creating agent and WorldModel ...")
@@ -153,7 +154,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         # destination = random.choice(all_spawn_points).location
         destination = left_last_wp.transform.location
         
-        agent.set_destination(left_last_wp)
+        agent.set_destination(last_wp.transform.location)
         
         def loop():
             agent.verify_settings()
@@ -243,12 +244,11 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         
         if world is not None:
             # Disable Synchronous Mode
-            world_settings = world.get_settings()
-            world_settings.synchronous_mode = False
-            world_settings.fixed_delta_seconds = None
+            world_settings = carla.WorldSettings(synchronous_mode=False,
+                                                 fixed_delta_seconds=0.0)
             world.apply_settings(world_settings)
             if traffic_manager is not None:
-                traffic_manager.set_synchronous_mode(False)
+                traffic_manager.set_synchronous_mode(world_settings.synchronous_mode)
 
         pygame.quit()
 
