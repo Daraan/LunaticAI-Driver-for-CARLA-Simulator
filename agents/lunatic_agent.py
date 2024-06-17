@@ -69,6 +69,7 @@ class LunaticAgent(BehaviorAgent):
     
     _world_model : WorldModel = None # TODO: maybe as weakref
     ctx : "Context"
+    """The context object of the current step"""
     
     @classmethod
     def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args: LaunchConfig, 

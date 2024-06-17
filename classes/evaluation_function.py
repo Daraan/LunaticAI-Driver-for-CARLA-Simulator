@@ -20,7 +20,7 @@ class EvaluationFunction:
     """
     Implements a decorator to wrap function to be used with rule classes.
     The function must return a hashable type, which is used to access the action to be taken by the rule.
-
+    
     Evaluation functions can be combined using the AND, OR and NOT operators to build up more complex rules
     from simpler ones.
     The operators + or &, | and ~ are aliases for AND, OR and NOT respectively.

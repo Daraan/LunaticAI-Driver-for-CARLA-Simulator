@@ -1,6 +1,11 @@
 agents.substep\_managers package
 ================================
 
+.. automodule:: agents.substep_managers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -48,14 +53,6 @@ agents.substep\_managers.traffic\_light module
 ----------------------------------------------
 
 .. automodule:: agents.substep_managers.traffic_light
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: agents.substep_managers
    :members:
    :undoc-members:
    :show-inheritance:

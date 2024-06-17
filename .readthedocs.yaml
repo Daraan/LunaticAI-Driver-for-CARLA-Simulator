@@ -1,5 +1,8 @@
 version: 2
 
+submodules:
+  include: all
+
 build:
   os: "ubuntu-22.04"
   tools:
@@ -11,7 +14,7 @@ python:
 
 sphinx:
   configuration: docs/webview/source/conf.py
-  fail_on_warning: true
+  fail_on_warning: false
 
     # You can configure Sphinx to use a different builder, for instance use the dirhtml builder for simpler URLs
 

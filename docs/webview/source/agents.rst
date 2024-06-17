@@ -1,14 +1,17 @@
 agents package
 ==============
 
+.. automodule:: agents
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Subpackages
 -----------
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
 
-   agents.dynamic_planning
-   agents.navigation
    agents.rules
    agents.substep_managers
    agents.tools
@@ -28,14 +31,6 @@ agents.lunatic\_agent module
 ----------------------------
 
 .. automodule:: agents.lunatic_agent
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: agents
    :members:
    :undoc-members:
    :show-inheritance:

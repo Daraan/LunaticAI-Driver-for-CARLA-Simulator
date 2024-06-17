@@ -15,6 +15,7 @@ Welcome to LunatiAI's documentation!
    Configuration <conf/ConfigFiles>
    agents
    classes
+   modules
 
 Indices and tables
 ==================

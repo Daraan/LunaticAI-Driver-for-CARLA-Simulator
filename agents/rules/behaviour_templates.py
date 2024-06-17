@@ -153,6 +153,8 @@ def accept_rss_updates(ctx : Context):
     ctx.control = ctx.prior_result
 
 class AlwaysAcceptRSSUpdates(Rule):
+    """
+    """
     phases = Phase.RSS_EVALUATION | Phase.END
     rule = always_execute
     action = accept_rss_updates

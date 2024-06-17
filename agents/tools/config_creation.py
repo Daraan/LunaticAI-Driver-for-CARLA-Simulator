@@ -1,5 +1,6 @@
 # DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
 
+import os
 import sys
 from collections.abc import Mapping
 
@@ -62,9 +63,12 @@ _file_path = __file__
 # Helper methods
 # ---------------------
 
-OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
-OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
-OmegaConf.register_new_resolver("min", lambda *els: min(els))
+# need this check for readthedocs
+if os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
+    OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
+    OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
+    OmegaConf.register_new_resolver("min", lambda *els: min(els))
+    os.environ["_OMEGACONF_RESOLVERS_REGISTERED"] = "1"
 
 class class_or_instance_method:
     """Decorator to transform a method into both a regular and class method"""

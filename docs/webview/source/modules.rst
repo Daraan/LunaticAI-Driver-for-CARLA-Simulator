@@ -2,11 +2,10 @@ LunaticAI-Driver-for-CARLA-Simulator
 ====================================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
 
    AgentGameLoop
    GameLoop
    agents
    classes
    conf
-   launch_tools

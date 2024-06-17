@@ -13,8 +13,14 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../../../'))
-sys.path.insert(1, os.path.abspath('../../../agents'))
-print(sys.path)
+#sys.path.insert(1, os.path.abspath('../../../agents'))
+#sys.path.insert(1, os.path.abspath('../../../scenario_runner'))
+if "LEADERBOARD_ROOT" in os.environ:
+    sys.path.append(os.path.abspath(os.environ["LEADERBOARD_ROOT"]))
+sys.path.insert(0, os.path.abspath('./'))
+
+# already present at readthedocs, still want it for some code safeguards
+os.environ.setdefault("READTHEDOCS", "local")
 
 # -- Project information -----------------------------------------------------
 
@@ -44,7 +50,8 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "requirements", "spawn_points.txt", "venv"]
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "requirements", "spawn_points.txt", "venv", "scenario_runner", "srunner"]
+exclude_patterns.extend(["launch_tools.blueprint_helpers", "agents.navigation", "dynamic_planning", "agents.tools"])
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -52,7 +59,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "requirements", "spawn_p
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+#html_theme = 'alabaster'
+html_theme = "sphinx_rtd_theme"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
