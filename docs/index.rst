@@ -10,6 +10,12 @@ Welcome to LunatiAI's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   Install
+
+Usage
+=====
+   :doc:Install
+
 
 
 Indices and tables
