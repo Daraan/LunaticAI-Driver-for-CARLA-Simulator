@@ -10,16 +10,16 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
-
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../../../'))
+print(sys.path)
 
 # -- Project information -----------------------------------------------------
 
 project = 'LunatiAI'
-copyright = '2024, Daniel Sperber, Bogdan O.'
-author = 'Daniel Sperber, Bogdan O.'
+copyright = ""
+author = ""
 
 
 # -- General configuration ---------------------------------------------------
@@ -30,13 +30,19 @@ author = 'Daniel Sperber, Bogdan O.'
 extensions = ["myst_parser"
               ]
 
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'markdown',
+    '.md': 'markdown',
+}
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "requirements", "spawn_points.txt", "venv", "index_mkdocs.md"]
 
 
 # -- Options for HTML output -------------------------------------------------
