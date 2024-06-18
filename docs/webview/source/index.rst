@@ -7,10 +7,14 @@ Welcome to LunatiAI's documentation!
 ====================================
 
 .. toctree::
+   :hidden:
+
+   Home <self>
+
+.. toctree::
    :maxdepth: 1
    :caption: Contents:
 
-   Home <self>
    Installation <docs/Install>
    agents/Agents
    agents/rules/Rules

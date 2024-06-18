@@ -8,4 +8,3 @@ LunaticAI-Driver-for-CARLA-Simulator
    GameLoop
    agents
    classes
-   conf
