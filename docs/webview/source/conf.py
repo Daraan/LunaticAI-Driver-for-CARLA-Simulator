@@ -73,11 +73,32 @@ author = ""
 # ones.
 extensions = ["myst_parser",
               'sphinx.ext.autodoc',
+              'sphinx.ext.napoleon'
               ]
 
 # Open all external links in a new tab 
 myst_links_external_new_tab = True
 
+# True to convert the type definitions in the docstrings as references. Defaults to False.
+napoleon_preprocess_types = True
+
+
+#napoleon_type_aliases = {}
+"""
+A mapping to translate type names to other names or references. Works only when napoleon_use_param = True. Defaults to None.
+
+    With:
+
+    napoleon_type_aliases = {
+        "CustomType": "mypackage.CustomType",
+        "dict-like": ":term:`dict-like <mapping>`",
+    }
+"""
+    
+
+
+
+#
 source_suffix = {
     '.rst': 'restructuredtext',
     '.txt': 'markdown',
