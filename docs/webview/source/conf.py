@@ -61,7 +61,7 @@ if False and os.environ["READTHEDOCS"] != "True":
 
 # -- Project information -----------------------------------------------------
 
-project = 'LunatiAI'
+project = 'LunaticAI'
 copyright = ""
 author = ""
 
