@@ -4,6 +4,11 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+
+# Autodoc command:
+# sphinx-apidoc -d 3 -f -M -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools classes/carla_originals classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py *logging.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools*
+# sphinx-build -M html docs/webview/source/ docs/webview/build/ -v -E 
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -12,7 +17,8 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../../'))
+PROJECT_ROOT = '../../../'
+sys.path.insert(0, os.path.abspath(PROJECT_ROOT))
 #sys.path.insert(1, os.path.abspath('../../../agents'))
 #sys.path.insert(1, os.path.abspath('../../../scenario_runner'))
 if "LEADERBOARD_ROOT" in os.environ:
@@ -21,6 +27,37 @@ sys.path.insert(0, os.path.abspath('./'))
 
 # already present at readthedocs, still want it for some code safeguards
 os.environ.setdefault("READTHEDOCS", "local")
+print("Are we local or on readthedocs (True)?", os.environ["READTHEDOCS"])
+
+# inofficial:
+# run sphinx-apidoc
+
+# Exclude pattern do not work
+if False and os.environ["READTHEDOCS"] != "True":
+    # fnmatch style which modules and packages to exclude
+    _exclude_apidoc = [
+                            "scenario_runner", 
+                            "agents/navigation*",
+                            "agents/dynamic_planning*",
+                            "examples/",
+                            "launch_tools",
+                            "classes/carla_originals",
+                            "classes/driver*",
+                            "classes/vehicle*", "classes/rss*"" classes/camera*", "classes/HUD.py",
+                            "classes/rule_interpreter.py", "classes/traffic_manager.py",
+                            "*logging.py",
+                            "docs", "venv", "docenv", 
+                            "*lane_changes,"
+                            "*keyboard_controls.py",
+                            "*misc.py",
+                            "*tools.py",
+                            "launch_tools*"]
+    import subprocess
+    print("Running shinx-apidoc")
+    proc = subprocess.run(["sphinx-apidoc", "-d 3", "-f", "-M", "-o", "./", PROJECT_ROOT, *("*"+s if s[0] != "*" else s for s in _exclude_apidoc)])
+    print("apidoc ars", proc.args)
+    print(proc.stderr)
+    print(proc.stdout)
 
 # -- Project information -----------------------------------------------------
 
