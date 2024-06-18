@@ -75,6 +75,9 @@ extensions = ["myst_parser",
               'sphinx.ext.autodoc',
               ]
 
+# Open all external links in a new tab 
+myst_links_external_new_tab = True
+
 source_suffix = {
     '.rst': 'restructuredtext',
     '.txt': 'markdown',

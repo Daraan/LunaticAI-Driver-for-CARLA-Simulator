@@ -10,11 +10,11 @@ Welcome to LunatiAI's documentation!
    :maxdepth: 1
    :caption: Contents:
 
+   Home <self>
    Installation <docs/Install>
    agents/Agents
+   agents/rules/Rules
    Configuration <conf/ConfigFiles>
-   agents
-   classes
    modules
 
 Indices and tables
