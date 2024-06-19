@@ -1,13 +1,13 @@
 # Agents
 
-There are two different agent classes than can be used the `LunaticAgent` that is fully customizable,
-and the simpler but less flexible `LunaticChallenger`.
+There are two different agent classes than can be used the [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent) that is fully customizable,
+and the simpler but less flexible [`LunaticChallenger`](#agents.leaderboard_agent.LunaticChallenger).
 
 ## Agent Classes
 
 ### LunaticChallenger
 
-The `LunaticChallenger` is wrapped around the `LunaticAgent` it can be more easily combined with the [scenario_runner](https://github.com/carla-simulator/scenario_runner) or be used with the [leaderboard-2.0](https://leaderboard.carla.org/get_started/) for which this class is especially designed.
+The [`LunaticChallenger`](#agents.leaderboard_agent.LunaticChallenger) is wrapped around the [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent) it can be more easily combined with the [scenario_runner](https://github.com/carla-simulator/scenario_runner) or be used with the [leaderboard-2.0](https://leaderboard.carla.org/get_started/) for which this class is especially designed.
 
 In the simplest way an agent can be used like this:
 
@@ -15,7 +15,9 @@ In the simplest way an agent can be used like this:
 
 from agents.leaderboard_agent import LunaticChallenger
 
-# Create the ego vehicle
+# ... setup carla
+
+# Create the ego vehicle, after you have chosen a blueprint for the ego vehicle
 ego_bp.set_attribute('role_name', 'hero')
 ego = world.spawn_actor(ego_bp, ego_transform)
 

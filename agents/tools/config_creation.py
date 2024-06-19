@@ -358,13 +358,12 @@ class AgentConfig:
     def check_config(cls, config, strictness: int = 1, as_dict_config=True):
         """
         
-        strictness == 1: Will cast the config to this class, assuring all keys are present.
+        - strictness == 1: Will cast the config to this class, assuring all keys are present.
             However the type and correctness of the field-contents are not checked.
-        - For strictness > 1 the config will be a DictConfig object. - 
-        
-        strictness == 2: Will assure that the *initial* types are correct.
-        For strictness > 2 will return the config as a structured config,
-        forcing the defined types during runtime as well.
+        - strictness > 1 the config will be a DictConfig object. - 
+        - strictness == 2: Will assure that the *initial* types are correct.
+        - strictness >= 2 will return the config as a structured config,
+            forcing the defined types during runtime as well.
         """
         if strictness < 1:
             if as_dict_config and not isinstance(config, DictConfig):

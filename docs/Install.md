@@ -6,10 +6,17 @@
 pip install -r docs/requirements/requirements.txt
 ```
 
-If you want to use the `LunaticChallenger` additional requirements need to be installed; the ones from the `leaderboard-2.0` and the `scenario_runner`.
+If you want to use the [`LunaticChallenger`](#agents.leaderboard_agent.LunaticChallenger) additional requirements need to be installed; the ones from the [`leaderboard-2.0`](https://leaderboard.carla.org/get_started/) and the [`scenario_runner`](https://github.com/carla-simulator/scenario_runner).
 
 ```bash
 pip install -r docs/requirements/requirements_leaderboard.txt
+```
+
+If you locally want to build the documentation you need to additionally install sphinx.
+More information you can find in `docs/webview/source/conf.py`.
+
+```bash
+pip install -r docs/requirements/_readthedocs.txt
 ```
 
 ## Clone this repository
@@ -31,11 +38,15 @@ For Linux you can also modify your `.bashrc` or `.bash_profile` and for Windows 
 
 #### Windows
 
-`set CARLA_ROOT=<path to carla folder>`
+```sh
+set CARLA_ROOT=<path to carla folder>
+```
 
 #### Linux
 
-`export CARLA_ROOT=<path to carla folder>`
+```bash
+export CARLA_ROOT=<path to carla folder>
+```
 
 ### Python Path
 

@@ -3075,15 +3075,19 @@ def update_matrix(
         matrix (collections.OrderedDict): An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id". 
             For non-existing lanes different placeholder exist, e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction.
             The values indicate whether a vehicle is present: 0 - No vehicle, 1 - Ego vehicle, 2 - other car, 3 - No road.
-            Format example: {
-                "left_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
-                "left_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
-                "1_2": [0, 0, 0, 0, 0, 0, 2, 0],
-                "1_1": [0, 0, 0, 0, 0, 0, 0, 0],
-                "1_-1": [0, 0, 0, 1, 0, 0, 0, 0],
-                "1_-2": [0, 2, 0, 0, 0, 0, 0, 0],
-                "right_inner_lane": [3, 3, 3, 3, 0, 3, 3, 3],
-                "right_outer_lane": [3, 3, 3, 3, 2, 3, 3, 3]}
+            Format example
+                ```py
+                {
+                    "left_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                    "left_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+                    "1_2": [0, 0, 0, 0, 0, 0, 2, 0],
+                    "1_1": [0, 0, 0, 0, 0, 0, 0, 0],
+                    "1_-1": [0, 0, 0, 1, 0, 0, 0, 0],
+                    "1_-2": [0, 2, 0, 0, 0, 0, 0, 0],
+                    "right_inner_lane": [3, 3, 3, 3, 0, 3, 3, 3],
+                    "right_outer_lane": [3, 3, 3, 3, 2, 3, 3, 3]
+                }
+                ```
     """
     
     # If main highway road consists of 3 straight lanes, then we have to add 1 row representing the entry/exit lane

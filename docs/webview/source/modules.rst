@@ -1,5 +1,5 @@
-LunaticAI-Driver-for-CARLA-Simulator
-====================================
+Code and API
+============
 
 .. toctree::
    :maxdepth: 3
@@ -8,3 +8,4 @@ LunaticAI-Driver-for-CARLA-Simulator
    GameLoop
    agents
    classes
+   data_gathering

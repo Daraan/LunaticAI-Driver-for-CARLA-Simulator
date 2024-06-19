@@ -25,17 +25,20 @@ class EvaluationFunction:
     from simpler ones.
     The operators + or &, | and ~ are aliases for AND, OR and NOT respectively.
     e.g. 
-    func1 = EvaluationFunction(lambda ctx: ctx.speed > 10)
-    func2 = EvaluationFunction(lambda ctx: ctx.speed < 20)
+    `func1 = EvaluationFunction(lambda ctx: ctx.speed > 10)`
+    `func2 = EvaluationFunction(lambda ctx: ctx.speed < 20)`
 
     These statements are all equivalent:
-        * EvaluationFunction(lambda ctx: 10 < ctx.speed < 20)
-        * func1 + func2
-        * func1 & func2
-        * func1.AND(func2)
-        * EvaluationFunction.AND(func1, func2)
-
-    EvaluationFunctions also allow for more specific returns types:
+        * `EvaluationFunction(lambda ctx: 10 < ctx.speed < 20)`
+        * `func1 + func2`
+        * `func1 & func2`
+        * `func1.AND(func2)`
+        * `EvaluationFunction.AND(func1, func2)`
+    
+    Hint:
+        EvaluationFunctions also allow for more specific returns types
+        ..  code-block:: python
+        
         @EvaluationFunction
         def is_speeding(ctx: Context) -> Hashable:
             config = ctx.agent.config
@@ -48,10 +51,13 @@ class EvaluationFunction:
             else:
                 return "normal"
 
-        Rule(is_speeding, action={
-                                "very fast": lambda ctx: ctx.agent.config.follow_speed_limits()
-                                "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5)
-                                })
+        Rule(is_speeding, action={"very fast": lambda ctx: ctx.agent.config.follow_speed_limits(), 
+                                  "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5) 
+                                  })
+
+    Returns:
+        `EvaluationFunction`
+    
     """
     
     actions: ClassVar[Dict[Hashable, Callable[["Union[Context, Rule]"], Any]]] = {}
@@ -83,7 +89,7 @@ class EvaluationFunction:
 
     def __call__(self, ctx: "Context | Rule", *args, **kwargs) -> Hashable:
         """
-        NOTE: CRITICAL: 
+        Note:
         To handle the method vs. function difference depending on __get__ 
         `ctx` can be either a Context (rule as function) or a Rule (rule as method),
         In the method case the real Context object is args[0]

@@ -151,32 +151,29 @@ def accept_rss_updates(ctx : Context):
     assert isinstance(ctx.prior_result, carla.VehicleControl)
     logger.debug("Accepting RSS updates %s", ctx)
     ctx.control = ctx.prior_result
-
-class AlwaysAcceptRSSUpdates(Rule):
-    """
-    """
-    phases = Phase.RSS_EVALUATION | Phase.END
-    rule = always_execute
-    action = accept_rss_updates
-    description = "Always accepts the updates calculated by the RSS System."
     
 assert isinstance(if_config("rss.enabled", True), EvaluationFunction)
 
-class AlwaysAcceptRSSUpdates(AlwaysAcceptRSSUpdates):
+class AlwaysAcceptRSSUpdates(Rule):
+    """Always accept RSS updates if rss is enabled in the config"""
     phases = Phase.RSS_EVALUATION | Phase.END
     rule=if_config("rss.enabled", True)
     action = accept_rss_updates
     description = "Always accepts the updates calculated by the RSS System."
 
 class ConfigBasedRSSUpdates(Rule):
+    """Always accept RSS updates if `rss.always_accept_update` is set to True in the config."""
     phases = Phase.RSS_EVALUATION | Phase.END
     rule = if_config("rss.always_accept_update", True)
     action = accept_rss_updates
-    description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
+    #description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
 
 
 
 if __name__ == "__main__" or DEBUG_RULES:
+    
+    x = ConfigBasedRSSUpdates()
+    assert x.description == """Always accept RSS updates if `rss.always_accept_update` is set to True in the config."""
     
     test = AlwaysAcceptRSSUpdates()
     

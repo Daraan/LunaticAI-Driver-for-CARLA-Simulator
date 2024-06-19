@@ -6,7 +6,7 @@
 
 
 # Autodoc command:
-# sphinx-apidoc -d 3 -f -M -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools classes/carla_originals classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py *logging.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools* docs/* conf/
+# sphinx-apidoc -H "Code and API" -d 3 -f -M -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools classes/carla_originals classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py *logging.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools* docs/* conf/ *car_detection_matrix/[im]*
 # sphinx-build -M html docs/webview/source/ docs/webview/build/ -v -E 
 
 # -- Path setup --------------------------------------------------------------
@@ -75,6 +75,10 @@ extensions = ["myst_parser",
               'sphinx.ext.autodoc',
               'sphinx.ext.napoleon'
               ]
+
+# see https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#syntax-attributes-inline
+# and 
+myst_enable_extensions = ["attrs_inline"]
 
 # Open all external links in a new tab 
 myst_links_external_new_tab = True

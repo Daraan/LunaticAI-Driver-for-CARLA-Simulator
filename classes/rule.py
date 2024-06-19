@@ -331,8 +331,8 @@ class Rule(_GroupRule):
         Create a new instance of the rule with the same settings.
         
         Note: 
-            * The current cooldown is not taken into account.
-            * The current enabled state is taken into account.
+            - The current cooldown is not taken into account.
+            - The current enabled state is taken into account.
         """
         return self.__class__(self) # Make use over overloaded __init__
 
