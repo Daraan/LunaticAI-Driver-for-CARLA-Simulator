@@ -380,7 +380,7 @@ class AgentConfig:
             if as_dict_config and not isinstance(config, DictConfig):
                 return OmegaConf.create(config, flags={"allow_objects": True})
             return config
-        config: cls = OmegaConf.structured(config)
+        config: cls = OmegaConf.structured(config, flags={"allow_objects": True}) # include flag, yes no?
         return config
         
     
@@ -1695,7 +1695,7 @@ if __name__ == "__main__":
         f.write(LiveInfo.to_yaml())
     
 #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
-LunaticAgentSettings.export_options("conf/lunatic_agent_settings.yaml", with_comments=True)
+LunaticAgentSettings.export_options("conf/agent/default_settings.yaml", with_comments=True)
 
 if __name__ == "__main__":
     #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
