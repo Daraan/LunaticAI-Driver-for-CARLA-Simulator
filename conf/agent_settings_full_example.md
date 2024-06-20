@@ -1,3 +1,8 @@
+# Example of full Agent Settings
+
+Note: This file is a documentation only, it describes the full merge of the different setting files in the *./agent* folder.
+
+```yaml
 # LunaticAgentSettings
 overwrites: {}
 
@@ -366,3 +371,4 @@ data_matrix:
       cmap: jet
     text_settings:
       color: orange
+```

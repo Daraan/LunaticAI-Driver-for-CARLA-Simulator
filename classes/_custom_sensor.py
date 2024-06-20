@@ -6,6 +6,10 @@ import carla
 __all__ = ['CustomSensor']
 
 class CustomSensor(object):
+    """
+    This is a mixin for classes like the `CameraManager` or the `RssSensor`
+    that either wrap around carla.Sensors or should have a similar interface.
+    """
 
     sensor : carla.Sensor
 
