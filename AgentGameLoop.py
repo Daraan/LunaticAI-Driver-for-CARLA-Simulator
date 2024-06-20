@@ -270,17 +270,8 @@ def main(args: LaunchConfig):
     print(RSSKeyboardControl.get_docstring())
     print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")
 
-    # TEMP for Testing
-    print("Checking Config 1")
-    a0 = LaunchConfig.check_config(args, 0, as_dict_config=False)
-    a1 = LaunchConfig.check_config(args, 1)
-    print("Checking Config 2")
-    a2 = LaunchConfig.check_config(args, 2)
-    print("Checking Config 3")
-    a3 = LaunchConfig.check_config(args, 3)
-    
     args = LaunchConfig.check_config(args, args.get("strict_config", 3), as_dict_config=True)    
-
+    
     signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)
 
     try:
