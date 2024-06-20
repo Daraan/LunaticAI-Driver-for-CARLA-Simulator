@@ -85,9 +85,9 @@ def game_loop(args):
         #import time
         #time.sleep(1.5)
         try:
-            spawn_points = launch_tools.general.csv_to_transformations("../examples/highway_example_car_positions.csv")
+            spawn_points = launch_tools.csv_tools.csv_to_transformations("../examples/highway_example_car_positions.csv")
         except FileNotFoundError:
-            spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
+            spawn_points = launch_tools.csv_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
         # car1 = carla_service.createCar("model3")
 
         # Spawn Ego

@@ -156,7 +156,7 @@ class BasicAgent(object):
             clean_queue = False
 
         start_waypoint = self._map.get_waypoint(start_location)
-        end_waypoint = self._map.get_waypoint(end_location) if isinstance(end_location, carla.Location) else end_location
+        end_waypoint = self._map.get_waypoint(end_location)
 
         route_trace = self.trace_route(start_waypoint, end_waypoint)
         self._local_planner.set_global_plan(route_trace, clean_queue=clean_queue)

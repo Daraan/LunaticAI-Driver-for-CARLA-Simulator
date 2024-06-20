@@ -38,6 +38,7 @@ import carla
 
 import ast
 import inspect
+from launch_tools import ast_parse
 from agents.navigation.local_planner import RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
@@ -159,15 +160,96 @@ class AgentConfig:
         if not isinstance(options, DictConfig) and not resolve and not yaml:
             return asdict(options)
         if not isinstance(options, DictConfig):
-            options = OmegaConf.structured(options, flags={"allow_objects": True})
+            #options = OmegaConf.structured(options, flags={"allow_objects": True})
+            pass
+        
         if yaml:
-            return OmegaConf.to_yaml(options, resolve=resolve, **kwargs)
+            # Simple YAML
+            import yaml
+            
+            """
+            from omegaconf._utils import get_omega_conf_dumper
+            Dumper = get_omega_conf_dumper()
+            org_func = Dumper.str_representer
+            def str_representer(dumper, data: str):
+                result = org_func(dumper, data)
+                return result
+            
+            Dumper.add_representer(str, str_representer)
+            string = yaml.dump(  # type: ignore
+                container,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=kwargs.get("sort_keys", False),
+                Dumper=Dumper,
+            )
+            """
+            from omegaconf._utils import _ensure_container, get_omega_conf_dumper
+            cfg = OmegaConf.create(cls_or_self, flags={"allow_objects": True})
+            container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
+            string = yaml.dump(  # type: ignore
+                container,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False,
+                Dumper=get_omega_conf_dumper(),
+            )
+            if not yaml_commented:
+                return string
+            # Extend 
+            
+            # Get documentations
+            global _class_annotations
+            if _class_annotations is None:
+                with open(_file_path, "r") as f:
+                    tree = ast_parse(f.read())
+                    _class_annotations = {}
+                    extract_annotations(tree, docs=_class_annotations)
+            
+            if isinstance(cls_or_self, type): # is class
+                cls = cls_or_self
+            else:
+                cls = cls_or_self.__class__
+            
+            from ruamel.yaml import YAML
+            from ruamel.yaml.comments import CommentedBase
+            yaml2 = YAML(typ='rt')
+            #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
+            data: CommentedBase = yaml2.load(string)
+            
+            cls_doc = _class_annotations[cls.__name__]
+            
+            # First line
+            data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
+            
+            # add comments to all other attributes
+            def add_comments(container, data, lookup, indent=0):
+                for key, value in container.items():
+                    if isinstance(value, dict) and isinstance(cls_doc.get(key, None), dict):
+                        add_comments(value, data[key], cls_doc[key], indent=indent+2)
+                        comment_txt:str = "\n"+cls_doc[key].get("__doc__", "")
+                    else:
+                        comment_txt = lookup.get(key, None)
+                    if comment_txt is None:
+                        continue
+                    comment_txt=comment_txt.replace("\n\n","\n \n")
+                    if comment_txt.count("\n") > 0:
+                        comment_txt = "\n"+comment_txt
+                    data.yaml_set_comment_before_after_key(key, comment_txt, indent=indent)
+            add_comments(container, data, cls_doc)
+            # data.yaml_add_eol_comment(comment_txt, key = key)
+
+            import io
+            stream = io.StringIO()
+            yaml2.dump(data, stream)
+            stream.seek(0)
+            return stream.read()
         return OmegaConf.to_container(options, resolve=resolve, **kwargs)
     
     @class_or_instance_method
     def to_yaml(cls_or_self, resolve=False, yaml_commented=True) ->  str:
         return cls_or_self.simplify_options(resolve=resolve, yaml=True, yaml_commented=yaml_commented)
-    
+        
     @classmethod
     def from_yaml(cls, path, category : Optional[str]=None, *, merge=True):
         """Loads the options from a yaml file."""
@@ -256,6 +338,50 @@ class AgentConfig:
                 behavior.__dict__["_parent"] = None # Remove parent from
         
         return cast(cls, behavior)
+    
+    if TYPE_CHECKING and sys.version_info >= (3, 8):
+        from typing import overload, Literal, TypeVar
+        CL = TypeVar("CL")
+        @overload
+        @classmethod
+        def check_config(cls, config: CL, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[False]") -> CL: ... 
+        
+        @overload
+        @classmethod
+        def check_config(cls: type[CL], config, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[True]") -> CL: ... 
+        
+        @overload
+        @classmethod
+        def check_config(cls: type[CL], config, strictness: int, as_dict_config=True) -> CL: ...
+    
+    @classmethod
+    def check_config(cls, config, strictness: int = 1, as_dict_config=True):
+        """
+        
+        - strictness == 1: Will cast the config to this class, assuring all keys are present.
+            However the type and correctness of the field-contents are not checked.
+        - strictness > 1 the config will be a DictConfig object. - 
+        - strictness == 2: Will assure that the *initial* types are correct.
+        - strictness >= 2 will return the config as a structured config,
+            forcing the defined types during runtime as well.
+        """
+        if strictness < 1:
+            if as_dict_config and not isinstance(config, DictConfig):
+                return OmegaConf.create(config, flags={"allow_objects": True})
+            else:
+                return config
+        if strictness == 1:
+            config = cls(**config)
+            if as_dict_config and not isinstance(config, DictConfig):
+                return OmegaConf.create(config, flags={"allow_objects": True})
+            return config
+        config = cls.create_from_args(config, config_mode=SCMode.DICT_CONFIG, assure_copy=False)
+        if strictness == 2:
+            if as_dict_config and not isinstance(config, DictConfig):
+                return OmegaConf.create(config, flags={"allow_objects": True})
+            return config
+        config: cls = OmegaConf.structured(config, flags={"allow_objects": True}) # include flag, yes no?
+        return config
         
     
     @class_or_instance_method
@@ -1384,21 +1510,65 @@ class CameraConfig(AgentConfig):
     data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
     """<take doc:DataMatrixHudConfig>"""
         
-    data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
     
+@dataclass
+class _test(AgentConfig):
+        """Class Doc"""
+        
+        test_single : str
+        "Single descritpion"
+        
+        case_c :float
+        """Case C"""
+
+        test_match1 = 1
+        
+        """11111"""
+        
+        test_match12: int = 2
+        """22222"""
+        
+        test_no_match :float = 3.0
+        test_no_match2 :float = 4.0
+        """YYYYY"""
+        
+        test_avoid_comment : str = "Avoid comment"
+        # This is bad
+        "Found it"
+        
+        case_a = True
+        """Case A"""
+        
+        case_b: int = 2
+        """Case B"""
+        
+
+
 
 
 @dataclass
-class LaunchConfig:
+class LaunchConfig(AgentConfig):
+    strict_config: Union[bool, int] = 3
+    """
+    If enabled will assert that the loaded config is a subset of the `LaunchConfig` class.
+    
+    If set to >= 2, will assert that during runtime the types are correct.
+    """
+    
     verbose: bool = True
     debug: bool = True
     interactive: bool = False
+    """
+    If True will create an interactive session with command line input
+    - NOTE: Needs custom code in the main file (Not implemented)
+    """
     seed: Optional[int] = None
 
     # carla_service:
     map: str = "Town04"
     host: str = "127.0.0.1"
     port: int = 2000
+    
     fps: int = 20
     sync: Union[bool, None] = True
     """
@@ -1454,6 +1624,9 @@ class LaunchConfig:
     camera : CameraConfig = field(default_factory=CameraConfig)
     """The camera settings"""
     
+if TYPE_CHECKING:
+    class LaunchConfig(LaunchConfig, DictConfig):
+        pass
 
 
 def extract_annotations(parent, docs):
@@ -1522,7 +1695,7 @@ if __name__ == "__main__":
         f.write(LiveInfo.to_yaml())
     
 #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
-LunaticAgentSettings.export_options("conf/lunatic_agent_settings.yaml", with_comments=True)
+LunaticAgentSettings.export_options("conf/agent/default_settings.yaml", with_comments=True)
 
 if __name__ == "__main__":
     #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)

@@ -6,18 +6,7 @@ import carla
 
 from classes.HUD import get_actor_display_name
 
-
-class CustomSensor(object):
-    
-    sensor : carla.Sensor
-    
-    def destroy(self):
-        """Destroys the sensor"""
-        if self.sensor is not None:
-            self.sensor.stop()
-            self.sensor.destroy()
-            self.sensor = None
-
+from classes._custom_sensor import CustomSensor
 # ==============================================================================
 # -- CollisionSensor -----------------------------------------------------------
 # ==============================================================================

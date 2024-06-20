@@ -63,9 +63,9 @@ defaults:
   #        Agent Default Configuration 
   # -------------------------------------------
   # Describes the default settings of the agent.
-  # Format: <filename>@agent
+  # Format: agent : <filename in ./agent>
   # -------------------------------------------
-  - agent_default_settings@agent
+  - agent : default_settings
 
   # To use a different defaults setting use:
   # TODO: figure out and write here
@@ -77,16 +77,16 @@ defaults:
   # -------------------------------------------
   
   # LocalPlanner settings
-  - config_extensions/planner@agent.planner
+  #- config_extensions/planner@agent.planner
   
   # Interpolation / Aliases
-  - config_extensions/interpolation@agent
+  #- config_extensions/interpolation@agent
 
   # Camera settings
   - config_extensions/camera@camera
   
   # Only available during runtime
-  - config_extensions/live_info@agent.live_info
+  #- config_extensions/live_info@agent.live_info
   
   # Configure the logger to be used
   - config_extensions/job_logging@hydra.job_logging

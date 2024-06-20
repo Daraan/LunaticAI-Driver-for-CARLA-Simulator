@@ -7,8 +7,6 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
-from collections.abc import Mapping
-from dataclasses import is_dataclass
 import signal
 import sys
 import argparse
@@ -36,23 +34,16 @@ from launch_tools import CarlaDataProvider
 
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
-from classes.rule import Context, Rule
-
 from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from classes.constants import Phase
-from classes.HUD import HUD
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
-from classes.vehicle import Vehicle
 
 from agents.tools.logging import logger
 from agents.tools.misc import draw_waypoints
-from agents.navigation.basic_agent import BasicAgent  
-from agents.navigation.behavior_agent import BehaviorAgent 
-from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 
 
 from agents.lunatic_agent import LunaticAgent
-from agents import behaviour_templates
+from agents.rules import create_default_rules
 
 # ==============================================================================
 # TEMP # Remove
@@ -71,6 +62,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     ticking the agent and, if needed, the world.
     """
     game_framework : GameFramework = None # Set for finally block
+    traffic_manager : carla.TrafficManager = None # Set for finally block
     world_model : WorldModel = None # Set for finally block
     agent : LunaticAgent = None # Set for finally block
     ego : carla.Vehicle = None # Set for finally block
@@ -85,7 +77,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
 
     # TEMP
     import classes.worldmodel
-    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
+    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss and behavior.rss.enabled
     
     if PRINT_CONFIG:
         print("    \n\n\n")
@@ -102,11 +94,11 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     try:
         logger.info("Creating Game Framework ...")
         game_framework = GameFramework(args)
-        logger.debug("Created Game Framework.\n")
+        logger.info("Created Game Framework.\n")
         
         # -- Spawn Vehicles --
         all_spawn_points = game_framework.map.get_spawn_points()
-        spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
+        spawn_points = launch_tools.csv_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
         
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
         
@@ -118,12 +110,13 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                                                                       how_many, 
                                                                       spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn_idx], 
                                                                       autopilot=True, 
-                                                                      tick=False) 
+                                                                      tick=False)
         
         # Spawn Ego
         start : carla.libcarla.Transform = spawn_points[ego_spawn_idx]
-        ego = game_framework.spawn_actor(ego_bp, start)
+        ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)
         spawned_vehicles.append(ego)
+        
         
         # TEMP # Test external actor, do not pass ego
         logger.info("Creating agent and WorldModel ...")
@@ -139,7 +132,12 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:
-        agent.add_rules(behaviour_templates.default_rules)
+        default_rules = create_default_rules()
+        from agents.rules.lane_changes import RandomLaneChangeRule
+        for rule in default_rules:
+            if isinstance(rule, RandomLaneChangeRule):
+                rule.enabled = False
+        agent.add_rules(default_rules)
         if PRINT_RULES: # TEMP
             print("Lunatic Agent Rules")
             pprint(agent.rules)
@@ -156,7 +154,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         # destination = random.choice(all_spawn_points).location
         destination = left_last_wp.transform.location
         
-        agent.set_destination(left_last_wp)
+        agent.set_destination(last_wp.transform.location)
         
         def loop():
             agent.verify_settings()
@@ -168,18 +166,22 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                     continue
                 # Agent Loop
                 with game_framework:
+                    # ------ Run step ------
                     final_control = agent.run_step(debug=True)
                     
+                    # ------ Apply / Handle User Input ------
                     agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=final_control)
                     if isinstance(world_model.controller, RSSKeyboardControl):
                         if controller.parse_events(agent.get_control()):
                             return
                     agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
                     
+                    # ------ Apply Control ------
                     agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=final_control)
                     agent.apply_control() # Note Uses control from agent.ctx.control in case of last Phase changed it.
                     agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None)
                     
+                    # DEBUG
                     try:
                         destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
                         destination = destination + carla.Vector3D(0, 0, 1.5) # elevate to be not in road
@@ -226,20 +228,27 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             loop()
     except Exception as e:
         logger.error("Exception in game loop", exc_info=True)
+        raise
     finally:
         print("Quitting. - Destroying actors and stopping world.")
         if agent is not None:
-            agent.destroy_sensor()
-        if game_framework is not None:
-            world_settings = game_framework.world.get_settings()
-            world_settings.synchronous_mode = False
-            world_settings.fixed_delta_seconds = None
-            game_framework.world.apply_settings(world_settings)
-            traffic_manager.set_synchronous_mode(False)
+            agent.destroy()
         if world_model is not None:
             world_model.destroy(destroy_ego=False)
-
+        if game_framework is not None:
+            # save world for usage after CDP cleanup
+            world = game_framework.world
+        else:
+            world = None
         CarlaDataProvider.cleanup() # NOTE: unsets world, map, client, destroys actors
+        
+        if world is not None:
+            # Disable Synchronous Mode
+            world_settings = carla.WorldSettings(synchronous_mode=False,
+                                                 fixed_delta_seconds=0.0)
+            world.apply_settings(world_settings)
+            if traffic_manager is not None:
+                traffic_manager.set_synchronous_mode(world_settings.synchronous_mode)
 
         pygame.quit()
 
@@ -256,11 +265,13 @@ def main(args: LaunchConfig):
     
     logger.setLevel(log_level)
     logger.info('listening to server %s:%s', args.host, args.port)
-
+        
     print(__doc__)
     print(RSSKeyboardControl.get_docstring())
     print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")
 
+    args = LaunchConfig.check_config(args, args.get("strict_config", 3), as_dict_config=True)    
+    
     signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)
 
     try:

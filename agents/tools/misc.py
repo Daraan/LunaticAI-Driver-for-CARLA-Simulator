@@ -15,8 +15,11 @@ from typing import NamedTuple, TYPE_CHECKING
 
 import carla
 
+from classes.constants import RoadOptionColor # pylint: disable=unused-import
+
 if TYPE_CHECKING:
     from agents.navigation.local_planner import RoadOption
+    # also checkout RoadOptionColor
 
 __all__ = [
     'ObstacleDetectionResult',
@@ -70,6 +73,7 @@ def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5
         world.debug.draw_arrow(begin, end, color=color, **kwargs)
         
 def roadoption_color(option: "RoadOption") -> carla.Color:
+    return RoadOptionColor(option)
     from agents.navigation.local_planner import RoadOption # TODO: move to constants to avoid circular import
     if option == RoadOption.LEFT:  # Yellow
         return carla.Color(128, 128, 0)
@@ -153,7 +157,7 @@ def get_speed(vehicle):
     return 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
 
 
-def get_trafficlight_trigger_location(traffic_light):
+def get_trafficlight_trigger_location(traffic_light: carla.TrafficLight):
     """
     Calculates the yaw of the waypoint that represents the trigger volume of the traffic light
     """
@@ -284,3 +288,16 @@ def positive(num):
         :param num: value to check
     """
     return num if num > 0.0 else 0.0
+
+def lanes_have_same_direction(wp1: carla.Waypoint, wp2: carla.Waypoint) -> bool:
+    """
+    Check if two lanes have the same direction, i.e. their lane ids
+    have the same sign.
+
+        :param wp1: first waypoint
+        :param wp2: second waypoint
+        
+    Returns:
+        True if the lanes have the same direction, False otherwise
+    """
+    return wp1.lane_id * wp2.lane_id > 0

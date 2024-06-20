@@ -3,8 +3,11 @@ from typing import TYPE_CHECKING, List
 
 import carla
 from carla import TrafficLightState
+from agents.tools import logger
 from agents.tools.misc import (is_within_distance,
                                get_trafficlight_trigger_location, TrafficLightDetectionResult)
+
+from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
@@ -27,6 +30,8 @@ def affected_by_traffic_light(self : "LunaticAgent",
             return TrafficLightDetectionResult(False, None)
 
         if not lights_list:
+            if self._world_model._args.debug:
+                logger.warning("No traffic lights list provided, using all traffic lights in the scene.") # TODO: turn into debug
             lights_list = self._world.get_actors().filter("*traffic_light*")
 
         if not max_distance:
@@ -40,14 +45,14 @@ def affected_by_traffic_light(self : "LunaticAgent",
                 return TrafficLightDetectionResult(True, self._last_traffic_light)
 
         ego_vehicle_location = self._vehicle.get_location()
-        ego_vehicle_waypoint = self._map.get_waypoint(ego_vehicle_location)
+        ego_vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_vehicle_location)
 
         for traffic_light in filter(_is_red_light, lights_list):
             if traffic_light.id in self._lights_map:
                 trigger_wp = self._lights_map[traffic_light.id]
             else:
                 trigger_location = get_trafficlight_trigger_location(traffic_light)
-                trigger_wp = self._map.get_waypoint(trigger_location)
+                trigger_wp = CarlaDataProvider.get_map().get_waypoint(trigger_location)
                 self._lights_map[traffic_light.id] = trigger_wp
 
             if trigger_wp.transform.location.distance(ego_vehicle_location) > max_distance:
@@ -79,12 +84,15 @@ def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.Tr
         if random.random() < self.config.obstacles.ignore_lights_percentage:
             return TrafficLightDetectionResult(False, None)
 
-        if self.config.obstacles.dynamic_threshold_by_speed:
+        # Behavior setting:
+        max_tlight_distance = self.config.obstacles.base_tlight_threshold
+        if self.config.obstacles.dynamic_threshold:
             # Basic agent setting:
-            max_tlight_distance = self.config.obstacles.base_tlight_threshold + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
-        else:
-            # Behavior setting:
-            max_tlight_distance = self.config.obstacles.base_tlight_threshold
+            logger.info("Increased threshold for traffic light detection from {} to {}".format(max_tlight_distance, 
+                                                                                              max_tlight_distance + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed))
+            max_tlight_distance += self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
+            
+        # TODO: Time to pass the traffic light; i.e. can we pass it without stopping? -> How risky are we?
 
         # TODO check if lights should be copied.
         # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks

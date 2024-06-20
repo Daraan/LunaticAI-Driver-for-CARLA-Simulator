@@ -4,6 +4,7 @@ from typing import Any, Dict, TYPE_CHECKING
 import pygame
 from omegaconf import OmegaConf
 from hydra import compose, initialize_config_dir
+from hydra.core.utils import configure_log
 
 import carla
 
@@ -103,7 +104,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             initialize_config_dir(version_base=None, 
                                     config_dir=config_dir, 
                                     job_name="test_app")
-            args = compose(config_name=config_name)
+            args = compose(config_name=config_name, return_hydra_config=True)
+            if OmegaConf.is_missing(args.hydra.runtime, "output_dir"):
+                args.hydra.runtime.output_dir = "."
+            configure_log(args.hydra.job_logging, logger.name) # Assure that our logger works
             
             hydra_initialized = True
             # Let scenario manager decide
@@ -116,10 +120,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             args.agent.data_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
             args.agent.rss.enabled = ENABLE_RSS
             print(OmegaConf.to_yaml(args))
+        logger.setLevel(logging.DEBUG)
         self.args = args
-        
-        #sim_world = CarlaDataProvider.get_world()
-        map_inst = CarlaDataProvider.get_map()
         
         config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True)
         config.planner.dt = 1/20 # TODO: maybe get from somewhere
@@ -132,8 +134,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("World Model setup")
         self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         print("Initializing agent")
-        LunaticAgent.__init__(self, config, self.world_model, map_inst=map_inst, grp_inst=CarlaDataProvider.get_global_route_planner())
+        LunaticAgent.__init__(self, config, self.world_model)
         print("LunaticAgent initialized")
+        
+        # Set plan
         self._local_planner_set_plan(self._global_plan_waypoints)
         
         self.game_framework.agent = self # TODO: Remove this circular reference
