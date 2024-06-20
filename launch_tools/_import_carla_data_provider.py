@@ -1,3 +1,7 @@
+"""
+Import the CarlaDataProvider from the scenario_runner submodule
+"""
+
 from typing import TYPE_CHECKING
 
 try:

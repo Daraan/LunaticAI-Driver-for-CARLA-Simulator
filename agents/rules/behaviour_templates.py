@@ -92,56 +92,6 @@ class NormalSpeedRule(Rule):
     action = set_default_speed
     description = "Set speed to normal speed"
 
-# ----
-
-def make_lane_change(ctx : "Context"):
-    """
-    If a tailgator is detected, move to the left/right lane if possible
-
-        :param waypoint: current waypoint of the agent
-        :param vehicle_list: list of all the nearby vehicles
-        
-    Assumes:
-         (ctx.agent.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \
-            and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10)
-        check_behind.obstacle_was_found and ctx.agent.config.live_info.current_speed < get_speed(check_behind.obstacle)
-    """
-    vehicle_list = ctx.agent.vehicles_nearby
-    waypoint = ctx.agent._current_waypoint # todo use a getter
-
-    # There is a faster car behind us
-
-    left_turn = waypoint.left_lane_marking.lane_change
-    right_turn = waypoint.right_lane_marking.lane_change
-
-    left_wpt = waypoint.get_left_lane()
-    right_wpt = waypoint.get_right_lane()
-
-    if (right_turn == carla.LaneChange.Right or right_turn ==
-        carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
-        
-        # Detect if right lane is free
-        detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
-            ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=1)
-        if not detection_result.obstacle_was_found:
-            print("Tailgating, moving to the right!")
-            end_waypoint = ctx.agent._local_planner.target_waypoint
-            ctx.agent.set_destination(end_waypoint.transform.location,
-                                    right_wpt.transform.location)
-    
-    elif left_turn == carla.LaneChange.Left and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
-        # Check if left lane is free
-        detection_result = detect_vehicles(ctx.agent, vehicle_list, max(
-            ctx.agent.config.distance.min_proximity_threshold, ctx.agent.config.live_info.current_speed_limit / 2), up_angle_th=180, lane_offset=-1)
-        if  not detection_result.obstacle_was_found:
-            print("Tailgating, moving to the left!")
-            end_waypoint = ctx.agent._local_planner.target_waypoint
-            ctx.agent.set_destination(end_waypoint.transform.location,
-                                    left_wpt.transform.location)
-
-
-
-
 # ----------- Plan next waypoint -----------
 
 def random_spawnpoint_destination(ctx: "Context", waypoints: List[carla.Waypoint]=None):
@@ -201,30 +151,29 @@ def accept_rss_updates(ctx : Context):
     assert isinstance(ctx.prior_result, carla.VehicleControl)
     logger.debug("Accepting RSS updates %s", ctx)
     ctx.control = ctx.prior_result
-
-class AlwaysAcceptRSSUpdates(Rule):
-    phases = Phase.RSS_EVALUATION | Phase.END
-    rule = always_execute
-    action = accept_rss_updates
-    description = "Always accepts the updates calculated by the RSS System."
     
 assert isinstance(if_config("rss.enabled", True), EvaluationFunction)
 
-class AlwaysAcceptRSSUpdates(AlwaysAcceptRSSUpdates):
+class AlwaysAcceptRSSUpdates(Rule):
+    """Always accept RSS updates if rss is enabled in the config"""
     phases = Phase.RSS_EVALUATION | Phase.END
     rule=if_config("rss.enabled", True)
     action = accept_rss_updates
     description = "Always accepts the updates calculated by the RSS System."
 
 class ConfigBasedRSSUpdates(Rule):
+    """Always accept RSS updates if `rss.always_accept_update` is set to True in the config."""
     phases = Phase.RSS_EVALUATION | Phase.END
     rule = if_config("rss.always_accept_update", True)
     action = accept_rss_updates
-    description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
+    #description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
 
 
 
 if __name__ == "__main__" or DEBUG_RULES:
+    
+    x = ConfigBasedRSSUpdates()
+    assert x.description == """Always accept RSS updates if `rss.always_accept_update` is set to True in the config."""
     
     test = AlwaysAcceptRSSUpdates()
     
@@ -257,6 +206,23 @@ if __name__ == "__main__" or DEBUG_RULES:
     def eval_context_function(ctx : "Context") -> bool:
         assert isinstance(ctx, Context)
         return True
+    
+    def ctx_action(ctx : Context):
+        assert_type(ctx, Context)
+        
+    def ctx_self_action(self, ctx : Context):
+        assert_type(self, Rule)
+        assert_type(ctx, Context)
+        
+    # TODO: # CRITICAL: >1 argument, treated as method
+    def ctx_action_kwargs(ctx : Context, arg1):
+        assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
+        assert_type(ctx, Context)
+        
+    def ctx_self_action_kwargs(self, ctx : Context, arg1):
+        assert_type(self, Rule)
+        assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
+        assert_type(ctx, Context)
 
     @Rule
     class SimpleRule1:
@@ -268,7 +234,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     class SimpleRule(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         rule = context_method
-        action = lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context))
+        action = lambda self, ctx: ctx_self_action(self, ctx)
 
     class ReverseWhenCollide(Rule):
         phases = Phase.COLLISION | Phase.END
@@ -280,13 +246,13 @@ if __name__ == "__main__" or DEBUG_RULES:
     @Rule
     class SimpleRule1B:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
-        rule = eval_context_function
-        action = lambda ctx: assert_type(ctx, Context)
+        rule = eval_context_function.copy() # TODO: can I copy this via a __set__
+        rule.register_action(ctx_self_action_kwargs, arg1="arg1")
     
     class SimpleRuleB(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
-        rule = eval_context_method
-        action = lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context))
+        rule = eval_context_method.copy()
+        rule.register_action(ctx_action) 
 
 
     class DebugRuleWithEval(Rule):
@@ -296,9 +262,11 @@ if __name__ == "__main__" or DEBUG_RULES:
         def rule(self, ctx : "Context") -> bool:
             assert isinstance(ctx, Context)
             assert isinstance(self, DebugRuleWithEval)
+            return True
         
-        @rule.register_action(True)
-        def true_action(self, ctx : "Context"):
+        @rule.register_action(True, arg1="arg1")
+        def true_action(self, ctx : "Context", arg1):
+            assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
             assert isinstance(ctx, Context)
             assert isinstance(self, DebugRuleWithEval)
 
@@ -350,9 +318,11 @@ if __name__ == "__main__" or DEBUG_RULES:
     assert CheckDescription.description == """This is my description"""
     cd_rule = CheckDescription(Phase.END, action=lambda ctx: assert_type(ctx, Context), rule=lambda self, ctx: (assert_type(self, Rule)))
     print(cd_rule.phases)
-    phase = cd_rule.phases.pop()
+    phase = list(cd_rule.phases).pop() # does not work with frozenset
+    cd_rule.phases = set()
     print(cd_rule.phases, cd_rule.phase)
     assert phase == Phase.END, f"Expected {Phase.END} but got {phase}"
     assert not cd_rule.phases
     assert cd_rule.description == """This is my description"""
 
+    debug_rules = [test, simple_rule, simple_ruleB, another_rule, custom_rule, new_rule, cd_rule]

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 # TODO: see if max_distance is currently still necessary
 # TODO: move angles to config
 #@override
-def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
+def detect_vehicles(self: "LunaticAgent", vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
                                 lane_offset=0):
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
@@ -70,6 +70,7 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
     if not max_distance:
         max_distance = self.config.obstacles.base_vehicle_threshold
 
+    # TODO: can get this from CDP
     ego_transform = self._vehicle.get_transform()
     ego_location = ego_transform.location # NOTE: property access creates a new location object, i.e. ego_location != ego_front_transform
     ego_wpt = CarlaDataProvider.get_map().get_waypoint(ego_location)

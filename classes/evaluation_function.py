@@ -6,7 +6,7 @@ except ImportError:
     from launch_tools import singledispatchmethod
 
 
-from typing import Callable, Any, ClassVar, Hashable, TYPE_CHECKING, Optional, Union
+from typing import Callable, Any, ClassVar, Dict, Hashable, TYPE_CHECKING, Optional, Union
 from collections import abc
 
 import inspect
@@ -20,22 +20,25 @@ class EvaluationFunction:
     """
     Implements a decorator to wrap function to be used with rule classes.
     The function must return a hashable type, which is used to access the action to be taken by the rule.
-
+    
     Evaluation functions can be combined using the AND, OR and NOT operators to build up more complex rules
     from simpler ones.
     The operators + or &, | and ~ are aliases for AND, OR and NOT respectively.
     e.g. 
-    func1 = EvaluationFunction(lambda ctx: ctx.speed > 10)
-    func2 = EvaluationFunction(lambda ctx: ctx.speed < 20)
+    `func1 = EvaluationFunction(lambda ctx: ctx.speed > 10)`
+    `func2 = EvaluationFunction(lambda ctx: ctx.speed < 20)`
 
     These statements are all equivalent:
-        * EvaluationFunction(lambda ctx: 10 < ctx.speed < 20)
-        * func1 + func2
-        * func1 & func2
-        * func1.AND(func2)
-        * EvaluationFunction.AND(func1, func2)
-
-    EvaluationFunctions also allow for more specific returns types:
+        * `EvaluationFunction(lambda ctx: 10 < ctx.speed < 20)`
+        * `func1 + func2`
+        * `func1 & func2`
+        * `func1.AND(func2)`
+        * `EvaluationFunction.AND(func1, func2)`
+    
+    Hint:
+        EvaluationFunctions also allow for more specific returns types
+        ..  code-block:: python
+        
         @EvaluationFunction
         def is_speeding(ctx: Context) -> Hashable:
             config = ctx.agent.config
@@ -48,11 +51,16 @@ class EvaluationFunction:
             else:
                 return "normal"
 
-        Rule(is_speeding, action={
-                                "very fast": lambda ctx: ctx.agent.config.follow_speed_limits()
-                                "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5)
-                                })
+        Rule(is_speeding, action={"very fast": lambda ctx: ctx.agent.config.follow_speed_limits(), 
+                                  "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5) 
+                                  })
+
+    Returns:
+        `EvaluationFunction`
+    
     """
+    
+    actions: ClassVar[Dict[Hashable, Callable[["Union[Context, Rule]"], Any]]] = {}
     
     def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="EvaluationFunction", *, truthy=False, use_self=None) -> "type[EvaluationFunction]":
         # @EvaluationFunction("name")
@@ -77,11 +85,11 @@ class EvaluationFunction:
         else:
             self.name = str(evaluation_function)
         self.use_self = use_self
-        self.actions = {}
+        self.actions = self.actions.copy()
 
     def __call__(self, ctx: "Context | Rule", *args, **kwargs) -> Hashable:
         """
-        NOTE: CRITICAL: 
+        Note:
         To handle the method vs. function difference depending on __get__ 
         `ctx` can be either a Context (rule as function) or a Rule (rule as method),
         In the method case the real Context object is args[0]
@@ -186,23 +194,27 @@ class EvaluationFunction:
     
     _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
     
-    def _check_action(self, action_function, key):
+    def _check_action(self, action_function: Callable[["Union[Context, Rule]"], Any], key, **kwargs):
         if action_function.__name__ in EvaluationFunction._INVALID_NAMES:
             raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in {EvaluationFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
         if key in self.actions:
             print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
+        if kwargs:
+            # TODO: # CRITICAL: are args problematic? 
+            action_function = partial(action_function, **kwargs)
+        return action_function
     
     @singledispatchmethod
-    def register_action(self, key: Hashable=True):
+    def register_action(self, key: Hashable=True, **kwargs):
         def decorator(action_function):
-            self._check_action(action_function, key)
+            action_function = self._check_action(action_function, key, **kwargs)
             self.actions[key] = action_function # register action
             return action_function
         return decorator
     
     @register_action.register(abc.Callable)
-    def _register_action_directly(self, action_function: Callable[["Union[Context, Rule]"], Any], key: Hashable=True):
-        self._check_action(action_function, key)
+    def _register_action_directly(self, action_function: Callable[["Union[Context, Rule]"], Any], key: Hashable=True, **kwargs):
+        action_function = self._check_action(action_function, key, **kwargs)
         self.actions[key] = action_function # register action
 
 def TruthyEvaluationFunction(func: Callable) -> EvaluationFunction:

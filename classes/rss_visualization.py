@@ -11,6 +11,10 @@ import weakref
 from typing import Tuple, Union, cast as assure_type
 
 import carla
+
+from launch_tools import CarlaDataProvider
+
+from classes._custom_sensor import CustomSensor
 try:
     from carla import ad
     AD_RSS_AVAILABLE = True
@@ -156,7 +160,7 @@ class RssUnstructuredSceneVisualizerMode(Enum):
     fullscreen = 3
 
 
-class RssUnstructuredSceneVisualizer(object):
+class RssUnstructuredSceneVisualizer(CustomSensor):
     """Gives a top-view over the setting?"""
 
     def __init__(self, parent_actor, world, display_dimensions, gamma_correction=2.2):
@@ -172,12 +176,22 @@ class RssUnstructuredSceneVisualizer(object):
         self._gamma = gamma_correction
 
         self.restart(RssUnstructuredSceneVisualizerMode.window)
+        
+    @property
+    def sensor(self):
+        return self._camera
+    
+    @sensor.setter
+    def sensor(self, value):
+        # Needed for CustomSensor.destroy
+        if value is None:
+            self._camera = None
+        else:
+            raise ValueError("Cannot set sensor of RssUnstructuredSceneVisualizer. Use _camera instead.")
 
     def destroy(self):
-        if self._camera:
-            self._camera.stop()
-            self._camera.destroy()
-            self._camera = None
+        super().destroy()
+        self._camera = None
 
     def restart(self, mode):
         # setup up top down camera
@@ -201,7 +215,7 @@ class RssUnstructuredSceneVisualizer(object):
             self._calibration[0, 0] = self._calibration[1, 1] = self._dim[0] / \
             (2.0 * np.tan(90.0 * np.pi / 360.0))  # fov default: 90.0
 
-            bp_library = self._world.get_blueprint_library()
+            bp_library = CarlaDataProvider._blueprint_library
             bp : carla.ActorBlueprint = bp_library.find('sensor.camera.rgb')
             bp.set_attribute('image_size_x', str(self._dim[0]))
             bp.set_attribute('image_size_y', str(self._dim[1]))

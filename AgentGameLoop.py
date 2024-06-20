@@ -77,7 +77,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
 
     # TEMP
     import classes.worldmodel
-    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
+    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss and behavior.rss.enabled
     
     if PRINT_CONFIG:
         print("    \n\n\n")
@@ -94,7 +94,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     try:
         logger.info("Creating Game Framework ...")
         game_framework = GameFramework(args)
-        logger.debug("Created Game Framework.\n")
+        logger.info("Created Game Framework.\n")
         
         # -- Spawn Vehicles --
         all_spawn_points = game_framework.map.get_spawn_points()
@@ -110,12 +110,13 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                                                                       how_many, 
                                                                       spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn_idx], 
                                                                       autopilot=True, 
-                                                                      tick=False) 
+                                                                      tick=False)
         
         # Spawn Ego
         start : carla.libcarla.Transform = spawn_points[ego_spawn_idx]
-        ego = game_framework.spawn_actor(ego_bp, start)
+        ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)
         spawned_vehicles.append(ego)
+        
         
         # TEMP # Test external actor, do not pass ego
         logger.info("Creating agent and WorldModel ...")
@@ -153,7 +154,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         # destination = random.choice(all_spawn_points).location
         destination = left_last_wp.transform.location
         
-        agent.set_destination(left_last_wp)
+        agent.set_destination(last_wp.transform.location)
         
         def loop():
             agent.verify_settings()
@@ -227,13 +228,13 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             loop()
     except Exception as e:
         logger.error("Exception in game loop", exc_info=True)
+        raise
     finally:
         print("Quitting. - Destroying actors and stopping world.")
         if agent is not None:
             agent.destroy()
         if world_model is not None:
             world_model.destroy(destroy_ego=False)
-        
         if game_framework is not None:
             # save world for usage after CDP cleanup
             world = game_framework.world
@@ -243,12 +244,11 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         
         if world is not None:
             # Disable Synchronous Mode
-            world_settings = world.get_settings()
-            world_settings.synchronous_mode = False
-            world_settings.fixed_delta_seconds = None
+            world_settings = carla.WorldSettings(synchronous_mode=False,
+                                                 fixed_delta_seconds=0.0)
             world.apply_settings(world_settings)
             if traffic_manager is not None:
-                traffic_manager.set_synchronous_mode(False)
+                traffic_manager.set_synchronous_mode(world_settings.synchronous_mode)
 
         pygame.quit()
 
@@ -265,11 +265,13 @@ def main(args: LaunchConfig):
     
     logger.setLevel(log_level)
     logger.info('listening to server %s:%s', args.host, args.port)
-
+        
     print(__doc__)
     print(RSSKeyboardControl.get_docstring())
     print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")
 
+    args = LaunchConfig.check_config(args, args.get("strict_config", 3), as_dict_config=True)    
+    
     signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)
 
     try:

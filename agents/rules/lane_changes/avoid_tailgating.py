@@ -1,7 +1,7 @@
 # ----------- Avoid Beeing tailgated -----------
 
 from agents.navigation.local_planner import RoadOption
-from agents.rules.behaviour_templates import make_lane_change
+from agents.rules.lane_changes.misc import rule_lane_change
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import ObstacleDetectionResult, get_speed
 from classes.constants import Phase
@@ -41,11 +41,10 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
         return check_behind
     return False
 
-
 class AvoidTailgatorRule(Rule):
     phase = Phase.DETECT_CARS | Phase.END
     rule = avoid_tailgator_check.copy()
-    rule.register_action(make_lane_change, True)
+    rule.register_action(rule_lane_change, True, order=("right", "left"))
     #action = make_lane_change # NOTE: when using register_action you can omit this.
     cooldown_reset_value = 200
     group = "lane_change"

@@ -12,6 +12,7 @@ import pygame
 
 import carla
 import numpy.random as random
+from agents.tools.config_creation import AgentConfig
 from agents.tools.lunatic_agent_tools import AgentDoneException, ContinueLoopException
 from classes.HUD import HUD
 
@@ -27,6 +28,7 @@ from data_gathering.information_manager import InformationManager
 if TYPE_CHECKING:
     from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
     from agents.lunatic_agent import LunaticAgent
+    from classes._custom_sensor import CustomSensor
 
 from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
@@ -137,8 +139,8 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             random.seed(args.seed)
             np.random.seed(args.seed)
         self._args = args
-        self.clock, self.display = self.init_pygame(args)
         self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
+        self.clock, self.display = self.init_pygame(args)
 
         self.config = config
         self.agent = None
@@ -245,6 +247,8 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     
     spawn_actor = staticmethod(carla_service.spawn_actor)
     
+    destroy_actors = staticmethod(carla_service.destroy_actors)
+    
     # -------- Context Manager --------
 
     def __enter__(self):
@@ -293,8 +297,9 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
     controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
     game_framework : Optional[GameFramework] = None # Set when world created via GameFramework. Uses weakref.proxy
 
-    def get_blueprint_library(self):
-        return self.world.get_blueprint_library()
+    @staticmethod
+    def get_blueprint_library():
+        return CarlaDataProvider._blueprint_library
 
     def __init__(self, config : "LunaticAgentSettings", args:"Union[LaunchConfig, Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
@@ -329,10 +334,14 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
-        if not isinstance(args, Mapping):
+        if not isinstance(args, (Mapping, DictConfig, AgentConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
-            args = OmegaConf.load(args)
+            try:
+                args = OmegaConf.load(args)
+            except Exception as e:
+                print("Problem with", type(args), args) 
+                raise e
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
         self._args : LaunchConfig = args
         
@@ -381,9 +390,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self._weather_index = 0
         self.weather = None
         
-        
-
-        self.actors = []
+        self.actors: List[Union[carla.Actor, CustomSensor]] = []
         
         # From interactive:
         self.constant_velocity_enabled = False
@@ -408,15 +415,18 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.rss_unstructured_scene_visualizer = None
         self.rss_bounding_box_visualizer = None
         
-        if config.rss.enabled and not self._actor_filter.startswith("vehicle."):
-            print('Error: RSS only supports vehicles as ego.')
-            sys.exit(1)
-        if config.rss.enabled and AD_RSS_AVAILABLE:
-            self._restrictor = carla.RssRestrictor()
+        if config.rss:
+            if config.rss.enabled and not self._actor_filter.startswith("vehicle."):
+                print('Error: RSS only supports vehicles as ego. Disable RSS or use a vehicle filter for the actor.')
+                sys.exit(1)
+            if AD_RSS_AVAILABLE and config.rss.enabled:
+                self._restrictor = carla.RssRestrictor()
+            else:
+                self._restrictor = None
         else:
             self._restrictor = None
 
-        logger.info("Calling WorldModel.restart()")
+            logger.info("Calling WorldModel.restart()")
         self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
@@ -568,7 +578,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim, gamma_correction=self._gamma) # TODO: use args instead of gamma
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
-        if self._config.rss.enabled and AD_RSS_AVAILABLE:
+        if AD_RSS_AVAILABLE and self._config.rss and self._config.rss.enabled:
             log_level = self._config.rss.log_level
             if not isinstance(log_level, carla.RssLogLevel):
                 try:
@@ -697,46 +707,52 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
 
     def destroy_sensors(self): # TODO only camera_manager, should be renamed.
         """Destroy sensors"""
-        self.camera_manager.sensor.destroy()
-        self.camera_manager.sensor = None
-        self.camera_manager.index = None
-
-    def destroy(self, destroy_ego=False):
-        """Destroys all actors"""
-        # stop from ticking
-        if self.world_tick_id and self.world:
-            self.world.remove_on_tick(self.world_tick_id)
         if self.rss_sensor:
             self.rss_sensor.destroy()
             self.rss_sensor = None
         if self.rss_unstructured_scene_visualizer:
             self.rss_unstructured_scene_visualizer.destroy()
             self.rss_unstructured_scene_visualizer = None
-        if self.radar_sensor is not None:
-            self.toggle_radar()
         if self.camera_manager is not None:
-            self.destroy_sensors()
+            self.camera_manager.destroy()
+            self.camera_manager = None
+        if self.radar_sensor is not None:
+            self.toggle_radar() # destroys it if not None
+
+    def destroy(self, destroy_ego=False):
+        """Destroys all actors"""
+        # stop from ticking
+        if self.world_tick_id and self.world:
+            self.world.remove_on_tick(self.world_tick_id)
+        self.destroy_sensors()
         if destroy_ego and not self.player in self.actors: # do not destroy external actors.
-            logger.debug("Destroying player")
+            logger.debug("Adding player to destruction list.")
             self.actors.append(self.player)
         elif not destroy_ego and self.player in self.actors:
             logger.warning("destroy_ego=False, but player is in actors list. Destroying the actor from within WorldModel.destroy.")
+        
         logger.info("to destroy %s", list(map(str, self.actors)))
+        # Batch destroy in one simulation step
+        real_actors: List[carla.Actor] = [actor for actor in self.actors if isinstance(actor, carla.Actor)]
+        logger.info("WorldModel will destroy %d carla.Actors", len(real_actors))
+        GameFramework.destroy_actors(real_actors)
+        
+        self.actors: List[CustomSensor] = [actor for actor in self.actors if not isinstance(actor, carla.Actor)]
         while self.actors:
             actor = self.actors.pop(0)
             if actor is not None:
                 print("destroying actor: " + str(actor), end=" destroyed=")
                 try:
-                    if hasattr(actor, 'stop'):
-                        actor.stop()
-                except AttributeError:
-                    pass
+                    actor.stop()
+                except AttributeError as e:
+                    logger.debug("Error with actor {}: {}", actor, e)
                 try:
-                    x = actor.destroy()
+                    x = actor.destroy() # Non carla instances
                     print(x)
                 except RuntimeError:
                     logger.warning("Could not destroy actor: " + str(actor))
-                    #raise
+        if self._args.handle_ticks and self.get_world():
+            self.get_world().tick()
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control
@@ -745,7 +761,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
             return None
         
         if self.rss_sensor.log_level <= carla.RssLogLevel.warn and self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
-            logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route))
+            logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route)[:97] + "...")
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:

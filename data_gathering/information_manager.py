@@ -7,7 +7,7 @@ i.e. distill the information from the data and return high level information
 
 from fnmatch import fnmatch
 from functools import wraps
-from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple
+from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple, Union
 import carla
 
 if TYPE_CHECKING:
@@ -28,8 +28,8 @@ class InformationManager:
     _tick = 0
     
     # Instance Variables
-    relevant_traffic_light : carla.TrafficLight = None
-    relevant_traffic_light_distance : float = None
+    relevant_traffic_light : Union[float, carla.TrafficLight] = None
+    relevant_traffic_light_distance : Union[float, None] = None
     _relevant_traffic_light_location : carla.Location = None
     
     state_counter: "dict[AgentState, int]"

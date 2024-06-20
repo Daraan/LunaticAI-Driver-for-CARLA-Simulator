@@ -26,10 +26,10 @@ from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
 import agents.tools
-from agents.tools.lunatic_agent_tools import AgentDoneException, UpdatedPathException
+from agents.tools.lunatic_agent_tools import AgentDoneException, UpdatedPathException, detect_vehicles
 from agents.tools.lunatic_agent_tools import ContinueLoopException
 from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
-                               compute_distance)
+                               compute_distance, lanes_have_same_direction)
 import agents.tools.lunatic_agent_tools
 from agents.tools.lunatic_agent_tools import generate_lane_change_path, result_to_context
 from agents.tools.logging import logger
@@ -69,6 +69,7 @@ class LunaticAgent(BehaviorAgent):
     
     _world_model : WorldModel = None # TODO: maybe as weakref
     ctx : "Context"
+    """The context object of the current step"""
     
     @classmethod
     def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args: LaunchConfig, 
@@ -197,7 +198,7 @@ class LunaticAgent(BehaviorAgent):
         self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
         
         # Data Matrix
-        if self.config.data_matrix.enabled:
+        if self.config.data_matrix and self.config.data_matrix.enabled:
             if self.config.data_matrix.sync and self._world_model.world_settings.synchronous_mode:
                 self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world)
             else:
@@ -226,9 +227,9 @@ class LunaticAgent(BehaviorAgent):
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
         # and https://carla.readthedocs.io/en/latest/python_api/#carla.Sensor.listen
-        blueprint = self._world.get_blueprint_library().find('sensor.other.collision')
-        self._collision_sensor : carla.Sensor = assure_type(carla.Sensor, 
-                                                     self._world.spawn_actor(blueprint, carla.Transform(), attach_to=self._vehicle))
+        blueprint = CarlaDataProvider._blueprint_library.find('sensor.other.collision')
+        self._collision_sensor : carla.Sensor = assure_type(carla.Sensor, CarlaDataProvider.get_world().spawn_actor(
+                                                            blueprint, carla.Transform(), attach_to=self._vehicle))
         def collision_callback(event : carla.SensorData):
             self._collision_event(event)
         self._collision_sensor.listen(self._collision_event)
@@ -236,6 +237,7 @@ class LunaticAgent(BehaviorAgent):
     def destroy_sensor(self):
         if self._road_matrix_updater:
             self._road_matrix_updater.stop()
+            self._road_matrix_updater = None
         if self._collision_sensor:
             self._collision_sensor.destroy()
             self._collision_sensor = None
@@ -244,7 +246,6 @@ class LunaticAgent(BehaviorAgent):
         self.destroy_sensor()
         self._world_model = None
         self._world = None
-        self._map = None
         if self.ctx:
             self.ctx.agent = None
         self.ctx = None
@@ -298,8 +299,8 @@ class LunaticAgent(BehaviorAgent):
             self._current_waypoint = information.current_waypoint
             
             # Find vehicles and walkers nearby
-            self.all_vehicles: List[carla.Vehicle] = information.vehicles
-            self.all_walkers: List[carla.Walker] = information.walkers
+            self.all_vehicles: List[carla.Vehicle] = InformationManager.get_vehicles()
+            self.all_walkers: List[carla.Walker] = InformationManager.get_walkers()
             
             # NOTE: # is it more efficient to use an extra function here, why not utils.dist_to_waypoint(v, waypoint)?
             _current_loc = self.live_info.current_location
@@ -323,7 +324,8 @@ class LunaticAgent(BehaviorAgent):
                     # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
                     self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
                 else:
-                    logger.info("Not updating Road Matrix")
+                    pass
+                    #logger.info("Not updating Road Matrix")
             
             self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
             self.live_info.executed_direction = assure_type(RoadOption, self._local_planner.target_road_option) # NOTE: This is the direction used by the planner in the *last* step.
@@ -357,6 +359,7 @@ class LunaticAgent(BehaviorAgent):
         if self._debug:
             OmegaConf.to_container(self.live_info, resolve=True, throw_on_missing=True)
     
+    # TODO: Use executed direction not the one that is looked ahead
     def is_taking_turn(self) -> bool:
         return self.live_info.incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
     
@@ -468,7 +471,7 @@ class LunaticAgent(BehaviorAgent):
             planned_control.manual_gear_shift = False # TODO: turn into a rule
             
             ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
-            if AD_RSS_AVAILABLE and self.config.rss.enabled:
+            if AD_RSS_AVAILABLE and self.config.rss and self.config.rss.enabled:
                 rss_updated_controls = self._world_model.rss_check_control(ctx.control)
             else:
                 rss_updated_controls = None
@@ -716,7 +719,8 @@ class LunaticAgent(BehaviorAgent):
         Use 'direction' to specify either a 'left' or 'right' lane change,
         and the other 3 fine tune the maneuver
         """
-        speed = self._vehicle.get_velocity().length()
+        speed = self.live_info.current_speed / 3.6 # m/s
+        # This is a BasicAgent function
         path : list = generate_lane_change_path(
             self._current_waypoint, # NOTE: Assuming exact_waypoint
             direction,
@@ -732,6 +736,56 @@ class LunaticAgent(BehaviorAgent):
 
         super(LunaticAgent, self).set_global_plan(path)
         # TODO: # CRITICAL: Keep old global plan if it is some end goal.
+        
+    
+    # TODO: Make order a config
+    # TODO: rename & make config for look ahead distance via speed_limit
+    # TODO: Use generate_lane_change_path to finetune 
+    def make_lane_change(self, order=["left", "right"], up_angle_th=180, low_angle_th=0, speed_limit_downscale=2):
+        """
+        If a tailgator is detected, move to the left/right lane if possible
+
+            :param waypoint: current waypoint of the agent
+            :param vehicle_list: list of all the nearby vehicles
+            
+        Assumes:
+            (self.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \
+                and not waypoint.is_junction and self.config.live_info.current_speed > 10)
+            check_behind.obstacle_was_found and self.config.live_info.current_speed < get_speed(check_behind.obstacle)
+        """
+        vehicle_list = self.vehicles_nearby
+        waypoint = self._current_waypoint # todo use a getter
+
+        # There is a faster car behind us
+
+        for direction in order:
+            if direction == "right":
+                right_turn = waypoint.right_lane_marking.lane_change
+                can_change = (right_turn == carla.LaneChange.Right or right_turn == carla.LaneChange.Both)
+                other_wpt = waypoint.get_right_lane()
+                lane_offset = 1
+            else:
+                left_turn = waypoint.left_lane_marking.lane_change
+                can_change = (left_turn == carla.LaneChange.Left or left_turn == carla.LaneChange.Both)
+                other_wpt = waypoint.get_left_lane()
+                lane_offset = -1
+            if can_change and lanes_have_same_direction(waypoint, other_wpt) and other_wpt.lane_type == carla.LaneType.Driving:
+                # Detect if right lane is free
+                detection_result = detect_vehicles(self, vehicle_list, 
+                                                max(self.config.distance.min_proximity_threshold,
+                                                    self.config.live_info.current_speed_limit / speed_limit_downscale), 
+                                                    up_angle_th=up_angle_th,
+                                                    low_angle_th=low_angle_th,
+                                                    lane_offset=lane_offset)
+                if not detection_result.obstacle_was_found:
+                    logger.debug("Change Lane, moving to the %s! Reason: %s", direction, "Overtaking" if tuple(order) == ("left", "right") else "Tailgating")
+
+                    end_waypoint = self._local_planner.target_waypoint
+                    # TODO: How to set waypoint order? Or better use generate_lane_change_path!!!
+                    self.set_destination(end_location=other_wpt.transform.location, 
+                                         start_location=end_waypoint.transform.location, clean_queue=True)
+                    return True
+
         
     # ------------------ Other Function ------------------ #
     
