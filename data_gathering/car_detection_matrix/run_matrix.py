@@ -207,10 +207,9 @@ class AsyncDataMatrix(DataMatrix):
         try:
             from agents.tools.logging import logger
             if self.worker_thread.is_alive():
-                logger.debug("Joining DataMatrix thread")
                 self.worker_thread.join()
             else:
-                logger.debug("DataMatrix.stop called multiple times.")
+                logger.info("DataMatrix.stop called multiple times.")
         except ImportError:
             print("Cannot import logger from agents.tools.logging. Stopping data matrix.")
             self.worker_thread.join()

@@ -17,6 +17,7 @@ import carla
 
 if TYPE_CHECKING:
     from agents.navigation.local_planner import RoadOption
+    # also checkout RoadOptionColor
 
 __all__ = [
     'ObstacleDetectionResult',

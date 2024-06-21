@@ -320,20 +320,23 @@ class Rule(_GroupRule):
     """Object that indicates that no action was executed."""
     
     priority: RulePriority = RulePriority.NORMAL
+    
+    # Initialization functions
 
     def clone(self):
         """
         Create a new instance of the rule with the same settings.
         
         Note: 
-            * The current cooldown is not taken into account.
-            * The current enabled state is taken into account.
+            - The current cooldown is not taken into account.
+            - The current enabled state is taken into account.
         """
         return self.__class__(self) # Make use over overloaded __init__
 
     @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
+                 #/, # phases must be positional; python3.8+ only
                  rule : Optional[Callable[[Context], Hashable]]=None, 
                  action: Optional[Union[Callable[[Context], Any], Dict[Any, Callable]]] = None,
                  false_action: Optional[Callable[[Context], Any]] = None,
@@ -381,8 +384,8 @@ class Rule(_GroupRule):
         - ValueError: If `action` is a Mapping and either `false_action` or `actions` is not None.
         - ValueError: If an action function is not callable.
         - ValueError: If `description` is not a string.
-
         """
+        
         # Check phases
         if not phases:
             raise ValueError("phases must not be empty or None")
@@ -527,8 +530,13 @@ class Rule(_GroupRule):
         self.__init__(phases, cls.rule, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
         
     @__init__.register
-    def __init_from_mapping(self, cls:Mapping):
+    def __init_from_mapping(self, cls:Mapping): # pylint: disable=unused-variable
+        # NOTE: This is weakly tested and not much supported.
         self.__init__(cls.get("phases", cls.get("phase")), cls["rule"], cls.get("action"), cls.get("false_action"), actions=cls.get("actions"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True))        
+
+    # -----------------------
+    # Evaluation functions
+    # -----------------------
 
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable]:
         settings = self.overwrite_settings.copy()   
@@ -569,7 +577,7 @@ class Rule(_GroupRule):
             return self.__class__.__name__ + f"(description='{self.description}', phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, rule={self.rule.__name__}, cooldown={self.cooldown})" 
         except AttributeError as e:
             logger.warning(str(e))
-            return self.__class__.__name__ + ("Error in rule.__str__: Rule has not been initialized correctly. Missing attributes: " + str(e))
+            return self.__class__.__name__ + "(Error in rule.__str__: Rule has not been initialized correctly. Missing attributes: " + str(e) + ")"
 
     def __repr__(self) -> str:
         return str(self)
@@ -590,6 +598,7 @@ class MultiRule(Rule):
     @singledispatchmethod
     def __init__(self, 
                  phases: Union["Phase", Iterable], 
+                 #/, # phases must be positional; python3.8+ only
                  rules: List[Rule], 
                  rule : Callable[[Context], Any] = always_execute,
                  *,
@@ -675,7 +684,7 @@ class RandomRule(MultiRule):
 
     @singledispatchmethod
     def __init__(self, 
-                 phases : Union["Phase", Iterable], 
+                 phases : Union["Phase", Iterable], #/, # phases must be positional; python3.8+ only
                  rules : Union[Dict[Rule, float], List[Rule]], 
                  repeat_if_not_applicable : bool = True,
                  rule = always_execute, 
@@ -695,7 +704,7 @@ class RandomRule(MultiRule):
         #self.amount = amount 
         if isinstance(rules, dict):
             if weights is not None:
-                raise ValueError("When passing rules a dict with weights, the weights argument must be None")
+                raise ValueError("When passing rules as a dict with weights, the weights argument must be None")
             self.weights = list(accumulate(rules.values())) # cumulative weights for random.choices are more efficient
             self.rules = list(rules.keys())
         else:
@@ -718,6 +727,13 @@ class RandomRule(MultiRule):
 
 
     def evaluate_children(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
+        """
+        Evaluate a random child rule.
+        If `self.repeat_if_not_applicable=False` and the randomly chosen rule is not applicable,
+        then no further rules are evaluated
+        For `self.repeat_if_not_applicable=False` possible rules are evaluated in a random fashion
+        until one rule was applicable.
+        """
         if self.repeat_if_not_applicable:
             rules = self.rules.copy()
             weights = self.weights.copy()
@@ -729,7 +745,16 @@ class RandomRule(MultiRule):
             rule = random.choices(rules, cum_weights=weights, k=1)[0]
             result = rule(ctx, overwrite, ignore_phase=self.ignore_phase) #NOTE: Context action/evaluation results only store result of LAST rule
             if not self.repeat_if_not_applicable or result is not Rule.NOT_APPLICABLE:
+                # break after the first rule of `self.repeat_if_not_applicable=False`
+                # else break if it was applicable.
                 break
             rules.remove(rule)
             weights = list(accumulate(r.priority.value for r in rules))
         return result
+
+# Provide necessary imports for the evaluation_function module and prevents circular imports
+
+import classes.evaluation_function as __evaluation_function
+__evaluation_function.Rule = Rule
+__evaluation_function.Context = Context
+del __evaluation_function

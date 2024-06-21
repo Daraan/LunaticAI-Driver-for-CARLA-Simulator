@@ -84,8 +84,7 @@ class LunaticAgent(BehaviorAgent):
     
     _world_model : WorldModel = None # TODO: maybe as weakref
     ctx : "Context"
-    
-    # todo: rename in the future
+    """The context object of the current step"""
     
     @classmethod
     def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args, settings_archtype: "Optional[type[AgentConfig]]"=None, config:LunaticAgentSettings=None, overwrites: Dict[str, Any]={}, map_inst : carla.Map=None, grp_inst:GlobalRoutePlanner=None):
@@ -131,6 +130,7 @@ class LunaticAgent(BehaviorAgent):
         if world_model is None and vehicle is None:
             raise ValueError("Must pass vehicle when not providing the world.")
         
+        # TODO: Move this to an outside function
         opt_dict : LunaticAgentSettings
         if behavior is None and world_model and world_model._config is not None:
             logger.debug("Using world model config")
@@ -161,10 +161,12 @@ class LunaticAgent(BehaviorAgent):
         
         logger.info("\n\nAgent config is %s", OmegaConf.to_yaml(self.config))
         
+        # World Model
         if world_model is None:
             world_model = WorldModel(self.config, player=vehicle, map_inst=map_inst)
             self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
+        # Register Vehicle
         self._vehicle : carla.Vehicle = world_model.player
         try:
             CarlaDataProvider.register_actor(self._vehicle) # assure that the vehicle is registered
@@ -740,6 +742,7 @@ class LunaticAgent(BehaviorAgent):
         and the other 3 fine tune the maneuver
         """
         speed = self._vehicle.get_velocity().length()
+        # This is a BasicAgent function
         path : list = generate_lane_change_path(
             self._current_waypoint, # NOTE: Assuming exact_waypoint
             direction,

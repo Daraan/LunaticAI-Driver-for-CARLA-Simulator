@@ -4,7 +4,9 @@ from typing import Callable, Any, Hashable, TYPE_CHECKING, Union, cast
 import inspect
 
 if TYPE_CHECKING:
-    from classes.rule import Context, Rule
+    from classes.rule import Context, Rule # circular import
+# NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
+
 
 class EvaluationFunction:
     """
@@ -15,17 +17,20 @@ class EvaluationFunction:
     from simpler ones.
     The operators + or &, | and ~ are aliases for AND, OR and NOT respectively.
     e.g. 
-    func1 = EvaluationFunction(lambda ctx: ctx.speed > 10)
-    func2 = EvaluationFunction(lambda ctx: ctx.speed < 20)
+    `func1 = EvaluationFunction(lambda ctx: ctx.speed > 10)`
+    `func2 = EvaluationFunction(lambda ctx: ctx.speed < 20)`
 
     These statements are all equivalent:
-        * EvaluationFunction(lambda ctx: 10 < ctx.speed < 20)
-        * func1 + func2
-        * func1 & func2
-        * func1.AND(func2)
-        * EvaluationFunction.AND(func1, func2)
-
-    EvaluationFunctions also allow for more specific returns types:
+        * `EvaluationFunction(lambda ctx: 10 < ctx.speed < 20)`
+        * `func1 + func2`
+        * `func1 & func2`
+        * `func1.AND(func2)`
+        * `EvaluationFunction.AND(func1, func2)`
+    
+    Hint:
+        EvaluationFunctions also allow for more specific returns types
+        ..  code-block:: python
+        
         @EvaluationFunction
         def is_speeding(ctx: Context) -> Hashable:
             config = ctx.agent.config
@@ -38,10 +43,13 @@ class EvaluationFunction:
             else:
                 return "normal"
 
-        Rule(is_speeding, action={
-                                "very fast": lambda ctx: ctx.agent.config.follow_speed_limits()
-                                "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5)
-                                })
+        Rule(is_speeding, action={"very fast": lambda ctx: ctx.agent.config.follow_speed_limits(), 
+                                  "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5) 
+                                  })
+
+    Returns:
+        `EvaluationFunction`
+    
     """
     
     def __new__(cls, first_argument: Union[str, Callable[["Context"], Hashable]], name="EvaluationFunction"):
@@ -62,12 +70,22 @@ class EvaluationFunction:
             self.name = str(evaluation_function)
         self.actions = {}
 
-    def __call__(self, ctx: "Context", *args, **kwargs) -> Hashable:
-        result = self.evaluation_function(ctx, *args, **kwargs)
-        assert isinstance(result, Hashable), f"evaluation_function must return a hashable type, not {type(result)}"
-        return result
+    def __call__(self, ctx: "Context | Rule", *args, **kwargs) -> Hashable:
+        """
+        Note:
+        To handle the method vs. function difference depending on __get__ 
+        `ctx` can be either a Context (rule as function) or a Rule (rule as method),
+        In the method case the real Context object is args[0]
+        """
+        try:
+            rule_result = self.evaluation_function(ctx, *args, **kwargs)
+        except Exception:
+            print(f"ERROR: in rule {self.name} with function {self.evaluation_function}")
+            raise
+        assert isinstance(rule_result, Hashable), f"evaluation_function must return a hashable type, not {type(rule_result)}"
+        return rule_result
     
-    def __get__(self, instance, owner): # for in class usage class.rule
+    def __get__(self, instance: "Optional[Rule]", owner): # pylint: disable=unused-argument # for in class usage like Rule.rule
         # NOTE: instance.rule is not an EvaluationFunction, it is a partial of one.
         if instance is None:
             return self # called on class

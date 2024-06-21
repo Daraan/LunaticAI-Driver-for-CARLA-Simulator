@@ -1548,10 +1548,10 @@ def remove_elements(lst):
     Filters out elements from the list that have another element in the list within a distance of 1.5.
 
     Args:
-    lst (list): A list of numeric values (ints or floats) to be filtered.
+        lst (list): A list of numeric values (ints or floats) to be filtered.
 
     Returns:
-    list: A list containing the filtered elements of 'lst'.
+        list: A list containing the filtered elements of 'lst'.
     """
     result = []
     for i in range(len(lst)):

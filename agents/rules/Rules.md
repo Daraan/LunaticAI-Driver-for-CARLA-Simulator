@@ -10,7 +10,7 @@ There are three different ways to define a rule, with their own advantages and d
 
 ## Phases
 
-To see which phases are available and how they are defined, see the `Phase` class in [constants.py](./classes/constants.py#Phase).
+To see which phases are available and how they are defined, see the `Phase` class in [classes/constants.py](#classes.constants.Phase).
 
 At the beginning (`Phase.BEGIN`) and end (`Phase.END`) of a phase associated rules are evaluated and depending on their outcome the agent will perform certain actions.
 

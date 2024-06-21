@@ -168,18 +168,22 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                     continue
                 # Agent Loop
                 with game_framework:
+                    # ------ Run step ------
                     final_control = agent.run_step(debug=True)
                     
+                    # ------ Apply / Handle User Input ------
                     agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=final_control)
                     if isinstance(world_model.controller, RSSKeyboardControl):
                         if controller.parse_events(agent.get_control()):
                             return
                     agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
                     
+                    # ------ Apply Control ------
                     agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=final_control)
                     agent.apply_control() # Note Uses control from agent.ctx.control in case of last Phase changed it.
                     agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None)
                     
+                    # DEBUG
                     try:
                         destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
                         destination = destination + carla.Vector3D(0, 0, 1.5) # elevate to be not in road

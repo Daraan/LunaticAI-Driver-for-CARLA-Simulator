@@ -735,7 +735,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
             return None
         
         if self.rss_sensor.log_level <= carla.RssLogLevel.warn and self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
-            logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route))
+            logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route)[:97] + "...")
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:

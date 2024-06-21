@@ -104,17 +104,15 @@ class Phase(Flag):
 
     NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP
     IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
-
-
-    """
-    def __eq__(self, other):
-        # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION
-        if isinstance(other, Phases):
-            if self is Phases.NONE or other is Phases.NONE:
-                return self is other
-            return self in other or other in self
-        return False
-    """
+    
+    #def __eq__(self, other):
+    #    # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION
+    #    if isinstance(other, Phases):
+    #        if self is Phases.NONE or other is Phases.NONE:
+    #            return self is other
+    #        return self in other or other in self
+    #    return False
+    
 
     def next_phase(self):
         # Hardcoded transitions
