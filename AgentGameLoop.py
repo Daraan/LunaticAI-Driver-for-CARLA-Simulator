@@ -73,23 +73,23 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     # -- Load Settings Agent --
 
     print("Creating settings")
-    behavior = LunaticAgentSettings.create_from_args(args.agent)
+    agent_config = LunaticAgentSettings.create_from_args(args.agent)
 
     # TEMP
     import classes.worldmodel
-    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss and behavior.rss.enabled
+    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and agent_config.rss and agent_config.rss.enabled
     
     if PRINT_CONFIG:
         print("    \n\n\n")
-        pprint(behavior)
+        pprint(agent_config)
         from agents.tools.config_creation import AgentConfig
-        if isinstance(behavior, AgentConfig):
-            print(behavior.to_yaml())
+        if isinstance(agent_config, AgentConfig):
+            print(agent_config.to_yaml())
         else:
             try:
-                print(OmegaConf.to_yaml(behavior))
+                print(OmegaConf.to_yaml(agent_config))
             except Exception as e:
-                pprint(behavior)
+                pprint(agent_config)
     
     try:
         logger.info("Creating Game Framework ...")
@@ -118,17 +118,11 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         spawned_vehicles.append(ego)
         
         
-        # TEMP # Test external actor, do not pass ego
         logger.info("Creating agent and WorldModel ...")
-        if args.externalActor:
-            agent, world_model, global_planner, controller \
-                = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
-                    config=behavior)
-        else:
-            agent, world_model, global_planner, controller \
-                = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
-                        config=behavior)
-        agent.verify_settings()
+        agent, world_model, global_planner, controller \
+            = game_framework.init_agent_and_interface(ego=None if args.externalActor else ego, # TEMP # Test external actor, do not pass ego
+                                                      agent_class=LunaticAgent, 
+                                                      config=agent_config)
         logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:
