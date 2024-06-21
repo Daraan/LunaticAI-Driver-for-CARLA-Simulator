@@ -6,7 +6,7 @@
 
 
 # Autodoc command:
-# sphinx-apidoc -d 3 -f -M -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools classes/carla_originals classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py *logging.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools*
+# sphinx-apidoc -H "Code and API" -d 3 -f -M -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools classes/carla_originals classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py *logging.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools* docs/* conf/ *car_detection_matrix/[im]*
 # sphinx-build -M html docs/webview/source/ docs/webview/build/ -v -E 
 
 # -- Path setup --------------------------------------------------------------
@@ -17,7 +17,8 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../../'))
+PROJECT_ROOT = '../../../'
+sys.path.insert(0, os.path.abspath(PROJECT_ROOT))
 #sys.path.insert(1, os.path.abspath('../../../agents'))
 #sys.path.insert(1, os.path.abspath('../../../scenario_runner'))
 if "LEADERBOARD_ROOT" in os.environ:
@@ -26,10 +27,11 @@ sys.path.insert(0, os.path.abspath('./'))
 
 # already present at readthedocs, still want it for some code safeguards
 os.environ.setdefault("READTHEDOCS", "local")
+print("Are we local or on readthedocs (True)?", os.environ["READTHEDOCS"])
 
 # -- Project information -----------------------------------------------------
 
-project = 'LunatiAI'
+project = 'LunaticAI'
 copyright = ""
 author = ""
 
@@ -41,8 +43,36 @@ author = ""
 # ones.
 extensions = ["myst_parser",
               'sphinx.ext.autodoc',
+              'sphinx.ext.napoleon'
               ]
 
+# see https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#syntax-attributes-inline
+# and 
+myst_enable_extensions = ["attrs_inline"]
+
+# Open all external links in a new tab 
+myst_links_external_new_tab = True
+
+# True to convert the type definitions in the docstrings as references. Defaults to False.
+napoleon_preprocess_types = True
+
+
+#napoleon_type_aliases = {}
+"""
+A mapping to translate type names to other names or references. Works only when napoleon_use_param = True. Defaults to None.
+
+    With:
+
+    napoleon_type_aliases = {
+        "CustomType": "mypackage.CustomType",
+        "dict-like": ":term:`dict-like <mapping>`",
+    }
+"""
+    
+
+
+
+#
 source_suffix = {
     '.rst': 'restructuredtext',
     '.txt': 'markdown',
