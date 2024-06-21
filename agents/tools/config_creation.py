@@ -3,7 +3,7 @@
 import os
 import sys
 from collections.abc import Mapping
-
+from copy import deepcopy
 
 from classes.camera_manager import CameraBlueprint
 from classes.rss_visualization import RssDebugVisualizationMode
@@ -58,6 +58,8 @@ __all__ = ["AgentConfig",
 
 _class_annotations = None
 _file_path = __file__
+
+_NOTSET = object()
 
 # ---------------------
 # Helper methods
@@ -404,6 +406,15 @@ class AgentConfig:
             set_readonly_keys(conf, lock_fields)
         return conf
     
+    def copy(self):
+        return deepcopy(self)
+    
+    @class_or_instance_method
+    def get(cls_or_self, key, default=_NOTSET):
+        """Analog of getattr"""
+        if default is _NOTSET:
+            return getattr(cls_or_self, key)
+        return getattr(cls_or_self, key, default)
     
     @staticmethod
     def _flatten_dict(source : DictConfig, target):
