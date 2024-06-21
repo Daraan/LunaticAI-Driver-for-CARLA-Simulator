@@ -88,8 +88,8 @@ def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.Tr
         max_tlight_distance = self.config.obstacles.base_tlight_threshold
         if self.config.obstacles.dynamic_threshold:
             # Basic agent setting:
-            logger.info("Increased threshold for traffic light detection from {} to {}".format(max_tlight_distance, 
-                                                                                              max_tlight_distance + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed))
+            #logger.info("Increased threshold for traffic light detection from {} to {}".format(max_tlight_distance, 
+            #                                                                                  max_tlight_distance + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed))
             max_tlight_distance += self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
             
         # TODO: Time to pass the traffic light; i.e. can we pass it without stopping? -> How risky are we?

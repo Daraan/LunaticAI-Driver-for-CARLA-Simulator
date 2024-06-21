@@ -731,7 +731,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         elif not destroy_ego and self.player in self.actors:
             logger.warning("destroy_ego=False, but player is in actors list. Destroying the actor from within WorldModel.destroy.")
         
-        logger.info("to destroy %s", list(map(str, self.actors)))
+        #logger.info("to destroy %s", list(map(str, self.actors)))
         # Batch destroy in one simulation step
         real_actors: List[carla.Actor] = [actor for actor in self.actors if isinstance(actor, carla.Actor)]
         logger.info("WorldModel will destroy %d carla.Actors", len(real_actors))

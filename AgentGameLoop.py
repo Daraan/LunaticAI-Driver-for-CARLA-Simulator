@@ -46,7 +46,7 @@ from agents.lunatic_agent import LunaticAgent
 from agents.rules import create_default_rules
 
 # ==============================================================================
-# TEMP # Remove
+# DEBUG
 
 PRINT_CONFIG = False
 PRINT_RULES = False
