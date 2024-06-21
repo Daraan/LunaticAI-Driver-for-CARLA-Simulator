@@ -173,8 +173,17 @@ class RSSKeyboardControl(object):
 
     @staticmethod
     def signal_handler(signum, _):
-        print('\nReceived signal {}. Trigger stopping...'.format(signum))
-        RSSKeyboardControl.signal_received = True
+        if RSSKeyboardControl.signal_received == False:
+            print('\nReceived signal {}. Trigger stopping... In case the program freezes trigger twice more.'.format(signum))
+            RSSKeyboardControl.signal_received = True
+            return
+        # Did not yet terminate
+        if RSSKeyboardControl.signal_received == True:
+            print('\nReceived signal {}. Abort a 3rd time to terminate the program immediately'.format(signum))
+            RSSKeyboardControl.signal_received = 2
+            return
+        import sys
+        sys.exit(1)
 
     def parse_events(self, control:"Optional[carla.VehicleControl]"=None):
         if control:
