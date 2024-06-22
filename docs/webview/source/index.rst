@@ -14,6 +14,7 @@ Welcome to LunatiAI's documentation!
    agents/Agents
    Configuration <conf/ConfigFiles>
    agents
+   agents/rules/Rules
    classes
    modules
 

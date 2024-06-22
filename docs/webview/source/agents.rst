@@ -12,19 +12,12 @@ Subpackages
 .. toctree::
    :maxdepth: 3
 
+   agents.rules
    agents.substep_managers
    agents.tools
 
 Submodules
 ----------
-
-agents.behaviour\_templates module
-----------------------------------
-
-.. automodule:: agents.behaviour_templates
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 agents.leaderboard\_agent module
 --------------------------------
