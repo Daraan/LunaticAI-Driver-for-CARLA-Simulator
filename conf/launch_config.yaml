@@ -49,6 +49,29 @@ interactive: False
 # Value is set by other files through the defaults list below.
 agent: ???
 
+
+# -------------------------------------------------
+# Hydra Settings
+# see https://hydra.cc/docs/configure_hydra/intro/
+# -------------------------------------------------
+
+hydra:
+  # creates name of the subfolder where a copy of the config is stored.
+  # Default .hydra; use null to disable
+  output_subdir: .hydra
+  run:
+    # used to specify the output directory of hydra functions
+    # This will create a folder with your command line options e.g.:
+    #   outputs/AgentGameLoop/seed=12,experiments=[sync_on,test1]/2024-07-01_12-00-00
+    dir: outputs/${hydra.job.name}/${hydra.job.override_dirname}/${now:%Y-%m-%d_%H-%M-%S}
+  callbacks:
+    # This allows for a rerun of experiments through --experimental-rerun
+    # NOTE: Cannot be used with other command-line options or overrides. They will simply be ignored.
+    # Note that it is experimental and there are limitations.
+    # See: https://hydra.cc/docs/experimental/rerun/
+    save_job_info:
+      _target_: hydra.experimental.callbacks.PickleJobInfoCallback
+
 # -------------------------------------------------
 # Hydra DefaultList
 # See https://hydra.cc/docs/advanced/defaults_list/
@@ -67,26 +90,13 @@ defaults:
   # -------------------------------------------
   - agent : default_settings
 
-  # To use a different defaults setting use:
-  # TODO: figure out and write here
-  # likely needs another file with defaults
-
   # -------------------------------------------
   # Extensions to the default settings
   # These files are for utility or not often used settings (e.g. the planner)
   # -------------------------------------------
-  
-  # LocalPlanner settings
-  #- config_extensions/planner@agent.planner
-  
-  # Interpolation / Aliases
-  #- config_extensions/interpolation@agent
 
   # Camera settings
   - config_extensions/camera@camera
-  
-  # Only available during runtime
-  #- config_extensions/live_info@agent.live_info
   
   # Configure the logger to be used
   - config_extensions/job_logging@hydra.job_logging
@@ -94,28 +104,24 @@ defaults:
   # -------------------------------------------
   #    Experiments (fine granular changes)
   # ------------------------------------------- 
-  # Overwrite the default settings, with partial config from the experiments subfolder
+  # Overwrite the default settings, with one or more partial configs from the experiments subfolder
+  # NOTE: Do not leave a space between the comma and the next entry
   # e.g. 
-  #   python my_file.py "experiments@agent=[test_experiment, test_experiment2]"
-  #
-  # NOTE: to use another directory you have two options 
-  # 1) add + sign in the command line before the containing folder followed by @agent
-  #    python my_file.py +<directory_name>@agent=<file_name in directory>"
-  # 2) add your directory to the line below, the + sign then does not become necessary.
-  #    <directory_path_in_./conf>@agent : null
+  #   python my_file.py "experiments=[test_experiment,test_experiment2]"
   # -------------------------------------------
-  - experiments@agent : null
+  - experiments : null
+
+  # NOTE: to use another directory you have two options 
+  # 1) add + sign in the command line before the containing folder followed by
+  #    python my_file.py +<directory_name>=<file_name in directory>"
+  # 2) add your directory to the line below, the + sign then does not become necessary.
+  #    <directory_path_in_./conf> : null
+  #
+  # Optionally you can add @agent or any other @<key> to add it to the specific key
   
-# --------------- HYDRA ----------------------- 
+  # --------------- HYDRA ----------------------- 
 
-# Disable Hydra logging
-  - override hydra/hydra_logging: disabled
-# Disables ALL loggers
-# - override hydra/job_logging: disabled  
-
-hydra:
-  # creates no .hydra subfolder that stores the runs config
-  output_subdir: null
-  # Will output in the top-level
-  run:
-    dir: .
+  # Disable Hydra logging
+  #- override hydra/hydra_logging: disabled
+  # Disables ALL loggers
+  # - override hydra/job_logging: disabled  
