@@ -39,7 +39,7 @@ def main():
         camera_thread.start()
 
         # Initialize matrix thread
-        data_matrix = AsyncDataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+        data_matrix = AsyncDataMatrix(ego_vehicle, world, road_lane_ids)
         data_matrix.start()
 
         print("Starting game loop")

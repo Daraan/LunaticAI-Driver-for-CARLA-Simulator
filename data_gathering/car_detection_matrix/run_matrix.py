@@ -34,11 +34,11 @@ class DataMatrix:
     def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids=None):
         self.ego_vehicle = ego_vehicle
         self.world = world
+        self.running = True
+        self._sync = True
         self.world_map = CarlaDataProvider.get_map()
         self.road_lane_ids = road_lane_ids or get_all_road_lane_ids(world_map=CarlaDataProvider._map)
         self.matrix : Dict[int, List[int]] = None
-        self.running = True
-        self._sync = True
 
     def _calculate_update(self):
         return wrap_matrix_functionalities(self.ego_vehicle, self.world, self.world_map,
