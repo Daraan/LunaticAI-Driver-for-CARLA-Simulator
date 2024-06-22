@@ -5,6 +5,9 @@ The code is compatible with Python 2.7, <3.6 and >=3.6. The later uses the typed
 """
 
 import sys
+
+# Carla code with compatibility
+'''
 if sys.version_info < (3, 6):
     from collections import namedtuple
     ObstacleDetectionResult = namedtuple('ObstacleDetectionResult', ['obstacle_was_found', 'obstacle', 'distance'])
@@ -31,3 +34,20 @@ else:
         ObstacleDetectionResult = NamedTuple('ObstacleDetectionResult', [('obstacle_was_found', bool), ('obstacle', Union[Actor, None]), ('distance', float)])
     
     TrafficLightDetectionResult = NamedTuple('TrafficLightDetectionResult', [('traffic_light_was_found', bool), ('traffic_light', Union[TrafficLight, None])])
+'''
+
+# Modern Python 3.6+ syntax for better type hinting
+
+from typing import NamedTuple, Union
+from launch_tools import Literal
+import carla
+
+class TrafficLightDetectionResult(NamedTuple):
+    traffic_light_was_found : bool
+    traffic_light : carla.TrafficLight
+
+# Use proper NamedTuples (Python 3.6+) and not the compatibility version from carla
+class ObstacleDetectionResult(NamedTuple):
+    obstacle_was_found : bool
+    obstacle : carla.Actor
+    distance : Union[float, Literal[-1]]

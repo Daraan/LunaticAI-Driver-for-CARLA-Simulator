@@ -11,7 +11,7 @@
 import math
 import numpy as np
 
-from typing import NamedTuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import carla
 
@@ -22,8 +22,6 @@ if TYPE_CHECKING:
     # also checkout RoadOptionColor
 
 __all__ = [
-    'ObstacleDetectionResult',
-    'TrafficLightDetectionResult',
     'roadoption_color',
     'draw_waypoints',
     'draw_route',
@@ -37,14 +35,6 @@ __all__ = [
     'positive'
 ]
 
-class ObstacleDetectionResult(NamedTuple):
-    obstacle_was_found : bool
-    obstacle : carla.Actor
-    distance : float
-
-class TrafficLightDetectionResult(NamedTuple):
-    traffic_light_was_found : bool
-    traffic_light : carla.TrafficLight
 
 def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5, *, road_options: "list[RoadOption]"=None, **kwargs):
     """

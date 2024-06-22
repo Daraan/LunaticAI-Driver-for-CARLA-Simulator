@@ -2,7 +2,7 @@ import carla
 
 from agents.dynamic_planning.dynamic_local_planner import RoadOption
 
-from agents.tools.misc import ObstacleDetectionResult
+from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.lunatic_agent_tools import detect_vehicles
 
 from typing import TYPE_CHECKING, List

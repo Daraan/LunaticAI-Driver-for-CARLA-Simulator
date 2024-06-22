@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING, List
 import carla
 from carla import TrafficLightState
 from agents.tools import logger
+from agents.tools.hints import TrafficLightDetectionResult
 from agents.tools.misc import (is_within_distance,
-                               get_trafficlight_trigger_location, TrafficLightDetectionResult)
+                               get_trafficlight_trigger_location)
 
 from launch_tools import CarlaDataProvider
 

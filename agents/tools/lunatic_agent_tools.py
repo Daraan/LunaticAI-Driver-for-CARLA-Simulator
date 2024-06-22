@@ -3,8 +3,9 @@ from functools import partial, wraps
 
 import carla
 from agents.navigation.local_planner import RoadOption
+from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
-                               compute_distance, ObstacleDetectionResult)
+                               compute_distance)
 
 from launch_tools import CarlaDataProvider
 

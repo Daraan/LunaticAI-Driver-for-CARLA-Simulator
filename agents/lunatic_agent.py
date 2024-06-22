@@ -21,6 +21,7 @@ import carla
 import omegaconf
 from omegaconf import DictConfig, OmegaConf
 
+from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult
 from data_gathering.car_detection_matrix.run_matrix import AsyncDataMatrix, DataMatrix
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
@@ -28,7 +29,7 @@ from agents.navigation.behavior_agent import BehaviorAgent
 import agents.tools
 from agents.tools.lunatic_agent_tools import AgentDoneException, UpdatedPathException, detect_vehicles
 from agents.tools.lunatic_agent_tools import ContinueLoopException
-from agents.tools.misc import (TrafficLightDetectionResult, get_speed, ObstacleDetectionResult, is_within_distance,
+from agents.tools.misc import (is_within_distance,
                                compute_distance, lanes_have_same_direction)
 import agents.tools.lunatic_agent_tools
 from agents.tools.lunatic_agent_tools import generate_lane_change_path, result_to_context
