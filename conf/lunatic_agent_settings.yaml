@@ -1,5 +1,22 @@
 overwrites: {}
+live_info:
+  use_srunner_data_provider: true
+  velocity_vector: ???
+  current_speed: ???
+  current_transform: ???
+  current_location: ???
+  current_speed_limit: ???
+  executed_direction: ???
+  incoming_direction: ???
+  incoming_waypoint: ???
+  is_taking_turn: ???
+  is_changing_lane: ???
+  next_traffic_light: ???
+  next_traffic_light_distance: ???
+  last_applied_controls: ???
 speed:
+  current_speed: ${live_info.current_speed}
+  current_speed_limit: ${live_info.current_speed_limit}
   target_speed: 20.0
   follow_speed_limits: false
   max_speed: 50.0
@@ -9,6 +26,8 @@ speed:
   speed_lim_dist: 3.0
   intersection_speed_decrease: 5.0
   vehicle_percentage_speed_difference: ???
+  intersection_target_speed: ${min:${.max_speed}, ${subtract:${.current_speed_limit},
+    ${.intersection_speed_decrease}}}
 distance:
   min_proximity_threshold: 10.0
   emergency_braking_distance: 5.0
@@ -30,7 +49,7 @@ obstacles:
   base_tlight_threshold: 5.0
   base_vehicle_threshold: 5.0
   detection_speed_ratio: 1.0
-  use_dynamic_speed_threshold: true
+  dynamic_threshold: true
   detection_angles:
     walkers_lane_change:
     - 0.0

@@ -36,23 +36,15 @@ from launch_tools import CarlaDataProvider
 
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
-from classes.rule import Context, Rule
-
 from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from classes.constants import Phase
-from classes.HUD import HUD
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
-from classes.vehicle import Vehicle
 
 from agents.tools.logging import logger
-from agents.tools.misc import draw_waypoints
-from agents.navigation.basic_agent import BasicAgent  
-from agents.navigation.behavior_agent import BehaviorAgent 
-from agents.navigation.constant_velocity_agent import ConstantVelocityAgent 
 
 from agents.lunatic_agent import LunaticAgent
-from agents import behaviour_templates
+from agents.rules import create_default_rules
 
 # ==============================================================================
 # TEMP # Remove
@@ -139,7 +131,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:
-        agent.add_rules(behaviour_templates.default_rules)
+        agent.add_rules(create_default_rules())
         if PRINT_RULES: # TEMP
             print("Lunatic Agent Rules")
             pprint(agent.rules)
