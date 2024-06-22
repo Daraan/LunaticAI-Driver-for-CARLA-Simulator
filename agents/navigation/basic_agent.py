@@ -12,11 +12,13 @@ It can also make use of the global route planner to follow a specified route
 import carla
 from shapely.geometry import Polygon
 
-from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.local_planner import LocalPlanner, RoadOption
+from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.tools.misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
+
+from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult
 
 
 class BasicAgent(object):
@@ -137,30 +139,37 @@ class BasicAgent(object):
     def get_global_planner(self):
         """Get method for protected member local planner"""
         return self._global_planner
-
-    def set_destination(self, end_location, start_location=None):
+        
+    def set_destination(self, end_location, start_location=None, clean_queue=True):
+        # type: (carla.Location, carla.Location | None, bool) -> None
         """
         This method creates a list of waypoints between a starting and ending location,
         based on the route returned by the global router, and adds it to the local planner.
-        If no starting location is passed, the vehicle local planner's target location is chosen,
-        which corresponds (by default), to a location about 5 meters in front of the vehicle.
+        If no starting location is passed and `clean_queue` is True, the vehicle local planner's 
+        target location is chosen, which corresponds (by default), to a location about 5 meters 
+        in front of the vehicle.
+        If `clean_queue` is False the newly planned route will be appended to the current route.
 
-            :param end_location (carla.Location | carla.Waypoint): final location of the route
+            :param end_location (carla.Location): final location of the route
             :param start_location (carla.Location): starting location of the route
+            :param clean_queue (bool): Whether to clear or append to the currently planned route
         """
         if not start_location:
-            start_location = self._local_planner.target_waypoint.transform.location
-            clean_queue = True
-        else:
-            start_location = self._vehicle.get_location()
-            clean_queue = False
-
+            if clean_queue and self._local_planner.target_waypoint:
+                # Plan from the waypoint in front of the vehicle onwards
+                start_location = self._local_planner.target_waypoint.transform.location 
+            elif not clean_queue and self._local_planner._waypoints_queue:
+                # Append to the current plan
+                start_location = self._local_planner._waypoints_queue[-1][0].transform.location
+            else:
+                # no target_waypoint or _waypoints_queue empty, use vehicle location
+                start_location = self._vehicle.get_location() 
         start_waypoint = self._map.get_waypoint(start_location)
         end_waypoint = self._map.get_waypoint(end_location)
-
+        
         route_trace = self.trace_route(start_waypoint, end_waypoint)
         self._local_planner.set_global_plan(route_trace, clean_queue=clean_queue)
-
+        
     def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
         """
         Adds a specific plan to the agent.
@@ -179,10 +188,12 @@ class BasicAgent(object):
         """
         Calculates the shortest route between a starting and ending waypoint.
 
-            :param start_waypoint (carla.Waypoint | carla.Location): initial waypoint
-            :param end_waypoint (carla.Waypoint | carla.Location): final waypoint
+            :param start_waypoint (carla.Waypoint): initial waypoint
+            :param end_waypoint (carla.Waypoint): final waypoint
         """
-        return self._global_planner.trace_route(start_waypoint, end_waypoint)
+        start_location = start_waypoint.transform.location
+        end_location = end_waypoint.transform.location
+        return self._global_planner.trace_route(start_location, end_location)
 
     def run_step(self):
         """Execute one step of navigation."""
@@ -227,6 +238,10 @@ class BasicAgent(object):
         """(De)activates the checks for stop signs"""
         self._ignore_vehicles = active
 
+    def set_offset(self, offset):
+        """Sets an offset for the vehicle"""
+        self._local_planner.set_offset(offset)
+
     def lane_change(self, direction, same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """
         Changes the path so that the vehicle performs a lane change.
@@ -259,7 +274,7 @@ class BasicAgent(object):
                 If None, the base threshold value is used
         """
         if self._ignore_traffic_lights:
-            return (False, None)
+            return TrafficLightDetectionResult(False, None)
 
         if not lights_list:
             lights_list = self._world.get_actors().filter("*traffic_light*")
@@ -271,7 +286,7 @@ class BasicAgent(object):
             if self._last_traffic_light.state != carla.TrafficLightState.Red:
                 self._last_traffic_light = None
             else:
-                return (True, self._last_traffic_light)
+                return TrafficLightDetectionResult(True, self._last_traffic_light)
 
         ego_vehicle_location = self._vehicle.get_location()
         ego_vehicle_waypoint = self._map.get_waypoint(ego_vehicle_location)
@@ -302,12 +317,11 @@ class BasicAgent(object):
 
             if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]):
                 self._last_traffic_light = traffic_light
-                return (True, traffic_light)
+                return TrafficLightDetectionResult(True, traffic_light)
 
-        return (False, None)
+        return TrafficLightDetectionResult(False, None)
 
-    def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
-                                   lane_offset=0):
+    def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0, lane_offset=0):
         """
         Method to check if there is a vehicle in front of the agent blocking its path.
 
@@ -341,12 +355,14 @@ class BasicAgent(object):
                 return None
 
             return Polygon(route_bb)
-
+      
         if self._ignore_vehicles:
-            return (False, None, -1)
+            return ObstacleDetectionResult(False, None, -1)
 
-        if not vehicle_list:
+        if vehicle_list is None:
             vehicle_list = self._world.get_actors().filter("*vehicle*")
+        if len(vehicle_list) == 0:
+            return ObstacleDetectionResult(False, None, -1)
 
         if not max_distance:
             max_distance = self._base_vehicle_threshold
@@ -389,7 +405,7 @@ class BasicAgent(object):
                 target_polygon = Polygon(target_list)
 
                 if route_polygon.intersects(target_polygon):
-                    return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
+                    return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
 
             # Simplified approach, using only the plan waypoints (similar to TM)
             else:
@@ -409,11 +425,10 @@ class BasicAgent(object):
                     y=target_extent * target_forward_vector.y,
                 )
 
-                if is_within_distance(target_rear_transform, ego_front_transform, max_distance,
-                                      [low_angle_th, up_angle_th]):
-                    return (True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
+                if is_within_distance(target_rear_transform, ego_front_transform, max_distance, [low_angle_th, up_angle_th]):
+                    return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
 
-        return (False, None, -1)
+        return ObstacleDetectionResult(False, None, -1)
 
     def _generate_lane_change_path(self, waypoint, direction='left', distance_same_lane=10,
                                    distance_other_lane=25, lane_change_distance=25,
