@@ -469,19 +469,35 @@ class Rule(_GroupRule):
     def __new__(cls, phases=None, *args, **kwargs):
         """
         The @Rule decorator allows to instantiate a Rule class directly for easier out-of-the-box usage.
+        Further check for metaclass initialization, else this is a normal instance creation.
         """
+        # @Rule
+        # class NewRuleInstance:
         if isclass(phases):
             if issubclass(phases, _CountdownRule):
-                raise ValueError("When using @Rule the class must not be a subclass of Rule. Consider subclassing Rule instead.")
+                raise ValueError("When using @Rule the class may not be a subclass of Rule. Do not inherit from rule or subclass from Rule instead with the decorator."
+                                 "Do not do:\n\t@Rule\n\tclass MyRule(>>Rule<<): ...\n" )
             decorated_class = phases
 
             # Create the new class, # NOTE: goes to __init_subclass__
             new_rule_class = type(decorated_class.__name__, (cls,), decorated_class.__dict__.copy(), init_by_decorator=True) # > calls init_subclass; copy() for correct type!
             return super().__new__(new_rule_class)
+        # class NewRuleType(metaclass=Rule)
+        if isinstance(phases, str):
+            try:
+                clsname = phases
+                bases, clsdict = args[:2]
+                new_rule_class = type(clsname, (cls,), clsdict, metaclass=True) # > calls init_subclass; copy() for correct type!
+                return new_rule_class #
+            except Exception:
+                print("ERROR: If you want to initialize a rule be sure that you pass a Phase object as the first argument."
+                      "A string assumes that you've used class NewSubclass(metaclass=Rule)")
+                raise
+        # Normal instance
         return super().__new__(cls)
     
     # Called on subclass creation. Can be used for class API
-    def __init_subclass__(cls, init_by_decorator=False):
+    def __init_subclass__(cls, init_by_decorator=False, metaclass=False):
         """
         Automatically creates a __init__ function to allow for a simple to use class-interface to create rule classes.
         
@@ -490,14 +506,14 @@ class Rule(_GroupRule):
         if hasattr(cls, "phases") and hasattr(cls, "phase") and cls.phases and cls.phase:
             raise ValueError(f"Both 'phases' and 'phase' are set in class {cls.__name__}. Use only one. %s, %s" % (cls.phases, cls.phase))
         
+        if not cls._auto_init_ or metaclass: # TODO: Check for multirule, should _auto_init_ be set to False?
+            return
+        
         if "__init__" in cls.__dict__:
             custom_init = cls.__dict__["__init__"]
         else:
             custom_init = False
             
-        if not cls._auto_init_: # TODO: Check for multirule, should _auto_init_ be set to False?
-            return
-        
         do_not_overwrite = ["phases"]
         if hasattr(cls, "rule"):
             # Check if the rule should be treated as a method or function
@@ -561,6 +577,11 @@ class Rule(_GroupRule):
             except IndexError: # functools <= python3.10
                 logger.error("\nError in __init__ of %s. Possible reason: Check if the __init__ method has the correct signature. `phases` must be a positional argument.\n", cls.__name__)
                 raise
+            except TypeError as e:
+                # e.g. forgot a action, or rules attribute (MultiRule)
+                if "missing" in str(e):
+                    logger.error("Class %s has likely missing attributes that cannot be passed to init. Check if all required attributes are set in the class definition.", cls.__name__)
+                raise e
         cls.__init__ = partial_init
     
     @__init__.register(_CountdownRule)
@@ -630,16 +651,24 @@ class Rule(_GroupRule):
     def __repr__(self) -> str:
         return str(self)
 
-class MultiRule(Rule):
+class MultiRule(metaclass=Rule):
 
     def _wrap_action(self, action: Callable[[Context], Any]):
         """
-        Wrap the past function to that afterwards the children rules are executed.
+        Wrap the passed action.
+        First the action is executed afterwards the child rules are evaluated.
+        
+        Note:
+            There is no extra condition that is checked between the two actions.
         """
         @wraps(action)
         def wrapper(ctx : Context, *args, **kwargs) -> Any:
-            result = action(ctx, *args, **kwargs)
-            results = self.evaluate_children(ctx) # execute given rules as well
+            try:
+                result = action(ctx, *args, **kwargs)
+            except DoNotEvaluateChildRules as e:
+                return e, None
+            else:
+                results = self.evaluate_children(ctx) # execute given rules as well
             return result, results
         return wrapper
 
@@ -648,13 +677,13 @@ class MultiRule(Rule):
                  phases: Union["Phase", Iterable], 
                  #/, # phases must be positional; python3.8+ only
                  rules: List[Rule], 
-                 rule : Callable[[Context], Any] = always_execute,
+                 rule : Optional[Callable[[Context], Any]] = None,
                  *,
                  description: str = "If its own rule is true calls the passed rules.",
                  priority: RulePriority = RulePriority.NORMAL, 
                  sort_rules_by_priority : bool = True,
                  execute_all_rules = False,
-                 prior_action : Optional[Callable[[Context], Any]] = None,
+                 action : Optional[Callable[[Context], Any]] = None,
                  ignore_phase : bool = True,
                  overwrite_settings: Optional[Dict[str, Any]] = None,
                  cooldown_reset_value : Optional[int] = None,
@@ -667,7 +696,7 @@ class MultiRule(Rule):
             # TODO update docstring
             Args:
                 phases (Union[Phase, Iterable]): The phase or phases in which the rule should be active.
-                rules (List[Rule]): The list of rules to be called if the rule's condition is true.
+                rules (List[Rule]): The list of child rules to be called if the rule's condition is true.
                 rule (Callable[[Context]], optional): The condition that determines if the rules should be evaluated. Defaults to always_execute.
                 execute_all_rules (bool, optional): Flag indicating whether to execute all rules or stop after a rule as been applied. Defaults to False.
                 sort_rules_by_priority (bool, optional): Flag indicating whether to sort the rules by priority. Defaults to True.
@@ -678,25 +707,30 @@ class MultiRule(Rule):
                 description (str, optional): The description of the rule. Defaults to "If its own rule is true calls the passed rules.".
             """
             self.ignore_phase = ignore_phase
+            if rules is None:
+                logger.warning("Warning: No rules passed to %s: %s. You can still add rules to the rules attribute later.", self.__class__.mro()[1].__name__, self.__class__.__name__) 
+                rules = []
             self.rules = rules
             self.execute_all_rules = execute_all_rules
             if sort_rules_by_priority:
                 self.rules.sort(key=lambda r: r.priority.value, reverse=True)
             # if an action is passed to be executed before the passed rules it is wrapped to execute both
-            if prior_action is not None:
-                prior_action = self._wrap_action(prior_action)
+            if action is not None:
+                action = self._wrap_action(action)
             else:
-                prior_action = self.evaluate_children
+                action = self.evaluate_children
+            if rule is None and not hasattr(self, "rule"):
+                rule = always_execute
             super().__init__(phases, 
                              rule=rule, 
-                             action=prior_action, 
+                             action=action, 
                              description=description, 
                              overwrite_settings=overwrite_settings,
                              priority=priority, 
                              cooldown_reset_value=cooldown_reset_value,
                              enabled=enabled)
             
-    @__init__.register(_CountdownRule) # For Rule(some_rule), easier cloning
+    @__init__.register(_CountdownRule) # For similar_rule = Rule(some_rule), easier cloning
     @__init__.register(type) # For @Rule class MyRule: ...
     def __init_by_decorating_class(self, cls):
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
@@ -722,22 +756,25 @@ class MultiRule(Rule):
         """
         results = []
         for rule in self.rules:
-            result = rule(ctx, ignore_phase=self.ignore_phase)
+            try:
+                result = rule(ctx, ignore_phase=self.ignore_phase)
+            except DoNotEvaluateChildRules:
+                return results
             if not self.execute_all_rules and result is not Rule.NOT_APPLICABLE: # one rule was applied end.
                 return result
             results.append(result)
         return results
 
-class RandomRule(MultiRule):
+class RandomRule(metaclass=MultiRule):
 
     @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable], #/, # phases must be positional; python3.8+ only
                  rules : Union[Dict[Rule, float], List[Rule]], 
                  repeat_if_not_applicable : bool = True,
-                 rule = always_execute, 
+                 rule = None, 
                  *,
-                 prior_action : Optional[Callable[[Context], Any]] = None,
+                 action : Optional[Callable[[Context], Any]] = None,
                  ignore_phase = True,
                  priority: RulePriority = RulePriority.NORMAL, 
                  description: str = "If its own rule is true calls one or more random rule from the passed rules.", 
@@ -756,7 +793,7 @@ class RandomRule(MultiRule):
             self.weights = weights or list(accumulate(r.priority.value for r in rules))
             self.rules = rules
         self.repeat_if_not_applicable = repeat_if_not_applicable
-        super().__init__(phases, rule=rule, prior_action=prior_action, description=description, priority=priority, ignore_phase=ignore_phase, overwrite_settings=overwrite_settings, cooldown_reset_value=cooldown_reset_value, enabled=enabled, group=group)
+        super().__init__(phases, rules, rule=rule, prior_action=prior_action, description=description, priority=priority, ignore_phase=ignore_phase, overwrite_settings=overwrite_settings, cooldown_reset_value=cooldown_reset_value, enabled=enabled, group=group)
 
     @__init__.register(_CountdownRule)
     @__init__.register(type)
@@ -788,7 +825,10 @@ class RandomRule(MultiRule):
 
         while rules:
             rule = random.choices(rules, cum_weights=weights, k=1)[0]
-            result = rule(ctx, overwrite, ignore_phase=self.ignore_phase) #NOTE: Context action/evaluation results only store result of LAST rule
+            try:
+                result = rule(ctx, overwrite, ignore_phase=self.ignore_phase) #NOTE: Context action/evaluation results only store result of LAST rule
+            except DoNotEvaluateChildRules:
+                return None
             if not self.repeat_if_not_applicable or result is not Rule.NOT_APPLICABLE:
                 # break after the first rule of `self.repeat_if_not_applicable=False`
                 # else break if it was applicable.
@@ -796,6 +836,14 @@ class RandomRule(MultiRule):
             rules.remove(rule)
             weights = list(accumulate(r.priority.value for r in rules))
         return result
+
+
+class DoNotEvaluateChildRules(Exception):
+    """
+    Can be raised in a MultiRule to prevent the evaluation of child rules.
+    
+    Can also be raised by child rules to prevent the evaluation of further child rules.
+    """
 
 # Provide necessary imports for the evaluation_function module and prevents circular imports
 
