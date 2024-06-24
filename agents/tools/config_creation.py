@@ -883,7 +883,7 @@ class BasicAgentObstacleSettings(AgentConfig):
     NOTE: No usage implemented!
     """
     
-    use_bbs_detection : bool = False
+    use_bbs_detection : bool = True
     """
     True: Whether to use a general approach to detect vehicles invading other lanes due to the offset.
 

@@ -23,6 +23,11 @@ export CHECKPOINT_ENDPOINT=${TEAM_AGENT_ROOT}/results.json
 # Choose Route
 
 # Alternative Route for faster testing on Town 10
+export ROUTES=${SCENARIO_RUNNER_ROOT}/srunner/data/routes_devtest.xml
+export ROUTES=${SCENARIO_RUNNER_ROOT}/srunner/data/routes_training.xml
+export ROUTES=${SCENARIO_RUNNER_ROOT}/srunner/data/routes_validation.xml
+
+# Alternative Route for faster testing on Town 10
 export ROUTES=${SCENARIO_RUNNER_ROOT}/srunner/data/routes_town10.xml
 # Town 12 Devtest Route
 #export ROUTES=${LEADERBOARD_ROOT}/data/routes_devtest.xml
@@ -30,7 +35,9 @@ export ROUTES=${SCENARIO_RUNNER_ROOT}/srunner/data/routes_town10.xml
 export ROUTES_SUBSET=0
 export RECORD_PATH=
 export RESUME=
+export CARLA_TIMEOUT=120
 
+echo "Using Routes: ${ROUTES} Subset: ${ROUTES_SUBSET}"
 echo "Arguments: ${*}"
 
 python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
@@ -45,6 +52,7 @@ python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --debug=${DEBUG_CHALLENGE} \
 --record=${RECORD_PATH} \
 --resume=${RESUME} \
+--timeout=${CARLA_TIMEOUT} \
 ${*}
 
 

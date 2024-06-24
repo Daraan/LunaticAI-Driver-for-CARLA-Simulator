@@ -168,7 +168,7 @@ obstacles:
   # False: Simplified approach, using only the plan waypoints (similar to TM)
   #  
   # See `BasicAgent._vehicle_obstacle_detected`
-  use_bbs_detection: false
+  use_bbs_detection: true
 
   # Base distance to traffic lights to check if they affect the vehicle
   #     
