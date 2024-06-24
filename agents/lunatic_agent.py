@@ -38,7 +38,7 @@ from agents.tools.logging import logger
 from agents import substep_managers
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss, RoadOption
 
-from classes.constants import Phase, Hazard
+from classes.constants import AgentState, Phase, Hazard
 from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import Context, Rule
 from agents.tools.config_creation import AgentConfig, LaunchConfig, LiveInfo, LunaticAgentSettings
@@ -211,6 +211,7 @@ class LunaticAgent(BehaviorAgent):
         
         # Information Manager
         self.information_manager = InformationManager(self)
+        self.current_states = dict.fromkeys(AgentState, 0)
     
     @property
     def live_info(self) -> LiveInfo:
@@ -250,6 +251,10 @@ class LunaticAgent(BehaviorAgent):
         if self.ctx:
             self.ctx.agent = None
         self.ctx = None
+        self.all_vehicles.clear()
+        self.vehicles_nearby.clear()
+        self.all_walkers.clear()
+        self.walkers_nearby.clear()
             
     #@property
     #def ctx(self) -> Union[Context, None]:
@@ -298,6 +303,7 @@ class LunaticAgent(BehaviorAgent):
             # --- InformationManager ---
             information: InformationManager.Information = self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
             self._current_waypoint = information.current_waypoint
+            self.current_states = information.current_states
             
             # Find vehicles and walkers nearby
             self.all_vehicles: List[carla.Vehicle] = InformationManager.get_vehicles()
@@ -310,9 +316,9 @@ class LunaticAgent(BehaviorAgent):
 
             # Filer Vehicles and Walkers to be nearby
             _v_filter_dist = self.config.obstacles.nearby_vehicles_max_distance
-            self.vehicles_nearby : List[carla.Vehicle] = [v for v in self.all_vehicles if dist(v) < _v_filter_dist and v.id != self._vehicle.id]
+            self.vehicles_nearby : List[carla.Vehicle] = [v for v in self.all_vehicles if v.id != self._vehicle.id and dist(v) < _v_filter_dist]
             
-            _v_filter_dist = self.config.obstacles.nearby_walkers_max_distance
+            _v_filter_dist = self.config.obstacles.nearby_walkers_max_distance # in case of a different distance for walkers.
             self.walkers_nearby : List[carla.Walker] = [w for w in self.all_walkers if dist(w) < _v_filter_dist]
             
             # ----------------------------
@@ -521,7 +527,7 @@ class LunaticAgent(BehaviorAgent):
                 # TODO: overhaul -> this might not be the best place to do this
                 #TODO HIGH: This is doubled in react_to_hazard!
                 self.execute_phase(Phase.EMERGENCY | Phase.END, prior_results=pedestrians_or_traffic_light, control=control)
-                return control
+                return self.get_control()
     
         # ----------------------------
         # Phase 3 - Detection of Cars
@@ -543,7 +549,7 @@ class LunaticAgent(BehaviorAgent):
             self.execute_phase(Phase.CAR_DETECTED | Phase.BEGIN, prior_results=detection_result)
             control = self.car_following_behavior(*detection_result) # NOTE: can currently go into EMEGENCY phase
             self.execute_phase(Phase.CAR_DETECTED | Phase.END, control=control, prior_results=detection_result)
-            return control
+            return self.get_control()
         
         #TODO: maybe new phase instead of END or remove CAR_DETECTED and handle as rules (maybe better)
         self.execute_phase(Phase.DETECT_CARS | Phase.END, prior_results=None) # NOTE: avoiding tailgate here
@@ -559,7 +565,7 @@ class LunaticAgent(BehaviorAgent):
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, prior_results=None)
             control = self._local_planner.run_step(debug=debug)
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, control=control, prior_results=None)
-            return control
+            return self.get_control()
 
         # ----------------------------
         # Phase 4 - Plan Path normally
@@ -572,7 +578,7 @@ class LunaticAgent(BehaviorAgent):
 
         # Leave loop and apply controls outside 
         # DISCUSS: Should we apply the controls here?
-        return control
+        return self.get_control()
     
     def apply_control(self, control: Optional[carla.VehicleControl]=None):
         # Set automatic control-related vehicle lights

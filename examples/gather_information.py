@@ -51,7 +51,7 @@ def main():
     # Initialize speed of ego_vehicle to use as global variable
     world.tick()
     highway_shape = None
-    road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
+    road_lane_ids = get_all_road_lane_ids(world.get_map())
     df = initialize_dataframe()
     t_end = time.time() + 10
     while time.time() < t_end:

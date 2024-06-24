@@ -356,6 +356,8 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
 
         # TODO: Unify with CameraManager
         self.recording = False
+        self._has_recorded = False
+        self._recording_dirs = []
         self.recording_frame_num = 0
         self.recording_dir_num = 0
         
@@ -637,6 +639,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
 
     def toggle_recording(self):
         if not self.recording:
+            self._has_recorded = True
             dir_name, filename = os.path.split(self._args.camera.recorder.output_path)
             try:
                 dir_name_formatted = dir_name % self.recording_dir_num
@@ -650,6 +653,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
             self.recording_frame_num = 0
             os.makedirs(dir_name_formatted)
             self.hud.notification('Started recording (folder: %s)' % dir_name_formatted)
+            self._recording_dirs.append(dir_name_formatted)
         else:
             dir_name_formatted = os.path.split(self.recording_file_format)[0] % self.recording_dir_num
             self.hud.notification('Recording finished (folder: %s)' % dir_name_formatted)
@@ -753,6 +757,15 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                     logger.warning("Could not destroy actor: " + str(actor))
         if self._args.handle_ticks and self.get_world():
             self.get_world().tick()
+            
+        if self._has_recorded:
+            from hydra.core.hydra_config import HydraConfig
+            runtime_dir = HydraConfig.get().runtime.output_dir
+            for dir_name_formatted in self._recording_dirs:
+                dirname = os.path.split(dir_name_formatted)[1]
+                os.system(f'ffmpeg -an -sn -i "{dir_name_formatted}/%08d.bmp" -framerate 1 -vcodec mpeg4 -r 60 "{os.path.join(runtime_dir, dirname)}.avi"')
+                print("Recording saved in %s.avi" % os.path.join(runtime_dir, dirname))
+            
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control

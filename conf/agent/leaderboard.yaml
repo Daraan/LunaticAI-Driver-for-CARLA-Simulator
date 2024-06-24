@@ -1,0 +1,6 @@
+# This is allows to use the default agent settings on the leaderboard when using agent=leaderboard
+
+defaults:
+  - default_settings
+  - ../experiments/leaderboard@_global_
+  

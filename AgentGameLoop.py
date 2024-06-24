@@ -16,7 +16,6 @@ import random
 from typing import List, Union
 from pprint import pprint
 
-import pygame
 import numpy as np
 
 import hydra
@@ -28,8 +27,9 @@ from omegaconf import MISSING, DictConfig, OmegaConf
 #except ImportError as e:
 #    from utils.egg_import import carla
 import carla 
-    
+import pygame
 import launch_tools
+    
 from launch_tools import CarlaDataProvider
 
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings

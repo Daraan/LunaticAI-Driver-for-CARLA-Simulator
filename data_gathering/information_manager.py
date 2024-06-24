@@ -7,7 +7,7 @@ i.e. distill the information from the data and return high level information
 
 from fnmatch import fnmatch
 from functools import wraps
-from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple, Union
+from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple, Union, Dict, List
 import carla
 
 if TYPE_CHECKING:
@@ -32,10 +32,10 @@ class InformationManager:
     relevant_traffic_light_distance : Union[float, None] = None
     _relevant_traffic_light_location : carla.Location = None
     
-    state_counter: "dict[AgentState, int]"
+    state_counter: Dict[AgentState, int]
     _vehicle_speed : float # m/s
     
-    gathered_information : "dict[str, Any]"
+    gathered_information : Dict[str, Any]
     
     # Class & Global Variables
     vehicles : ClassVar["list[carla.Vehicle]"]
@@ -94,11 +94,14 @@ class InformationManager:
         # TODO: can this be detected differently e.g. through the vehicle
         return self.live_info.last_applied_controls.reverse
     
+    # Not implemented checks
+    
     @_check_state(AgentState.AGAINST_LANE_DIRECTION)
     def detect_driving_against_lane_direction(self):
-        self._agent._current_waypoint
-
-    # Not implemented checks
+        self._agent._current_waypoint.lane_id # positive or negative
+        # TODO: How detect if the heading is against this direction?
+        # Need to also account for reverse state.
+        NotImplemented
     
     @_check_state(AgentState.OVERTAKING)
     def detect_overtaking_state(self):
@@ -181,6 +184,7 @@ class InformationManager:
         return self.Information(
             current_waypoint= current_waypoint,
             current_speed= self.live_info.current_speed,
+            current_states= self.state_counter,
             relevant_traffic_light=self.relevant_traffic_light, 
             relevant_traffic_light_distance=self.relevant_traffic_light_distance,
             vehicles= self.vehicles,
@@ -190,10 +194,11 @@ class InformationManager:
     class Information(NamedTuple):
         current_waypoint: carla.Waypoint
         current_speed: float
+        current_states : Dict[AgentState, int]
         relevant_traffic_light: carla.TrafficLight
         relevant_traffic_light_distance: float
-        vehicles: "list[carla.Vehicle]"
-        walkers: "list[carla.Walker]"
+        vehicles: List[carla.Vehicle]
+        walkers: List[carla.Walker]
 
     # ---- Global Information ----
 

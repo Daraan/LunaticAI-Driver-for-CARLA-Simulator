@@ -54,11 +54,14 @@ def get_entry_point():
 DEBUG = False
 
 WORLD_MODEL_DESTROY_SENSORS = True
-ENABLE_RSS = True and AD_RSS_AVAILABLE
+ENABLE_RSS = AD_RSS_AVAILABLE and False
 
-ENABLE_DATA_MATRIX = False
-DATA_MATRIX_ASYNC = True
-DATA_MATRIX_SYNC_INTERVAL = 60
+ENABLE_DATA_MATRIX = True
+DATA_MATRIX_ASYNC = False
+"""Run the datamatrix update in a separate thread."""
+
+DATA_MATRIX_SYNC_INTERVAL = 5
+"""When running synchonously: How many ticks should be between two updates"""
 
 USE_OPEN_DRIVE_DATA = False
 
@@ -103,22 +106,36 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         if not hydra_initialized:
             initialize_config_dir(version_base=None, 
                                     config_dir=config_dir, 
-                                    job_name="test_app")
-            args = compose(config_name=config_name, return_hydra_config=True)
+                                    job_name="LeaderboardAgent")
+            overrides=["agent=leaderboard"]
+            if not ENABLE_DATA_MATRIX:
+                overrides.append("agent.data_matrix.enabled="+str(ENABLE_DATA_MATRIX).lower())
+            overrides.append("agent.data_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
+            if not ENABLE_RSS:
+                overrides.append("agent.rss.enabled=false")
+            args = compose(config_name=config_name, return_hydra_config=True, 
+                           overrides=overrides # uses conf/agent/leaderboard
+                           )
+            from hydra.core.hydra_config import HydraConfig
             if OmegaConf.is_missing(args.hydra.runtime, "output_dir"):
-                args.hydra.runtime.output_dir = "."
+                args.hydra.runtime.output_dir = args.hydra.run.dir
+            HydraConfig.instance().set_config(args)
+            os.makedirs(args.hydra.runtime.output_dir, exist_ok=True)
             configure_log(args.hydra.job_logging, logger.name) # Assure that our logger works
             
             hydra_initialized = True
             # Let scenario manager decide
-            assert not args.map, "Map should be set by scenario manager and be None in the config file found map is %s." % args.map
-            assert not args.handle_ticks
-            assert args.sync is None
+            if args.map:
+                logger.warning("Map should be set by scenario manager and be None in the config file found map is %s." % args.map)
+            if args.handle_ticks:
+                logger.warning("When using the leaderboard agent, handle_ticks should be False.")
+                args.handle_ticks = False
+            if args.sync is not None:
+                logger.warning("When using the leaderboard agent, sync should be None.")
+                args.sync = None
             args.debug = DEBUG
-            args.agent.data_matrix.enabled = ENABLE_DATA_MATRIX
             args.agent.data_matrix.sync = not DATA_MATRIX_ASYNC
             args.agent.data_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
-            args.agent.rss.enabled = ENABLE_RSS
             print(OmegaConf.to_yaml(args))
         logger.setLevel(logging.DEBUG)
         self.args = args
@@ -164,17 +181,21 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 'id': 'LIDAR'}
                 ]
         """
-        sensors: list = super().sensors()
+        sensors: list = super().sensors() # This should be empty
         
-         # temp; remove
+        # temp; remove
         try:
             i = [x['type'] for x in args.leaderboard.sensors].index('sensor.opendrive_map')
-        except ValueError:
+        except (ValueError, AttributeError):
             pass
         else:
             args.leaderboard.sensors[i].use = USE_OPEN_DRIVE_DATA
         
-        sensors.extend(filter(operator.itemgetter('use'), args.leaderboard.sensors))
+        # add sensors if they have the use flag in the config
+        try:
+            sensors.extend(filter(operator.itemgetter('use'), args.leaderboard.sensors))
+        except Exception:
+            pass
         logger.info("Using sensors: %s", sensors)
         return sensors
 
@@ -199,7 +220,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 data : str = data["opendrive"]
                 if self._opendrive_data != data:
                     if self._opendrive_data is not None:
-                        breakpoint()
+                        #breakpoint()
+                        pass
                     self._opendrive_data = data
                     print(frame, data[:5000])
                     with open("opendrive.xml", "w") as f:

@@ -883,7 +883,7 @@ class BasicAgentObstacleSettings(AgentConfig):
     NOTE: No usage implemented!
     """
     
-    use_bbs_detection : bool = False
+    use_bbs_detection : bool = True
     """
     True: Whether to use a general approach to detect vehicles invading other lanes due to the offset.
 
@@ -1482,7 +1482,7 @@ class CameraConfig(AgentConfig):
         Set at WorldModel level
         """
         
-        output_path : str = '${hydra:runtime.output_dir}/recorderX/session%03d/%08d.bmp'
+        output_path : str = '${hydra:runtime.output_dir}/recorder/session%03d/%08d.bmp'
         """
         Folder to record the camera
         

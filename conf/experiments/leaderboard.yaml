@@ -1,3 +1,6 @@
+# @package global
+# Base configurations that should be used when using the leaderboard agent
+
 # Decide externally
 sync: null
 handle_ticks: False
