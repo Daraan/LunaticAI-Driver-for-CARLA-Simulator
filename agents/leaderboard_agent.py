@@ -61,7 +61,7 @@ DATA_MATRIX_ASYNC = False
 """Run the datamatrix update in a separate thread."""
 
 DATA_MATRIX_SYNC_INTERVAL = 5
-"""When running synchonously: How many ticks should be between two updates"""
+"""When running synchronously: How many ticks should be between two updates."""
 
 USE_OPEN_DRIVE_DATA = False
 
