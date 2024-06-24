@@ -5,7 +5,10 @@ import numpy as np
 import pygame
 from carla import ColorConverter as cc
 
-from typing import TYPE_CHECKING, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, ClassVar, List, NamedTuple, Optional
+
+from classes._custom_sensor import CustomSensor
+from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
     from classes.HUD import HUD
@@ -36,8 +39,10 @@ CameraBlueprintsSimple = [CameraBlueprints['Camera RGB']]
 # ==============================================================================
 
 
-class CameraManager(object):
+class CameraManager(CustomSensor):
     """ Class for camera management"""
+
+    default_blueprints: ClassVar[List[CameraBlueprint]] = list(CameraBlueprints.values())
 
     def __init__(self, parent_actor : carla.Actor, 
                  hud : "HUD",
@@ -72,12 +77,15 @@ class CameraManager(object):
         self.transform_index = 1
         # TODO: These are remnants from the original code, for our purpose most sensors are not relevant
         # -> Move to globals or some config which should be used (also saves ressources)
-        self.sensors = sensors if sensors else list(CameraBlueprints.values())
+        self.sensors = sensors if sensors else self.default_blueprints
         world = self._parent.get_world()
-        bp_library = world.get_blueprint_library()
+        bp_library = CarlaDataProvider._blueprint_library
         for i, item in enumerate(self.sensors):
-            if item.actual_blueprint is not None:
-                continue
+            try:
+                if item.actual_blueprint is not None:
+                    continue
+            except AttributeError: # not a named tuple
+                pass
             blp = bp_library.find(item[0])
             if item[0].startswith('sensor.camera'):
                 blp.set_attribute('image_size_x', str(hud.dim[0]))
@@ -86,7 +94,10 @@ class CameraManager(object):
                     blp.set_attribute('gamma', str(args.camera.gamma))
             elif item[0].startswith('sensor.lidar'):
                 blp.set_attribute('range', '50')
-            self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
+            try:
+                self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
+            except AttributeError:
+                self.sensors[i] = (item[0], item[1], item[2], blp)
         self.index = None
 
     def toggle_camera(self):
@@ -101,9 +112,9 @@ class CameraManager(object):
                 force_respawn or (self.sensors[index][0] != self.sensors[self.index][0]))
         if needs_respawn:
             if self.sensor is not None:
-                self.sensor.destroy()
+                self.destroy()
                 self.surface = None
-            self.sensor = self._parent.get_world().spawn_actor(
+            self.sensor = CarlaDataProvider.get_world().spawn_actor(
                 self.sensors[index][-1],
                 self._camera_transforms[self.transform_index][0],
                 attach_to=self._parent,
@@ -127,14 +138,9 @@ class CameraManager(object):
         self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
 
     def destroy(self):
-        # TODO: has to be done for all sensors. TODO: also check if this is not handled outside.
-        for sensor in self.sensors:        
-            try:            
-                self.sensor.stop()
-            except:
-                pass
-            self.sensor.destroy()
-        self.sensor = None
+        super().destroy()
+        self.index = None
+        self.surface = None
 
     def render(self, display):
         """Render method"""
@@ -174,7 +180,7 @@ class CameraManager(object):
         self.current_frame = image.frame
 
 
-def follow_car(ego_vehicle : carla.Actor, world : carla.World):
+def follow_car(ego_vehicle : carla.Actor):
     """
     Set the spectator's view to follow the ego vehicle.
 
@@ -205,11 +211,11 @@ def follow_car(ego_vehicle : carla.Actor, world : carla.World):
     # spectator_transform.rotation.yaw += 180 # Face the vehicle from behind
 
     # Set the spectator's transform in the world
-    world.get_spectator().set_transform(spectator_transform)
+    CarlaDataProvider.get_world().get_spectator().set_transform(spectator_transform)
 
 
 # TODO: # CRITICAL: this does not allow thread.join!
 # Solutions see: https://stackoverflow.com/questions/69107143/how-to-end-a-while-loop-in-another-thread
-def camera_function(ego_vehicle : carla.Actor, world : carla.World):
+def camera_function(ego_vehicle : carla.Actor):
     while True:
-        follow_car(ego_vehicle, world)
+        follow_car(ego_vehicle)

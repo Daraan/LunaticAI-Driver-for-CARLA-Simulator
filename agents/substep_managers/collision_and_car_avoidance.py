@@ -2,7 +2,7 @@ import carla
 
 from agents.dynamic_planning.dynamic_local_planner import RoadOption
 
-from agents.tools.misc import get_speed, ObstacleDetectionResult
+from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.lunatic_agent_tools import detect_vehicles
 
 from typing import TYPE_CHECKING, List
@@ -10,13 +10,14 @@ if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
 
-def collision_detection_manager(self : "LunaticAgent", waypoint: carla.Waypoint) -> ObstacleDetectionResult:
+# TODO: Unify distance and obstacle thresholds
+
+def collision_detection_manager(self : "LunaticAgent") -> ObstacleDetectionResult:
         """
         This module is in charge of warning in case of a collision
         and managing possible tailgating chances.
 
             :param location: current location of the agent
-            :param waypoint: current waypoint of the agent
             :return vehicle_state: True if there is a vehicle nearby, False if not
             :return vehicle: nearby vehicle
             :return distance: distance to nearby vehicle
@@ -24,14 +25,9 @@ def collision_detection_manager(self : "LunaticAgent", waypoint: carla.Waypoint)
         # NOTE: Former collision_and_car_avoid_manager, which evaded car via the tailgating function
         now rule based.
         """
-        # NOTE: # is it more efficient to use an extra function here, why not utils.dist_to_waypoint(v, waypoint)?
-        def dist(v : carla.Actor): 
-            return v.get_location().distance(waypoint.transform.location)
+        vehicle_list = self.vehicles_nearby
 
-        # TODO: Expose constant or do not filter, if we assume vehicle_list is already filtered
-        vehicle_list : List[carla.Vehicle] = [v for v in self.vehicles_nearby if dist(v) < 45 and v.id != self._vehicle.id]
-
-        # Triple (<is there an obstacle> , )
+        # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
         if self.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
             detection_result : ObstacleDetectionResult = detect_vehicles(self, vehicle_list, 
                                                                 max(self.config.distance.min_proximity_threshold, 

@@ -1,0 +1,27 @@
+# Note: After installation it is recommended to reload your environment
+
+# Warning: depending on how you use the carla module this might override your version
+# this import however is needed for readthedocs.
+carla
+
+jinja2 ==3.0.3
+sphinx==7.1.2; python_version >= '3.10'
+sphinx; python_version < '3.10'
+
+sphinx-rtd-theme==1.3.0rc1; python_version >= '3.10'
+sphinx-rtd-theme; python_version < '3.10'
+myst-parser
+
+numpy
+pandas
+matplotlib
+shapely
+xmlschema
+pygame
+omegaconf
+hydra-core
+networkx
+graphviz
+psutil
+six
+ruamel.yaml

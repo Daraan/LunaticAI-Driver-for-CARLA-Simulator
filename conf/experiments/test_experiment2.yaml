@@ -1,8 +1,0 @@
-speed:
-  target_speed: 0.0
-  follow_speed_limits: true
-rss:
-  enabled: false
-  log_level: debug
-test:
-  ex2_name: ex2

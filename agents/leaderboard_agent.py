@@ -10,11 +10,23 @@ import carla
 
 from agents.tools.misc import draw_route
 from agents.tools.lunatic_agent_tools import UserInterruption
-from srunner.scenariomanager.timer import GameTime
-from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track
-from leaderboard.utils.route_manipulation import downsample_route
+try:
+    # Prefer the non-submodule version
+    from srunner.scenariomanager.timer import GameTime
+    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+except ModuleNotFoundError:
+    from launch_tools import CarlaDataProvider
+    GameTime = NotImplemented
+
+try:
+    from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track
+    from leaderboard.utils.route_manipulation import downsample_route
+except ModuleNotFoundError:
+    # Leaderboard is not a submodule, cannot use it on readthedocs 
+    if "READTHEDOCS" in os.environ:
+        class AutonomousAgent: pass
+    else: raise
 
 from agents.lunatic_agent import LunaticAgent
 
@@ -111,9 +123,6 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         logger.setLevel(logging.DEBUG)
         self.args = args
         
-        #sim_world = CarlaDataProvider.get_world()
-        map_inst = CarlaDataProvider.get_map()
-        
         config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True)
         config.planner.dt = 1/20 # TODO: maybe get from somewhere
         
@@ -125,8 +134,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("World Model setup")
         self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         print("Initializing agent")
-        LunaticAgent.__init__(self, config, self.world_model, map_inst=map_inst)
+        LunaticAgent.__init__(self, config, self.world_model)
         print("LunaticAgent initialized")
+        
+        # Set plan
         self._local_planner_set_plan(self._global_plan_waypoints)
         
         self.game_framework.agent = self # TODO: Remove this circular reference
@@ -139,6 +150,20 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             pass
         
     def sensors(self):
+        """
+        Define the sensor suite required by the agent
+            :return: a list containing the required sensors in the following format
+                [
+                {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
+                'width': 300, 'height': 200, 'fov': 100, 'id': 'Left'},
+
+                {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
+                'width': 300, 'height': 200, 'fov': 100, 'id': 'Right'},
+
+                {'type': 'sensor.lidar.ray_cast', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'yaw': 0.0, 'pitch': 0.0, 'roll': 0.0,
+                'id': 'LIDAR'}
+                ]
+        """
         sensors: list = super().sensors()
         
          # temp; remove

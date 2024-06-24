@@ -1,5 +1,5 @@
 import re
-from typing import List, Tuple, TYPE_CHECKING
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 from launch_tools import CarlaDataProvider
 
@@ -16,6 +16,14 @@ if TYPE_CHECKING:
 import carla
 
 create_blueprint = CarlaDataProvider.create_blueprint
+
+def get_blueprint_library(world: Optional[carla.World]=None):
+    if CarlaDataProvider._blueprint_library:
+        return CarlaDataProvider._blueprint_library
+    elif world is None:
+        world = CarlaDataProvider.get_world()
+    return world.get_blueprint_library()
+
 
 def get_contrasting_blueprints(world: "carla.World", ego_vehicle="vehicle.lincoln.mkz_2020", ego_color: str="255,0,0") \
     -> Tuple["carla.ActorBlueprint", carla.ActorBlueprint]:
@@ -34,14 +42,14 @@ def get_contrasting_blueprints(world: "carla.World", ego_vehicle="vehicle.lincol
     tuple
         A tuple containing the ego vehicle blueprint and the NPC vehicle blueprint.
     """
-    blueprint_library = world.get_blueprint_library()
+    blueprint_library: carla.BlueprintLibrary = get_blueprint_library()
     car_blueprint = blueprint_library.filter('vehicle')[0]
 
     if car_blueprint.has_attribute('color'):
         color = car_blueprint.get_attribute('color').recommended_values[-1]
         car_blueprint.set_attribute('color', color)
 
-    ego_bp = world.get_blueprint_library().find(ego_vehicle)
+    ego_bp = blueprint_library.find(ego_vehicle)
     if ego_bp.has_attribute('color'):
         color = ego_bp.get_attribute('color').recommended_values[0]
         ego_bp.set_attribute('color', ego_color)
@@ -63,7 +71,7 @@ def get_actor_blueprints(world: carla.World, filter: str,
     Returns:
         List of carla.ActorBlueprint: The list of actor blueprints that match the given filter and generation.
     """
-    bps = world.get_blueprint_library().filter(filter)
+    bps = get_blueprint_library().filter(filter)
 
     if isinstance(generation, str) and generation.lower() == "all":
         return bps

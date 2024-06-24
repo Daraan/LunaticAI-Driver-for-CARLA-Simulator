@@ -1,6 +1,7 @@
 # Recorder outputs
 _out*
 /*recorder
+outputs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -73,7 +74,8 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
+docs/docenv/
+
 
 # PyBuilder
 .pybuilder/

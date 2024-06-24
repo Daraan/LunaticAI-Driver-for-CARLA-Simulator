@@ -75,8 +75,15 @@ options : LunaticAgentSettings = behavior.make_config()
 y = behavior.speed.to_yaml()
 print(y)
 
-behavior.export_options("../conf/lunatic_behavior_settings.yaml", resolve=False)
-loaded = LunaticAgentSettings.from_yaml("../conf/lunatic_behavior_settings.yaml")
+
+import os
+if "examples" in os.getcwd():
+    root = "../"
+else:
+    root = "./"
+    
+behavior.export_options(root+"conf/lunatic_behavior_settings.yaml", resolve=False)
+loaded = LunaticAgentSettings.from_yaml(root+"conf/lunatic_behavior_settings.yaml")
 
 assert loaded == behavior
 

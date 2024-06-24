@@ -1,38 +1,21 @@
-from typing import cast, TYPE_CHECKING
+"""
+Handles problematic import deriving from version conflicts
+"""
 
+# If carla is not installed try to find the .egg file
 try:
-    import carla
+    import carla                                            # noqa # pylint: disable=unused-import
 except ImportError as e:
-    from launch_tools.egg_import import import_carla
+    from launch_tools._egg_import import import_carla
     carla = import_carla()
 
-try:
-    # SCENARIO_RUNNER_ROOT takes precedence
-    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider # type: ignore # pylint: disable=unused-import 
-except ImportError:
-    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider # pylint: disable=unused-import
-    # Fix import problems if srunner is in PYTHONPATH and submodule is not used.
-else:
-    try:
-        # Check if submodule is available
-        from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider as X
-    except ImportError:
-        import srunner # type: ignore
-        print("Using srunner from ", srunner.__file__)
-        del srunner
-    else:
-        print("=====================================================")
-        print("WARNING: srunner is likely in PYTHONPATH, submodule `scenario_runner` is not used. CarlaDataProvider might be duplicated and not used correctly.")
-        print("=====================================================")
-        del X
+# Import scenario runner from submodule or SCEANRIO_RUNNER_ROOT
+from ._import_carla_data_provider import CarlaDataProvider  # noqa # pylint: disable=unused-import
+from ._version_handling import *
 
-if TYPE_CHECKING:
-    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider # still use submodule for type-hints
-
-
-from . import argument_parsing # noqa # pylint: disable=unused-import
+from . import argument_parsing                              # noqa # pylint: disable=unused-import
 from . import blueprint_helpers
-from .general import *
+from .csv_tools import *
 
 # backwards compatibility
 prepare_blueprints = blueprint_helpers.get_contrasting_blueprints

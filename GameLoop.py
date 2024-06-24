@@ -35,11 +35,11 @@ def main():
 
     # Create a thread for the camera functionality
     try:
-        camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
+        camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, ))
         camera_thread.start()
 
         # Initialize matrix thread
-        data_matrix = AsyncDataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+        data_matrix = AsyncDataMatrix(ego_vehicle, world, road_lane_ids)
         data_matrix.start()
 
         print("Starting game loop")
