@@ -133,6 +133,7 @@ class AgentConfig:
             options = cls_or_self[category]
         if with_comments:
             string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True)
+            os.makedirs(os.path.split(path)[0], exist_ok=True)
             with open(path, "w") as f:
                 f.write(string)
             return
