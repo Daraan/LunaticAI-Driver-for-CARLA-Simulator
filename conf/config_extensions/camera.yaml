@@ -23,7 +23,7 @@ recorder:
   # Note:
   #     When using the ${hydra:runtime.output_dir} resolver
   #     @hydra.main needs to be used or hydra must be initialized.
-  output_path: ${hydra:runtime.output_dir}/recorderX/session%03d/%08d.bmp
+  output_path: ${hydra:runtime.output_dir}/recorder/session%03d/%08d.bmp
   # Interval to record the camera
   frame_interval: 4
 

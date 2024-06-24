@@ -1482,7 +1482,7 @@ class CameraConfig(AgentConfig):
         Set at WorldModel level
         """
         
-        output_path : str = '${hydra:runtime.output_dir}/recorderX/session%03d/%08d.bmp'
+        output_path : str = '${hydra:runtime.output_dir}/recorder/session%03d/%08d.bmp'
         """
         Folder to record the camera
         
