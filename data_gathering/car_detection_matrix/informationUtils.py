@@ -7,9 +7,12 @@ import pandas as pd
 import numpy as np
 import random
 from copy import deepcopy
+from cachetools import cached, LRUCache
+from operator import attrgetter
 
 from agents.tools.logging import log, logger
 
+from launch_tools import CarlaDataProvider
 # NOTE: TODO: double definition
 def get_row(matrix):
     row_data = {}
@@ -96,6 +99,7 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
 
     return False
 
+@cached(cache=LRUCache(maxsize=1), key=attrgetter("name"))
 def get_all_road_lane_ids(world_map : carla.Map):
     """
     Retrieve a set of unique road and lane identifiers in the format "roadId_laneId" from the given world map.
@@ -453,7 +457,7 @@ def detect_surrounding_cars(
                 "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
 
     """
-    world_map = world.get_map()
+    world_map = CarlaDataProvider.get_map()
     ego_vehicle_waypoint = world_map.get_waypoint(ego_location)
     ego_vehicle_road_id = ego_vehicle_waypoint.road_id
 
@@ -542,6 +546,8 @@ def detect_surrounding_cars(
     ):
         surrounding_cars_on_highway_entryExit.append(ego_vehicle)
     
+    ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)
+    
     # Update matrix based on the lane and position/distance to ego vehicle of other car
     for car in surrounding_cars:
         # Get road and lane_id of other car
@@ -575,7 +581,8 @@ def detect_surrounding_cars(
             matrix,
             world_map,
             ego_vehicle.get_velocity(),
-            ghost,
+            ego_on_highway=ego_on_highway,
+            ghost=ghost,
         )
         
         if col is None:
@@ -706,7 +713,7 @@ def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
     return math.sqrt(abs(distance_ego_other**2 - distance_opposite**2))
 
 def calculate_position_in_matrix(
-        ego_location, ego_vehicle, other_car, matrix, world_map, velocity, ghost=False
+        ego_location, ego_vehicle, other_car, matrix, world_map, velocity, *, ego_on_highway, ghost=False,
 ):
     """
     Calculate the position of the other car in the city matrix based on its relative location and distance from the ego vehicle.
@@ -729,7 +736,7 @@ def calculate_position_in_matrix(
                 "right_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
                 "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
         world_map (carla.WorldMap): The map representing the environment.
-        ghost (bool): Ghost mode when ego is exiting/entrying a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
+        ghost (bool): Ghost mode when ego is exiting/entering a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
 
     Returns:
         int or None: The column index in the city matrix representing the column in the city matrix of the other car,
@@ -1111,7 +1118,7 @@ def detect_surrounding_cars_outside_junction(
     Returns:
         list: Updated key-value pairs representing the city matrix with information about surrounding cars.
     """
-    world_map = world.get_map()
+    world_map = CarlaDataProvider.get_map()
     ego_waypoint = world_map.get_waypoint(ego_vehicle.get_location())
     junction_id = junction.id
     # junction_roads =

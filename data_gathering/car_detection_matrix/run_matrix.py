@@ -37,7 +37,7 @@ class DataMatrix:
         self.running = True
         self._sync = True
         self.world_map = CarlaDataProvider.get_map()
-        self.road_lane_ids = road_lane_ids or get_all_road_lane_ids(world_map=CarlaDataProvider._map)
+        self.road_lane_ids = road_lane_ids or get_all_road_lane_ids(CarlaDataProvider._map)
         self.matrix : Dict[int, List[int]] = None
 
     def _calculate_update(self):

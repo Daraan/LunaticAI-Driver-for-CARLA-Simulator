@@ -30,7 +30,7 @@ def main():
     vehicles, tm = spawner.spawn_traffic(world, car_bp, spawn_points, driver1, ego_vehicle)
     # Initialize loop variables
     world.tick()
-    road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
+    road_lane_ids = get_all_road_lane_ids(world.get_map())
     t_end = time.time() + 10000
 
     # Create a thread for the camera functionality
