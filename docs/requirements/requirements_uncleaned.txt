@@ -6,6 +6,7 @@ attrs==23.2.0
 auditwheel==6.0.0
 blinker==1.7.0
 bottle==0.12.25
+cachetools
 carla==0.9.15
 catkin-pkg==1.0.0
 certifi==2024.2.2
