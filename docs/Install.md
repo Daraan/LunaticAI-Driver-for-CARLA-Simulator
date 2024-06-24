@@ -62,3 +62,17 @@ export PYTHONPATH=$CARLA_ROOT/PythonAPI/carla/dist/carla-0.9.15-py3.10-linux-x86
 conda env var create PYTHONPATH=$CARLA_ROOT/PythonAPI/carla/dist/carla-0.9.15-py3.10-linux-x86_64.egg:$PYTHONPATH
 conda activate <your_env>
 ```
+
+## Troubleshooting
+
+### Importing Carla fails
+
+There are multiple reasons for that. First consult the [CARLA documentation](https://carla.readthedocs.io/en/latest/getting_started/) and check if you have installed all necessary dependencies.
+
+#### GLIBCXX_3.4.30' not found
+
+In case you run into this error, be sure to first import carla and pygame afterwards.
+
+```py
+ImportError: ./lib/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /home/.cache/Python-Eggs/carla-0.9.15-py3.10-linux-x86_64.egg-tmp/carla/libcarla.cpython-310-x86_64-linux-gnu.so)
+```
