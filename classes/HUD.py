@@ -149,11 +149,13 @@ class HUD(object):
 
         vehicles = [(dist(x.get_location()), x) for x in vehicles if x.id != world.player.id]
 
+        displayed_vehicles = 0
         for dist, vehicle in sorted(vehicles): # TODO TypeError: '<' not supported between instances of 'Vehicle' and 'Vehicle'
-            if dist > 200.0:
+            if dist > 200.0 or displayed_vehicles >= 20:
                 break
             vehicle_type = get_actor_display_name(vehicle, truncate=22)
             self._info_text.append('% 4dm %s' % (dist, vehicle_type))
+            displayed_vehicles += 1
 
     def toggle_info(self):
         """Toggle info on or off"""
