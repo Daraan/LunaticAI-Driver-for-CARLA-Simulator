@@ -556,14 +556,6 @@ class SimpleConfig(object):
 class LiveInfo(AgentConfig):
     """Keeps track of information that changes during the simulation."""
     
-    use_srunner_data_provider : bool = True
-    """
-    If enabled makes use of the scenario_runner CarlaDataProvider assuming 
-    that its information is up to date and complete, e.g. tracks all actors.
-    
-    NOTE: Turning this off is not fully supported.
-    """
-    
     velocity_vector : carla.Vector3D = MISSING
     """
     3D Vector of the current velocity of the vehicle.
@@ -573,7 +565,8 @@ class LiveInfo(AgentConfig):
     """
     Velocity of the vehicle in km/h.
     
-    Note if use_srunner_data_provider is True the z component is ignored.
+    Note:
+        The `z` component is ignored.
     """
     
     current_transform : carla.Transform = MISSING

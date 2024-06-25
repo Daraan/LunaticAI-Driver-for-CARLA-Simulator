@@ -273,11 +273,10 @@ class LunaticAgent(BehaviorAgent):
     
     def _clear_live_info(self): # DEBUG
         """Clears the live_info attribute, for debugging purposes."""
-        from omegaconf import MISSING
-        for k in self.live_info.keys():
-            if k == "use_srunner_data_provider":
-                continue
-            self.live_info[k] = MISSING
+        if __debug__:
+            from omegaconf import MISSING
+            for k in self.live_info.keys():
+                self.live_info[k] = MISSING
 
     def _update_information(self, exact_waypoint=True, second_pass=False):
         """

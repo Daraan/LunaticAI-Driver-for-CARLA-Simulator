@@ -1,6 +1,5 @@
 overwrites: {}
 live_info:
-  use_srunner_data_provider: true
   velocity_vector: ???
   current_speed: ???
   current_transform: ???

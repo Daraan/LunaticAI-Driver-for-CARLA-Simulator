@@ -10,17 +10,12 @@ overwrites: {}
 # Keeps track of information that changes during the simulation.
 live_info:
 
-  # If enabled makes use of the scenario_runner CarlaDataProvider assuming 
-  # that its information is up to date and complete, e.g. tracks all actors.
-  #  
-  # NOTE: Turning this off is not fully supported.
-  use_srunner_data_provider: true
   # 3D Vector of the current velocity of the vehicle.
   velocity_vector: ???
 
   # Velocity of the vehicle in km/h.
-  #  
-  # Note if use_srunner_data_provider is True the z component is ignored.
+  # Note: 
+  #     The z component is ignored.
   current_speed: ???
   current_transform: ???
   current_location: ???
