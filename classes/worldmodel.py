@@ -611,7 +611,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
 
     def tick(self, clock):
         """Method for every tick"""
-        self.hud.tick(self, clock)
+        self.hud.tick(self, clock, InformationManager.obstacles)
 
     def next_weather(self, reverse=False):
         """Get next weather setting"""

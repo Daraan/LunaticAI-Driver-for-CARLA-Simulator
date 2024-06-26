@@ -45,8 +45,8 @@ def affected_by_traffic_light(self : "LunaticAgent",
             else: # Still Red
                 return TrafficLightDetectionResult(True, self._last_traffic_light)
 
-        ego_vehicle_location = self._vehicle.get_location()
-        ego_vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_vehicle_location)
+        ego_vehicle_location = self.config.live_info.current_location
+        ego_vehicle_waypoint = self._current_waypoint
 
         for traffic_light in filter(_is_red_light, lights_list):
             if traffic_light.id in self._lights_map:
@@ -80,8 +80,8 @@ def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.Tr
         """
         This method is in charge of behaviors for red lights.
         """
-        # Introduce a random chance to ignore the traffic light
         
+        # Introduce a random chance to ignore the traffic light
         if random.random() < self.config.obstacles.ignore_lights_percentage:
             return TrafficLightDetectionResult(False, None)
 

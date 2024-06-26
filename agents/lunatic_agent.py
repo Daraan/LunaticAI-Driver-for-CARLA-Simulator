@@ -72,9 +72,19 @@ class LunaticAgent(BehaviorAgent):
     The rules of the this agent class. When initialized the rules of the class are copied.
     """
     
-    _world_model : WorldModel = None # TODO: maybe as weakref
     ctx : "Context"
     """The context object of the current step"""
+    
+    # Information from the InformationManager
+    walkers_nearby: List[carla.Walker]
+    vehicles_nearby: List[carla.Vehicle]
+    static_obstacles_nearby: List[carla.Actor]
+    obstacles_nearby: List[carla.Actor]
+    
+    current_states: Dict[AgentState, int]
+    """The current states of the agent. The count of the steps being each state is stored as value."""
+    
+    _world_model : WorldModel = None # TODO: maybe as weakref
     
     @classmethod
     def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args: LaunchConfig, 
@@ -304,25 +314,39 @@ class LunaticAgent(BehaviorAgent):
             # First Pass for expensive and tick-constant information
             
             # --- InformationManager ---
-            information: InformationManager.Information = self.information_manager.tick() # NOTE: # CRITICAL: Currently not route-dependant, might need to be changed later
+            information: InformationManager.Information = self.information_manager.tick() # NOTE: # Warning: Currently not route-dependant, might need to be changed later
+            self.tick_information = information
+            
             self._current_waypoint = information.current_waypoint
             self.current_states = information.current_states
             
-            # Find vehicles and walkers nearby
-            self.all_vehicles: List[carla.Vehicle] = InformationManager.get_vehicles()
-            self.all_walkers: List[carla.Walker] = InformationManager.get_walkers()
+            # Maybe access over subattribute, or properties
+            # Global Information
+            self.all_vehicles = information.vehicles
+            self.all_walkers = information.walkers
+            self.all_static_obstacles = information.static_obstacles
+            # Combination of the three lists
+            self.all_obstacles = information.obstacles
+        
+            # Filtered by config.obstacles.nearby_vehicles_max_distance and nearby_vehicles_max_distance
+            self.vehicles_nearby = information.vehicles_nearby
+            self.walkers_nearby = information.walkers_nearby
+            self.static_obstacles_nearby = information.static_obstacles_nearby
+            
+            # Combination of the three lists
+            self.all_obstacles_nearby = information.obstacles_nearby
+            
+            # Find vehicles and walkers nearby; could be moved to the information manager
             
             # NOTE: # is it more efficient to use an extra function here, why not utils.dist_to_waypoint(v, waypoint)?
             _current_loc = self.live_info.current_location
             def dist(v : carla.Actor): 
+                if not v.is_alive:
+                    logger.warning("Actor is not alive - this should not happen.")
+                    return _v_filter_dist # filter out
                 return v.get_location().distance(_current_loc)
 
-            # Filer Vehicles and Walkers to be nearby
-            _v_filter_dist = self.config.obstacles.nearby_vehicles_max_distance
-            self.vehicles_nearby : List[carla.Vehicle] = [v for v in self.all_vehicles if v.id != self._vehicle.id and dist(v) < _v_filter_dist]
-            
-            _v_filter_dist = self.config.obstacles.nearby_walkers_max_distance # in case of a different distance for walkers.
-            self.walkers_nearby : List[carla.Walker] = [w for w in self.all_walkers if dist(w) < _v_filter_dist]
+
             
             # ----------------------------
             

@@ -6,8 +6,9 @@ i.e. distill the information from the data and return high level information
 # todo: maybe find another name for this module
 
 from fnmatch import fnmatch
-from functools import wraps
+from functools import cache, wraps
 from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple, Union, Dict, List
+from cachetools import cached
 import carla
 
 if TYPE_CHECKING:
@@ -40,6 +41,9 @@ class InformationManager:
     # Class & Global Variables
     vehicles : ClassVar["list[carla.Vehicle]"]
     walkers : ClassVar["list[carla.Walker]"]
+    static_obstacles : ClassVar["list[carla.Actor]"]
+    obstacles : ClassVar["list[carla.Actor]"]
+    """Union of vehicles, walkers and static_obstacles"""
     
     frame: ClassVar["int | None"] = None
     """
@@ -170,7 +174,7 @@ class InformationManager:
         # - Location -
         # NOTE: That transform.location and location are similar but not identical.
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
-        self.live_info.current_location = CarlaDataProvider.get_location(self._vehicle)
+        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle)
 
         # Only exact waypoint. TODO: update in agent
         current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(self.live_info.current_location)
@@ -181,26 +185,94 @@ class InformationManager:
         self.live_info.next_traffic_light = self.relevant_traffic_light
         self.live_info.next_traffic_light_distance = self.relevant_traffic_light_distance
         
+        # Nearby actors
+        self.distances: Dict[carla.Actor, float] = {}
+        
+        @cached(cache=self.distances)
+        def dist(v : carla.Actor): 
+            if not v.is_alive:
+                logger.warning("Actor is not alive - this should not happen.")
+                return _v_filter_dist # filter out
+            return v.get_location().distance(_current_loc)
+        
+        # Filter nearby
+        # Vehicles
+        _v_filter_dist = self._agent.config.obstacles.nearby_vehicles_max_distance
+        self.vehicles_nearby : List[carla.Vehicle] = []
+        for v in self.vehicles:
+            if v.id != self._vehicle.id and dist(v) < _v_filter_dist:
+                self.vehicles_nearby.append(v)
+        self.vehicles_nearby = sorted(self.vehicles_nearby, key=dist)
+        
+        # Static obstacles
+        self.static_obstacles_nearby = []
+        for o in self.static_obstacles:
+            if dist(o) < _v_filter_dist:
+                self.static_obstacles_nearby.append(o)
+        self.static_obstacles_nearby = sorted(self.static_obstacles_nearby, key=dist)
+        
+        # Walkers
+        _v_filter_dist = self._agent.config.obstacles.nearby_walkers_max_distance # in case of a different distance for walkers.
+        self.walkers_nearby = []
+        for w in self.walkers:
+            if dist(w) < _v_filter_dist:
+                self.walkers_nearby.append(w)
+        
+        self.walkers_nearby = sorted(self.walkers_nearby, key=dist)
+        # All actors to be tracked
+        self.obstacles_nearby = self.walkers_nearby + self.static_obstacles_nearby + self.vehicles_nearby
+        self.obstacles_nearby = sorted(self.obstacles_nearby, key=dist)
+        
+        # TODO: Extend distances with carla lights
+        
         return self.Information(
             current_waypoint= current_waypoint,
             current_speed= self.live_info.current_speed,
             current_states= self.state_counter,
+            
             relevant_traffic_light=self.relevant_traffic_light, 
             relevant_traffic_light_distance=self.relevant_traffic_light_distance,
+            
             vehicles= self.vehicles,
-            walkers = self.walkers
+            walkers = self.walkers,
+            static_obstacles = self.static_obstacles,
+            obstacles = self.obstacles,
+            
+            walkers_nearby= self.walkers_nearby,
+            vehicles_nearby= self.vehicles_nearby,
+            static_obstacles_nearby= self.static_obstacles_nearby,
+            obstacles_nearby= self.obstacles_nearby,
+            
+            distances = self.obstacles,
         )
 
     class Information(NamedTuple):
         current_waypoint: carla.Waypoint
         current_speed: float
         current_states : Dict[AgentState, int]
+        
         relevant_traffic_light: carla.TrafficLight
         relevant_traffic_light_distance: float
+        
         vehicles: List[carla.Vehicle]
         walkers: List[carla.Walker]
+        static_obstacles: List[carla.Actor]
+        """Filtered obstacles by InformationManager.OBSTACLE_FILTER"""
+        obstacles : List[carla.Actor]
+        """Union of vehicles, walkers and static_obstacles"""
+        
+        walkers_nearby: List[carla.Walker]
+        vehicles_nearby: List[carla.Vehicle]
+        static_obstacles_nearby: List[carla.Actor]
+        obstacles_nearby: List[carla.Actor]
+        
+        distances: Dict[carla.Actor, float]
+        """Distances to all actors in `obstacles`"""
 
     # ---- Global Information ----
+    
+    OBSTACLE_FILTER = "static.prop.[cistmw]"
+    """fnmatch for obstacles see https://carla.readthedocs.io/en/latest/bp_library/#static"""
 
     @staticmethod
     def global_tick(frame=None):
@@ -214,10 +286,23 @@ class InformationManager:
         if frame == InformationManager.frame:
             return
         InformationManager.frame = frame
-        
-        # Todo compare speed with global ActorList filter
-        InformationManager.vehicles = [a for a in CarlaDataProvider._carla_actor_pool.values() if a.is_alive and fnmatch(a.type_id, "*vehicle*")]
-        InformationManager.walkers = [a for a in CarlaDataProvider._carla_actor_pool.values() if a.is_alive and fnmatch(a.type_id, "*walker.pedestrian*")]
+
+        # Filter vehicles
+        InformationManager.vehicles = []
+        InformationManager.walkers = []
+        InformationManager.static_obstacles = []
+        for actors in CarlaDataProvider._carla_actor_pool.values():
+            if not actors.is_alive:
+                continue
+            if fnmatch(actors.type_id, "vehicle*"):
+                InformationManager.vehicles.append(actors)
+            elif fnmatch(actors.type_id, "walker.pedestrian*"):
+                InformationManager.walkers.append(actors)
+            elif fnmatch(actors.type_id, InformationManager.OBSTACLE_FILTER):
+                InformationManager.static_obstacles.append(actors)
+            # else other actor
+        InformationManager.obstacles = InformationManager.walkers + InformationManager.static_obstacles + InformationManager.vehicles
+
         
     @staticmethod
     def get_vehicles():

@@ -318,19 +318,19 @@ class AgentConfig:
         behavior : cls
         if isinstance(args, dict):
             logger.debug("Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a dict config. Interpolations not available.")
-            behavior = cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
+            behavior = cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
         elif isinstance(args, str):
             logger.info("Using agent settings from file `%s`", args)
             behavior = cls.from_yaml(args) # DictConfig
         elif is_dataclass(args) or isinstance(args, DictConfig):
             logger.info("Using agent settings as is, as it is a dataclass or DictConfig.")
             if assure_copy:
-                behavior = cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
+                behavior = cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
             elif inspect.isclass(args):
                 behavior = args()
             else:
                 # instantiate class to check keys but use original type
-                cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)# convert to class to check keys
+                cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)# convert to class to check keys
                 behavior = args   # stays DictConfig
         else:
             if as_dictconfig is None or as_dictconfig == SCMode.DICT:
@@ -338,10 +338,10 @@ class AgentConfig:
             if inspect.isclass(args):
                 behavior = args() # be sure to have an instance
             if assure_copy:
-                behavior = cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
+                behavior = cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
             else:
                 # instantiate to class to check keys but use original type
-                cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
+                cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
                 behavior = args   # stays Unknown type
         
         if overwrites:
@@ -356,7 +356,7 @@ class AgentConfig:
         if as_dictconfig and not isinstance(behavior, DictConfig):
             behavior = OmegaConf.create(behavior, flags={"allow_objects": True})  
         elif as_dictconfig == False and isinstance(behavior, DictConfig):
-            return cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
+            return cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
         elif as_dictconfig is None:
             logger.debug("A clear return type of %s.create_from_args has not set as config_mode is None. Returning as %s", cls.__name__, type(behavior))
         
