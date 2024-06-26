@@ -271,8 +271,11 @@ class InformationManager:
 
     # ---- Global Information ----
     
-    OBSTACLE_FILTER = "static.prop.[cistmw]"
-    """fnmatch for obstacles see https://carla.readthedocs.io/en/latest/bp_library/#static"""
+    OBSTACLE_FILTER = "static.prop.[cistmw]*"
+    """
+    fnmatch for obstacles that the agent will consider in its path.
+    https://carla.readthedocs.io/en/latest/bp_library/#static 
+    """
 
     @staticmethod
     def global_tick(frame=None):
@@ -291,18 +294,30 @@ class InformationManager:
         InformationManager.vehicles = []
         InformationManager.walkers = []
         InformationManager.static_obstacles = []
-        for actors in CarlaDataProvider._carla_actor_pool.values():
-            if not actors.is_alive:
+        InformationManager._other_actors: List[carla.Actor] = []
+        
+        # Use copy and check for None because of updates could be done by threads in parallel
+        for actor_id in CarlaDataProvider._carla_actor_pool.copy():
+            try:
+                actor = CarlaDataProvider._carla_actor_pool[actor_id] # might be deleted in parallel
+                if actor is None or not actor.is_alive:
+                    logger.warning("Detected dead actor in the pool. %s", (actor.id, actor.type_id, actor.attributes))
+                    del CarlaDataProvider._carla_actor_pool[actor_id]
+                    continue
+            except KeyError:
+                # actor was deleted in parallel
+                print("KeyError", actor_id)
                 continue
-            if fnmatch(actors.type_id, "vehicle*"):
-                InformationManager.vehicles.append(actors)
-            elif fnmatch(actors.type_id, "walker.pedestrian*"):
-                InformationManager.walkers.append(actors)
-            elif fnmatch(actors.type_id, InformationManager.OBSTACLE_FILTER):
-                InformationManager.static_obstacles.append(actors)
-            # else other actor
-        InformationManager.obstacles = InformationManager.walkers + InformationManager.static_obstacles + InformationManager.vehicles
+            if fnmatch(actor.type_id, "vehicle*"):
+                InformationManager.vehicles.append(actor)
+            elif fnmatch(actor.type_id, "walker.pedestrian*"):
+                InformationManager.walkers.append(actor)
+            elif fnmatch(actor.type_id, InformationManager.OBSTACLE_FILTER):
+                InformationManager.static_obstacles.append(actor)
+            else:
+                InformationManager._other_actors.append(actor)
 
+        InformationManager.obstacles = InformationManager.walkers + InformationManager.static_obstacles + InformationManager.vehicles
         
     @staticmethod
     def get_vehicles():
@@ -311,4 +326,3 @@ class InformationManager:
     @staticmethod
     def get_walkers():
         return InformationManager.walkers
-            

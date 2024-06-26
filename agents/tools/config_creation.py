@@ -930,17 +930,20 @@ class BasicAgentObstacleSettings(AgentConfig):
     base_tlight_threshold : float = 5.0
     """
     Base distance to traffic lights to check if they affect the vehicle
-        
-    Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
-    Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+    
+    Usage:
+        max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
     
     base_vehicle_threshold : float = 5.0
     """
     Base distance to vehicles to check if they affect the vehicle
             
-    Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
-    Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+    Usage:
+        Only vehicles with distance < `nearby_vehicles_max_distance` are checked for 
+        max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
+        
+        A vehicle is considered if distance < max_vehicle_distance < nearby_vehicles_max_distance
     """
 
     detection_speed_ratio : float = 1.0
@@ -969,10 +972,20 @@ class BasicAgentObstacleSettings(AgentConfig):
 @dataclass
 class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
     nearby_vehicles_max_distance: float = 45
-    """For performance filters out vehicles that are further away than this distance in meters"""
+    """
+    For performance filters out vehicles that are further away than this distance in meters
+    
+    Info:
+        These vehicles are stored in `vehicles_nearby`.
+    """
     
     nearby_walkers_max_distance: float = 10
-    """For performance filters out pedestrians that are further away than this distance in meters"""
+    """
+    For performance filters out pedestrians that are further away than this distance in meters
+    
+    Info:
+        These pedestrians are stored in `walkers_nearby`.
+    """
 
 
 @dataclass
@@ -1003,6 +1016,11 @@ class LunaticAgentObstacleDetectionAngles(BasicAgentObstacleDetectionAngles):
     
     NotImplemented
     """
+    
+    # --------------------------
+    # Randomization of detection
+    # Note: Unused and deprecated
+    # --------------------------
     
     walkers_angle_adjust_chance : float = 0.0
     """Chance that the detection angle for walkers is adjusted"""

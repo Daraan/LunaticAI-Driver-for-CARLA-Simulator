@@ -37,7 +37,7 @@ class CollisionSensor(CustomSensor):
         return history
 
     @staticmethod
-    def _on_collision(weak_self, event):
+    def _on_collision(weak_self, event: carla.CollisionEvent):
         """On collision method"""
         self = weak_self()
         if not self:

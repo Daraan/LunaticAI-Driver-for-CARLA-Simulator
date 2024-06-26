@@ -96,10 +96,11 @@ class HUD(object):
         collision = [colhist[x + self.frame - 200] for x in range(0, 200)]
         max_col = max(1.0, max(collision))
         collision = [x / max_col for x in collision]
-        obstacles = obstacles or world.world.get_actors().filter('vehicle.*')
+        obstacles : "list[carla.Actor]" = obstacles or world.world.get_actors().filter('vehicle.*')
         
         # TODO: could also get ready distances from InformationManager, needs access to agent instance
-        obstacles: "list[tuple[float, carla.Actor]]" = [(x.get_location().distance(location), x) for x in obstacles if x.id != world.player.id]
+        # cached info would also prevent x from being destroyed in a different thread
+        obstacles_distances: "list[tuple[float, carla.Actor]]" = [(x.get_location().distance(location), x) for x in obstacles if x.id != world.player.id and x.is_alive]
 
         self._info_text = [
             'Server:  % 16.0f FPS' % self.server_fps,
@@ -146,12 +147,12 @@ class HUD(object):
             'Collision:',
             collision,
             '',
-            'Number of vehicles: % 8d' % len(obstacles)]
+            'Number of vehicles: % 8d' % len(obstacles_distances)]
 
-        if len(obstacles) > 1:
+        if len(obstacles_distances) > 1:
             self._info_text += ['Nearby obstacles:']
 
-        for distance, vehicle in sorted(obstacles, key=lambda dv: dv[0])[:20]: # display at most 20 actors
+        for distance, vehicle in sorted(obstacles_distances, key=lambda dv: dv[0])[:20]: # display at most 20 actors
             if distance > 200.0:
                 break
             vehicle_type = get_actor_display_name(vehicle, truncate=22)

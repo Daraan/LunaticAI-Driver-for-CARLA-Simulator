@@ -793,7 +793,7 @@ class RandomRule(metaclass=MultiRule):
             self.weights = weights or list(accumulate(r.priority.value for r in rules))
             self.rules = rules
         self.repeat_if_not_applicable = repeat_if_not_applicable
-        super().__init__(phases, rules, rule=rule, prior_action=prior_action, description=description, priority=priority, ignore_phase=ignore_phase, overwrite_settings=overwrite_settings, cooldown_reset_value=cooldown_reset_value, enabled=enabled, group=group)
+        super().__init__(phases, rules, rule=rule, action=action, description=description, priority=priority, ignore_phase=ignore_phase, overwrite_settings=overwrite_settings, cooldown_reset_value=cooldown_reset_value, enabled=enabled, group=group)
 
     @__init__.register(_CountdownRule)
     @__init__.register(type)
