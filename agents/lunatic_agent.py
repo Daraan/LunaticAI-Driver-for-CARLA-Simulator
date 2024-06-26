@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import random
-from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
+from typing import Any, ClassVar, Dict, List, NoReturn, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
 import weakref
 
 import carla
@@ -235,6 +235,12 @@ class LunaticAgent(BehaviorAgent):
     def road_matrix(self):
         if self._road_matrix_updater:
             return self._road_matrix_updater.getMatrix()
+    
+    
+    @property
+    def _map(self) -> carla.Map:
+        """Get the current map of the world.""" # Needed *only* for set_destination
+        return CarlaDataProvider.get_map()
     
     def render_road_matrix(self, display:"pygame.Surface", options:Dict[str, Any]={}):
         if self._road_matrix_updater:
@@ -549,9 +555,10 @@ class LunaticAgent(BehaviorAgent):
         # ----------------------------
             
         self.execute_phase(Phase.DETECT_CARS | Phase.BEGIN, prior_results=None) # TODO: Maybe add some prio result
-        detection_result: ObstacleDetectionResult = substep_managers.collision_detection_manager(self)
+        vehicle_detection_result = self.detect_obstacles_in_path(self.vehicles_nearby, self.config.distance.min_proximity_threshold)
+        
         # TODO: add a way to let the execution overwrite
-        if detection_result.obstacle_was_found:
+        if vehicle_detection_result.obstacle_was_found:
 
             # ----------------------------
             # Phase 2.A - React to cars in front
@@ -561,9 +568,9 @@ class LunaticAgent(BehaviorAgent):
             # TODO: Needs refinement with the car_following_behavior
             # ----------------------------
 
-            self.execute_phase(Phase.CAR_DETECTED | Phase.BEGIN, prior_results=detection_result)
-            control = self.car_following_behavior(*detection_result) # NOTE: can currently go into EMEGENCY phase
-            self.execute_phase(Phase.CAR_DETECTED | Phase.END, control=control, prior_results=detection_result)
+            self.execute_phase(Phase.CAR_DETECTED | Phase.BEGIN, prior_results=vehicle_detection_result)
+            control = self.car_following_behavior(*vehicle_detection_result) # NOTE: can currently go into EMEGENCY phase
+            self.execute_phase(Phase.CAR_DETECTED | Phase.END, control=control, prior_results=vehicle_detection_result)
             return self.get_control()
         
         #TODO: maybe new phase instead of END or remove CAR_DETECTED and handle as rules (maybe better)
@@ -658,7 +665,8 @@ class LunaticAgent(BehaviorAgent):
     def pedestrian_avoidance_behavior(self, ego_vehicle_wp : carla.Waypoint) -> Tuple[bool, ObstacleDetectionResult]:
         # TODO: # CRITICAL: This for some reasons also detects vehicles as pedestrians
         # note ego_vehicle_wp is the current waypoint self._current_waypoint
-        detection_result = substep_managers.pedestrian_detection_manager(self)
+        detection_result = self.detect_obstacles_in_path(self.walkers_nearby, 
+                                                          self.config.distance.min_proximity_threshold)
         if (detection_result.obstacle_was_found
             and (detection_result.distance - max(detection_result.obstacle.bounding_box.extent.y, 
                                                  detection_result.obstacle.bounding_box.extent.x)
@@ -685,6 +693,8 @@ class LunaticAgent(BehaviorAgent):
 
     # ------------------ Managers for Behaviour ------------------ #
 
+    from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
+
     
     def traffic_light_manager(self) -> TrafficLightDetectionResult:
         """
@@ -703,27 +713,6 @@ class LunaticAgent(BehaviorAgent):
         return substep_managers.collision_manager(self, event)
 
     # ----
-
-    # TODO: see if max_distance is currently still necessary
-    # TODO: move angles to config
-    #@override
-    def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, 
-                                   up_angle_th=90, 
-                                   low_angle_th=0,
-                                   lane_offset=0) -> ObstacleDetectionResult:
-        """
-        Method to check if there is a vehicle in front or around the agent blocking its path.
-
-            :param vehicle_list (list of carla.Vehicle): list containing vehicle objects.
-                If None, all vehicle in the scene are used
-            :param max_distance: max free-space to check for obstacles.
-                If None, the base threshold value is used
-
-        The angle between the location and reference transform will also be taken into account. 
-        Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
-        low_angle_th < angle < up_angle_th.
-        """
-        return agents.tools.lunatic_agent_tools.detect_vehicles(self, vehicle_list, max_distance, up_angle_th, low_angle_th, lane_offset)
 
     #@override
     # TODO: Port this to a rule that is used during emergencies.
@@ -744,7 +733,7 @@ class LunaticAgent(BehaviorAgent):
         and the other 3 fine tune the maneuver
         """
         speed = self.live_info.current_speed / 3.6 # m/s
-        # This is a BasicAgent function
+        # This is a staticfunction from BasicAgent function
         path : list = generate_lane_change_path(
             self._current_waypoint, # NOTE: Assuming exact_waypoint
             direction,
@@ -888,25 +877,34 @@ class LunaticAgent(BehaviorAgent):
 
     # ------------------ Overwritten functions ------------------ #
 
+    # Compatibility with BehaviorAgent interface
+    _vehicle_obstacle_detected = agents.tools.lunatic_agent_tools.detect_vehicles
+    """
+    Single Lane Detection
+    
+    Note:
+        Unused, kept for compatibility with BehaviorAgent interface
+    """
+    
+    # Staticmethod that we outsource
+    _generate_lane_change_path = staticmethod(agents.tools.lunatic_agent_tools.generate_lane_change_path)
+
     # NOTE: the original pedestrian_avoid_manager is still usable
-    def pedestrian_avoid_manager(self, waypoint):
+    def pedestrian_avoid_manager(self, waypoint) -> NoReturn:
         raise NotImplementedError("This function was replaced by ", substep_managers.pedestrian_detection_manager)
 
     #@override
-    def collision_and_car_avoid_manager(self, waypoint):
-        raise NotImplementedError("This function was split into collision_detection_manager and car_following_manager")
+    def collision_and_car_avoid_manager(self, waypoint) -> NoReturn:
+        a = self.pedestrian_avoid_manager()
+        raise NotImplementedError("This function was split into detect_obstacles_in_path and car_following_manager")
     
     #@override
-    def _tailgating(self, waypoint, vehicle_list):
+    def _tailgating(self, waypoint, vehicle_list) -> NoReturn:
         raise NotImplementedError("Tailgating has been implemented as a rule")
 
     #@override
-    def emergency_stop(self):
+    def emergency_stop(self) -> NoReturn:
         raise NotImplementedError("This function was overwritten use ´add_emergency_stop´ instead")
-
-    #@override
-    def _generate_lane_change_path(*args, **kwargs):
-        raise NotImplementedError("This function was overwritten use `agents.tools.generate_lane_change_path´ instead")
 
     # ------------------------------------ #
     # As reference Parent Functions 
@@ -915,32 +913,6 @@ class LunaticAgent(BehaviorAgent):
     #def get_global_planner(self):
 
     #def done(self): # from base class self._local_planner.done()
-
-    def set_destination(self, end_location, start_location=None, clean_queue=True):
-        """
-        This method creates a list of waypoints between a starting and ending location,
-        based on the route returned by the global router, and adds it to the local planner.
-        If no starting location is passed, the vehicle local planner's target location is chosen,
-        which corresponds (by default), to a location about 5 meters in front of the vehicle.
-
-            :param end_location (carla.Location): final location of the route
-            :param start_location (carla.Location): starting location of the route
-        """
-        if not start_location:
-            if self._local_planner.target_waypoint:
-                start_location = self._local_planner.target_waypoint.transform.location # waypoint at queue[0] at run_step
-            else:
-                start_location = self._vehicle.get_location()
-            clean_queue = True
-        else:
-            pass
-            #start_location = self._vehicle.get_location()
-            #clean_queue = False
-        start_waypoint = CarlaDataProvider.get_map().get_waypoint(start_location)
-        end_waypoint = CarlaDataProvider._map.get_waypoint(end_location) if isinstance(end_location, carla.Location) else end_location
-
-        route_trace = self.trace_route(start_waypoint, end_waypoint)
-        self._local_planner.set_global_plan(route_trace, clean_queue=clean_queue)
         
     #def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
         """
