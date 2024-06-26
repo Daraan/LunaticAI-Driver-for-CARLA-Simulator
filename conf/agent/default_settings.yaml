@@ -9,7 +9,8 @@ live_info:
 
   # Velocity of the vehicle in km/h.
   #  
-  # Note the z component is ignored.
+  # Note:
+  #     The `z` component is ignored.
   current_speed: ???
   current_transform: ???
   current_location: ???

@@ -140,7 +140,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         logger.setLevel(logging.DEBUG)
         self.args = args
         
-        config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True)
+        config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True, as_dictconfig=True)
         config.planner.dt = 1/20 # TODO: maybe get from somewhere
         
         self.game_framework = GameFramework(self.args, config)

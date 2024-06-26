@@ -73,6 +73,10 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     # -- Load Settings Agent --
 
     print("Creating settings")
+    # Validates and creates the agent settings. Sidenote: agent_config a copy of args.agent,
+    # you can access args.agent as copy of the original settings
+    # To not validate the config against LunaticAgentSettings, you can use OmegaConf.create(args.agent)
+    # to create a copy.
     agent_config = LunaticAgentSettings.create_from_args(args.agent)
 
     # TEMP
@@ -264,7 +268,7 @@ def main(args: LaunchConfig):
     print(RSSKeyboardControl.get_docstring())
     print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")
 
-    args = LaunchConfig.check_config(args, args.get("strict_config", 3), as_dict_config=True)    
+    args = LaunchConfig.check_config(args, args.get("strict_config", 3), as_dict_config=True)
     
     signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)
 

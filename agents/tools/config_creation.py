@@ -12,7 +12,7 @@ if __name__ == "__main__": # TEMP clean at the end, only here for testing
     sys.path.append(os.path.abspath("../"))
 
 from enum import Enum, IntEnum
-from functools import partial, wraps
+from functools import partial
 from dataclasses import dataclass, field, asdict, is_dataclass
 import typing
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast
@@ -38,7 +38,7 @@ import carla
 
 import ast
 import inspect
-from launch_tools import ast_parse
+from launch_tools import ast_parse, Literal
 from agents.navigation.local_planner import RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
@@ -255,7 +255,17 @@ class AgentConfig:
         
     @classmethod
     def from_yaml(cls, path, category : Optional[str]=None, *, merge=True):
-        """Loads the options from a yaml file."""
+        """
+        Loads the options from a yaml file.
+        Args:
+            path (str): The path to the yaml file.
+            category (Optional[str], optional): loads this subcategory only
+            merge (bool, optional): Merges the loaded yaml into the base class settings. 
+                Defaults to True.
+        
+        Note:
+            This returns a DictConfig version of this class.
+        """
         if merge:
             options : cls = OmegaConf.merge(OmegaConf.create(cls, flags={"allow_objects":True}), OmegaConf.load(path))
         else:
@@ -266,63 +276,73 @@ class AgentConfig:
         return r
     
     @classmethod
-    def create_from_args(cls, args_agent:"Union[os.PathLike, dict, DictConfig, Mapping]", 
+    def uses_overwrite_interface(cls):
+        """
+        Whether or not the class is created by a single parameter "overwrites"
+        or via keyword arguments for each field.
+        """
+        return "overwrites" in inspect.signature(cls.__init__).parameters
+    
+    @classmethod
+    def create_from_args(cls, args:"Union[os.PathLike, dict, DictConfig, Mapping]", 
                          overwrites:"Optional[Mapping]"=None, 
                          *,
-                         assure_copy : bool = False,
+                         assure_copy : bool = True,
+                         as_dictconfig:Optional[bool]=True,
                          dict_config_no_parent:bool = True,
-                         config_mode:Optional[SCMode]=None # SCMode.DICT_CONFIG # NOTE: DICT_CONFIG is only good when we have a structured config 
                          ):
         """
         Creates the agent settings based on the provided arguments.
+        
+        Note:
+            By default this returns a DictConfig version of this class.
 
         Args:
             cls (ConfigType): The type of the agent settings.
-            args_agent (Union[os.PathLike, dict, DictConfig, dataclass]): The argument specifying the agent settings. It can be a path to a YAML file, a dictionary, a dataclass, or a DictConfig.
+            args (Union[os.PathLike, dict, DictConfig, dataclass]): The argument specifying the agent settings. It can be a path to a YAML file, a dictionary, a dataclass, or a DictConfig.
             overwrites (Optional[Mapping]): Optional mapping containing additional settings to overwrite the default agent settings.
-            config_mode (omegaconf.SCMode, optional): 
-                Optional configuration mode for structured config. 
-                If None the return type might not be a DictConfig.
-                Defaults to SCMode.DICT_CONFIG.
+            as_dictconfig (Optional[bool], optional): 
+                If True, the agent settings are returned as a DictConfig.
+                If False, the agent settings are returned as an instance of this class.
+                If None, the return type is determined by the type of the args and other arguments
+                    i.e. if args is a DictConfig and assure_copy is False, the
+                    original input is checked and returned.
 
         Returns:
-            ConfigType: The created agent settings.
+            AgentConfig (duck-typed): The created agent settings.
 
         Raises:
             Exception: If the overwrites cannot be merged into the agent settings.
-
         """
         from agents.tools.logging import logger
         behavior : cls
-        if isinstance(args_agent, dict):
+        if isinstance(args, dict):
             logger.debug("Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a dict config. Interpolations not available.")
-            behavior = cls(**args_agent) # NOTE: Not a dict config
-        elif isinstance(args_agent, str):
-            logger.info("Using agent settings from file `%s`", args_agent)
-            behavior = cls.from_yaml(args_agent)
-        elif is_dataclass(args_agent) or isinstance(args_agent, DictConfig):
+            behavior = cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
+        elif isinstance(args, str):
+            logger.info("Using agent settings from file `%s`", args)
+            behavior = cls.from_yaml(args) # DictConfig
+        elif is_dataclass(args) or isinstance(args, DictConfig):
             logger.info("Using agent settings as is, as it is a dataclass or DictConfig.")
             if assure_copy:
-                behavior : cls = OmegaConf.create(args_agent, flags={"allow_objects": True})
-            elif isinstance(args_agent, type):
-                behavior = args_agent()
+                behavior = cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
+            elif inspect.isclass(args):
+                behavior = args()
             else:
-                behavior = args_agent
+                # instantiate class to check keys but use original type
+                cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)# convert to class to check keys
+                behavior = args   # stays DictConfig
         else:
-            if config_mode is None or config_mode == SCMode.DICT:
-                logger.warning("Type `%s` of launch argument type `agent` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args_agent))
-            if isinstance(args_agent, type):
-                behavior = args_agent() # be sure to have an instance
+            if as_dictconfig is None or as_dictconfig == SCMode.DICT:
+                logger.warning("Type `%s` of launch argument type `agent_settings` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args))
+            if inspect.isclass(args):
+                behavior = args() # be sure to have an instance
             if assure_copy:
-                from copy import deepcopy
-                behavior = deepcopy(args_agent)
+                behavior = cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
             else:
-                behavior = args_agent
-        if config_mode is not None:
-            logger.debug("Converting agent settings (type: %s) to to container via %s", type(behavior), config_mode)
-            if not isinstance(behavior, DictConfig):
-                behavior = OmegaConf.create(behavior, flags={"allow_objects": True})
-            behavior = OmegaConf.to_container(behavior, structured_config_mode=config_mode)
+                # instantiate to class to check keys but use original type
+                cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
+                behavior = args   # stays Unknown type
         
         if overwrites:
             if isinstance(behavior, DictConfig):
@@ -330,15 +350,22 @@ class AgentConfig:
             else:
                 try:
                     behavior.update(overwrites)
-                except:
-                    logger.error("Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. config_mode=SCMode.DICT_CONFIG is recommended for this to work.")
+                except Exception:
+                    logger.error("Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. Passing config_mode=True might help.")
                     raise
+        if as_dictconfig and not isinstance(behavior, DictConfig):
+            behavior = OmegaConf.create(behavior, flags={"allow_objects": True})  
+        elif as_dictconfig == False and isinstance(behavior, DictConfig):
+            return cls(overwrites=args) if cls.uses_overwrite_interface else cls(**args)
+        elif as_dictconfig is None:
+            logger.debug("A clear return type of %s.create_from_args has not set as config_mode is None. Returning as %s", cls.__name__, type(behavior))
+        
         if isinstance(behavior, DictConfig):
             behavior._set_flag("allow_objects", True)
             if dict_config_no_parent:
                 # Dict config interpolations always use the full path, interpolations might go from the root of the config.
                 # If there is launch_config.agent, with launch config as root, the interpolations will not work.
-                behavior.__dict__["_parent"] = None # Remove parent from
+                behavior.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
         
         return cast(cls, behavior)
     
@@ -363,7 +390,7 @@ class AgentConfig:
         
         - strictness == 1: Will cast the config to this class, assuring all keys are present.
             However the type and correctness of the field-contents are not checked.
-        - strictness > 1 the config will be a DictConfig object. - 
+        - strictness > 1 the config will be a DictConfig object, `as_dict_config` is ignored. 
         - strictness == 2: Will assure that the *initial* types are correct.
         - strictness >= 2 will return the config as a structured config,
             forcing the defined types during runtime as well.
@@ -378,7 +405,8 @@ class AgentConfig:
             if as_dict_config and not isinstance(config, DictConfig):
                 return OmegaConf.create(config, flags={"allow_objects": True})
             return config
-        config = cls.create_from_args(config, config_mode=SCMode.DICT_CONFIG, assure_copy=False)
+        # TODO: # Note: This does not assure keys:
+        config = cls.create_from_args(config, as_dictconfig=SCMode.DICT_CONFIG, assure_copy=False)
         if strictness == 2:
             if as_dict_config and not isinstance(config, DictConfig):
                 return OmegaConf.create(config, flags={"allow_objects": True})
@@ -446,6 +474,9 @@ class AgentConfig:
         """Updates the options with a new dictionary."""
         if isinstance(options, AgentConfig):
             key_values = options.__dataclass_fields__.items()
+        elif isinstance(options, DictConfig):
+            options = OmegaConf.to_container(options)
+            key_values = options.items() # Calling this with missing keys will raise an error
         else:
             key_values = options.items()
         for k, v in key_values:
@@ -472,8 +503,18 @@ class AgentConfig:
         # Merge the overwrite dict into the correct ones.
         for key, value in self.overwrites.items():
             if key in self.__annotations__:
-                if issubclass(self.__annotations__[key], AgentConfig):
-                    getattr(self, key).update(value)
+                if key == "overwrites":
+                    if value:
+                        print("Error: a non-empty overwrites key should not be set in the overwrites dict. Ignoring it")
+                    continue
+                elif key == "live_info":
+                    live_info_dict = self.live_info # type: LiveInfo
+                    for live_info_key in value.keys():
+                        if not OmegaConf.is_missing(value, live_info_key):
+                            print("Warning: live_info should only consist of missing values. Setting", live_info_key, "to", value[live_info_key])
+                            setattr(live_info_dict, live_info_key, value[live_info_key])
+                elif issubclass(self.__annotations__[key], AgentConfig):
+                    getattr(self, key).update(value) # AgentConfig.update
                 else:
                     print("is not a Config")
                     setattr(self, key, value)
@@ -1042,7 +1083,7 @@ class LunaticAgentControllerSettings(AutopilotControllerSettings, BehaviorAgentC
 # ---------------------
 
 @dataclass
-class PIDControllerDict:
+class PIDControllerDict(AgentConfig):
     """
     PID controller using the following semantics:
         K_P -- Proportional term

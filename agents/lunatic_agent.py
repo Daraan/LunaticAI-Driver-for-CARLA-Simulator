@@ -62,6 +62,10 @@ class LunaticAgent(BehaviorAgent):
     # using a ClassVar which allows to define preset rules for a child class
     # NOTE: Use deepcopy to avoid shared state between instances
     BASE_SETTINGS: "ClassVar[type[AgentConfig]]" = LunaticAgentSettings
+    """
+    Base AgentConfig class for this agent. This is used to create the default settings for the agent
+    if none are provided.
+    """
     
     rules: ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
     """
