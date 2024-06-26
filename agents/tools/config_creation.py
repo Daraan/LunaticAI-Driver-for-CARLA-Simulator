@@ -67,9 +67,12 @@ _NOTSET = object()
 
 # need this check for readthedocs
 if os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
+    import random
     OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
     OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
     OmegaConf.register_new_resolver("min", lambda *els: min(els))
+    OmegaConf.register_new_resolver("randint", random.randint)
+    OmegaConf.register_new_resolver("randuniform", random.uniform)
     os.environ["_OMEGACONF_RESOLVERS_REGISTERED"] = "1"
 
 class class_or_instance_method:
@@ -1047,6 +1050,23 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     """
     
     detection_angles: LunaticAgentObstacleDetectionAngles = field(default_factory=LunaticAgentObstacleDetectionAngles)
+    
+    nearby_statics_max_distance: float = 60
+    """For performance filters out pedestrians that are further away than this distance in meters"""
+    
+    base_static_threshold : float = 2.0
+    """
+    Base distance to vehicles to check if they affect the vehicle
+            
+    Usage: 
+        static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
+    """
+    
+    static_detection_speed_ratio : float = 0.5
+    """
+    Usage: 
+        static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
+    """
     
 # ---------------------
 # Emergency

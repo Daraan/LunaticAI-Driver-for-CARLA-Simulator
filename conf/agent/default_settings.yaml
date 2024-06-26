@@ -166,15 +166,18 @@ obstacles:
   use_bbs_detection: true
 
   # Base distance to traffic lights to check if they affect the vehicle
-  #     
-  # Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
-  # Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+  #  
+  # Usage:
+  #     max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
   base_tlight_threshold: 5.0
 
   # Base distance to vehicles to check if they affect the vehicle
   #         
-  # Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
-  # Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+  # Usage:
+  #     Only vehicles with distance < `nearby_vehicles_max_distance` are checked for 
+  #     max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
+  #     
+  #     A vehicle is considered if distance < max_vehicle_distance < nearby_vehicles_max_distance
   base_vehicle_threshold: 5.0
 
   # Increases detection range based on speed
@@ -211,9 +214,17 @@ obstacles:
     cars_adjust_angle:
     - 20.0
     - -50.0
+
   # For performance filters out vehicles that are further away than this distance in meters
+  #  
+  # Info:
+  #     These vehicles are stored in `vehicles_nearby`.
   nearby_vehicles_max_distance: 45.0
+
   # For performance filters out pedestrians that are further away than this distance in meters
+  #  
+  # Info:
+  #     These pedestrians are stored in `walkers_nearby`.
   nearby_walkers_max_distance: 10.0
   # Percentage of time to ignore traffic lights
   ignore_lights_percentage: 0.0
@@ -221,6 +232,18 @@ obstacles:
   ignore_signs_percentage: 0.0
   # Percentage of time to ignore pedestrians
   ignore_walkers_percentage: 0.0
+  # For performance filters out pedestrians that are further away than this distance in meters
+  nearby_statics_max_distance: 60.0
+
+  # Base distance to vehicles to check if they affect the vehicle
+  #         
+  # Usage: 
+  #     static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
+  base_static_threshold: 2.0
+
+  # Usage: 
+  #     static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
+  static_detection_speed_ratio: 0.5
 
 
 # Limitations of the controls used one the PIDController Level
