@@ -7,12 +7,12 @@ from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
                                compute_distance)
 
-from launch_tools import CarlaDataProvider
+from launch_tools import CarlaDataProvider, Literal
+from typing import TYPE_CHECKING, List, Union
 
-from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
-    from typing import Literal
+    from classes.rule import Context
 
 # ------------------------------
 # Exceptions
@@ -48,6 +48,28 @@ class UpdatedPathException(Exception):
 # Obstacle Detection
 # ------------------------------
 
+def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal["same_lane", "other_lane", "overtaking", "tailgating"]):
+    """
+    Convenience function to be used with `detect_vehicles` and `detect_obstacles_in_path`.
+    
+    The max distance to consider an obstacle is calculated as:
+    
+    ```python
+    max(obstacles.min_proximity_threshold,
+        live_info.current_speed_limit / obstacles.speed_detection_downscale.[same|other]_lane)
+    ```
+    
+    Args:
+        self (Union[Context, LunaticAgent]): An object that implements the `config` and `live_info` attributes
+        lane (Literal["same_lane", "other_lane", "overtake"]): The lane to consider.
+            Note:
+                Key must be in `BehaviorAgentObstacleSettings.SpeedLimitDetectionDownscale`.
+    """
+    
+    return max(self.config.obstacles.min_proximity_threshold,
+               self.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
+
+
 def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Actor], min_detection_threshold: float, speed_limit_divisors=(2,3)) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
@@ -77,20 +99,17 @@ def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Ac
     # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
     if self.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
         detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
-                                                            max(min_detection_threshold,
-                                                                self.config.live_info.current_speed_limit / speed_limit_divisors[0]),
+                                                            self.max_detection_distance("other_lane"),
                                                             up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
                                                             lane_offset=-1)
     elif self.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
         detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
-                                                            max(min_detection_threshold,
-                                                                self.config.live_info.current_speed_limit / speed_limit_divisors[0]),
+                                                            self.max_detection_distance("other_lane"),
                                                             up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
                                                             lane_offset=1)
     else:
         detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
-                                                            max(min_detection_threshold,
-                                                                self.config.live_info.current_speed_limit / speed_limit_divisors[0]),
+                                                            self.max_detection_distance("same_lane"),
                                                             up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],)
     return detection_result
 

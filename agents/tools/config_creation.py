@@ -791,9 +791,6 @@ class BehaviorAgentDistanceSettings(BasicAgentDistanceSettings):
     Usage: max_distance = max(min_proximity_threshold, self._speed_limit / (2 if <LANE CHANGE> else 3 ) )
     """
     
-    min_proximity_threshold : float = 10
-    """Range in which cars are detected. NOTE: Speed limit overwrites"""
-    
     emergency_braking_distance : float = 5
     """Emergency Stop Distance Trigger"""
     
@@ -989,6 +986,51 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
     Info:
         These pedestrians are stored in `walkers_nearby`.
     """
+    
+    min_proximity_threshold : float = 10
+    """
+    When making lane changes determines the minimum distance to check for vehicles.
+    
+    max_distance_check = max(obstacles.min_proximity_threshold, 
+                             live_info.current_speed_limit / speed_limit_downscale)
+                             
+    Hint:
+        Lower values mean that further away vehicles are maybe not considered,
+        an agent might ignore fast vehicles coming from behind in the other lane,
+        or ignores slower vehicles in front of it in the other lane.
+    """
+    
+    @dataclass
+    class SpeedLimitDetectionDownscale(AgentConfig):
+        """see `speed_detection_downscale`"""
+        same_lane : float = 3.0
+        other_lane : float = 2.0
+        overtaking : float = 1.5
+        """
+        Used by SimpleOvertakeRule, look further ahead for overtaking
+        """
+        
+        tailgating : float = 2
+        """
+        Used by AvoidTailgatorRule, look further behind for tailgators
+        """
+        
+        
+        
+    
+    speed_detection_downscale : SpeedLimitDetectionDownscale = field(default_factory=SpeedLimitDetectionDownscale)
+    """
+    When making lane changes determines the maximum distance to check for vehicles.
+    
+    max_distance_check = max(obstacles.min_proximity_threshold, 
+                             live_info.current_speed_limit / speed_limit_downscale.[same|other]_lane)
+                             
+    Hint:
+        Higher values mean that further away vehicles are not considered,
+        an agent might ignore fast vehicles coming from behind in the other lane,
+        or ignores slower vehicles in front of it in the other lane.
+    """
+    
 
 
 @dataclass
@@ -1067,6 +1109,7 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     Usage: 
         static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
     """
+    
     
 # ---------------------
 # Emergency

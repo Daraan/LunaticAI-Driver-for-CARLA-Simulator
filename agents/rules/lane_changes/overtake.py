@@ -33,8 +33,8 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context") -> bool:
     waypoint = ctx.agent._current_waypoint
 
     # Cheap to get, do we plan to continue in the same lane? We are not at a junction and have some minimum speed
-    pre_conditions = (ctx.agent.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \
-            and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10  #TODO Hardcoded
+    pre_conditions = (ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW \
+            and not waypoint.is_junction and ctx.live_info.current_speed > 10  #TODO Hardcoded
             )
     if not pre_conditions:
         return False
@@ -44,8 +44,7 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context") -> bool:
     # TODO: Improve with data Matrix
     # Compared to tailgating we check not so far in front (speed limit / 3)
     check_front = detect_vehicles(ctx.agent, vehicle_list,
-                                   max(ctx.agent.config.distance.min_proximity_threshold,
-                                       ctx.agent.config.live_info.current_speed_limit / 1.5), # Trigger further ahead
+                                   ctx.max_detection_distance("overtaking"), # Trigger further ahead
                                    up_angle_th=30,
                                    lane_offset=0)
 
@@ -53,7 +52,7 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context") -> bool:
     # TODO: Check speed limit
     # TODO: Have some min speed difference to overtake
     #  Make some config to ignore speed limit for overtake
-    if check_front.obstacle_was_found and ctx.agent.config.live_info.current_speed > get_speed(check_front.obstacle):
+    if check_front.obstacle_was_found and ctx.live_info.current_speed > get_speed(check_front.obstacle):
         return check_front
     return False
                 

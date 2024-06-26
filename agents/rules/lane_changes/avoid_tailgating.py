@@ -24,21 +24,20 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
     waypoint = ctx.agent._current_waypoint
 
     # Cheap to get, do we plan to continue in the same lane? We are not at a junction and have some minimum speed
-    pre_conditions = (ctx.agent.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \
-            and not waypoint.is_junction and ctx.agent.config.live_info.current_speed > 10  #TODO Hardcoded
+    pre_conditions = (ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW \
+            and not waypoint.is_junction and ctx.live_info.current_speed > 10  #TODO Hardcoded
             )
     if not pre_conditions:
         return False
     # Detect if there is a car behind
     vehicle_list = ctx.agent.vehicles_nearby
     check_behind = detect_vehicles(ctx.agent, vehicle_list,
-                                   max(ctx.agent.config.distance.min_proximity_threshold,
-                                       ctx.agent.config.live_info.current_speed_limit / 2),
+                                   ctx.max_detection_distance("tailgating"),
                                    up_angle_th=180, low_angle_th=160)
 
     # If there is a tailgator check if faster
     # TODO: or evaluation a bit faster
-    if check_behind.obstacle_was_found and ctx.agent.config.live_info.current_speed < get_speed(check_behind.obstacle):
+    if check_behind.obstacle_was_found and ctx.live_info.current_speed < get_speed(check_behind.obstacle):
         return check_behind
     return False
 

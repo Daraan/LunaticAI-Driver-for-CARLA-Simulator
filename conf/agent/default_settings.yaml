@@ -103,8 +103,6 @@ speed:
 #  
 # Usage: max_distance = max(min_proximity_threshold, self._speed_limit / (2 if <LANE CHANGE> else 3 ) )
 distance:
-  # Range in which cars are detected. NOTE: Speed limit overwrites
-  min_proximity_threshold: 10.0
   # Emergency Stop Distance Trigger
   emergency_braking_distance: 5.0
 
@@ -226,6 +224,32 @@ obstacles:
   # Info:
   #     These pedestrians are stored in `walkers_nearby`.
   nearby_walkers_max_distance: 10.0
+
+  # When making lane changes determines the minimum distance to check for vehicles.
+  #  
+  # max_distance_check = max(obstacles.min_proximity_threshold, 
+  #                          live_info.current_speed_limit / speed_limit_downscale)
+  #                          
+  # Hint:
+  #     Lower values mean that further away vehicles are maybe not considered,
+  #     an agent might ignore fast vehicles coming from behind in the other lane,
+  #     or ignores slower vehicles in front of it in the other lane.
+  min_proximity_threshold: 10.0
+
+  # When making lane changes determines the maximum distance to check for vehicles.
+  #  
+  # max_distance_check = max(obstacles.min_proximity_threshold, 
+  #                          live_info.current_speed_limit / speed_limit_downscale.[same|other]_lane)
+  #                          
+  # Hint:
+  #     Higher values mean that further away vehicles are not considered,
+  #     an agent might ignore fast vehicles coming from behind in the other lane,
+  #     or ignores slower vehicles in front of it in the other lane.
+  speed_detection_downscale:
+    same_lane: 3.0
+    other_lane: 2.0
+    overtaking: 1.5
+    tailgating: 2.0
   # Percentage of time to ignore traffic lights
   ignore_lights_percentage: 0.0
   # Percentage of time to ignore stop signs

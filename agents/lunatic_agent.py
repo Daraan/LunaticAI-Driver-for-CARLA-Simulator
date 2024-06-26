@@ -88,7 +88,7 @@ class LunaticAgent(BehaviorAgent):
     
     @classmethod
     def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args: LaunchConfig, 
-                               settings_archtype: "Optional[type[AgentConfig]]"=None, config: "LunaticAgentSettings"=None, 
+                               settings_archtype: "Optional[type[AgentConfig]]"=None, config: Optional["LunaticAgentSettings"]=None, 
                                overwrites: Dict[str, Any]={}):
         
         if config is None:
@@ -555,7 +555,7 @@ class LunaticAgent(BehaviorAgent):
         # ----------------------------
             
         self.execute_phase(Phase.DETECT_CARS | Phase.BEGIN, prior_results=None) # TODO: Maybe add some prio result
-        vehicle_detection_result = self.detect_obstacles_in_path(self.vehicles_nearby, self.config.distance.min_proximity_threshold)
+        vehicle_detection_result = self.detect_obstacles_in_path(self.vehicles_nearby, self.config.obstacles.min_proximity_threshold)
         
         # TODO: add a way to let the execution overwrite
         if vehicle_detection_result.obstacle_was_found:
@@ -666,7 +666,7 @@ class LunaticAgent(BehaviorAgent):
         # TODO: # CRITICAL: This for some reasons also detects vehicles as pedestrians
         # note ego_vehicle_wp is the current waypoint self._current_waypoint
         detection_result = self.detect_obstacles_in_path(self.walkers_nearby, 
-                                                          self.config.distance.min_proximity_threshold)
+                                                          self.config.obstacles.min_proximity_threshold)
         if (detection_result.obstacle_was_found
             and (detection_result.distance - max(detection_result.obstacle.bounding_box.extent.y, 
                                                  detection_result.obstacle.bounding_box.extent.x)
@@ -754,12 +754,18 @@ class LunaticAgent(BehaviorAgent):
     # TODO: Make order a config
     # TODO: rename & make config for look ahead distance via speed_limit
     # TODO: Use generate_lane_change_path to finetune 
-    def make_lane_change(self, order=["left", "right"], up_angle_th=180, low_angle_th=0, speed_limit_downscale=2):
+    def make_lane_change(self, order=["left", "right"], up_angle_th=180, low_angle_th=0):
         """
-        If a tailgator is detected, move to the left/right lane if possible
+        Move to the left/right lane if possible
 
-            :param waypoint: current waypoint of the agent
-            :param vehicle_list: list of all the nearby vehicles
+        Args:
+            order (Sequence[Literal["left", "right"]] | Literal["left", "right"]): The order in
+                which the agent should try to change lanes. If a single string is given, the agent
+                will try to change to that lane.
+            up_angle_th (int): The angle threshold for the upper limit of obstacle detection in the other lane.
+                Default is 180 degrees, meaning that the agent will detect obstacles ahead.
+            low_angle_th (int): The angle threshold for the lower limit of obstacle detection in the other lane.
+                Default is 0 degrees, meaning that the agent will detect obstacles behind.
             
         Assumes:
             (self.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \
@@ -770,23 +776,26 @@ class LunaticAgent(BehaviorAgent):
         waypoint = self._current_waypoint # todo use a getter
 
         # There is a faster car behind us
-
+        if isinstance(order, str):
+            order = [order]
+        
         for direction in order:
             if direction == "right":
                 right_turn = waypoint.right_lane_marking.lane_change
                 can_change = (right_turn == carla.LaneChange.Right or right_turn == carla.LaneChange.Both)
                 other_wpt = waypoint.get_right_lane()
                 lane_offset = 1
-            else:
+            elif direction == "left":
                 left_turn = waypoint.left_lane_marking.lane_change
                 can_change = (left_turn == carla.LaneChange.Left or left_turn == carla.LaneChange.Both)
                 other_wpt = waypoint.get_left_lane()
                 lane_offset = -1
+            else:
+                ValueError("Direction must be 'left' or 'right', was %s" % direction)
             if can_change and lanes_have_same_direction(waypoint, other_wpt) and other_wpt.lane_type == carla.LaneType.Driving:
                 # Detect if right lane is free
                 detection_result = detect_vehicles(self, vehicle_list, 
-                                                max(self.config.distance.min_proximity_threshold,
-                                                    self.config.live_info.current_speed_limit / speed_limit_downscale), 
+                                                self.max_detection_distance("other_lane"), 
                                                     up_angle_th=up_angle_th,
                                                     low_angle_th=low_angle_th,
                                                     lane_offset=lane_offset)
@@ -874,6 +883,8 @@ class LunaticAgent(BehaviorAgent):
         if road_boundaries_mode is None:
             road_boundaries_mode : bool = self.config.rss.use_stay_on_road_feature
         self._world_model.rss_set_road_boundaries_mode(road_boundaries_mode)
+
+    from agents.tools.lunatic_agent_tools import max_detection_distance
 
     # ------------------ Overwritten functions ------------------ #
 

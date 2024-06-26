@@ -9,7 +9,6 @@ from launch_tools import CarlaDataProvider
 
 from classes.constants import Phase
 from classes.rule import Rule, EvaluationFunction, TruthyEvaluationFunction, Context, always_execute
-from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.logging import logger
 
 from typing import TYPE_CHECKING, List

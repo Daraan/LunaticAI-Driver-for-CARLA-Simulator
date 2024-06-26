@@ -2,6 +2,7 @@ from __future__ import annotations # todo: can this be removed?
 
 from collections.abc import Mapping
 from functools import partial, wraps
+
 try: # Python 3.8+
     from functools import singledispatchmethod
 except ImportError:
@@ -25,7 +26,7 @@ from agents.tools.logging import logger
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
-    from agents.tools.config_creation import LunaticAgentSettings
+    from agents.tools.config_creation import LunaticAgentSettings, LiveInfo
 
 
 class Context(CarlaDataProvider):
@@ -104,6 +105,14 @@ class Context(CarlaDataProvider):
         self.evaluation_results.clear()
         self.action_results.clear()
 
+    # Convenience function when using detect_vehicles
+    from agents.tools.lunatic_agent_tools import max_detection_distance
+
+    @property
+    def live_info(self) -> "LiveInfo":
+        return self.config.live_info
+    
+    
 
 class RulePriority(IntEnum):
     """

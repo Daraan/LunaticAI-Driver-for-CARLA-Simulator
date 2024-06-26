@@ -23,19 +23,16 @@ def pedestrian_detection_manager(self : "LunaticAgent") -> ObstacleDetectionResu
 
     if self.config.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
         detection_result = detect_vehicles(self, walker_list, 
-                                           max(self.config.distance.min_proximity_threshold, 
-                                               self.config.live_info.current_speed_limit / 2), 
+                                           self.max_detection_distance("other_lane"), 
                                             up_angle_th=self.config.obstacles.detection_angles.walkers_lane_change[1], 
                                             lane_offset=-1)
     elif self.config.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
         detection_result = detect_vehicles(self, walker_list, 
-                                            max(self.config.distance.min_proximity_threshold, 
-                                                self.config.live_info.current_speed_limit / 2), 
+                                            self.max_detection_distance("other_lane"),
                                             up_angle_th=self.config.obstacles.detection_angles.walkers_lane_change[1],
                                             lane_offset=1)
     else:
         detection_result = detect_vehicles(self, walker_list, 
-                                           max(self.config.distance.min_proximity_threshold, 
-                                               self.config.live_info.current_speed_limit / 3),             
+                                           self.max_detection_distance("same_lane"),           
                                             up_angle_th=self.config.obstacles.detection_angles.walkers_same_lane[1])
     return detection_result
