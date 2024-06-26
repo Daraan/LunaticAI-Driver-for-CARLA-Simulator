@@ -284,15 +284,8 @@ class LunaticAgent(BehaviorAgent):
         return ctx
 
     # ------------------ Information functions ------------------ #
-    
-    def _clear_live_info(self): # DEBUG
-        """Clears the live_info attribute, for debugging purposes."""
-        if __debug__:
-            from omegaconf import MISSING
-            for k in self.live_info.keys():
-                self.live_info[k] = MISSING
 
-    def _update_information(self, exact_waypoint=True, second_pass=False):
+    def _update_information(self, *, second_pass=False):
         """
         This method updates the information regarding the ego
         vehicle based on the surrounding world.
@@ -307,7 +300,6 @@ class LunaticAgent(BehaviorAgent):
         # --------------------------------------------------------------------------
         if not second_pass:
             if self._debug:
-                self._clear_live_info() # assure that every value is filled again (or None)
                 assert self._lights_list
 
             # ----------------------------
@@ -321,6 +313,9 @@ class LunaticAgent(BehaviorAgent):
             self.current_states = information.current_states
             
             # Maybe access over subattribute, or properties
+            # NOTE: If other scripts, e.g. the scenario_runner, are used in parallel or sync=False
+            #       the stored actors might could have been destroyed later on.
+            
             # Global Information
             self.all_vehicles = information.vehicles
             self.all_walkers = information.walkers
@@ -338,19 +333,10 @@ class LunaticAgent(BehaviorAgent):
             
             # Find vehicles and walkers nearby; could be moved to the information manager
             
-            # NOTE: # is it more efficient to use an extra function here, why not utils.dist_to_waypoint(v, waypoint)?
-            _current_loc = self.live_info.current_location
-            def dist(v : carla.Actor): 
-                if not v.is_alive:
-                    logger.warning("Actor is not alive - this should not happen.")
-                    return _v_filter_dist # filter out
-                return v.get_location().distance(_current_loc)
-
-
-            
             # ----------------------------
             
             # Data Matrix
+            # update not every frame to save performance
             if self._road_matrix_updater and self._road_matrix_updater.sync:
                 self._road_matrix_counter += 1
                 if (self._road_matrix_counter % self.config.data_matrix.sync_interval) == 0:
@@ -359,10 +345,12 @@ class LunaticAgent(BehaviorAgent):
                     self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
                 else:
                     pass
-                    #logger.info("Not updating Road Matrix")
             
-            self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation
-            self.live_info.executed_direction = assure_type(RoadOption, self._local_planner.target_road_option) # NOTE: This is the direction used by the planner in the *last* step.
+            # used for self._local_planner.get_incoming_waypoint_and_direction
+            self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation and make more use of it
+            
+            # NOTE: This is the direction used by the planner in the *last* step.
+            self.live_info.executed_direction = assure_type(RoadOption, self._local_planner.target_road_option)
         
         assert self.live_info.executed_direction == self._local_planner.target_road_option, "Executed direction should not change."
         
@@ -627,8 +615,7 @@ class LunaticAgent(BehaviorAgent):
             #assert self.live_info.next_traffic_light.id == tlight_detection_result.traffic_light.id, "Next assumed traffic light should be the same as the detected one." # TEMP
             if self.live_info.next_traffic_light.id != tlight_detection_result.traffic_light.id:
                 # TODO: #26 detect when this is the case, can it be fixed and how serve is it? - Maybe because we just passed a traffic light (detected) != next in line?
-                logger.error("Next traffic light is not the same as the detected one. %s != %s", self.live_info.next_traffic_light.id, tlight_detection_result.traffic_light.id)
-                print("Distances: ", self.live_info.next_traffic_light.get_location().distance(self.live_info.current_location), tlight_detection_result.traffic_light.get_location().distance(self.live_info.current_location))
+                logger.info("Next traffic light is not the same as the detected one. %s != %s", self.live_info.next_traffic_light.id, tlight_detection_result.traffic_light.id)
                 
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.END, prior_results=tlight_detection_result)
 
@@ -679,8 +666,11 @@ class LunaticAgent(BehaviorAgent):
                                                  self._vehicle.bounding_box.extent.x)
             < self.config.distance.emergency_braking_distance)):
             print("Detected walker", detection_result.obstacle)
+            # TODO: should slow down here
             return True, detection_result
         # TODO detected but not stopping -> ADD avoidance behavior
+        elif detection_result.obstacle_was_found:
+            logger.debug("Detected a pedestrian but determined no intervention necessary (too far away).")
         return False, detection_result
         
     def car_following_behavior(self, vehicle_detected:bool, vehicle:carla.Actor, distance:float) -> carla.VehicleControl:
