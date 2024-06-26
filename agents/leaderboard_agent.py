@@ -12,12 +12,12 @@ from agents.tools.misc import draw_route
 from agents.tools.lunatic_agent_tools import UserInterruption
 
 try:
-    # Prefer the non-submodule version
-    from srunner.scenariomanager.timer import GameTime
-    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-except ModuleNotFoundError:
+    # Prefer the current submodule version
     from launch_tools import CarlaDataProvider
-    GameTime = NotImplemented
+    from scenario_runner.srunner.scenariomanager.timer import GameTime
+except ModuleNotFoundError:
+    from srunner.scenariomanager.timer import GameTime # type: ignore
+    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider # type: ignore
 
 try:
     from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track
@@ -37,7 +37,7 @@ from agents.tools.logging import logger
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
 if TYPE_CHECKING:
-    from srunner.autoagents.sensor_interface import SensorInterface
+    from scenario_runner.srunner.autoagents.sensor_interface import SensorInterface
     from agents.navigation.local_planner import RoadOption
     from data_gathering.car_detection_matrix.run_matrix import DataMatrix
 
