@@ -6,7 +6,7 @@
 
 
 # Autodoc command:
-# sphinx-apidoc -H "Code and API" -d 3 -f -M -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools classes/carla_originals classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py *logging.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools* docs/* conf/ *car_detection_matrix/[im]*
+# sphinx-apidoc -H "Code and API" -d 3 -f -M -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools classes/carla_originals classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py *logging.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools* docs/* conf/ *car_detection_matrix/[im]* _*
 # sphinx-build -M html docs/webview/source/ docs/webview/build/ -v -E 
 
 # -- Path setup --------------------------------------------------------------
@@ -18,9 +18,9 @@
 import os
 import sys
 PROJECT_ROOT = '../../../'
-sys.path.insert(0, os.path.abspath(PROJECT_ROOT))
 #sys.path.insert(1, os.path.abspath('../../../agents'))
 #sys.path.insert(1, os.path.abspath('../../../scenario_runner'))
+sys.path.insert(0, os.path.abspath(PROJECT_ROOT))
 if "LEADERBOARD_ROOT" in os.environ:
     sys.path.append(os.path.abspath(os.environ["LEADERBOARD_ROOT"]))
 sys.path.insert(0, os.path.abspath('./'))
@@ -46,6 +46,25 @@ extensions = ["myst_parser",
               'sphinx.ext.napoleon'
               ]
 
+# Autodoc settings
+# https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
+
+# See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_default_options
+autodoc_default_options = {
+    'members': 'var1, var2',
+    'member-order': 'bysource',
+    'special-members': '__init__',
+    'private-members': "_auto_init_",
+    'undoc-members': True,
+    'exclude-members': '__weakref__',
+    'inherited-members': True,
+}
+
+autodoc_member_order = 'groupwise'
+from _edit_rules import exclude_cdp
+exclude_cdp()
+    
+
 # see https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#syntax-attributes-inline
 # and 
 myst_enable_extensions = ["attrs_inline"]
@@ -69,8 +88,6 @@ A mapping to translate type names to other names or references. Works only when 
     }
 """
     
-
-
 
 #
 source_suffix = {

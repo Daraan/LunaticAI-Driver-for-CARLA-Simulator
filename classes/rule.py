@@ -33,12 +33,15 @@ class Context(CarlaDataProvider):
     """
     Object to be passed as the first argument (instead of self) to rules, actions and evaluation functions.
     
-    The `Context` class derives from the scenario runner's `CarlaDataProvider` to allow access to the world, map, etc.
+    The `Context` class derives from the scenario runner's [`CarlaDataProvider`](https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenariomanager/carla_data_provider.py) to allow access to the world, map, etc.
     
-    NOTE: That Context.config are the read-only settings for the given rule and actions with potential overwrites.
+    Note: 
+        That Context.config are read-only settings for the given rule and actions with potential overwrites.
     """
     
     agent : "LunaticAgent"
+    """Gives access to the agent."""
+    
     config : "LunaticAgentSettings"
     """A copy of the agents config. Overwritten by the rule's settings."""
     
@@ -58,10 +61,12 @@ class Context(CarlaDataProvider):
     
     second_pass : bool = None
     """
-    Whether or not the run_step function performs a second pass.
+    Whether or not the run_step function performs a second pass, i.e.
+    after the route has been replanned.
     
-    NOTE: The correct value of should not be assumed.
-    The user is responsible for setting this value to True if a second pass is required.
+    Warning: 
+        The correctness should *not* be assumed. 
+        The user is responsible for setting this value to True if a second pass is required.
     """
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
@@ -128,6 +133,7 @@ class RulePriority(IntEnum):
 
 @EvaluationFunction
 def always_execute(ctx : Context): # pylint: disable=unused-argument
+    """This is an `EvaluationFunction` that always returns True. It can be used to always execute an action."""
     return True
 
 
@@ -138,21 +144,21 @@ class _CountdownRule:
 
     DEFAULT_COOLDOWN_RESET : ClassVar[int] = 0
     """Value the cooldown is reset to when `reset_cooldown` is called without a value."""
-       
+    
     start_cooldown : ClassVar[int] = 0
     """Initial Cooldown when initialized. if >0 the rule will not be ready for the first start_cooldown ticks."""
 
-    instances : ClassVar[WeakSet["_CountdownRule"]] = WeakSet()
+    _instances : ClassVar[WeakSet["_CountdownRule"]] = WeakSet()
     """Keep track of all instances for the cooldowns"""
     
     _cooldown : int
     """If 0 the rule is ready to be executed."""
     
     blocked : bool = False # NOTE: not a property
-    """Indicates if the rule is blocked for this tick only. Reset to False after the tick."""
+    """Indicates if the rule is blocked for this tick only. Is reset to False after the tick."""
 
     def __init__(self, cooldown_reset_value: Optional[int] = None, enabled: bool = True):
-        self.instances.add(self)
+        self._instances.add(self)
         self._cooldown = self.start_cooldown
         self.max_cooldown = cooldown_reset_value or self.DEFAULT_COOLDOWN_RESET
         self._enabled = enabled
@@ -171,6 +177,10 @@ class _CountdownRule:
 
     @property
     def cooldown(self) -> int:
+        """
+        Cooldown of the rule in ticks until it can be executed again after its action was executed.
+        If 0 the rule is ready to be executed.
+        """
         return self._cooldown
     
     @cooldown.setter
@@ -178,17 +188,20 @@ class _CountdownRule:
         self._cooldown = value
     
     def update_cooldown(self):
+        """Update the cooldown of *this* rule."""
         if self._cooldown > 0:
             self._cooldown -= 1
     
     @classmethod
     def update_all_cooldowns(cls):
-        for instance in cls.instances:
+        """Updates the cooldown of *all* rules."""
+        for instance in cls._instances:
             instance.update_cooldown()
             
     @classmethod
     def unblock_all_rules(cls):
-        for instance in cls.instances:
+        """Unblocks all rules"""
+        for instance in cls._instances:
             instance.blocked = False
             
     @property
@@ -201,10 +214,11 @@ class _CountdownRule:
         self._enabled = value
     
     def set_active(self, value: bool):
+        """Enables or disables the rule. Contrary to `blocked` it will not be reset after the tick."""
         self._enabled = value
     
     class CooldownFramework:
-        """Context manager to reduce all cooldowns from a with statement."""
+        """Context manager that can reduce all cooldowns at the end of a `with` statement."""
 
         def __enter__(self):
             return self
@@ -223,7 +237,7 @@ class _GroupRule(_CountdownRule):
     """
 
     # first two values in the list are current and max cooldown, the third is a set of all instances
-    group_instances : ClassVar[Dict[str, List[int, int, WeakSet["_GroupRule"]]]] = {}
+    _group_instances : ClassVar[Dict[str, List[int, int, WeakSet["_GroupRule"]]]] = {}
     """
     Dictionary of all group instances. Key is the group name. 
     
@@ -235,15 +249,18 @@ class _GroupRule(_CountdownRule):
         self.group = group
         if group is None:
             return
-        if group not in self.group_instances:
-            self.group_instances[group] = [0, self.max_cooldown, WeakSet()]
-        self.group_instances[group][2].add(self) # add to weak set
+        if group not in self._group_instances:
+            self._group_instances[group] = [0, self.max_cooldown, WeakSet()]
+        self._group_instances[group][2].add(self) # add to weak set
 
     @property
     def cooldown(self) -> int:
-        """If 0 the rule is ready to be executed."""
+        """
+        Cooldown of the rule in ticks until it can be executed again after its action was executed.
+        If 0 the rule is ready to be executed.
+        """
         if self.group:
-            return _GroupRule.group_instances[self.group][0]
+            return _GroupRule._group_instances[self.group][0]
         return super().cooldown
     
     @property
@@ -253,16 +270,16 @@ class _GroupRule(_CountdownRule):
     @cooldown.setter
     def cooldown(self, value):
         if self.group:
-            _GroupRule.group_instances[self.group][0] = value
+            _GroupRule._group_instances[self.group][0] = value
             return
         super().cooldown = value
     
     def set_my_group_cooldown(self, value: Optional[int]=None):
         """Update the cooldown of the group this rule belong to"""
         if value is None:
-            self.group_instances[self.group][0] = self.group_instances[self.group][1] # set to max
+            self._group_instances[self.group][0] = self._group_instances[self.group][1] # set to max
         else:
-            self.group_instances[self.group][0] = value
+            self._group_instances[self.group][0] = value
 
     def reset_cooldown(self, value:Optional[int]=None):
         """Reset or set the cooldown"""
@@ -274,8 +291,8 @@ class _GroupRule(_CountdownRule):
     @classmethod
     def set_cooldown_of_group(cls, group: str, value: int):
         """Updates the cooldown of the specified group."""
-        if group in cls.group_instances:
-            cls.group_instances[group][0] = value
+        if group in cls._group_instances:
+            cls._group_instances[group][0] = value
         else:
             raise ValueError(f"Group {group} does not exist.")
 
@@ -284,12 +301,12 @@ class _GroupRule(_CountdownRule):
 
     @classmethod
     def update_all_cooldowns(cls):
-        """Globally updates all groups and rule instances"""
+        """Globally updates the cooldown of *all* rules."""
         # Update Groups
-        for instance_data in cls.group_instances.values():
+        for instance_data in cls._group_instances.values():
             if instance_data[0] > 0:
                 instance_data[0] -= 1
-        for instance in filter(cls.__filter_not_ready_instances, cls.instances):
+        for instance in filter(cls.__filter_not_ready_instances, cls._instances):
             instance._cooldown -= 1
 
 
@@ -300,7 +317,27 @@ class Rule(_GroupRule):
     This automatic __init__ will fix parameters like `phases` and `rule` to the class.
     
     Declaring an `__init__` method in the class has the same effect as setting `_auto_init_` to False.
+    
+    Note:
+        Using `class NewRuleType(metaclass=Rule)` equivalent to `_auto_init_=False`, but is not inherited.
     """
+    
+    # Indicate that no rule was applicable in the current phase
+    # i.e.  rule(ctx) in actions was False 
+    NOT_APPLICABLE : ClassVar = object()
+    """Object that indicates that no action was executed."""
+    
+    description : str
+    """Description of what this rule should do"""
+    
+    phases : FrozenSet["Phase"]
+    """
+    The phase or phases in which the rule should be evaluated.
+    For instantiation the phases attribute can be any `Iterable[Phase]`.
+    """
+    
+    phase : "Phase"
+    """For the Class API the phase attribute be set to a single Phase object."""
     
     rule : EvaluationFunction
     """
@@ -317,19 +354,14 @@ class Rule(_GroupRule):
     actions : Dict[Any, Callable[[Context], Any]]
     """Dictionary that maps rule results to the action that should be executed."""
     
-    description : str
-    """Description of what this rule should do"""
+    action : Optional[Callable[[Context], Any]]
+    """Action that should be executed if the rule is True. If `actions` is set, this is ignored."""
+    
+    #group : Optional[str]
+    #"""Group name for rules that should share their cooldown."""
     
     overwrite_settings : Dict[str, Any]
     """Settings that should overwrite the agent's settings for this rule."""
-    
-    phases : FrozenSet["Phase"]
-    """The phase or phases in which the rule should be evaluated."""
-
-    # Indicate that no rule was applicable in the current phase
-    # i.e.  rule(ctx) in actions was False 
-    NOT_APPLICABLE : ClassVar = object()
-    """Object that indicates that no action was executed."""
     
     priority: RulePriority = RulePriority.NORMAL
     

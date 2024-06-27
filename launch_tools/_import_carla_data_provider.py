@@ -28,7 +28,7 @@ else:
         from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider as X
         del X
     except ImportError:
-        import srunner # type: ignore
+        import srunner                                  # pyright: ignore[reportMissingImports]
         print("Using srunner from ", srunner.__file__)
         del srunner
     else:
@@ -37,5 +37,6 @@ else:
         print("=====================================================")
 
 if TYPE_CHECKING:
-    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider # still use submodule for type-hints
+    # still use submodule for type-hints
+    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider
     from scenario_runner.srunner.scenariomanager.timer import GameTime

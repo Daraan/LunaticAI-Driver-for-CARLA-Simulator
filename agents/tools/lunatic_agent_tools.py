@@ -54,10 +54,10 @@ def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal[
     
     The max distance to consider an obstacle is calculated as:
     
-    ```python
+    :: 
+        .. code-block:: python
     max(obstacles.min_proximity_threshold,
         live_info.current_speed_limit / obstacles.speed_detection_downscale.[same|other]_lane)
-    ```
     
     Args:
         self (Union[Context, LunaticAgent]): An object that implements the `config` and `live_info` attributes

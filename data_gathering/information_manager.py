@@ -175,7 +175,6 @@ class InformationManager:
         # NOTE: That transform.location and location are similar but not identical.
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
         self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle)
-
         # Only exact waypoint. TODO: update in agent
         current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(self.live_info.current_location)
         
@@ -312,6 +311,7 @@ class InformationManager:
                 InformationManager.vehicles.append(actor)
             elif fnmatch(actor.type_id, "walker.pedestrian*"):
                 InformationManager.walkers.append(actor)
+            # TODO: we could assume that these actors are mostly constant and only created in slow intervals
             elif fnmatch(actor.type_id, InformationManager.OBSTACLE_FILTER):
                 InformationManager.static_obstacles.append(actor)
             else:
