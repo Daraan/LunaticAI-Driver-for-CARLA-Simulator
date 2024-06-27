@@ -1696,7 +1696,7 @@ class LaunchConfig(AgentConfig):
     seed: Optional[int] = None
 
     # carla_service:
-    map: str = "Town04"
+    map: str = "Town04_Opt"
     host: str = "127.0.0.1"
     port: int = 2000
     
@@ -1756,8 +1756,10 @@ class LaunchConfig(AgentConfig):
     """The camera settings"""
     
 if TYPE_CHECKING:
+    from hydra.conf import HydraConf
+    from typing_extensions import NotRequired
     class LaunchConfig(LaunchConfig, DictConfig):
-        pass
+        hydra : NotRequired[HydraConf]
 
 
 def extract_annotations(parent, docs):

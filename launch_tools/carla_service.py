@@ -9,7 +9,7 @@ get_client = CarlaDataProvider.get_client
 get_world = CarlaDataProvider.get_world
 get_map = CarlaDataProvider.get_map
 
-def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10.0, worker_threads=0, reload_world=False, reset_settings=True, map_layers=carla.MapLayer.All):
+def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10.0, worker_threads=0, reload_world=False, reset_settings=True, map_layers=carla.MapLayer.All, sync:Union[bool, None]=True, fps:int=20):
     client = CarlaDataProvider.get_client()
     if client is None:
         client = carla.Client(ip, port, worker_threads)
@@ -19,26 +19,34 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10
     world = CarlaDataProvider.get_world()
     if not world:
         world = client.get_world()
-        CarlaDataProvider.set_world(world)
+    _map = world.get_map() # CarlaDataProvider map not yet set ->  set_world
     
-    if map_name and CarlaDataProvider.get_map().name != "Carla/Maps/" + map_name:
-        world = client.load_world(map_name, reset_settings, map_layers)
-        CarlaDataProvider.set_world(world)
+    if map_name and _map.name != "Carla/Maps/" + map_name:
+        world: carla.World = client.load_world(map_name, reset_settings, map_layers)
     elif reload_world:
         world = client.reload_world(reset_settings)
-        CarlaDataProvider.set_world(world)
         logger.info("Reloaded world - map_layers ignored.")
-    elif not CarlaDataProvider._map: # only if no map_name is provided & world exists somehow. This should actually not happen.
-        logger.error("CarlaDataProvider._map is None. This should not happen.")
-        CarlaDataProvider.set_world(world)
     elif map_name is None:
         logger.info("Provided map_name is None, skipped loading world. Assuming world is already loaded.")
     else:
-        logger.info("skipped loading world %s, already loaded - map_layers and reset_settings ignored.", CarlaDataProvider.get_map().name)
-    # These are all set if set_world was executed, will only fail if _world was set without set_world
-    assert CarlaDataProvider._grp
-    assert CarlaDataProvider._spawn_points is not None # can be empty
-    assert CarlaDataProvider._traffic_light_map is not None # can be empty
+        logger.info("skipped loading world %s, already loaded - map_layers and reset_settings ignored.", _map.name)
+    
+    world_settings = world.get_settings()
+    # Apply world settings
+    if sync is not None:
+        if sync:
+            logger.debug("Using synchronous mode.")
+            # apply synchronous mode if wanted
+            world_settings.synchronous_mode = True
+            world_settings.fixed_delta_seconds = 1/fps # 0.05
+            world.apply_settings(world_settings)
+        else:
+            logger.debug("Using asynchronous mode.")
+            world_settings.synchronous_mode = False
+        world.apply_settings(world_settings)
+    print("World Settings:", world_settings)
+    # Note: This loads multiple information. It should be called after applying the world settings.
+    CarlaDataProvider.set_world(world)
     
     map_ = CarlaDataProvider.get_map()
     return client, world, map_

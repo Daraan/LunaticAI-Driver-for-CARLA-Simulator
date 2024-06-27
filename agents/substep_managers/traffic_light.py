@@ -32,7 +32,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
 
         if not lights_list:
             if self._world_model._args.debug:
-                logger.warning("No traffic lights list provided, using all traffic lights in the scene.") # TODO: turn into debug
+                logger.warning("No traffic lights list provided, using all traffic lights in the scene. This should not happen.")
             lights_list = self._world.get_actors().filter("*traffic_light*")
 
         if not max_distance:

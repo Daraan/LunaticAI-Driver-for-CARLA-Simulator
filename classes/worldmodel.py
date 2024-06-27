@@ -3,10 +3,13 @@
 from collections.abc import Mapping
 import os
 import sys
-from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING
 import weakref
+from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING
 
 import numpy as np
+import hydra
+from hydra.core.global_hydra import GlobalHydra
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 
 import carla
@@ -35,7 +38,10 @@ from launch_tools.blueprint_helpers import get_actor_blueprints
 from launch_tools import carla_service
 from agents.tools.logging import logger
 
-from launch_tools import CarlaDataProvider
+from launch_tools import CarlaDataProvider, Literal
+
+def _hydra_initialized():
+    return GlobalHydra.instance().is_initialized()
 
 class AccessCarlaDataProviderMixin:
     """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
@@ -106,10 +112,22 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     
     # ----- Init Functions -----
     
+    @classmethod
+    def quickstart(cls, launch_config: Optional["LaunchConfig"]=None, *, logging=False):
+        if not launch_config:
+            launch_config = cls.initialize_hydra(logging=logging)
+        if not logging and AD_RSS_AVAILABLE:
+            launch_config.agent.rss.log_level = "off"
+        cls.init_carla(launch_config)
+        cls.init_pygame(launch_config)
+        print("actors", len(CarlaDataProvider.get_world().get_actors()))
+        return cls(launch_config)
+        
+    
     # Hydra Tools
     # TODO: this could be some launch_tools MixinClass
     @staticmethod
-    def initialize_hydra(config_dir: str="./conf", config_name: str="launch_config", version_base=None, *, job_name="LunaticAgentJob") -> "LaunchConfig":
+    def initialize_hydra(config_dir: str="./conf", config_name: str="launch_config", version_base=None, *, job_name="LunaticAgentJob", logging=True) -> "LaunchConfig":
         """
         Use this function only if no hydra.main is available.
         
@@ -118,21 +136,43 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             game_framework = GameFramework(args)
         """
         config_dir = os.path.abspath(config_dir)
-        from hydra import initialize_config_dir
-        # Not save-guarding this against multiple calls, expose the hydra error
-        # todo: low-prio check if config dir and the other parameters are the same.
-        initialize_config_dir(version_base=version_base, 
-                                        config_dir=config_dir, 
-                                        job_name=job_name)
-        GameFramework.__hydra_initialized = True
-        return GameFramework.load_hydra_config(config_name)
+        hydra_initialized = _hydra_initialized()
+        if not hydra_initialized:
+            # Not save-guarding this against multiple calls, expose the hydra error
+            # todo: low-prio check if config dir and the other parameters are the same.
+            hydra.initialize_config_dir(version_base=version_base, 
+                                            config_dir=config_dir, 
+                                            job_name=job_name)
     
+        config: "LaunchConfig" = hydra.compose(config_name=config_name, return_hydra_config=not hydra_initialized, overrides=None)
+        
+        if not hydra_initialized:
+            hydra_conf: HydraConfig = GameFramework.get_hydra_config(raw=True)
+            if OmegaConf.is_missing(config.hydra.runtime, "output_dir"):
+                config.hydra.runtime.output_dir = config.hydra.run.dir
+            hydra_conf.set_config(config)
+            os.makedirs(config.hydra.runtime.output_dir, exist_ok=True)
+            from hydra.core.utils import configure_log
+            if logging:
+                configure_log(config.hydra.job_logging, logger.name) # Assure that our logger works
+            from omegaconf import open_dict
+            with open_dict(config):
+                del config["hydra"]
+        return config
+        
+    # TODO: Maybe unify these settings
     @staticmethod
-    def load_hydra_config(config_name: str="launch_config") -> "LaunchConfig":
-        from hydra import compose
-        return compose(config_name=config_name)
-    
-    # 
+    def load_hydra_config(config_name: str="conf/launch_config") -> "LaunchConfig":
+        if _hydra_initialized():
+            return hydra.compose(config_name=config_name)
+        else:
+            config_dir, config_name = os.path.split(config_name)
+            import inspect
+            frame = inspect.stack()[-1]
+            module = inspect.getmodule(frame[0])
+            name = module.__file__ if module else "unknown"
+            return GameFramework.initialize_hydra(config_dir, config_name, job_name=name)
+            
     
     def __init__(self, args: "LaunchConfig", config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
         if args.seed:
@@ -153,34 +193,23 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
         
     @staticmethod
-    def init_pygame(args):
+    def init_pygame(args:Optional["LaunchConfig"]=None):
         pygame.init()
         pygame.font.init()
         clock = pygame.time.Clock()
         display = pygame.display.set_mode(
-            (args.width, args.height),
+            (args.width, args.height) if args else (1280, 720),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
         return clock, display
     
-    def init_carla(self, args: "LaunchConfig", timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
-        client, world, world_map = carla_service.initialize_carla(args.map, args.host, args.port, timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
-        
-        world_settings = self.world.get_settings()
-        # Apply world settings
-        if args.sync is not None: # Else let this be handled by someone else
-            if args.sync:
-                logger.debug("Using synchronous mode.")
-                # apply synchronous mode if wanted
-                world_settings.synchronous_mode = True
-                world_settings.fixed_delta_seconds = 1/args.fps # 0.05
-                self.world.apply_settings(world_settings)
-            else:
-                logger.debug("Using asynchronous mode.")
-                world_settings.synchronous_mode = False
-            world.apply_settings(world_settings)
-        print("World Settings:", world_settings)
-        CarlaDataProvider._sync_flag = world_settings.synchronous_mode
-        return world_settings
+    @staticmethod
+    def init_carla(args: Optional["LaunchConfig"]=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+        # Note: This sets up the CarlaDataProvider
+        if args is None:
+            carla_service.initialize_carla(timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
+        else:
+            carla_service.initialize_carla(args.map, args.host, args.port, timeout=timeout, worker_threads=worker_threads, map_layers=map_layers, sync=args.sync, fps=args.fps)
+        return CarlaDataProvider.get_world().get_settings()
     
     def init_traffic_manager(self, port=8000) -> carla.TrafficManager:
         traffic_manager = self.client.get_trafficmanager(port)
@@ -195,6 +224,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.config = self.agent.config
         controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         self.world_model.game_framework = weakref.proxy(self)
+        self.world_model.tick_server_world()
         return self.agent, self.world_model, self.global_planner, controller
     
     def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
@@ -206,6 +236,21 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         controller = controller_class(world_model, config=self.config, clock=self.clock, **kwargs)
         self.controller: controller_class = weakref.proxy(controller) # note type not correct. TODO: proxy a good idea?
         return controller # NOTE: does not return the proxy object.
+    
+
+    @staticmethod
+    def get_hydra_config(raw:bool=False):
+        if raw:
+            return HydraConfig.instance()
+        return HydraConfig.get()
+    
+    @property
+    def launch_config(self):
+        return self._args
+    
+    @property
+    def agent_config(self):
+        return self.agent.config if self.agent else self._args.agent
     
     # ----- Setters -----
     
@@ -250,6 +295,21 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     destroy_actors = staticmethod(carla_service.destroy_actors)
     
     # -------- Context Manager --------
+
+    def __call__(self, agent: "LunaticAgent"):
+        self.agent = agent
+        self.world_model = agent._world_model
+        try:
+            if self.world_model.controller: # weakref.proxy
+                self.controller = self.world_model.controller
+        except ReferenceError:
+            self.controller = None
+        if not self.controller:
+            logger.debug("Creating new controller.")
+            self.controller = self.make_controller(self.world_model, start_in_autopilot=self._args.autopilot) # hard reference
+            self.world_model.controller = self.controller # hard instead of weak reference
+        self.agent._validate_phases = False
+        return self
 
     def __enter__(self):
         if self.agent is None:
@@ -337,8 +397,13 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         if not isinstance(args, (Mapping, DictConfig, AgentConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
+            # When passed as path with directory
+            config_dir, config_name = os.path.split(args)
             try:
-                args = OmegaConf.load(args)
+                args = GameFramework.initialize_hydra(config_dir, config_name)
+            except ValueError:
+                # Hydra already initialized
+                args = GameFramework.load_hydra_config(config_name)
             except Exception as e:
                 print("Problem with", type(args), args) 
                 raise e
@@ -376,7 +441,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         else:
             self.player = player
 
-        assert self.player is not None or self.external_actor # Note: Former optional. PLayer set in restart
+        assert self.player is not None or self.external_actor # Note: Former optional. Player set in restart
 
         self.collision_sensor = None
         self.lane_invasion_sensor = None
@@ -385,10 +450,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.radar_sensor = None # from interactive
         self.camera_manager = None
         
-        if CarlaDataProvider:
-            self._weather_presets = CarlaDataProvider.find_weather_presets()
-        else:
-            self._weather_presets = ["CarlaDataProvider for weather presets"] # TODO: remove and make srunner a necessary module.
+        self._weather_presets = CarlaDataProvider.find_weather_presets()
         self._weather_index = 0
         self.weather = None
         
@@ -432,6 +494,13 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.restart()
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
+        
+        if CarlaDataProvider._traffic_light_map is None:
+            logger.error("Traffic light map not set at this point") # should not have happened
+            CarlaDataProvider.set_world(self._world)
+        elif not CarlaDataProvider._traffic_light_map:
+            logger.error("Traffic light map is empty") # should not have happened
+            CarlaDataProvider.prepare_map()
 
     def rss_set_road_boundaries_mode(self, road_boundaries_mode: Optional[Union[bool, "carla.RssRoadBoundariesMode"]]=None):
         # Called from KeyboardControl
@@ -464,10 +533,13 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
 
     @staticmethod
     def _find_external_actor(world:carla.World, role_name:str, actor_list: Optional[carla.ActorList]=None) -> Union[None, carla.Actor]:
+        player = None
         for actor in actor_list or world.get_actors():
             if actor.attributes.get('role_name') == role_name:
-                return actor
-        return None
+                if player is not None:
+                    logger.error("Multiple actors with role_name `%s` found. id: %s. Returning the last one found.", role_name, actor.id)
+                player = actor
+        return player
 
     def _wait_for_external_actor(self, timeout=20, sleep=3) -> carla.Actor:
         import time
@@ -759,8 +831,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
             self.get_world().tick()
             
         if self._has_recorded:
-            from hydra.core.hydra_config import HydraConfig
-            runtime_dir = HydraConfig.get().runtime.output_dir
+            runtime_dir = GameFramework.get_hydra_config().runtime.output_dir
             for dir_name_formatted in self._recording_dirs:
                 dirname = os.path.split(dir_name_formatted)[1]
                 os.system(f'ffmpeg -an -sn -i "{dir_name_formatted}/%08d.bmp" -framerate 1 -vcodec mpeg4 -r 60 "{os.path.join(runtime_dir, dirname)}.avi"')

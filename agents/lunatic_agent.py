@@ -86,6 +86,9 @@ class LunaticAgent(BehaviorAgent):
     
     _world_model : WorldModel = None # TODO: maybe as weakref
     
+    _validate_phases = True
+    """A flag to sanity check if the agent passes trough the phases in the correct order"""
+    
     @classmethod
     def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args: LaunchConfig, 
                                settings_archtype: "Optional[type[AgentConfig]]"=None, config: Optional["LunaticAgentSettings"]=None, 
@@ -155,6 +158,10 @@ class LunaticAgent(BehaviorAgent):
             logger.warning("Warning: Settings are not a supported Config class. Trying to apply overwrite options.")
             behavior.update(overwrite_options) 
             opt_dict = behavior  # assume the user passed something appropriate
+        if isinstance(behavior, DictConfig):
+            behavior._set_flag("allow_objects", True)
+            behavior.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
+            
         self._behavior = behavior
         self.config = opt_dict # NOTE: This is the attribute we should use to access all information.
         
@@ -164,6 +171,7 @@ class LunaticAgent(BehaviorAgent):
         if world_model is None:
             world_model = WorldModel(self.config, player=vehicle)
             self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
+        
         self._world_model : WorldModel = world_model
         self._world : carla.World = world_model.world
         
@@ -271,10 +279,13 @@ class LunaticAgent(BehaviorAgent):
         if self.ctx:
             self.ctx.agent = None
         self.ctx = None
-        self.all_vehicles.clear()
-        self.vehicles_nearby.clear()
-        self.all_walkers.clear()
-        self.walkers_nearby.clear()
+        try:
+            self.all_vehicles.clear()
+            self.vehicles_nearby.clear()
+            self.all_walkers.clear()
+            self.walkers_nearby.clear()
+        except AttributeError:
+            pass
             
     #@property
     #def ctx(self) -> Union[Context, None]:
@@ -306,7 +317,8 @@ class LunaticAgent(BehaviorAgent):
         # --------------------------------------------------------------------------
         if not second_pass:
             if self._debug:
-                assert self._lights_list
+                if not self._lights_list and len(CarlaDataProvider._traffic_light_map.keys()):
+                    logger.error("Traffic light list is empty, but map is not.")
 
             # ----------------------------
             # First Pass for expensive and tick-constant information
@@ -414,7 +426,8 @@ class LunaticAgent(BehaviorAgent):
         Sets the current phase of the agent and executes all rules that are associated with it.
         """
         normal_next = self.current_phase.next_phase() # sanity checking if everything is correct
-        assert normal_next == Phase.USER_CONTROLLED or phase == normal_next or phase & Phase.EXCEPTIONS or phase & Phase.USER_CONTROLLED, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
+        if self._validate_phases:
+            assert normal_next == Phase.USER_CONTROLLED or phase == normal_next or phase & Phase.EXCEPTIONS or phase & Phase.USER_CONTROLLED, f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
         
         self.current_phase = phase # set next phase
         
@@ -618,9 +631,11 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.BEGIN, prior_results=None)
         tlight_detection_result = self.traffic_light_manager()
         if tlight_detection_result.traffic_light_was_found:
+            assert tlight_detection_result.traffic_light.id
             hazard_detected.add(Hazard.TRAFFIC_LIGHT)             #TODO: Currently cannot give fine grained priority results
             #assert self.live_info.next_traffic_light.id == tlight_detection_result.traffic_light.id, "Next assumed traffic light should be the same as the detected one." # TEMP
-            if self.live_info.next_traffic_light.id != tlight_detection_result.traffic_light.id:
+            # DEBUG
+            if self.live_info.next_traffic_light and self.live_info.next_traffic_light.id != tlight_detection_result.traffic_light.id:
                 # TODO: #26 detect when this is the case, can it be fixed and how serve is it? - Maybe because we just passed a traffic light (detected) != next in line?
                 logger.info("Next traffic light is not the same as the detected one. %s != %s", self.live_info.next_traffic_light.id, tlight_detection_result.traffic_light.id)
                 
