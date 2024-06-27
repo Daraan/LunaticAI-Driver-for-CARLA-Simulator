@@ -6,7 +6,9 @@ def exclude_cdp():
         content = f.read()
         i = content.find(".. automodule:: classes.rule\n")
         l = len(".. automodule:: classes.rule\n")
-        content = content[:i+l] + "   :exclude-members: " + exclude_cdp + "\n" + content[i+l:]
+        # Do not write double online
+        if not exclude_cdp in content[i+l+len(exclude_cdp)+1:]:
+            content = content[:i+l] + "   :exclude-members: " + exclude_cdp + "\n" + content[i+l:]
         f.seek(0)
         f.write(content)
         

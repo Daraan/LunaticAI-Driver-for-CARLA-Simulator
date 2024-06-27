@@ -1,13 +1,14 @@
 # Agents
 
-There are two different agent classes than can be used the [](#agents.lunatic_agent.LunaticAgent) that is fully customizable,
+There are two different agent classes than can be used the [](#LunaticAgent) that is fully customizable,
 and the simpler but less flexible [](#LunaticChallenger).
 
 ## Agent Classes
 
 ### LunaticChallenger Class
 
-The [`LunaticChallenger`](#agents.leaderboard_agent.LunaticChallenger) is wrapped around the [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent) it can be more easily combined with the [scenario_runner](https://github.com/carla-simulator/scenario_runner) or be used with the [leaderboard-2.0](https://leaderboard.carla.org/get_started/) for which this class is especially designed.
+The [](#agents.leaderboard_agent.LunaticChallenger) is wrapped around the [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent).
+It can be more easily combined with the [ScenarioRunner](https://scenario-runner.readthedocs.io/en/latest/) and be used with the [Leaderboard 2.0](https://leaderboard.carla.org/get_started/) for which this class is especially designed.
 
 In the simplest way an agent can be used like this:
 
