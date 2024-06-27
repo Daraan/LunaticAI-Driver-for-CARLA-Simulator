@@ -13,11 +13,10 @@ from agents.tools.lunatic_agent_tools import UserInterruption
 
 try:
     # Prefer the current submodule version
-    from launch_tools import CarlaDataProvider
-    from scenario_runner.srunner.scenariomanager.timer import GameTime
+    from launch_tools import CarlaDataProvider, GameTime
 except ModuleNotFoundError:
-    from srunner.scenariomanager.timer import GameTime # type: ignore
-    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider # type: ignore
+    from srunner.scenariomanager.timer import GameTime                        # pyright: ignore[reportMissingImports]      
+    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider # pyright: ignore[reportMissingImports]
 
 try:
     from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track
