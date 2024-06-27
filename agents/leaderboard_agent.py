@@ -1,6 +1,6 @@
 import operator
 import os
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING, Union
 from omegaconf import OmegaConf
 from hydra import compose, initialize_config_dir
 from hydra.core.utils import configure_log
@@ -19,8 +19,8 @@ except ModuleNotFoundError:
     from srunner.scenariomanager.carla_data_provider import CarlaDataProvider # pyright: ignore[reportMissingImports]
 
 try:
-    from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track
-    from leaderboard.utils.route_manipulation import downsample_route
+    from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track # pyright: ignore[reportMissingImports]
+    from leaderboard.utils.route_manipulation import downsample_route          # pyright: ignore[reportMissingImports]
 except ModuleNotFoundError:
     # Leaderboard is not a submodule, cannot use it on readthedocs 
     if "READTHEDOCS" in os.environ:
@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     from agents.navigation.local_planner import RoadOption
     from data_gathering.car_detection_matrix.run_matrix import DataMatrix
 
-hydra_initialized = False
 import logging
 logger.setLevel(logging.DEBUG)
 
@@ -89,57 +88,64 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("Initializing LunaticChallenger")
         self.world_model: WorldModel = None
         self.game_framework: GameFramework = None
+        self._destroyed = False
         super().__init__(carla_host, carla_port, debug)
         self.track = Track.MAP
         self._opendrive_data = None
         self._local_planner = None
 
-    def setup(self, path_to_conf_file):
+    def setup(self, path_to_conf_file: Union[str, LaunchConfig]):
+        self._destroyed = False
         self.track = Track.MAP
-        print("Setup with conf file", path_to_conf_file)
-        logger.info("Setup with conf file %s", path_to_conf_file)
-        config_dir, config_name = os.path.split(path_to_conf_file)
-        # TODO: Maybe move to init so its available during set_global_plan 
-        global hydra_initialized
-        global args
-        if not hydra_initialized:
-            initialize_config_dir(version_base=None, 
-                                    config_dir=config_dir, 
-                                    job_name="LeaderboardAgent")
+        if isinstance(path_to_conf_file, str):
+            print("Setup with conf file", path_to_conf_file)
+            logger.info("Setup with conf file %s", path_to_conf_file)
+            config_dir, config_name = os.path.split(path_to_conf_file)
+            # TODO: Maybe move to init so its available during set_global_plan 
+            global args
             overrides=["agent=leaderboard"]
-            if not ENABLE_DATA_MATRIX:
-                overrides.append("agent.data_matrix.enabled="+str(ENABLE_DATA_MATRIX).lower())
-            overrides.append("agent.data_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
-            if not ENABLE_RSS:
-                overrides.append("agent.rss.enabled=false")
-            args = compose(config_name=config_name, return_hydra_config=True, 
-                           overrides=overrides # uses conf/agent/leaderboard
-                           )
-            from hydra.core.hydra_config import HydraConfig
-            if OmegaConf.is_missing(args.hydra.runtime, "output_dir"):
-                args.hydra.runtime.output_dir = args.hydra.run.dir
-            HydraConfig.instance().set_config(args)
-            os.makedirs(args.hydra.runtime.output_dir, exist_ok=True)
-            configure_log(args.hydra.job_logging, logger.name) # Assure that our logger works
+            if not GameFramework.hydra_initialized():
+                initialize_config_dir(version_base=None, 
+                                        config_dir=os.path.abspath(config_dir), 
+                                        job_name="LeaderboardAgent")
+                if not ENABLE_DATA_MATRIX:
+                    overrides.append("agent.data_matrix.enabled="+str(ENABLE_DATA_MATRIX).lower())
+                overrides.append("agent.data_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
+                if not ENABLE_RSS:
+                    overrides.append("agent.rss.enabled=false")
+                args = compose(config_name=config_name, return_hydra_config=True, 
+                            overrides=overrides # uses conf/agent/leaderboard
+                            )
+                from hydra.core.hydra_config import HydraConfig
+                if OmegaConf.is_missing(args.hydra.runtime, "output_dir"):
+                    args.hydra.runtime.output_dir = args.hydra.run.dir
+                HydraConfig.instance().set_config(args)
+                os.makedirs(args.hydra.runtime.output_dir, exist_ok=True)
+                configure_log(args.hydra.job_logging, logger.name) # Assure that our logger works
+                
+                # Let scenario manager decide
+                if args.map:
+                    logger.warning("Map should be set by scenario manager and be None in the config file found map is %s." % args.map)
+                if args.handle_ticks:
+                    logger.warning("When using the leaderboard agent, handle_ticks should be False.")
+                    args.handle_ticks = False
+                if args.sync is not None:
+                    logger.warning("When using the leaderboard agent, sync should be None.")
+                    args.sync = None
+                args.debug = DEBUG
+                args.agent.data_matrix.sync = not DATA_MATRIX_ASYNC
+                args.agent.data_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
+                print(OmegaConf.to_yaml(args))
+            else:
+                args = compose(config_name=config_name, return_hydra_config=True, 
+                    overrides=overrides)
+            logger.setLevel(logging.DEBUG)
+            self.args = args
             
-            hydra_initialized = True
-            # Let scenario manager decide
-            if args.map:
-                logger.warning("Map should be set by scenario manager and be None in the config file found map is %s." % args.map)
-            if args.handle_ticks:
-                logger.warning("When using the leaderboard agent, handle_ticks should be False.")
-                args.handle_ticks = False
-            if args.sync is not None:
-                logger.warning("When using the leaderboard agent, sync should be None.")
-                args.sync = None
-            args.debug = DEBUG
-            args.agent.data_matrix.sync = not DATA_MATRIX_ASYNC
-            args.agent.data_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
-            print(OmegaConf.to_yaml(args))
-        logger.setLevel(logging.DEBUG)
-        self.args = args
-        
-        config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True, as_dictconfig=True)
+            config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True, as_dictconfig=True)
+        else:
+            self.args = path_to_conf_file
+            config = self.args.agent
         config.planner.dt = 1/20 # TODO: maybe get from somewhere
         
         self.game_framework = GameFramework(self.args, config)
@@ -154,11 +160,11 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("LunaticAgent initialized")
         
         # Set plan
-        self._local_planner_set_plan(self._global_plan_waypoints)
+        if self._global_plan_waypoints:
+            self._local_planner_set_plan(self._global_plan_waypoints)
         
         self.game_framework.agent = self # TODO: Remove this circular reference
         self.agent_engaged = False
-        self._destroyed = False
         # Print controller docs
         try:
             print(self.controller.get_docstring())

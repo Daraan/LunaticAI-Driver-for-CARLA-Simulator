@@ -40,9 +40,6 @@ from agents.tools.logging import logger
 
 from launch_tools import CarlaDataProvider, Literal
 
-def _hydra_initialized():
-    return GlobalHydra.instance().is_initialized()
-
 class AccessCarlaDataProviderMixin:
     """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
     
@@ -136,7 +133,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             game_framework = GameFramework(args)
         """
         config_dir = os.path.abspath(config_dir)
-        hydra_initialized = _hydra_initialized()
+        hydra_initialized = GameFramework.hydra_initialized()
         if not hydra_initialized:
             # Not save-guarding this against multiple calls, expose the hydra error
             # todo: low-prio check if config dir and the other parameters are the same.
@@ -158,12 +155,14 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             from omegaconf import open_dict
             with open_dict(config):
                 del config["hydra"]
+        config.agent._set_flag("allow_objects", True)
+        config.agent.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
         return config
         
     # TODO: Maybe unify these settings
     @staticmethod
     def load_hydra_config(config_name: str="conf/launch_config") -> "LaunchConfig":
-        if _hydra_initialized():
+        if GameFramework.hydra_initialized():
             return hydra.compose(config_name=config_name)
         else:
             config_dir, config_name = os.path.split(config_name)
@@ -237,6 +236,9 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.controller: controller_class = weakref.proxy(controller) # note type not correct. TODO: proxy a good idea?
         return controller # NOTE: does not return the proxy object.
     
+    @staticmethod
+    def hydra_initialized():
+        return GlobalHydra.instance().is_initialized()
 
     @staticmethod
     def get_hydra_config(raw:bool=False):
