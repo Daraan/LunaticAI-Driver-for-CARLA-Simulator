@@ -8,9 +8,9 @@ import weakref
 
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
-import pygame
 
 import carla
+import pygame
 import numpy.random as random
 from agents.tools.config_creation import AgentConfig
 from agents.tools.lunatic_agent_tools import AgentDoneException, ContinueLoopException

@@ -1,12 +1,12 @@
 import operator
 import os
 from typing import Any, Dict, TYPE_CHECKING
-import pygame
 from omegaconf import OmegaConf
 from hydra import compose, initialize_config_dir
 from hydra.core.utils import configure_log
 
 import carla
+import pygame
 
 from agents.tools.misc import draw_route
 from agents.tools.lunatic_agent_tools import UserInterruption

@@ -11,9 +11,9 @@ import os
 import math
 from typing import ClassVar, Optional, Union
 from datetime import timedelta
-import pygame
 
 import carla
+import pygame
 
 
 from classes.keyboard_controls import RSSKeyboardControl

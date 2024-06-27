@@ -1,4 +1,5 @@
-import math
+import carla
+
 import weakref
 import pygame
 from pygame.locals import KMOD_CTRL
@@ -36,8 +37,6 @@ from pygame.locals import K_x
 from pygame.locals import MOUSEBUTTONDOWN
 from pygame.locals import MOUSEBUTTONUP
 
-
-import carla
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
