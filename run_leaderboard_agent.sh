@@ -1,3 +1,4 @@
+# NOTE: This file is supposed to run from the leaderboard-agent branch and with a setup from doc/leadearbord_requirements
 
 
 # Define Team files
