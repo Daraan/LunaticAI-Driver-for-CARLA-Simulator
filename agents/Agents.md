@@ -1,11 +1,11 @@
 # Agents
 
-There are two different agent classes than can be used the [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent) that is fully customizable,
-and the simpler but less flexible [`LunaticChallenger`](#agents.leaderboard_agent.LunaticChallenger).
+There are two different agent classes than can be used the [](#agents.lunatic_agent.LunaticAgent) that is fully customizable,
+and the simpler but less flexible [](#LunaticChallenger).
 
 ## Agent Classes
 
-### LunaticChallenger
+### LunaticChallenger Class
 
 The [`LunaticChallenger`](#agents.leaderboard_agent.LunaticChallenger) is wrapped around the [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent) it can be more easily combined with the [scenario_runner](https://github.com/carla-simulator/scenario_runner) or be used with the [leaderboard-2.0](https://leaderboard.carla.org/get_started/) for which this class is especially designed.
 
@@ -31,7 +31,7 @@ while True:
     ego.apply_control(control)
 ```
 
-### LunaticAgent
+### LunaticAgent Class
 
 The [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent) can be initialized in multiple ways
 
