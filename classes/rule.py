@@ -3,6 +3,8 @@ from __future__ import annotations # todo: can this be removed?
 from collections.abc import Mapping
 from functools import partial, wraps
 
+from classes.exceptions import DoNotEvaluateChildRules
+
 try: # Python 3.8+
     from functools import singledispatchmethod
 except ImportError:
@@ -882,13 +884,6 @@ class RandomRule(metaclass=MultiRule):
             weights = list(accumulate(r.priority.value for r in rules))
         return result
 
-
-class DoNotEvaluateChildRules(Exception):
-    """
-    Can be raised in a MultiRule to prevent the evaluation of child rules.
-    
-    Can also be raised by child rules to prevent the evaluation of further child rules.
-    """
 
 # Provide necessary imports for the evaluation_function module and prevents circular imports
 

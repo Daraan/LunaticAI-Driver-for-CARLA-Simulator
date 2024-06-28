@@ -9,7 +9,7 @@ import carla
 import pygame
 
 from agents.tools.misc import draw_route
-from agents.tools.lunatic_agent_tools import UserInterruption
+from classes.exceptions import UserInterruption
 
 try:
     # Prefer the current submodule version

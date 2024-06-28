@@ -7,53 +7,13 @@ from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
                                compute_distance)
 
+from classes.exceptions import EmergencyStopException, LunaticAIException, SkipInnerLoopException
 from launch_tools import CarlaDataProvider, Literal
 from typing import TYPE_CHECKING, List, Union
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     from classes.rule import Context
-
-# ------------------------------
-# Exceptions
-# ------------------------------
-
-
-class AgentDoneException(Exception):
-    """
-    Raised when there is no more waypoint in the queue to follow and no rule set a new destination.
-    
-    When the a GameFramework instance is used as context manager will set game_framework.continue_loop to False.
-    """
-
-class ContinueLoopException(Exception):
-    """
-    Raise when `run_step` action of the agent should not be continued further.
-
-    The agent returns the current ctx.control to the caller of run_step.
-    
-    Note:
-        Handled in Agent.run_step, this exception should not propagate outside.
-        It can be caught by GameFramework and skip the current loop, but it will
-        log an error.
-    """
-
-class UserInterruption(Exception):
-    """
-    Terminate the loop if user input is detected.
-    Allows the scenario runner and leaderboard to exit gracefully, if 
-    handled appropriately, e.g. by directly returning.
-    
-    Thrown by [LunaticAgent.parse_keyboard_controls](#agents.lunatic_agent.LunaticAgent.parse_keyboard_controls).
-    """
-
-class UpdatedPathException(Exception):
-    """
-    Should be raised when the path has been updated and the agent should replan.
-    
-    Rules that replan on Phase.DONE | END, should throw this exception at the end.
-    """
-
 
 # ------------------------------
 # Obstacle Detection

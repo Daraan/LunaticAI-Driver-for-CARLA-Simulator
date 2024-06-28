@@ -28,6 +28,7 @@ from omegaconf import MISSING, DictConfig, OmegaConf
 #    from utils.egg_import import carla
 import carla 
 import pygame
+from classes import exceptions
 import launch_tools
     
 from launch_tools import CarlaDataProvider
@@ -176,7 +177,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                         # -> Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN
                         agent.parse_keyboard_input(allow_user_updates=True)
                         # -> Phase.APPLY_MANUAL_CONTROLS | Phase.END
-                    except GameFramework.exceptions.UserInterruption:
+                    except exceptions.UserInterruption:
                         return    
                     
                     # ------ Apply Control ------

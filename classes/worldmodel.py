@@ -16,12 +16,13 @@ import carla
 import pygame
 import numpy.random as random
 from agents.tools.config_creation import AgentConfig, class_or_instance_method
-from agents.tools.lunatic_agent_tools import AgentDoneException, ContinueLoopException, UserInterruption
+from classes.exceptions import UserInterruption
 from classes.HUD import HUD
 
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 
+from classes.exceptions import AgentDoneException, ContinueLoopException
 from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
