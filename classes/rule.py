@@ -223,7 +223,11 @@ class _CountdownRule:
         def __enter__(self):
             return self
 
-        def __exit__(_, exc_type, exc_value, traceback):
+        def __exit__(self, exc_type, exc_value, traceback):
+            self.tick()
+        
+        @staticmethod
+        def tick():
             Rule.update_all_cooldowns()
             Rule.unblock_all_rules()
                 

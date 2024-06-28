@@ -19,6 +19,8 @@ try:
         with game_framework(agent):
             agent.run_step(input_data=None, timestamp=None)
             agent.apply_control()
-except:
+except GameFramework.exceptions.UserInterruption:
+    print("User interrupted. Exiting...")
+finally:
     game_framework.cleanup()
-    raise
+    

@@ -15,7 +15,7 @@ from omegaconf import DictConfig, OmegaConf
 import carla
 import pygame
 import numpy.random as random
-from agents.tools.config_creation import AgentConfig
+from agents.tools.config_creation import AgentConfig, class_or_instance_method
 from agents.tools.lunatic_agent_tools import AgentDoneException, ContinueLoopException, UserInterruption
 from classes.HUD import HUD
 
@@ -278,14 +278,16 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.world_model.finalize_render(self.display)
         
     @staticmethod
-    def skip_rest_of_loop(message="GameFrameWork.end_loop"):
+    def skip_rest_of_loop(message="GameFramework.end_loop"):
         """
         Terminates the current iteration and exits the GameFramework.
         
-        NOTE: It is the users responsibility to manage the agent & local planner
-        before calling this function.
+        Note: 
+            It is the users responsibility to manage the agent & local planner
+            before calling this function.
         
-        Raises: ContinueLoopException
+        Raises: 
+            ContinueLoopException
         """
         # TODO: add option that still allows for rss.
         raise ContinueLoopException(message)
@@ -299,6 +301,10 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     # -------- Context Manager --------
 
     def __call__(self, agent: "LunaticAgent"):
+        """
+        Use as context manager to handle the game loop.
+        Pass an agent if None is set yet.
+        """
         self.agent = agent
         self.world_model = agent._world_model
         try:
@@ -341,13 +347,64 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cooldown_framework.__exit__(exc_type, exc_val, exc_tb)
+        if exc_val:
+            if isinstance(exc_val, AgentDoneException):
+                self.continue_loop = False
+            elif isinstance(exc_val, ContinueLoopException):
+                logger.error("ContinueLoopException(%s) should be thrown during `agent.run_step` but caught by GameFramework this should not happen. Skipping this step; no controls are applied!", exc_val)
+            else:
+                return # skip render and likely terminate.
         self.render_everything()
         pygame.display.flip()
+
+    
+    @class_or_instance_method
+    def cleanup(cls_or_self, *, disable_sync=True, quit_pygame=True):
+        """
+        Cleans up resources and actors.
         
-        if isinstance(exc_val, AgentDoneException):
-            self.continue_loop = False
-        #elif exc_type is None or issubclass(exc_type, ContinueLoopException):
-        #    pass
+        Args:
+            disable_sync: If True, will disable synchronous mode. This will
+                prevent the freezing of the Unreal Editor.
+                Default is True.
+            quit_pygame: If True, will call pygame.quit(). Default is True.
+        
+        Note:
+            - When called from an instance with an attached agent,
+              the `agent.destroy()` method is called.
+            - Otherwise will call CarlaDataProvider.cleanup().
+        """
+        try:
+            # Should only work for instance version, but maybe future Singleton support
+            try:
+                if cls_or_self.agent:
+                    cls_or_self.agent.destroy()
+            finally:
+                if cls_or_self.world_model:
+                    cls_or_self.world_model.destroy()
+        finally:
+            if disable_sync:
+                # Prevent freezing of the editor
+                if CarlaDataProvider.get_world() is not None:
+                    # Disable Synchronous Mode
+                    world_settings = carla.WorldSettings(synchronous_mode=False,
+                                                        fixed_delta_seconds=0.0)
+                    cls_or_self._world.apply_settings(world_settings)
+                    try:
+                        traffic_manager = (CarlaDataProvider.get_client()
+                                                            .get_trafficmanager(CarlaDataProvider._traffic_manager_port))
+                        traffic_manager.set_synchronous_mode(world_settings.synchronous_mode)
+                    except Exception:
+                        pass
+            CarlaDataProvider.cleanup()
+            if quit_pygame:
+                pygame.quit()
+    
+    # Include access to our exceptions here     
+    from classes import exceptions
+    
+
+        
 
 # ==============================================================================
 # -- World ---------------------------------------------------------------
@@ -820,7 +877,6 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         #logger.info("to destroy %s", list(map(str, self.actors)))
         # Batch destroy in one simulation step
         real_actors: List[carla.Actor] = [actor for actor in self.actors if isinstance(actor, carla.Actor)]
-        logger.info("WorldModel will destroy %d carla.Actors", len(real_actors))
         GameFramework.destroy_actors(real_actors)
         
         self.actors: List[CustomSensor] = [actor for actor in self.actors if not isinstance(actor, carla.Actor)]

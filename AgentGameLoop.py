@@ -157,29 +157,37 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         def loop():
             agent.verify_settings()
             while game_framework.continue_loop:
-                # Loop with traffic_manager
+                
+                # Do not use LunaticAgent but traffic manager
                 if controller._autopilot_enabled:
                     if controller.parse_events(None):
                         return
                     continue
+                
                 # Agent Loop
                 with game_framework:
                     # ------ Run step ------
-                    final_control = agent.run_step(debug=True)
+                    planned_control = agent.run_step(debug=True)
                     
                     # ------ Apply / Handle User Input ------
-                    agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=final_control)
-                    if isinstance(world_model.controller, RSSKeyboardControl):
-                        if controller.parse_events(agent.get_control()):
-                            return
-                    agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
+                    
+                    # Controls can be updated by the user.
+                    try:
+                        # -> Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN
+                        agent.parse_keyboard_input(allow_user_updates=True)
+                        # -> Phase.APPLY_MANUAL_CONTROLS | Phase.END
+                    except GameFramework.exceptions.UserInterruption:
+                        return    
                     
                     # ------ Apply Control ------
-                    agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=final_control)
-                    agent.apply_control() # Note Uses control from agent.ctx.control in case of last Phase changed it.
-                    agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None)
                     
-                    # DEBUG
+                    # > Phase.EXECUTION | Phase.BEGIN
+                    agent.apply_control()
+                    # > Phase.EXECUTION | Phase.END
+                    
+                    # ------ End of Loop ------
+                    
+                    # Debug drawing of the route
                     try:
                         destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
                         destination = destination + carla.Vector3D(0, 0, 1.5) # elevate to be not in road
@@ -187,7 +195,8 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                         pass
                     game_framework.debug.draw_point(destination, life_time=0.5)
                 
-                # Continue the Loop from outside
+                # -- Stop Loop or Continue when agent is done --
+                
                 if args.loop and not game_framework.continue_loop and agent.done():
                     # TODO: Rule / Action to define next waypoint
                     print("The target has been reached, searching for another target")
@@ -229,26 +238,19 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         raise
     finally:
         print("Quitting. - Destroying actors and stopping world.")
+        pygame.quit()
         if agent is not None:
             agent.destroy()
         if world_model is not None:
             world_model.destroy(destroy_ego=False)
         if game_framework is not None:
             # save world for usage after CDP cleanup
-            world = game_framework.world
+            game_framework.cleanup() # includes/or is CarlaDataProvider.cleanup()
         else:
-            world = None
-        CarlaDataProvider.cleanup() # NOTE: unsets world, map, client, destroys actors
-        
-        if world is not None:
-            # Disable Synchronous Mode
-            world_settings = carla.WorldSettings(synchronous_mode=False,
-                                                 fixed_delta_seconds=0.0)
-            world.apply_settings(world_settings)
-            if traffic_manager is not None:
-                traffic_manager.set_synchronous_mode(world_settings.synchronous_mode)
-
-        pygame.quit()
+            CarlaDataProvider.cleanup() # NOTE: unsets world, map, client, destroys actors
+        agent = None
+        world_model = None
+        game_framework = None
 
 
 # ==============================================================================

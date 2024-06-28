@@ -3,6 +3,7 @@ import carla
 
 from agents.tools.logging import logger
 
+from classes._custom_sensor import CustomSensor
 from launch_tools import CarlaDataProvider
 
 get_client = CarlaDataProvider.get_client
@@ -53,16 +54,16 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10
 
 spawn_actor = CarlaDataProvider.spawn_actor
 
-def destroy_actors(actors: "list[carla.Actor]"):
-    batch = []
+def destroy_actors(actors: "list[carla.Actor | CustomSensor]"):
+    batch: "list[carla.Actor]" = []
     for actor in actors:
-        if isinstance(actor, carla.Sensor):
+        if isinstance(actor, (carla.Sensor, CustomSensor)):
             actor.stop()
-        if actor is not None and actor.is_alive:
-            batch.append(carla.command.DestroyActor(actor))
-        if CarlaDataProvider.actor_id_exists(actor.id):
-            logger.warning("Actor %s is registered in the CarlaActorPool, its to remove it with CarlaActorPool._cleanup")
-            del CarlaDataProvider._carla_actor_pool[actor.id] # remove by batch and not by individual command
+        if isinstance(carla.Actor, actor):
+            if actor.is_alive:
+                batch.append(carla.command.DestroyActor(actor))
+        else:
+            actor.destroy()
 
     if batch and CarlaDataProvider._client:
         try:
@@ -72,3 +73,7 @@ def destroy_actors(actors: "list[carla.Actor]"):
                 pass
             else:
                 raise e
+        else:
+            for actor in batch:
+                if CarlaDataProvider.actor_id_exists(actor.id):
+                    del CarlaDataProvider._carla_actor_pool[actor.id] # remove by batch and not by individual command

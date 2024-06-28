@@ -245,5 +245,5 @@ class AgentState(Flag):
     PARKED = _parked | STOPPED # we want this to be a combination of the two
     BLOCKED = BLOCKED_OTHER | BLOCKED_BY_VEHICLE | BLOCKED_RED_LIGHT
     
-    # Mabye more states like CAR_IN_FRONT
+    # Maybe more states like CAR_IN_FRONT <- data matrix
         

@@ -18,8 +18,10 @@ class CustomSensor(object):
         if self.sensor is not None:
             self.stop()
             if CarlaDataProvider.actor_id_exists(self.sensor.id):
+                # Note after https://github.com/carla-simulator/scenario_runner/pull/1091
+                # x = CarlaDataProvider.remove_actor_by_id(self.sensor.id)
                 CarlaDataProvider.remove_actor_by_id(self.sensor.id)
-                x = "Likely true"
+                x = "Actor was probably destroyed by"
             else:
                 x = self.sensor.destroy()
             self.sensor = None

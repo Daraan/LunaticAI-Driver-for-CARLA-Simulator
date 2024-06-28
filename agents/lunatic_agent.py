@@ -28,7 +28,7 @@ from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
 import agents.tools
-from agents.tools.lunatic_agent_tools import AgentDoneException, UpdatedPathException, detect_vehicles
+from agents.tools.lunatic_agent_tools import AgentDoneException, UpdatedPathException, UserInterruption, detect_vehicles
 from agents.tools.lunatic_agent_tools import ContinueLoopException
 from agents.tools.misc import (is_within_distance,
                                compute_distance, lanes_have_same_direction)
@@ -251,7 +251,6 @@ class LunaticAgent(BehaviorAgent):
         if self._road_matrix_updater:
             return self._road_matrix_updater.getMatrix()
     
-    
     @property
     def _map(self) -> carla.Map:
         """Get the current map of the world.""" # Needed *only* for set_destination
@@ -428,7 +427,7 @@ class LunaticAgent(BehaviorAgent):
         for phase in Phase.get_phases():
             self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
         
-    def execute_phase(self, phase : Phase, *, prior_results, control:carla.VehicleControl=None) -> Context:
+    def execute_phase(self, phase : Phase, *, prior_results, update_controls:carla.VehicleControl=None) -> Context:
         """
         Sets the current phase of the agent and executes all rules that are associated with it.
         """
@@ -438,8 +437,8 @@ class LunaticAgent(BehaviorAgent):
         
         self.current_phase = phase # set next phase
         
-        if control is not None:
-            self.ctx.set_control(control)
+        if update_controls is not None:
+            self.ctx.set_control(update_controls)
         self.ctx.prior_result = prior_results
         rules_to_check = self.rules[phase]
         try:
@@ -518,12 +517,13 @@ class LunaticAgent(BehaviorAgent):
             # ----------------------------
             planned_control.manual_gear_shift = False # TODO: turn into a rule
             
-            ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, control=planned_control)
+            ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, update_controls=planned_control)
             if AD_RSS_AVAILABLE and self.config.rss and self.config.rss.enabled:
                 rss_updated_controls = self._world_model.rss_check_control(ctx.control)
             else:
                 rss_updated_controls = None
-            ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls) # NOTE: rss_updated_controls could be None
+            # NOTE: rss_updated_controls could be None. 
+            ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls)
             
             if ctx.control is not planned_control:
                 logger.debug("RSS updated control accepted.")
@@ -533,7 +533,7 @@ class LunaticAgent(BehaviorAgent):
             # ----------------------------
                 
         except ContinueLoopException:
-            logger.info("Continuing Loop")
+            logger.debug("ContinueLoopException skipping rest of loop.")
         return ctx.control
 
     @result_to_context("control")
@@ -567,7 +567,7 @@ class LunaticAgent(BehaviorAgent):
             if end_loop: # Likely emergency stop
                 # TODO: overhaul -> this might not be the best place to do this
                 #TODO HIGH: This is doubled in react_to_hazard!
-                self.execute_phase(Phase.EMERGENCY | Phase.END, prior_results=pedestrians_or_traffic_light, control=control)
+                self.execute_phase(Phase.EMERGENCY | Phase.END, prior_results=pedestrians_or_traffic_light, update_controls=control)
                 return self.get_control()
     
         # ----------------------------
@@ -590,7 +590,7 @@ class LunaticAgent(BehaviorAgent):
 
             self.execute_phase(Phase.CAR_DETECTED | Phase.BEGIN, prior_results=vehicle_detection_result)
             control = self.car_following_behavior(*vehicle_detection_result) # NOTE: can currently go into EMEGENCY phase
-            self.execute_phase(Phase.CAR_DETECTED | Phase.END, control=control, prior_results=vehicle_detection_result)
+            self.execute_phase(Phase.CAR_DETECTED | Phase.END, update_controls=control, prior_results=vehicle_detection_result)
             return self.get_control()
         
         #TODO: maybe new phase instead of END or remove CAR_DETECTED and handle as rules (maybe better)
@@ -605,7 +605,6 @@ class LunaticAgent(BehaviorAgent):
             # Must plan around it
             pass
         
-        
         # Intersection behavior
         # NOTE: is_taking_turn <- incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
         if self.live_info.incoming_waypoint.is_junction and self.is_taking_turn():
@@ -616,7 +615,7 @@ class LunaticAgent(BehaviorAgent):
 
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, prior_results=None)
             control = self._local_planner.run_step(debug=debug)
-            self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, control=control, prior_results=None)
+            self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, update_controls=control, prior_results=None)
             return self.get_control()
 
         # ----------------------------
@@ -626,18 +625,42 @@ class LunaticAgent(BehaviorAgent):
         # Normal behavior
         self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.BEGIN, prior_results=None)
         control = self._local_planner.run_step(debug=debug)
-        self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.END, prior_results=None, control=control)
+        self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.END, prior_results=None, update_controls=control)
 
         # Leave loop and apply controls outside 
         # DISCUSS: Should we apply the controls here?
         return self.get_control()
+
+    def parse_keyboard_input(self, allow_user_updates=True):
+        """
+        Parse the current user input and allow manual updates of the controls.
+        
+        Args:
+            allow_user_updates: If True, the user can update the controls manually.
+                Otherwise only the normal hotkeys do work.
+        """
+        planned_control = self.get_control()
+        self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=planned_control)
+        
+        # Controls can be updated inplace by the user.        
+        if self._world_model.controller.parse_events(planned_control if allow_user_updates else carla.VehicleControl()):
+            print("Exiting by user input.")
+            raise UserInterruption("Exiting by user input.")
+       
+        self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
     
     def apply_control(self, control: Optional[carla.VehicleControl]=None):
         # Set automatic control-related vehicle lights
         if control is None:
-            control = self.ctx.control
+            control = self.get_control()
+        if self.current_phase != Phase.EXECUTION | Phase.BEGIN:
+            self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control)
+        else:
+            logger.debug("Agent is already in execution phase.")
         self.update_lights(control)
         self._vehicle.apply_control(control)
+        self.execute_phase(Phase.EXECUTION | Phase.END, prior_results=control)
+    
 
     # ------------------ Hazard Detection & Reaction ------------------ #
 
@@ -686,7 +709,7 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.EMERGENCY | Phase.BEGIN, prior_results=hazard_detected)
         control = self.add_emergency_stop(control, reasons=hazard_detected)
         # TODO: Let a rule decide if the loop should end
-        self.execute_phase(Phase.EMERGENCY | Phase.END, control=control, prior_results=hazard_detected)
+        self.execute_phase(Phase.EMERGENCY | Phase.END, update_controls=control, prior_results=hazard_detected)
         # self.ctx.end_loop = True # TODO: ³ IDEA: work in
         #print("Emergency controls", control)
         return control, end_loop
@@ -868,6 +891,15 @@ class LunaticAgent(BehaviorAgent):
         return self.ctx.control
 
     # ------------------ Setter Function ------------------ #
+    
+    def set_control(self, control : carla.VehicleControl):
+        """
+        Set new controls for the agent. Must be called before apply_control.
+        
+        Raises:
+            ValueError: If the control is None.
+        """
+        self.ctx.control = control
     
     def set_vehicle(self, vehicle:carla.Vehicle):
         self._vehicle = vehicle

@@ -20,27 +20,38 @@ if TYPE_CHECKING:
 
 
 class AgentDoneException(Exception):
-    """Raised when there is no more waypoint in the queue to follow and no rule set a new destination."""
+    """
+    Raised when there is no more waypoint in the queue to follow and no rule set a new destination.
+    
+    When the a GameFramework instance is used as context manager will set game_framework.continue_loop to False.
+    """
 
 class ContinueLoopException(Exception):
     """
     Raise when `run_step` action of the agent should not be continued further.
 
     The agent returns the current ctx.control to the caller of run_step.
+    
+    Note:
+        Handled in Agent.run_step, this exception should not propagate outside.
+        It can be caught by GameFramework and skip the current loop, but it will
+        log an error.
     """
 
 class UserInterruption(Exception):
     """
-    Terminate the run_step loop if user input is detected.
-
-    Allow the scenario runner and leaderboard to exit gracefully.
+    Terminate the loop if user input is detected.
+    Allows the scenario runner and leaderboard to exit gracefully, if 
+    handled appropriately, e.g. by directly returning.
+    
+    Thrown by [LunaticAgent.parse_keyboard_controls](#agents.lunatic_agent.LunaticAgent.parse_keyboard_controls).
     """
 
 class UpdatedPathException(Exception):
     """
     Should be raised when the path has been updated and the agent should replan.
     
-    Phase.DONE | END
+    Rules that replan on Phase.DONE | END, should throw this exception at the end.
     """
 
 
