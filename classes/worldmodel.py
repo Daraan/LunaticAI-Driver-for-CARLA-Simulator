@@ -108,6 +108,8 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     display : ClassVar[pygame.Surface]
     controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
     
+    traffic_manager : Optional[carla.TrafficManager] = None
+    
     # ----- Init Functions -----
     
     @classmethod
@@ -191,6 +193,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.continue_loop = True
         
         self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
+        self.traffic_manager : Optional[carla.TrafficManager] = None
         
     @staticmethod
     def init_pygame(args:Optional["LaunchConfig"]=None):
@@ -216,7 +219,8 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         if self._args.sync:
             traffic_manager.set_synchronous_mode(True)
         traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
-        traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a config variable
+        traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a LaunchConfig config variable
+        self.traffic_manager = traffic_manager
         return traffic_manager
     
     def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", config:"LunaticAgentSettings"=None, overwrites:Optional[Dict[str, Any]]=None):
@@ -273,9 +277,9 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.world_model.tick(self.clock) # Note: only ticks the HUD.
         self.world_model.render(self.display, finalize=False)
         self.controller.render(self.display)
-        options = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
-        if options and self.agent:
-            self.agent.render_road_matrix(self.display, options)
+        dm_render_conf = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
+        if dm_render_conf and self.agent:
+            self.agent.render_road_matrix(self.display, dm_render_conf)
         self.world_model.finalize_render(self.display)
         
     @staticmethod
@@ -383,6 +387,11 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             finally:
                 if cls_or_self.world_model:
                     cls_or_self.world_model.destroy()
+            if disable_sync and cls_or_self.traffic_manager:
+                try:
+                    cls_or_self.traffic_manager.set_synchronous_mode(False)
+                except Exception:
+                    pass
         finally:
             if disable_sync:
                 # Prevent freezing of the editor
@@ -391,12 +400,6 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
                     world_settings = carla.WorldSettings(synchronous_mode=False,
                                                         fixed_delta_seconds=0.0)
                     cls_or_self._world.apply_settings(world_settings)
-                    try:
-                        traffic_manager = (CarlaDataProvider.get_client()
-                                                            .get_trafficmanager(CarlaDataProvider._traffic_manager_port))
-                        traffic_manager.set_synchronous_mode(world_settings.synchronous_mode)
-                    except Exception:
-                        pass
             CarlaDataProvider.cleanup()
             if quit_pygame:
                 pygame.quit()
