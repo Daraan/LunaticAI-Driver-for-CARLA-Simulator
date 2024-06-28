@@ -50,12 +50,3 @@ class AvoidTailgatorRule(Rule):
     group = "lane_change"
     priority = RulePriority.HIGH
     description = "Avoid tailgating when followed by a faster car that is quite close."
-    _check_result: ObstacleDetectionResult = None
-    
-#avoid_tailgator_rule = Rule(Phase.DETECT_CARS | Phase.END,
-#                            rule=avoid_tailgator_check,
-#                            action=avoid_tailgator,
-#                            cooldown_reset_value=200,
-#                            group="lane_change",
-#                            priority=RulePriority.HIGH,
-#                            description="Avoid tailgating when followed by a faster car that is quite close.")

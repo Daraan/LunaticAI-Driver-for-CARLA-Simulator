@@ -11,7 +11,7 @@ FILE_NAME = 'PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (
 def import_carla():
     if CARLA_ROOT is None:
         # Best guess
-        path = os.path.abspath(os.path.join("..","**", ))
+        path = os.path.abspath(os.path.join("..","**", FILE_NAME))
     else:
         path = os.path.abspath(os.path.join(CARLA_ROOT, FILE_NAME))
     try:
@@ -20,7 +20,7 @@ def import_carla():
         import carla
         return carla
     except IndexError as e:
-        print("Cannot find", os.path.abspath(os.path.join("..","**", FILE_NAME)))
+        print("ERROR: Cannot find", os.path.abspath(os.path.join("..","**", FILE_NAME)))
         pass
 
 carla = import_carla()

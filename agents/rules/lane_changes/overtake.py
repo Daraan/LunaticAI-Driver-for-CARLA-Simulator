@@ -26,10 +26,12 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context") -> bool:
 
     ASSUMES: No car in front/side (which is a hazard in itself) found in DETECT_CARS phase
 
-    # TODO: add option in rule to receive the result of the DETECT_CARS phase
-
     Check if a lane change can happen is done in the action, combine two rules!
     """
+    
+    #    TODO?: add option in rule to receive the result of the DETECT_CARS phase
+    #    - Is this not in the Context already?
+    
     waypoint = ctx.agent._current_waypoint
 
     # Cheap to get, do we plan to continue in the same lane? We are not at a junction and have some minimum speed

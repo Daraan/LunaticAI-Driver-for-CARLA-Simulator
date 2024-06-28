@@ -732,16 +732,13 @@ class LunaticAgent(BehaviorAgent):
         # TODO: # CRITICAL: needs creative overhaul
         # Stop indicates if the loop shoul
 
-        logger.info("Hazard(s) detected: %s", hazard_detected)
-        
-        if "pedestrian" in hazard_detected:
-            pass # Maybe let rules handle this and remove
-        if "traffic_light" in hazard_detected:
-            pass
+        # TODO: update state? prevent flodding of log information
+        #logger.info("Hazard(s) detected: %s", hazard_detected)
 
         self.execute_phase(Phase.EMERGENCY | Phase.BEGIN, prior_results=hazard_detected)
         if hazard_detected:
             raise EmergencyStopException(hazard_detected)
+        logger.info("Hazards have been cleared.")
         
     
     # ------------------ Behaviors ------------------ #
