@@ -16,7 +16,7 @@ import carla
 import pygame
 import numpy.random as random
 from agents.tools.config_creation import AgentConfig
-from agents.tools.lunatic_agent_tools import AgentDoneException, ContinueLoopException
+from agents.tools.lunatic_agent_tools import AgentDoneException, ContinueLoopException, UserInterruption
 from classes.HUD import HUD
 
 from classes.camera_manager import CameraManager
@@ -29,7 +29,6 @@ from classes.keyboard_controls import RSSKeyboardControl
 from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
-    from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
     from agents.lunatic_agent import LunaticAgent
     from classes._custom_sensor import CustomSensor
 
@@ -37,6 +36,7 @@ from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
 from launch_tools import carla_service
 from agents.tools.logging import logger
+from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
 
 from launch_tools import CarlaDataProvider, Literal
 
@@ -159,7 +159,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         config.agent.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
         return config
         
-    # TODO: Maybe unify these settings
+    # TODO: Maybe unify these settings; make overrides available in the config.
     @staticmethod
     def load_hydra_config(config_name: str="conf/launch_config") -> "LaunchConfig":
         if GameFramework.hydra_initialized():
@@ -219,7 +219,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         return traffic_manager
     
     def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", config:"LunaticAgentSettings"=None, overwrites:Optional[Dict[str, Any]]=None):
-        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(ego, self.world, self._args, config=config, overwrites=overwrites)
+        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(self._args, vehicle=ego, sim_world=self.world, agent_config=config, overwrites=overwrites)
         self.config = self.agent.config
         controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         self.world_model.game_framework = weakref.proxy(self)
@@ -366,7 +366,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
     def __init__(self, config : "LunaticAgentSettings", args:"Union[LaunchConfig, Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
         """Constructor method"""
         # Set World
-        if self.world is None:
+        if self.get_world() is None:
             if carla_world is None:
                 raise ValueError("CarlaDataProvider not available and `carla_world` not passed.")
             self.world = carla_world
@@ -396,7 +396,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
-        if not isinstance(args, (Mapping, DictConfig, AgentConfig)): # TODO: should rather check for string like
+        if not isinstance(args, (Mapping, DictConfig, LaunchConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
             # When passed as path with directory
@@ -539,8 +539,9 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         for actor in actor_list or world.get_actors():
             if actor.attributes.get('role_name') == role_name:
                 if player is not None:
-                    logger.error("Multiple actors with role_name `%s` found. id: %s. Returning the last one found.", role_name, actor.id)
-                player = actor
+                    logger.error("Multiple actors with role_name `%s` found. id: %s. Returning the first one found.", role_name, actor.id)
+                else:
+                    player = actor
         return player
 
     def _wait_for_external_actor(self, timeout=20, sleep=3) -> carla.Actor:
@@ -569,28 +570,35 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         if self.external_actor:
             # Check whether there is already an actor with defined role name
             actor_list = self.world.get_actors() # In sync mode the actor list could be empty
-            self.player = self._find_external_actor(self.world, self.actor_role_name, actor_list)
+            external_actor = self._find_external_actor(self.world, self.actor_role_name, actor_list)
             if self.player is None:
-                self.player = assure_type(carla.Vehicle, 
-                                self._wait_for_external_actor(timeout=20))
-            # TODO: Make this more nicer, see maybe scenario runner how to wait for spawn. Only do tick if in sync mode. Async wait.
-            elif TYPE_CHECKING:
+                if external_actor:
+                    self.player = external_actor
+                else:
+                    self.player = assure_type(carla.Vehicle, 
+                                    self._wait_for_external_actor(timeout=20))
+            elif external_actor and self.player.id != external_actor.id: # NOTE: even with same id different instances and hashes.
+                logger.warning("External actor found with role_name `%s` but different id. Keeping the current actor (%s) and ignoring the external actor (%s)", self.actor_role_name, self.player.id, external_actor.id)
+            if TYPE_CHECKING:
                 self.player = assure_type(carla.Vehicle, self.player)
+            
         else:
             # Get a random blueprint.
-            blueprint : carla.ActorBlueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
-            blueprint.set_attribute('role_name', self.actor_role_name)
-            if blueprint.has_attribute('color'):
-                color = random.choice(blueprint.get_attribute('color').recommended_values)
-                blueprint.set_attribute('color', color)
-            # From Interactive:
-            if blueprint.has_attribute('terramechanics'): # For Tire mechanics/Physics? # Todo is that needed?
-                blueprint.set_attribute('terramechanics', 'true')
-            if blueprint.has_attribute('driver_id'):
-                driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
-                blueprint.set_attribute('driver_id', driver_id)
-            if blueprint.has_attribute('is_invincible'):
-                blueprint.set_attribute('is_invincible', 'true')
+            if self.player is None or self.camera_manager is not None:
+                # First pass without a player or second pass -> new player
+                blueprint : carla.ActorBlueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
+                blueprint.set_attribute('role_name', self.actor_role_name)
+                if blueprint.has_attribute('color'):
+                    color = random.choice(blueprint.get_attribute('color').recommended_values)
+                    blueprint.set_attribute('color', color)
+                # From Interactive:
+                if blueprint.has_attribute('terramechanics'): # For Tire mechanics/Physics? # Todo is that needed?
+                    blueprint.set_attribute('terramechanics', 'true')
+                if blueprint.has_attribute('driver_id'):
+                    driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
+                    blueprint.set_attribute('driver_id', driver_id)
+                if blueprint.has_attribute('is_invincible'):
+                    blueprint.set_attribute('is_invincible', 'true')
             
             # TODO: Make this a config option to choose automatically.
             # set the max speed
@@ -604,7 +612,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                 spawn_point.location.z += 2.0
                 spawn_point.rotation.roll = 0.0
                 spawn_point.rotation.pitch = 0.0
-                if self.camera_manager is not None: # TODO: Validate, remove line
+                if self.camera_manager is not None: # None at first start; not None if player was already set before
                     self.destroy()
                     self.player = assure_type(carla.Vehicle, self.world.try_spawn_actor(blueprint, spawn_point))
                 self.modify_vehicle_physics(self.player)
@@ -650,7 +658,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.camera_manager.set_sensor(cam_index, notify=False)
         
         actor_type = get_actor_display_name(self.player)
-        self.hud.notification(actor_type)
+        self.hud.notification(text=actor_type)
         
         self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim, gamma_correction=self._gamma) # TODO: use args instead of gamma
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)

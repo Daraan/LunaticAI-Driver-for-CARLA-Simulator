@@ -12,8 +12,8 @@ game_framework = GameFramework.quickstart()
 
 ego = GameFramework.request_new_actor("car", rolename="hero", random_location=True)
 
-# Create a lunatic agent
-agent = LunaticAgent(game_framework.agent_config, vehicle=ego)
+# Create a lunatic agent, it will look for a vehicle named 'hero' automatically
+agent = LunaticAgent(game_framework.agent_config)
 
 try:
     while game_framework.continue_loop:

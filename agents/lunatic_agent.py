@@ -12,6 +12,7 @@ traffic signs, and has different possible configurations. """
 
 from __future__ import annotations
 
+import sys
 from copy import deepcopy
 import random
 from typing import Any, ClassVar, Dict, List, NoReturn, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
@@ -90,28 +91,32 @@ class LunaticAgent(BehaviorAgent):
     """A flag to sanity check if the agent passes trough the phases in the correct order"""
     
     @classmethod
-    def create_world_and_agent(cls, vehicle : carla.Vehicle, sim_world : carla.World, args: LaunchConfig, 
-                               settings_archtype: "Optional[type[AgentConfig]]"=None, config: Optional["LunaticAgentSettings"]=None, 
+    def create_world_and_agent(cls, args: LaunchConfig, *, vehicle : carla.Vehicle, sim_world : carla.World,
+                               settings_archetype: "Optional[type[AgentConfig]]"=None, agent_config: Optional["LunaticAgentSettings"]=None, 
                                overwrites: Dict[str, Any]={}):
         
-        if config is None:
-            if settings_archtype is not None and not isinstance(settings_archtype, type):
-                logger.debug("Assuming correct config.")
-                config = settings_archtype
-            elif settings_archtype is not None:
-                logger.debug("Creating config from settings_archtype")
-                behavior = settings_archtype(overwrites)
-                config = behavior.make_config()
+        if agent_config is None:
+            if hasattr(args, "agent"):
+                if settings_archetype is not None:
+                    logger.warning("settings_archetype was passed but using args.agent. Ignoring settings_archetype.")
+                agent_config = args.agent
+            elif settings_archetype is not None and isinstance(settings_archetype, object):
+                logger.warning("settings_archetype is an instance. To pass an instance use agent_config instead.")
+                agent_config = settings_archetype
+            elif settings_archetype is not None:
+                logger.debug("Creating config from settings_archetype")
+                behavior = settings_archetype(overwrites)
+                agent_config = behavior.make_config()
             else:
                 logger.debug("Using %s._base_settings %s to create config.", cls.__name__, cls.BASE_SETTINGS)
-                config = cls.BASE_SETTINGS.make_config()
+                agent_config = cls.BASE_SETTINGS.make_config()
         else:
             logger.debug("A config was passed, using it as is.")
         
-        world_model = WorldModel(config, args=args, carla_world=sim_world, player=vehicle) # TEST: without args
-        config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
+        world_model = WorldModel(agent_config, args=args, carla_world=sim_world, player=vehicle) # TEST: without args
+        agent_config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps
         
-        agent = cls(config, world_model)
+        agent = cls(agent_config, world_model)
         return agent, world_model, agent.get_global_planner()
 
     def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, overwrite_options: dict = {}, debug=True):
@@ -129,8 +134,10 @@ class LunaticAgent(BehaviorAgent):
         self._debug = debug
 
         # Settings ---------------------------------------------------------------
-        if world_model is None and vehicle is None:
-            raise ValueError("Must pass vehicle when not providing the world.")
+        # This check should be save now. The WorldModel
+        if world_model is None and len(sys.argv) > 1:
+            logger.error("BUG: Beware when not passing a WorldModel, the WorldModel currently ignores command line overrides, "
+                         "i.e. will only use the config file.\n> Use `%s.create_world_and_agent` and provide the LaunchConfig instead.", self.__class__.__name__)
         
         # TODO: Move this to an outside function
         opt_dict : LunaticAgentSettings
@@ -588,6 +595,16 @@ class LunaticAgent(BehaviorAgent):
         
         #TODO: maybe new phase instead of END or remove CAR_DETECTED and handle as rules (maybe better)
         self.execute_phase(Phase.DETECT_CARS | Phase.END, prior_results=None) # NOTE: avoiding tailgate here
+        
+        # -----------------------------
+        # Phase Detect Static Obstacles
+        # -----------------------------
+        
+        static_obstacle_detection_result = self.detect_obstacles_in_path(self.static_obstacles_nearby, self.config.obstacles.min_proximity_threshold)
+        if static_obstacle_detection_result.obstacle_was_found:
+            # Must plan around it
+            pass
+        
         
         # Intersection behavior
         # NOTE: is_taking_turn <- incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
