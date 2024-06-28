@@ -63,5 +63,5 @@ class SimpleOvertakeRule(Rule):
     priority = RulePriority.LOW
     
     rule = overtake_check.copy()
-    rule.register_action(rule_lane_change, True, order=("left", "right"), speed_limit_downscale=4) # less strict
+    rule.register_action(rule_lane_change, True, order=("left", "right")) # less strict
     cooldown_reset_value = 200

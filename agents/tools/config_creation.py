@@ -992,7 +992,7 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
     When making lane changes determines the minimum distance to check for vehicles.
     
     max_distance_check = max(obstacles.min_proximity_threshold, 
-                             live_info.current_speed_limit / speed_limit_downscale)
+                             live_info.current_speed_limit / speed_detection_downscale)
                              
     Hint:
         Lower values mean that further away vehicles are maybe not considered,
@@ -1023,7 +1023,7 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
     When making lane changes determines the maximum distance to check for vehicles.
     
     max_distance_check = max(obstacles.min_proximity_threshold, 
-                             live_info.current_speed_limit / speed_limit_downscale.[same|other]_lane)
+                             live_info.current_speed_limit / speed_detection_downscale.[same|other]_lane)
                              
     Hint:
         Higher values mean that further away vehicles are not considered,

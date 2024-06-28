@@ -6,7 +6,7 @@ i.e. distill the information from the data and return high level information
 # todo: maybe find another name for this module
 
 from fnmatch import fnmatch
-from functools import cache, wraps
+from functools import wraps
 from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple, Union, Dict, List
 from cachetools import cached
 import carla
