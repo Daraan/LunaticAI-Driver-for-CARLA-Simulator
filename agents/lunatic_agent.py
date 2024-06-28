@@ -459,7 +459,7 @@ class LunaticAgent(BehaviorAgent):
                 throw_on_missing=True
             )
 
-    def run_step(self, debug=False, second_pass=False):
+    def run_step(self, debug=False, second_pass=False) -> carla.VehicleControl:
         if not second_pass:
             ctx = self.make_context(last_context=self.ctx)
         else:
@@ -490,7 +490,7 @@ class LunaticAgent(BehaviorAgent):
                 self.execute_phase(Phase.PLAN_PATH | Phase.END, prior_results=None)
             except UpdatedPathException as e:
                 if second_pass:
-                    raise ValueError("UpdatedPathException was raised in the second pass. This should not happen.") from e
+                    logger.warning("UpdatedPathException was raised in the second pass. This should not happen: %s", e)
                 return self.run_step(debug=debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
             
             if self.done():
@@ -507,7 +507,40 @@ class LunaticAgent(BehaviorAgent):
             # ----------------------------
             # Phase NONE - Before Running step
             # ----------------------------
-            planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
+            try:
+                planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
+    
+            except EmergencyStopException as emergency:
+                
+                # ----------------------------
+                # Phase Emergency
+                # no rule with Phase.EMERGENCY | BEGIN cleared the provided hazards in ctx.prior_results
+                # ----------------------------
+                
+                emergency_controls = self.emergency_manager(reasons=emergency.hazards_detected)
+                self.execute_phase(Phase.EMERGENCY | Phase.END, update_controls=emergency_controls, prior_results=emergency.hazards_detected)
+                planned_control = self.get_control()
+            
+            # Other Exceptions
+            
+            except SkipInnerLoopException as skip:
+                self.set_control(skip.planned_control)
+                self.current_phase = Phase.USER_CONTROLLED
+                planned_control = skip.planned_control
+            except UserInterruption:
+                raise
+            except UpdatedPathException as e:
+                if second_pass > 5:
+                    logger.warning("UpdatedPathException was raised more than %s times. Warning: This might be an infinite loop.", second_pass)
+                elif second_pass > 50:
+                    raise RecursionError("UpdatedPathException was raised more than 50 times. Assuming an infinite loop and terminating")
+                else:
+                    logger.warning("UpdatedPathException was raised in the inner step, this should be done in Phase.PLAN_PATH ", e)
+                return self.run_step(debug=debug, second_pass=int(second_pass)+1) 
+            except LunaticAIException as e:
+                if self.ctx.control is None:
+                    raise ValueError("A VehicleControl object must be set on the agent when %s is raised during `._inner_step`" % type(e).__name__) from e
+            
             # ----------------------------
             # No known Phase multiple exit points
             # ----------------------------
@@ -515,7 +548,6 @@ class LunaticAgent(BehaviorAgent):
             # ----------------------------
             # Phase RSS - Check RSS
             # ----------------------------
-            planned_control.manual_gear_shift = False # TODO: turn into a rule
             
             ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, update_controls=planned_control)
             if AD_RSS_AVAILABLE and self.config.rss and self.config.rss.enabled:
@@ -527,17 +559,18 @@ class LunaticAgent(BehaviorAgent):
             
             if ctx.control is not planned_control:
                 logger.debug("RSS updated control accepted.")
-            # ----------------------------
-            # Phase Manual User Controls
-            # TODO: Create a flag that allows this or not
-            # ----------------------------
-                
-        except ContinueLoopException:
+            
+        except ContinueLoopException as e:
             logger.debug("ContinueLoopException skipping rest of loop.")
-        return ctx.control
+            if self.ctx.control is None:
+                raise ValueError("A VehicleControl object must be set on the agent when %s is raised during `._inner_step`" % type(e).__name__) from e
+        
+        planned_control = self.ctx.control
+        planned_control.manual_gear_shift = False
+        return self.get_control()
 
     @result_to_context("control")
-    def _inner_step(self, debug=False):
+    def _inner_step(self, debug=False) -> carla.VehicleControl:
         """
         This is our main entry point that runs every tick.  
         """
@@ -559,16 +592,11 @@ class LunaticAgent(BehaviorAgent):
 
             # ----------------------------
             # Phase Hazard Detected (traffic light or pedestrian)
-            # TODO: needs overhaul 
+            # If no Rule with Phase.EMERGENCY | BEGIN clears pedestrians_or_traffic_light
+            # An EmergencyStopException is raised
             # ----------------------------
 
-            (control, end_loop) = self.react_to_hazard(control=None, hazard_detected=pedestrians_or_traffic_light)
-            # Other behaviors based on hazard detection
-            if end_loop: # Likely emergency stop
-                # TODO: overhaul -> this might not be the best place to do this
-                #TODO HIGH: This is doubled in react_to_hazard!
-                self.execute_phase(Phase.EMERGENCY | Phase.END, prior_results=pedestrians_or_traffic_light, update_controls=control)
-                return self.get_control()
+            self.react_to_hazard(pedestrians_or_traffic_light) # type: Optional[NoReturn]
     
         # ----------------------------
         # Phase 3 - Detection of Cars
@@ -628,7 +656,6 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.END, prior_results=None, update_controls=control)
 
         # Leave loop and apply controls outside 
-        # DISCUSS: Should we apply the controls here?
         return self.get_control()
 
     def parse_keyboard_input(self, allow_user_updates=True):
@@ -661,11 +688,10 @@ class LunaticAgent(BehaviorAgent):
         self._vehicle.apply_control(control)
         self.execute_phase(Phase.EXECUTION | Phase.END, prior_results=control)
     
-
     # ------------------ Hazard Detection & Reaction ------------------ #
 
-    def detect_hazard(self) -> Set[str]:
-        hazard_detected = set()
+    def detect_hazard(self) -> Set[Hazard]:
+        hazard_detected: Set[Hazard] = set()
         # Red lights and stops behavior
 
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.BEGIN, prior_results=None)
@@ -693,26 +719,30 @@ class LunaticAgent(BehaviorAgent):
         
         return hazard_detected
     
-    def react_to_hazard(self, control, hazard_detected : set):
+    def react_to_hazard(self, hazard_detected : set) -> Optional[NoReturn]:
+        """
+        Called when a hazard was detected-
+        
+        Will store the detected hazards in the Context: `ctx.prior_result`
+        If no rule clears this variable, the agent will throw a EmergencyStopException
+        
+        Raises:
+            EmergencyStopException: If a hazard was detected and no rule cleared it.
+        """
         # TODO: # CRITICAL: needs creative overhaul
         # Stop indicates if the loop shoul
 
         logger.info("Hazard(s) detected: %s", hazard_detected)
-        end_loop = True
         
         if "pedestrian" in hazard_detected:
             pass # Maybe let rules handle this and remove
         if "traffic_light" in hazard_detected:
             pass
 
-        # TODO: PRIORITY: let execute_phase handle end_loop
         self.execute_phase(Phase.EMERGENCY | Phase.BEGIN, prior_results=hazard_detected)
-        control = self.add_emergency_stop(control, reasons=hazard_detected)
-        # TODO: Let a rule decide if the loop should end
-        self.execute_phase(Phase.EMERGENCY | Phase.END, update_controls=control, prior_results=hazard_detected)
-        # self.ctx.end_loop = True # TODO: ³ IDEA: work in
-        #print("Emergency controls", control)
-        return control, end_loop
+        if hazard_detected:
+            raise EmergencyStopException(hazard_detected)
+        
     
     # ------------------ Behaviors ------------------ #
     # TODO: Section needs overhaul -> turn into rules
@@ -741,15 +771,15 @@ class LunaticAgent(BehaviorAgent):
             self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
 
         if exact_distance < self.config.distance.emergency_braking_distance:
-            controls, end_loop = self.react_to_hazard(control=None, hazard_detected={Hazard.CAR})
-        else:
-            controls = self.car_following_manager(vehicle, exact_distance)
+            # Note: If the passed set is not cleared by a Phase.EMERGENCY | Phase.BEGIN rule, 
+            # an EmergencyStopException is raised.
+            self.react_to_hazard(hazard_detected={Hazard.CAR}) # type: Optional[NoReturn]
+        controls = self.car_following_manager(vehicle, exact_distance)
         return controls
 
     # ------------------ Managers for Behaviour ------------------ #
 
     from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
-
     
     def traffic_light_manager(self) -> TrafficLightDetectionResult:
         """
@@ -779,7 +809,9 @@ class LunaticAgent(BehaviorAgent):
         :param control: (carla.VehicleControl) control to be modified
         :param enable_random_steer: (bool, optional) Flag to enable random steering
         """
-        return substep_managers.emergency_manager(self, control, reasons)
+        return self.emergency_manager(control, reasons)
+    
+    from agents.substep_managers import emergency_manager
     
     def lane_change(self, direction: "Literal['left'] | Literal['right']", same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """
@@ -882,7 +914,7 @@ class LunaticAgent(BehaviorAgent):
 
     # ------------------ Getter Function ------------------ #
     
-    def get_control(self) -> Union[None, carla.VehicleControl]:
+    def get_control(self):
         """
         Returns the currently planned control of the agent.
         
