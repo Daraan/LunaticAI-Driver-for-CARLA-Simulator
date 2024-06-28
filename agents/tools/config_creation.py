@@ -1417,20 +1417,19 @@ class DataMatrixSettings(AgentConfig):
                     }
     hud: Dict[str, Any] = field(default_factory=__hud_default.copy)
     """
-    XXX
-    
-    TODO: do not have this in Agent config but in
-    hud : ${camera.hud.data_matrix}
+    TODO: do not have this in Agent config; instead
+        hud : ${camera.hud.data_matrix}
+        However: problem cannot interpolate to LaunchConfig
      #drawing_options -> see camera.yaml
-     #NOTE: this interpolation might fail if the parent has been removed!
     
     ---
         
     Keyword arguments for `DataMatrix.render`
-    NOTE: The default_settings substitute this with an interpolation that might not work,
-    as it relies on the parent LaunchConfig that is currently removed.
+
+    Warning:
+
     
-    `camera.hud.data_matrix` is preferred.
+        `camera.hud.data_matrix` is preferred.
     """
 
 
@@ -1618,25 +1617,23 @@ class CameraConfig(AgentConfig):
     @dataclass
     class DataMatrixHudConfig:
         """
-        Camera configuration for the agent.
+        DataMatrix HUD settings for the HUD
         """
-        enabled : bool = True
-        """Whether the camera is enabled"""
         
         draw : bool = True
-        """Whether to draw the camera"""
+        """Whether to draw the data matrix"""
         
         values : bool = True
-        """Whether to draw the values"""
+        """Whether to draw the numerical values"""
         
         vertical : bool = True
         """Orient vertical (lanes are left to right) instead of horizontal."""
         
         imshow_settings : dict = field(default_factory=lambda: {'cmap': 'jet'})
-        """Settings for the imshow function"""
+        """Settings for the pyplot.imshow function"""
         
         text_settings : dict = field(default_factory=lambda: {'color': 'orange'})
-        """Settings for the text"""
+        """Settings for the text of pyplot.text when drawing the numerical values"""
 
     data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
     """<take doc:DataMatrixHudConfig>"""
@@ -1759,7 +1756,7 @@ if TYPE_CHECKING:
     from hydra.conf import HydraConf
     from typing_extensions import NotRequired
     class LaunchConfig(LaunchConfig, DictConfig):
-        hydra : NotRequired[HydraConf]
+        hydra : NotRequired[HydraConf] # pyright: ignore # NotRequired only for TypedDict
 
 
 def extract_annotations(parent, docs):
