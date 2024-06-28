@@ -30,16 +30,16 @@ def main():
     vehicles, tm = spawner.spawn_traffic(world, car_bp, spawn_points, driver1, ego_vehicle)
     # Initialize loop variables
     world.tick()
-    road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
+    road_lane_ids = get_all_road_lane_ids(world.get_map())
     t_end = time.time() + 10000
 
     # Create a thread for the camera functionality
     try:
-        camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, world))
+        camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, ))
         camera_thread.start()
 
         # Initialize matrix thread
-        data_matrix = AsyncDataMatrix(ego_vehicle, world, world_map, road_lane_ids)
+        data_matrix = AsyncDataMatrix(ego_vehicle, world, road_lane_ids)
         data_matrix.start()
 
         print("Starting game loop")

@@ -3,20 +3,89 @@ from functools import partial, wraps
 
 import carla
 from agents.navigation.local_planner import RoadOption
+from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
-                               compute_distance, ObstacleDetectionResult)
+                               compute_distance)
 
+from classes.exceptions import EmergencyStopException, LunaticAIException, SkipInnerLoopException
+from launch_tools import CarlaDataProvider, Literal
+from typing import TYPE_CHECKING, List, Union
 
-
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
-    from typing import Literal
+    from classes.rule import Context
 
-# TODO: see if max_distance is currently still necessary
-# TODO: move angles to config
-#@override
-def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
+# ------------------------------
+# Obstacle Detection
+# ------------------------------
+
+def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal["same_lane", "other_lane", "overtaking", "tailgating"]):
+    """
+    Convenience function to be used with `detect_vehicles` and `detect_obstacles_in_path`.
+    
+    The max distance to consider an obstacle is calculated as:
+    
+    :: 
+        .. code-block:: python
+    max(obstacles.min_proximity_threshold,
+        live_info.current_speed_limit / obstacles.speed_detection_downscale.[same|other]_lane)
+    
+    Args:
+        self (Union[Context, LunaticAgent]): An object that implements the `config` and `live_info` attributes
+        lane (Literal["same_lane", "other_lane", "overtake"]): The lane to consider.
+            Note:
+                Key must be in `BehaviorAgentObstacleSettings.SpeedLimitDetectionDownscale`.
+    """
+    
+    return max(self.config.obstacles.min_proximity_threshold,
+               self.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
+
+
+def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Actor], min_detection_threshold: float, speed_limit_divisors=(2,3)) -> ObstacleDetectionResult:
+    """
+    This module is in charge of warning in case of a collision
+    and managing possible tailgating chances.
+
+    Args:
+        self (LunaticAgent): The agent
+        obstacle_list (List[carla.Actor]): The list of obstacles that should be checked
+        min_detection_threshold (float): The minimum distance to consider an obstacle.
+            The max_distance to consider an obstacle is:
+            `max(min_detection_threshold, self.config.live_info.current_speed_limit / n)`
+            where `n` is speed_limit_divisors[0] for incoming lane change 
+            and speed_limit_divisors[1] when the agent stays on the lane.
+        speed_limit_divisors (Tuple[float, float], optional): 
+            Two divisors for the speed limit to calculate the max distance.
+            Defaults to (2, 3).
+
+    Note: 
+        Former collision_and_car_avoid_manager, which evaded car via the tailgating function
+        now rule based.
+        
+    Tip: 
+        As the first argument is the agent, this function can be used as a method, i.e
+        it can be added / imported directly into the agent class' body.
+    """
+
+    # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
+    if self.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
+        detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
+                                                            self.max_detection_distance("other_lane"),
+                                                            up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
+                                                            lane_offset=-1)
+    elif self.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
+        detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
+                                                            self.max_detection_distance("other_lane"),
+                                                            up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
+                                                            lane_offset=1)
+    else:
+        detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
+                                                            self.max_detection_distance("same_lane"),
+                                                            up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],)
+    return detection_result
+
+
+def detect_vehicles(self: "LunaticAgent", vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
                                 lane_offset=0):
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
@@ -25,10 +94,15 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
             If None, all vehicle in the scene are used
         :param max_distance: max free-space to check for obstacles.
             If None, the base threshold value is used
+        :param lane_offset: check a different lane than the one the agent is currently in.
 
     The angle between the location and reference transform will also be taken into account. 
     Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
     low_angle_th < angle < up_angle_th.
+    
+    Tip: 
+        As the first argument is the agent, this function can be used as a method, i.e
+        it can be added / imported directly into the agent class' body.
     """
 
     if self.config.obstacles.ignore_vehicles:
@@ -70,9 +144,10 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
     if not max_distance:
         max_distance = self.config.obstacles.base_vehicle_threshold
 
+    # TODO: can get this from CDP
     ego_transform = self._vehicle.get_transform()
-    ego_location = ego_transform.location
-    ego_wpt = self._map.get_waypoint(ego_location)
+    ego_location = ego_transform.location # NOTE: property access creates a new location object, i.e. ego_location != ego_front_transform
+    ego_wpt = CarlaDataProvider.get_map().get_waypoint(ego_location)
 
     # Get the right offset
     if ego_wpt.lane_id < 0 and lane_offset != 0:
@@ -97,7 +172,7 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
         if target_transform.location.distance(ego_location) > max_distance:
             continue
 
-        target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
+        target_wpt = CarlaDataProvider.get_map().get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
 
         # General approach for junctions and vehicles invading other lanes due to the offset
         if (use_bbs or target_wpt.is_junction) and route_polygon:
@@ -130,7 +205,7 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
 
             if is_within_distance(target_rear_transform, ego_front_transform, max_distance,
                                     [low_angle_th, up_angle_th]):
-                return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
+                return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_rear_transform.location, ego_front_transform.location))
 
     return ObstacleDetectionResult(False, None, -1)
 
@@ -138,6 +213,10 @@ def detect_vehicles(self : "LunaticAgent", vehicle_list=None, max_distance=None,
 detect_vehicles_in_front = partial(detect_vehicles, up_angle_th=90, low_angle_th=0)
 detect_vehicles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th=160)
 
+
+# ------------------------------
+# Path Planning
+# ------------------------------
 
 def generate_lane_change_path(waypoint : carla.Waypoint, direction:"Literal['left'] | Literal['right']"='left', distance_same_lane=10,
                                    distance_other_lane=25, lane_change_distance=25,
@@ -232,31 +311,3 @@ def result_to_context(key):
         
     return decorator
 
-
-class AgentDoneException(Exception):
-    """
-    Raised when there is no more waypoint in the queue to follow and no rule set a new destination.
-    """
-
-
-class ContinueLoopException(Exception):
-    """
-    Raise when `run_step` action of the agent should not be continued further.
-
-    The agent returns the current ctx.control to the caller of run_step.
-    """
-
-
-class UserInterruption(Exception):
-    """
-    Terminate the run_step loop if user input is detected.
-
-    Allow the scenario runner and leaderboard to exit gracefully.
-    """
-    
-class UpdatedPathException(Exception):
-    """
-    Should be raised when the path has been updated and the agent should replan.
-    
-    Phase.DONE | END
-    """

@@ -4,12 +4,6 @@ height : ${height}
 # Gamma correction
 gamma : ${gamma}
 
-recorder:
-  # The output path will be formatted with the image.frame number
-  # The directory will be numbered if it already exists
-  output_path: '_recorder/session%03d/%08d.bmp'
-  # Describe how many frames to skip before saving the next one
-  frame_interval: 8
 # Cameras that are attached to the ego vehicle.
 # TODO: Make a sensors config
 camera_blueprints:
@@ -19,17 +13,33 @@ camera_blueprints:
       - Raw
       - 'Camera RGB'
 
+# Recorder settings for the camera.
+recorder:
+
+  # Folder to record the camera
+  #  
+  # Needs two numeric conversion placeholders.
+  #  
+  # Note:
+  #     When using the ${hydra:runtime.output_dir} resolver
+  #     @hydra.main needs to be used or hydra must be initialized.
+  output_path: ${hydra:runtime.output_dir}/recorder/session%03d/%08d.bmp
+  # Interval to record the camera
+  frame_interval: 4
+
 hud :
   data_matrix :
       # NOTE: Keywords must match DataMatrix.render
+      # Whether to draw the camera
       draw : true
       # Draw the numerical values of the matrix
       values : true
       # Orient vertical (lanes are left to right) instead of horizontal.
       vertical : true
+      # Settings for the imshow function
       imshow_settings :
         cmap : jet
+      # Settings for the text
       text_settings:
         color : orange
       # TODO: options for position
-

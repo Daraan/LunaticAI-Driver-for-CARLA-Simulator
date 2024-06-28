@@ -1,22 +1,20 @@
-import carla
 
-from agents.dynamic_planning.dynamic_local_planner import RoadOption
 
-from agents.tools.misc import get_speed, ObstacleDetectionResult
-from agents.tools.lunatic_agent_tools import detect_vehicles
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
+
+from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
 if TYPE_CHECKING:
-    import carla
     from agents.lunatic_agent import LunaticAgent
 
-def collision_detection_manager(self : "LunaticAgent", waypoint: carla.Waypoint) -> ObstacleDetectionResult:
+# TODO: Unify distance and obstacle thresholds
+
+def collision_detection_manager(self : "LunaticAgent"):
         """
         This module is in charge of warning in case of a collision
-        and managing possible tailgating chances.
+        with vehicles or static obstacles.
 
             :param location: current location of the agent
-            :param waypoint: current waypoint of the agent
             :return vehicle_state: True if there is a vehicle nearby, False if not
             :return vehicle: nearby vehicle
             :return distance: distance to nearby vehicle
@@ -24,29 +22,10 @@ def collision_detection_manager(self : "LunaticAgent", waypoint: carla.Waypoint)
         # NOTE: Former collision_and_car_avoid_manager, which evaded car via the tailgating function
         now rule based.
         """
-        # NOTE: # is it more efficient to use an extra function here, why not utils.dist_to_waypoint(v, waypoint)?
-        def dist(v : carla.Actor): 
-            return v.get_location().distance(waypoint.transform.location)
 
-        # TODO: Expose constant or do not filter, if we assume vehicle_list is already filtered
-        vehicle_list : List[carla.Vehicle] = [v for v in self.vehicles_nearby if dist(v) < 45 and v.id != self._vehicle.id]
-
-        # Triple (<is there an obstacle> , )
-        if self.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
-            detection_result : ObstacleDetectionResult = detect_vehicles(self, vehicle_list, 
-                                                                max(self.config.distance.min_proximity_threshold, 
-                                                                    self.config.live_info.current_speed_limit / 2), 
-                                                                up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1], 
-                                                                lane_offset=-1)
-        elif self.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
-            detection_result : ObstacleDetectionResult = detect_vehicles(self, vehicle_list,
-                                                                max(self.config.distance.min_proximity_threshold, 
-                                                                    self.config.live_info.current_speed_limit / 2), 
-                                                                up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1], 
-                                                                lane_offset=1)
-        else: 
-            detection_result : ObstacleDetectionResult = detect_vehicles(self, vehicle_list, 
-                                                                max(self.config.distance.min_proximity_threshold, 
-                                                                    self.config.live_info.current_speed_limit / 3), 
-                                                                up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],)
-        return detection_result
+        vehicle_detection_result = detect_obstacles_in_path(self, self.vehicles_nearby, self.config.obstacles.min_proximity_threshold)
+        static_obstacle_detection_result = detect_obstacles_in_path(self, self.static_obstacles_nearby, self.config.obstacles.min_proximity_threshold)
+        
+        return vehicle_detection_result, static_obstacle_detection_result
+    
+    

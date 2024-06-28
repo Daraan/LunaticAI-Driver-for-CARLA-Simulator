@@ -1,0 +1,38 @@
+
+version : 1
+disable_existing_loggers : True
+formatters:
+    colorlog:
+      # NOTE: space before filename for IDE location support
+      format: "%(log_color)s[%(levelname)s][ %(filename)s:%(lineno)d, %(funcName)s] :%(reset)s %(message)s"
+    simple:
+      # default is 'format': '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+      # no function name here:
+      format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+handlers: 
+    color_console: 
+      class: 'logging.StreamHandler'
+      formatter: 'colorlog'
+      stream: 'ext://sys.stdout'
+    # tge file handler is identical to the source, but fixes a path issue which is not released yet
+    file:
+      class: logging.FileHandler
+      formatter: simple
+      # relative to the job log directory
+      filename: ${hydra.runtime.output_dir}/${hydra.job.name}.log
+loggers :
+  __main__ : 
+    # NOTE: Set to WARNING on release
+    level: 'INFO'
+    handlers: []
+    propagate: True
+root :
+  # All other loggers that are not ours
+  level : 'WARNING'
+  handlers: ['color_console', 'file']
+  #handlers : ['file'] # default ['console', 'file']
+
+defaults:
+  # Integrate settings from the colorlog plugin.
+  - override /hydra/job_logging : colorlog
+  - _self_

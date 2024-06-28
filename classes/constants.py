@@ -1,6 +1,11 @@
 from enum import Enum, Flag, IntEnum, auto
 from functools import lru_cache
-from typing import Union
+from typing import Union, TYPE_CHECKING
+
+import carla
+
+if TYPE_CHECKING:
+    from agents.navigation.local_planner import RoadOption
 
 class StreetType(str, Enum):
     ON_HIGHWAY = "On highway"
@@ -204,3 +209,41 @@ class Hazard(Flag):
     EMERGENCY = CRITICAL | EMERGENCY_ONLY # Level 3
 
     OBSTACLE = PEDESTRIAN | CAR
+
+class __ItemAccess(type):
+    def __getitem__(cls, key) -> carla.Color:
+        return getattr(cls, key)
+    
+    def __call__(cls, option: "RoadOption") -> carla.Color:
+        return getattr(cls, option.name)
+
+class RoadOptionColor(metaclass=__ItemAccess):
+    VOID = carla.Color(0, 128, 0)  # Green
+    LEFT = carla.Color(128, 128, 0) # Yellow
+    RIGHT = carla.Color(0, 128, 128) # Cyan
+    STRAIGHT = carla.Color(64, 64, 64) # Gray
+    LANEFOLLOW = carla.Color(0, 128, 0)  # Green
+    CHANGELANELEFT = carla.Color(128, 32, 0)  # Orange
+    CHANGELANERIGHT = carla.Color(0, 32, 128) # Dark Cyan
+    
+    
+class AgentState(Flag):
+    DRIVING = auto()
+    STOPPED = auto()
+    _parked = auto() # hide it to avoid confusion, used further down for PARKED
+    
+    BLOCKED_BY_VEHICLE = auto()
+    BLOCKED_RED_LIGHT = auto()
+    BLOCKED_OTHER = auto()
+    
+    REVERSE = auto()
+    
+    OVERTAKING = auto()
+    
+    AGAINST_LANE_DIRECTION = auto()
+    
+    PARKED = _parked | STOPPED # we want this to be a combination of the two
+    BLOCKED = BLOCKED_OTHER | BLOCKED_BY_VEHICLE | BLOCKED_RED_LIGHT
+    
+    # Maybe more states like CAR_IN_FRONT <- data matrix
+        

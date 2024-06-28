@@ -1,14 +1,22 @@
-from typing import Dict, Set
+from typing import Dict, List, Set, NamedTuple
 import carla
 import math
-import itertools
 import collections
-import pandas as pd
 import numpy as np
-import random
-from copy import deepcopy
+
+from cachetools import cached, LRUCache
+from operator import attrgetter
 
 from agents.tools.logging import log, logger
+
+from launch_tools import CarlaDataProvider
+
+class RoadLaneId(NamedTuple):
+    road_id: int
+    lane_id: int
+    
+    def __str__(self) -> str:
+        return f"{self.road_id}_{self.lane_id}"
 
 # NOTE: TODO: double definition
 def get_row(matrix):
@@ -71,7 +79,7 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
         bool: True if the ego vehicle is on a highway, False otherwise.
     """
     # get waypoints of ego and its left and right lanes
-    waypoints = []
+    waypoints: List[carla.Waypoint] = []
     ego_waypoint = world_map.get_waypoint(ego_vehicle_location)
     waypoints.append(ego_waypoint)
     if ego_waypoint.get_left_lane() is not None:
@@ -85,8 +93,8 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
         # get all lanes of the respective road
         lanes = []
         for id in road_lane_ids:
-            if str(ego_vehilce_road_id) == id.split("_")[0]:
-                lanes.append(id.split("_")[1])
+            if ego_vehilce_road_id == id[0]:
+                lanes.append(id[1])
         # cast lane_id's to int and check for highway condition
         lanes = [int(lane) for lane in lanes]
         if len(lanes) >= 6 or (
@@ -96,6 +104,10 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
 
     return False
 
+_all_lane_ids = []
+
+# @functools.lru_cache(maxsize=1) # Faster but not safe when changing the map without changing the map object/ or clearing the cache
+@cached(cache=LRUCache(maxsize=1), key=attrgetter("name"))
 def get_all_road_lane_ids(world_map : carla.Map):
     """
     Retrieve a set of unique road and lane identifiers in the format "roadId_laneId" from the given world map.
@@ -114,7 +126,16 @@ def get_all_road_lane_ids(world_map : carla.Map):
         lane_id = waypoint.lane_id
         road_id = waypoint.road_id
         # add road and lane identifiers to set
-        road_lane_ids.add(f"{road_id}_{lane_id}")
+        road_lane_ids.add(RoadLaneId(road_id, lane_id))
+
+    _all_lane_ids.append(road_lane_ids)
+    if len(_all_lane_ids) > 1:
+        match = _all_lane_ids[0] == _all_lane_ids[1]
+        print("All lane ids match:", match)
+        if match:
+            _all_lane_ids.pop(0)
+        else:
+            raise ValueError("Lane ids do not match")
 
     return road_lane_ids
 
@@ -159,15 +180,15 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
     """
     # Get lane & road id for ego_vehicle
     ego_vehilce_waypoint = world_map.get_waypoint(ego_vehicle_location)
-    ego_vehilce_lane_id = str(ego_vehilce_waypoint.lane_id)
+    ego_vehilce_lane_id = ego_vehilce_waypoint.lane_id
     #logger.info("ego_vehicle_lane_id: ", ego_vehilce_lane_id)
-    ego_vehilce_road_id = str(ego_vehilce_waypoint.road_id)
+    ego_vehilce_road_id = ego_vehilce_waypoint.road_id
 
     # get all lanes of ego's road
     lanes = []
     for id in road_lane_ids:
-        if ego_vehilce_road_id == id.split("_")[0]:
-            lanes.append(id.split("_")[1])
+        if ego_vehilce_road_id == id[0]:
+            lanes.append(id[1])
     lanes.sort()
     lanes = [int(id) for id in lanes]
     
@@ -192,7 +213,7 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
     ego_direction = []
     # Identify list of lanes of ego's direction and opposite direction
     for direction in lanes_splitted:
-        if int(ego_vehilce_lane_id) in direction:
+        if ego_vehilce_lane_id in direction:
             ego_direction = direction
         else:
             other_direction = direction
@@ -203,19 +224,19 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[3]),
+                (ego_vehilce_road_id, ego_direction[3]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[2]),
+                (ego_vehilce_road_id, ego_direction[2]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[1]),
+                (ego_vehilce_road_id, ego_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[0]),
+                (ego_vehilce_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -228,15 +249,15 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[2]),
+                (ego_vehilce_road_id, ego_direction[2]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[1]),
+                (ego_vehilce_road_id, ego_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[0]),
+                (ego_vehilce_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("No_4th_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -250,19 +271,19 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                ego_vehilce_road_id + "_" + str(other_direction[0]),
+                (ego_vehilce_road_id, other_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(other_direction[1]),
+                (ego_vehilce_road_id, other_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[1]),
+                (ego_vehilce_road_id, ego_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[0]),
+                (ego_vehilce_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -277,11 +298,11 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("No_opposing_direction", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("No_opposing_direction", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[1]),
+                (ego_vehilce_road_id, ego_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[0]),
+                (ego_vehilce_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -295,11 +316,11 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("No_opposing_direction", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                ego_vehilce_road_id + "_" + str(other_direction[0]),
+                (ego_vehilce_road_id, other_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[0]),
+                (ego_vehilce_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("No_own_right_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -315,7 +336,7 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("No_other_right_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("No_opposing_direction", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                ego_vehilce_road_id + "_" + str(ego_direction[0]),
+                (ego_vehilce_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("No_own_right_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -332,13 +353,13 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
         try:
             if ego_on_bad_highway_street:
                 if int(ego_vehilce_lane_id) > 0:
-                    matrix[str(ego_vehilce_road_id) + "_" + str(int(ego_vehilce_lane_id) + 1)][3] = 1
+                    matrix[ego_vehilce_road_id, ego_vehilce_lane_id + 1][3] = 1
                 else:
-                    matrix[str(ego_vehilce_road_id) + "_" + str(int(ego_vehilce_lane_id) - 1)][3] = 1
+                    matrix[ego_vehilce_road_id, ego_vehilce_lane_id - 1][3] = 1
             else:
-                matrix[str(ego_vehilce_road_id) + "_" + str(ego_vehilce_lane_id)][3] = 1
+                matrix[ego_vehilce_road_id, ego_vehilce_lane_id][3] = 1
         except KeyError:
-            matrix[str(ego_vehilce_road_id) + "_" + str(ego_vehilce_lane_id)][3] = 1
+            matrix[ego_vehilce_road_id, ego_vehilce_lane_id][3] = 1
     return matrix
 
 # NOTE: sub function of detect_surrounding_cars
@@ -379,18 +400,18 @@ def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
     next_lanes = None
     next_road_id = None
     if next_waypoint.road_id != ego_vehicle_waypoint.road_id:
-        next_road_id = str(next_waypoint.road_id)
+        next_road_id = next_waypoint.road_id
         next_lanes = [
-            id.split("_")[1]
+            id[1]
             for id in road_lane_ids
-            if next_road_id == id.split("_")[0]
+            if next_road_id == id[0]
         ]
         
     # get lanes of ego vehicle's road
     our_lanes = [
-        id.split("_")[1]
+        id[1]
         for id in road_lane_ids
-        if str(ego_vehicle_waypoint.road_id) == id.split("_")[0]
+        if ego_vehicle_waypoint.road_id == id[0]
     ]
     
     # return next_road_id and next_lanes if they exist, otherwise return None
@@ -453,7 +474,7 @@ def detect_surrounding_cars(
                 "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
 
     """
-    world_map = world.get_map()
+    world_map = CarlaDataProvider.get_map()
     ego_vehicle_waypoint = world_map.get_waypoint(ego_location)
     ego_vehicle_road_id = ego_vehicle_waypoint.road_id
 
@@ -472,8 +493,8 @@ def detect_surrounding_cars(
     lanes_exist_further = False
     lanes = []
     for id in road_lane_ids:
-        if str(ego_vehicle_road_id) == id.split("_")[0]:
-            lanes.append(id.split("_")[1])
+        if ego_vehicle_road_id == id[0]:
+            lanes.append(id[1])
     try:
         if next_lanes and matrix:
             # lanes = [road_lane.split("_")[1] for road_lane in matrix.keys()]
@@ -542,13 +563,15 @@ def detect_surrounding_cars(
     ):
         surrounding_cars_on_highway_entryExit.append(ego_vehicle)
     
+    ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)
+    
     # Update matrix based on the lane and position/distance to ego vehicle of other car
     for car in surrounding_cars:
         # Get road and lane_id of other car
         other_car_waypoint = world_map.get_waypoint(car.get_location())
         other_car_lane_id = other_car_waypoint.lane_id
         other_car_road_id = other_car_waypoint.road_id
-        other_car_road_lane_id = str(other_car_road_id) + "_" + str(other_car_lane_id)
+        other_car_road_lane_id = RoadLaneId(other_car_road_id, other_car_lane_id)
 
         # ignore car on highway entry / Exit bc. considered in update_matrix()
         if (
@@ -575,7 +598,8 @@ def detect_surrounding_cars(
             matrix,
             world_map,
             ego_vehicle.get_velocity(),
-            ghost,
+            ego_on_highway=ego_on_highway,
+            ghost=ghost,
         )
         
         if col is None:
@@ -592,16 +616,16 @@ def detect_surrounding_cars(
                 continue
             
             # elif road id changes in front / behind then place other car based on lane id 
-            elif (lanes_exist_further or lanes_existed_before) and str(
+            elif (lanes_exist_further or lanes_existed_before) and (
                 other_car_lane_id
-            ) in [str(road_lane.split("_")[1]) for road_lane in matrix.keys()]:
+             in [road_lane[1] for road_lane in matrix.keys()]):
                 if car.id == ego_vehicle.id:
-                    matrix[str(ego_vehicle_road_id) + "_" + str(other_car_lane_id)][
+                    matrix[(ego_vehicle_road_id, other_car_lane_id)][
                         col
                     ] = 1
                 else:
                     try:
-                        matrix[str(ego_vehicle_road_id) + "_" + str(other_car_lane_id)][
+                        matrix[(ego_vehicle_road_id, other_car_lane_id)][
                             col
                         ] = 2
                     except:
@@ -706,7 +730,7 @@ def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
     return math.sqrt(abs(distance_ego_other**2 - distance_opposite**2))
 
 def calculate_position_in_matrix(
-        ego_location, ego_vehicle, other_car, matrix, world_map, velocity, ghost=False
+        ego_location, ego_vehicle, other_car, matrix, world_map, velocity, *, ego_on_highway, ghost=False,
 ):
     """
     Calculate the position of the other car in the city matrix based on its relative location and distance from the ego vehicle.
@@ -729,7 +753,7 @@ def calculate_position_in_matrix(
                 "right_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
                 "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
         world_map (carla.WorldMap): The map representing the environment.
-        ghost (bool): Ghost mode when ego is exiting/entrying a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
+        ghost (bool): Ghost mode when ego is exiting/entering a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
 
     Returns:
         int or None: The column index in the city matrix representing the column in the city matrix of the other car,
@@ -761,22 +785,21 @@ def calculate_position_in_matrix(
     other_car_waypoint = world_map.get_waypoint(other_location)
     other_car_lane_id = other_car_waypoint.lane_id
     other_car_road_id = other_car_waypoint.road_id
-    other_car_road_lane_id = str(other_car_road_id) + "_" + str(other_car_lane_id)
+    other_car_road_lane_id = (other_car_road_id, other_car_lane_id)
 
     # Get road_lane_id of ego vehicle
     ego_car_waypoint = world_map.get_waypoint(ego_location)
     ego_car_lane_id = ego_car_waypoint.lane_id
     ego_car_road_id = ego_car_waypoint.road_id
-    ego_car_road_lane_id = str(ego_car_road_id) + "_" + str(ego_car_lane_id)
+    ego_car_road_lane_id = (ego_car_road_id, ego_car_lane_id)
 
     # velocity = ego_vehicle.get_velocity()
-    ego_speed = (
-            3.6 * (velocity.x ** 2 + velocity.y ** 2 + velocity.z ** 2) ** 0.5
-    )  # Convert m/s to km/h
-    road_lane_ids = get_all_road_lane_ids(world_map)
+    #ego_speed = (
+    #        3.6 * (velocity.x ** 2 + velocity.y ** 2 + velocity.z ** 2) ** 0.5
+    #)  # Convert m/s to km/h
     
     # if ego is on highway use different speed factor --> we look further ahead/behind on highway
-    if check_ego_on_highway(ego_location, road_lane_ids, world_map):
+    if ego_on_highway:
         speed_factor = 2.0
     else:
         speed_factor = 1
@@ -1040,7 +1063,7 @@ def detect_ego_before_junction(
     for road in junction_roads:
         lanes_all[road[1]] = [int(id) for id in lanes_all[road[1]]]
 
-    log(lanes_all.__str__())
+    logger.info("all lanes %s", lanes_all)
 
     # check on which lane ego is: i=0 means most out
     if lane_id_ego > 0:
@@ -1111,7 +1134,7 @@ def detect_surrounding_cars_outside_junction(
     Returns:
         list: Updated key-value pairs representing the city matrix with information about surrounding cars.
     """
-    world_map = world.get_map()
+    world_map = CarlaDataProvider.get_map()
     ego_waypoint = world_map.get_waypoint(ego_vehicle.get_location())
     junction_id = junction.id
     # junction_roads =
@@ -1152,36 +1175,28 @@ def detect_surrounding_cars_outside_junction(
                         distance_to_actor <= distance_to_junc * 1.2
                 ) and actor_outside_junction:  # add extra 20% because distance_to_actor is calculated with road[2] waypoint, which can be on other lane
                     included = True
-                    if str(actor_waypoint.road_id) == road[0]:
+                    if actor_waypoint.road_id == road[0]:
                         different_road_distance = None
                     elif (
-                            str(actor_waypoint.next(int(distance_to_junc / 2))[0].road_id)
-                            == road[0]
+                        actor_waypoint.next(int(distance_to_junc / 2))[0].road_id
+                        == road[0]
                     ):
                         different_road_distance = int(distance_to_junc / 2)
                     elif (
-                            str(
-                                actor_waypoint.previous(int(distance_to_junc / 2))[
-                                    0
-                                ].road_id
-                            )
-                            == road[0]
+                        actor_waypoint.previous(int(distance_to_junc / 2))[0].road_id 
+                        == road[0]
                     ) and (not actor_waypoint.is_junction):
                         different_road_distance = (
                                 int(distance_to_junc / 2) * -1
                         )  # negative bc. look back from actor
                     elif (
-                            str(actor_waypoint.next(int(distance_to_junc / 3))[0].road_id)
-                            == road[0]
+                        actor_waypoint.next(int(distance_to_junc / 3))[0].road_id
+                        == road[0]
                     ):
                         different_road_distance = int(distance_to_junc / 3)
                     elif (
-                            str(
-                                actor_waypoint.previous(int(distance_to_junc / 3))[
-                                    0
-                                ].road_id
-                            )
-                            == road[0]
+                        actor_waypoint.previous(int(distance_to_junc / 3))[0
+                        ].road_id== road[0]
                     ):
                         different_road_distance = (
                                 int(distance_to_junc / 3) * -1
@@ -1476,7 +1491,7 @@ def get_all_lanes(ego_vehicle, ego_wp, junction_waypoints, road_lane_ids, direct
     """
     
     ego_location = ego_wp.transform.location
-    road_id_ego = str(ego_wp.road_id)
+    road_id_ego = ego_wp.road_id
 
     lane_id_ego = ego_wp.lane_id
     start_wps = [[], [], []]
@@ -1487,23 +1502,23 @@ def get_all_lanes(ego_vehicle, ego_wp, junction_waypoints, road_lane_ids, direct
     for i, (start_wp, end_wp) in enumerate(junction_waypoints):
         # get road id and lane id of the road after the end_wp   
         if junction_waypoints[0][0].get_junction().id == 1368 and ((i < 2) or (i >= len(junction_waypoints) - 2)):
-            road_id_end_wp = str(end_wp.previous(2)[0].road_id)
-            lane_id_end_wp = str(end_wp.previous(2)[0].lane_id)
+            road_id_end_wp = end_wp.previous(2)[0].road_id
+            lane_id_end_wp = end_wp.previous(2)[0].lane_id
         else:
             # end
-            road_id_end_wp = str(end_wp.next(1)[0].road_id)
-            lane_id_end_wp = str(end_wp.next(1)[0].lane_id)
+            road_id_end_wp = end_wp.next(1)[0].road_id
+            lane_id_end_wp = end_wp.next(1)[0].lane_id
 
         end_wps[0].append(end_wp) # end_wp of junction road 
         end_wps[1].append(road_id_end_wp) # road id of road after junction end wp
 
         # get direction from ego perspective
         # catch special case of gas station junction objects
-        if ((road_id_end_wp != road_id_ego and str(end_wp.next(10)[0].road_id) != road_id_ego) 
-            and (   not ((int(road_id_end_wp) in [2, 3] and int(road_id_ego) in [467, 468, 477]) 
-                        or int(road_id_ego) in [12, 13, 879, 880, 886]) 
-                 or not ((int(road_id_end_wp) in [12, 13] and int(road_id_ego) in [12, 13, 879, 880, 886]) 
-                        or int(road_id_ego) in [467, 468, 477]))):
+        if ((road_id_end_wp != road_id_ego and end_wp.next(10)[0].road_id != road_id_ego)
+            and (   not ((road_id_end_wp in [2, 3] and int(road_id_ego) in [467, 468, 477]) 
+                        or road_id_ego in [12, 13, 879, 880, 886]) 
+                 or not ((road_id_end_wp in [12, 13] and int(road_id_ego) in [12, 13, 879, 880, 886]) 
+                        or road_id_ego in [467, 468, 477]))):
             end_wps[2].append(
                 get_waypoint_direction(
                     ego_vehicle, closest_start_wp, end_wp, direction_angle #  TODO: comments
@@ -1533,12 +1548,12 @@ def get_all_lanes(ego_vehicle, ego_wp, junction_waypoints, road_lane_ids, direct
     }  # direction from ego perspective
     for lane_id in road_lane_ids:  # iterate through all lanes of map
         for road in junction_roads:  # for each road that goes into the junction
-            if road[0] == lane_id.split("_")[0]:
-                if (junction_waypoints[0][0].get_junction().id == 1368) and int(lane_id.split("_")[1]) * np.sign(
-                        ego_wp.lane_id) < 0 and int(road[0]) != 23:
+            if road[0] == lane_id[0]:
+                if (junction_waypoints[0][0].get_junction().id == 1368) and lane_id[1] * np.sign(
+                        ego_wp.lane_id) < 0 and road[0] != 23:
                     continue
                 else:
-                    lanes_all[road[1]].append(lane_id.split("_")[1]) # append lane id
+                    lanes_all[road[1]].append(lane_id[1]) # append lane id
     
     return lanes_all, junction_roads
 

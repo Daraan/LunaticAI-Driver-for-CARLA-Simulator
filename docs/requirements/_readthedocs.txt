@@ -5,13 +5,14 @@
 carla
 
 jinja2 ==3.0.3
-sphinx==7.1.2; python_version >= '3.10'
+sphinx==7.3.7; python_version >= '3.10'
 sphinx; python_version < '3.10'
 
-sphinx-rtd-theme==1.3.0rc1; python_version >= '3.10'
+sphinx-rtd-theme>=1.3.0rc1; python_version >= '3.10'
 sphinx-rtd-theme; python_version < '3.10'
 myst-parser
 
+cachetools
 numpy
 pandas
 matplotlib
@@ -25,3 +26,4 @@ graphviz
 psutil
 six
 ruamel.yaml
+py_trees

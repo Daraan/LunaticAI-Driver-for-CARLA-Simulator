@@ -1,0 +1,37 @@
+# Keeps track of information that changes during the simulation.
+
+# 3D Vector of the current velocity of the vehicle.
+velocity_vector: ???
+
+# Velocity of the vehicle in km/h.
+# Note: 
+#     The z component is ignored.
+current_speed: ???
+current_transform: ???
+current_location: ???
+current_speed_limit: ???
+
+# Direction that was executed in the last step by the local planner
+#  
+# planner.target_road_option is the option last executed by the planner (constant)
+# incoming direction is the next *planned* direction subject to change (variable)
+executed_direction: ???
+# RoadOption that will used for the current step
+incoming_direction: ???
+# Waypoint that is planned to be targeted in this step.
+incoming_waypoint: ???
+# incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
+is_taking_turn: ???
+# incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
+is_changing_lane: ???
+
+# Traffic light that is closest to the next intersection.
+#  
+# Is `None` if the agent is at an intersection.
+#  
+# + NOTE: This might not be in the path or infront of the vehicle.
+next_traffic_light: ???
+# Distance to the assumed next traffic light.
+next_traffic_light_distance: ???
+# VehicleControls 
+last_applied_controls: ???

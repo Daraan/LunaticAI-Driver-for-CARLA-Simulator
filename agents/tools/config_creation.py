@@ -3,7 +3,7 @@
 import os
 import sys
 from collections.abc import Mapping
-
+from copy import deepcopy
 
 from classes.camera_manager import CameraBlueprint
 from classes.rss_visualization import RssDebugVisualizationMode
@@ -12,7 +12,7 @@ if __name__ == "__main__": # TEMP clean at the end, only here for testing
     sys.path.append(os.path.abspath("../"))
 
 from enum import Enum, IntEnum
-from functools import partial, wraps
+from functools import partial
 from dataclasses import dataclass, field, asdict, is_dataclass
 import typing
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast
@@ -38,6 +38,7 @@ import carla
 
 import ast
 import inspect
+from launch_tools import ast_parse, Literal
 from agents.navigation.local_planner import RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
@@ -58,15 +59,20 @@ __all__ = ["AgentConfig",
 _class_annotations = None
 _file_path = __file__
 
+_NOTSET = object()
+
 # ---------------------
 # Helper methods
 # ---------------------
 
 # need this check for readthedocs
 if os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
+    import random
     OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
     OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
     OmegaConf.register_new_resolver("min", lambda *els: min(els))
+    OmegaConf.register_new_resolver("randint", random.randint)
+    OmegaConf.register_new_resolver("randuniform", random.uniform)
     os.environ["_OMEGACONF_RESOLVERS_REGISTERED"] = "1"
 
 class class_or_instance_method:
@@ -130,6 +136,7 @@ class AgentConfig:
             options = cls_or_self[category]
         if with_comments:
             string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True)
+            os.makedirs(os.path.split(path)[0], exist_ok=True)
             with open(path, "w") as f:
                 f.write(string)
             return
@@ -159,18 +166,109 @@ class AgentConfig:
         if not isinstance(options, DictConfig) and not resolve and not yaml:
             return asdict(options)
         if not isinstance(options, DictConfig):
-            options = OmegaConf.structured(options, flags={"allow_objects": True})
+            #options = OmegaConf.structured(options, flags={"allow_objects": True})
+            pass
+        
         if yaml:
-            return OmegaConf.to_yaml(options, resolve=resolve, **kwargs)
+            # Simple YAML
+            import yaml
+            
+            """
+            from omegaconf._utils import get_omega_conf_dumper
+            Dumper = get_omega_conf_dumper()
+            org_func = Dumper.str_representer
+            def str_representer(dumper, data: str):
+                result = org_func(dumper, data)
+                return result
+            
+            Dumper.add_representer(str, str_representer)
+            string = yaml.dump(  # type: ignore
+                container,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=kwargs.get("sort_keys", False),
+                Dumper=Dumper,
+            )
+            """
+            from omegaconf._utils import _ensure_container, get_omega_conf_dumper
+            cfg = OmegaConf.create(cls_or_self, flags={"allow_objects": True})
+            container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
+            string = yaml.dump(  # type: ignore
+                container,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False,
+                Dumper=get_omega_conf_dumper(),
+            )
+            if not yaml_commented:
+                return string
+            # Extend 
+            
+            # Get documentations
+            global _class_annotations
+            if _class_annotations is None:
+                with open(_file_path, "r") as f:
+                    tree = ast_parse(f.read())
+                    _class_annotations = {}
+                    extract_annotations(tree, docs=_class_annotations)
+            
+            if isinstance(cls_or_self, type): # is class
+                cls = cls_or_self
+            else:
+                cls = cls_or_self.__class__
+            
+            from ruamel.yaml import YAML
+            from ruamel.yaml.comments import CommentedBase
+            yaml2 = YAML(typ='rt')
+            #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
+            data: CommentedBase = yaml2.load(string)
+            
+            cls_doc = _class_annotations[cls.__name__]
+            
+            # First line
+            data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
+            
+            # add comments to all other attributes
+            def add_comments(container, data, lookup, indent=0):
+                for key, value in container.items():
+                    if isinstance(value, dict) and isinstance(cls_doc.get(key, None), dict):
+                        add_comments(value, data[key], cls_doc[key], indent=indent+2)
+                        comment_txt:str = "\n"+cls_doc[key].get("__doc__", "")
+                    else:
+                        comment_txt = lookup.get(key, None)
+                    if comment_txt is None:
+                        continue
+                    comment_txt=comment_txt.replace("\n\n","\n \n")
+                    if comment_txt.count("\n") > 0:
+                        comment_txt = "\n"+comment_txt
+                    data.yaml_set_comment_before_after_key(key, comment_txt, indent=indent)
+            add_comments(container, data, cls_doc)
+            # data.yaml_add_eol_comment(comment_txt, key = key)
+
+            import io
+            stream = io.StringIO()
+            yaml2.dump(data, stream)
+            stream.seek(0)
+            return stream.read()
         return OmegaConf.to_container(options, resolve=resolve, **kwargs)
     
     @class_or_instance_method
     def to_yaml(cls_or_self, resolve=False, yaml_commented=True) ->  str:
         return cls_or_self.simplify_options(resolve=resolve, yaml=True, yaml_commented=yaml_commented)
-    
+        
     @classmethod
     def from_yaml(cls, path, category : Optional[str]=None, *, merge=True):
-        """Loads the options from a yaml file."""
+        """
+        Loads the options from a yaml file.
+        Args:
+            path (str): The path to the yaml file.
+            category (Optional[str], optional): loads this subcategory only
+            merge (bool, optional): Merges the loaded yaml into the base class settings. 
+                Defaults to True.
+        
+        Note:
+            This returns a DictConfig version of this class.
+        """
         if merge:
             options : cls = OmegaConf.merge(OmegaConf.create(cls, flags={"allow_objects":True}), OmegaConf.load(path))
         else:
@@ -181,63 +279,73 @@ class AgentConfig:
         return r
     
     @classmethod
-    def create_from_args(cls, args_agent:"Union[os.PathLike, dict, DictConfig, Mapping]", 
+    def uses_overwrite_interface(cls):
+        """
+        Whether or not the class is created by a single parameter "overwrites"
+        or via keyword arguments for each field.
+        """
+        return "overwrites" in inspect.signature(cls.__init__).parameters
+    
+    @classmethod
+    def create_from_args(cls, args:"Union[os.PathLike, dict, DictConfig, Mapping]", 
                          overwrites:"Optional[Mapping]"=None, 
                          *,
-                         assure_copy : bool = False,
+                         assure_copy : bool = True,
+                         as_dictconfig:Optional[bool]=True,
                          dict_config_no_parent:bool = True,
-                         config_mode:Optional[SCMode]=None # SCMode.DICT_CONFIG # NOTE: DICT_CONFIG is only good when we have a structured config 
                          ):
         """
         Creates the agent settings based on the provided arguments.
+        
+        Note:
+            By default this returns a DictConfig version of this class.
 
         Args:
             cls (ConfigType): The type of the agent settings.
-            args_agent (Union[os.PathLike, dict, DictConfig, dataclass]): The argument specifying the agent settings. It can be a path to a YAML file, a dictionary, a dataclass, or a DictConfig.
+            args (Union[os.PathLike, dict, DictConfig, dataclass]): The argument specifying the agent settings. It can be a path to a YAML file, a dictionary, a dataclass, or a DictConfig.
             overwrites (Optional[Mapping]): Optional mapping containing additional settings to overwrite the default agent settings.
-            config_mode (omegaconf.SCMode, optional): 
-                Optional configuration mode for structured config. 
-                If None the return type might not be a DictConfig.
-                Defaults to SCMode.DICT_CONFIG.
+            as_dictconfig (Optional[bool], optional): 
+                If True, the agent settings are returned as a DictConfig.
+                If False, the agent settings are returned as an instance of this class.
+                If None, the return type is determined by the type of the args and other arguments
+                    i.e. if args is a DictConfig and assure_copy is False, the
+                    original input is checked and returned.
 
         Returns:
-            ConfigType: The created agent settings.
+            AgentConfig (duck-typed): The created agent settings.
 
         Raises:
             Exception: If the overwrites cannot be merged into the agent settings.
-
         """
         from agents.tools.logging import logger
         behavior : cls
-        if isinstance(args_agent, dict):
+        if isinstance(args, dict):
             logger.debug("Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a dict config. Interpolations not available.")
-            behavior = cls(**args_agent) # NOTE: Not a dict config
-        elif isinstance(args_agent, str):
-            logger.info("Using agent settings from file `%s`", args_agent)
-            behavior = cls.from_yaml(args_agent)
-        elif is_dataclass(args_agent) or isinstance(args_agent, DictConfig):
+            behavior = cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
+        elif isinstance(args, str):
+            logger.info("Using agent settings from file `%s`", args)
+            behavior = cls.from_yaml(args) # DictConfig
+        elif is_dataclass(args) or isinstance(args, DictConfig):
             logger.info("Using agent settings as is, as it is a dataclass or DictConfig.")
             if assure_copy:
-                behavior : cls = OmegaConf.create(args_agent, flags={"allow_objects": True})
-            elif isinstance(args_agent, type):
-                behavior = args_agent()
+                behavior = cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
+            elif inspect.isclass(args):
+                behavior = args()
             else:
-                behavior = args_agent
+                # instantiate class to check keys but use original type
+                cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)# convert to class to check keys
+                behavior = args   # stays DictConfig
         else:
-            if config_mode is None or config_mode == SCMode.DICT:
-                logger.warning("Type `%s` of launch argument type `agent` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args_agent))
-            if isinstance(args_agent, type):
-                behavior = args_agent() # be sure to have an instance
+            if as_dictconfig is None or as_dictconfig == SCMode.DICT:
+                logger.warning("Type `%s` of launch argument type `agent_settings` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args))
+            if inspect.isclass(args):
+                behavior = args() # be sure to have an instance
             if assure_copy:
-                from copy import deepcopy
-                behavior = deepcopy(args_agent)
+                behavior = cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
             else:
-                behavior = args_agent
-        if config_mode is not None:
-            logger.debug("Converting agent settings (type: %s) to to container via %s", type(behavior), config_mode)
-            if not isinstance(behavior, DictConfig):
-                behavior = OmegaConf.create(behavior, flags={"allow_objects": True})
-            behavior = OmegaConf.to_container(behavior, structured_config_mode=config_mode)
+                # instantiate to class to check keys but use original type
+                cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
+                behavior = args   # stays Unknown type
         
         if overwrites:
             if isinstance(behavior, DictConfig):
@@ -245,17 +353,69 @@ class AgentConfig:
             else:
                 try:
                     behavior.update(overwrites)
-                except:
-                    logger.error("Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. config_mode=SCMode.DICT_CONFIG is recommended for this to work.")
+                except Exception:
+                    logger.error("Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. Passing config_mode=True might help.")
                     raise
+        if as_dictconfig and not isinstance(behavior, DictConfig):
+            behavior = OmegaConf.create(behavior, flags={"allow_objects": True})  
+        elif as_dictconfig == False and isinstance(behavior, DictConfig):
+            return cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
+        elif as_dictconfig is None:
+            logger.debug("A clear return type of %s.create_from_args has not set as config_mode is None. Returning as %s", cls.__name__, type(behavior))
+        
         if isinstance(behavior, DictConfig):
             behavior._set_flag("allow_objects", True)
             if dict_config_no_parent:
                 # Dict config interpolations always use the full path, interpolations might go from the root of the config.
                 # If there is launch_config.agent, with launch config as root, the interpolations will not work.
-                behavior.__dict__["_parent"] = None # Remove parent from
+                behavior.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
         
         return cast(cls, behavior)
+    
+    if TYPE_CHECKING and sys.version_info >= (3, 8):
+        from typing import overload, Literal, TypeVar
+        CL = TypeVar("CL")
+        @overload
+        @classmethod
+        def check_config(cls, config: CL, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[False]") -> CL: ... 
+        
+        @overload
+        @classmethod
+        def check_config(cls: type[CL], config, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[True]") -> CL: ... 
+        
+        @overload
+        @classmethod
+        def check_config(cls: type[CL], config, strictness: int, as_dict_config=True) -> CL: ...
+    
+    @classmethod
+    def check_config(cls, config, strictness: int = 1, as_dict_config=True):
+        """
+        
+        - strictness == 1: Will cast the config to this class, assuring all keys are present.
+            However the type and correctness of the field-contents are not checked.
+        - strictness > 1 the config will be a DictConfig object, `as_dict_config` is ignored. 
+        - strictness == 2: Will assure that the *initial* types are correct.
+        - strictness >= 2 will return the config as a structured config,
+            forcing the defined types during runtime as well.
+        """
+        if strictness < 1:
+            if as_dict_config and not isinstance(config, DictConfig):
+                return OmegaConf.create(config, flags={"allow_objects": True})
+            else:
+                return config
+        if strictness == 1:
+            config = cls(**config)
+            if as_dict_config and not isinstance(config, DictConfig):
+                return OmegaConf.create(config, flags={"allow_objects": True})
+            return config
+        # TODO: # Note: This does not assure keys:
+        config = cls.create_from_args(config, as_dictconfig=SCMode.DICT_CONFIG, assure_copy=False)
+        if strictness == 2:
+            if as_dict_config and not isinstance(config, DictConfig):
+                return OmegaConf.create(config, flags={"allow_objects": True})
+            return config
+        config: cls = OmegaConf.structured(config, flags={"allow_objects": True}) # include flag, yes no?
+        return config
         
     
     @class_or_instance_method
@@ -278,6 +438,15 @@ class AgentConfig:
             set_readonly_keys(conf, lock_fields)
         return conf
     
+    def copy(self):
+        return deepcopy(self)
+    
+    @class_or_instance_method
+    def get(cls_or_self, key, default=_NOTSET):
+        """Analog of getattr"""
+        if default is _NOTSET:
+            return getattr(cls_or_self, key)
+        return getattr(cls_or_self, key, default)
     
     @staticmethod
     def _flatten_dict(source : DictConfig, target):
@@ -308,6 +477,9 @@ class AgentConfig:
         """Updates the options with a new dictionary."""
         if isinstance(options, AgentConfig):
             key_values = options.__dataclass_fields__.items()
+        elif isinstance(options, DictConfig):
+            options = OmegaConf.to_container(options)
+            key_values = options.items() # Calling this with missing keys will raise an error
         else:
             key_values = options.items()
         for k, v in key_values:
@@ -334,8 +506,18 @@ class AgentConfig:
         # Merge the overwrite dict into the correct ones.
         for key, value in self.overwrites.items():
             if key in self.__annotations__:
-                if issubclass(self.__annotations__[key], AgentConfig):
-                    getattr(self, key).update(value)
+                if key == "overwrites":
+                    if value:
+                        print("Error: a non-empty overwrites key should not be set in the overwrites dict. Ignoring it")
+                    continue
+                elif key == "live_info":
+                    live_info_dict = self.live_info # type: LiveInfo
+                    for live_info_key in value.keys():
+                        if not OmegaConf.is_missing(value, live_info_key):
+                            print("Warning: live_info should only consist of missing values. Setting", live_info_key, "to", value[live_info_key])
+                            setattr(live_info_dict, live_info_key, value[live_info_key])
+                elif issubclass(self.__annotations__[key], AgentConfig):
+                    getattr(self, key).update(value) # AgentConfig.update
                 else:
                     print("is not a Config")
                     setattr(self, key, value)
@@ -418,14 +600,6 @@ class SimpleConfig(object):
 class LiveInfo(AgentConfig):
     """Keeps track of information that changes during the simulation."""
     
-    use_srunner_data_provider : bool = True
-    """
-    If enabled makes use of the scenario_runner CarlaDataProvider assuming 
-    that its information is up to date and complete, e.g. tracks all actors.
-    
-    NOTE: Turning this off is not fully supported.
-    """
-    
     velocity_vector : carla.Vector3D = MISSING
     """
     3D Vector of the current velocity of the vehicle.
@@ -435,7 +609,8 @@ class LiveInfo(AgentConfig):
     """
     Velocity of the vehicle in km/h.
     
-    Note if use_srunner_data_provider is True the z component is ignored.
+    Note:
+        The `z` component is ignored.
     """
     
     current_transform : carla.Transform = MISSING
@@ -616,9 +791,6 @@ class BehaviorAgentDistanceSettings(BasicAgentDistanceSettings):
     Usage: max_distance = max(min_proximity_threshold, self._speed_limit / (2 if <LANE CHANGE> else 3 ) )
     """
     
-    min_proximity_threshold : float = 10
-    """Range in which cars are detected. NOTE: Speed limit overwrites"""
-    
     emergency_braking_distance : float = 5
     """Emergency Stop Distance Trigger"""
     
@@ -746,7 +918,7 @@ class BasicAgentObstacleSettings(AgentConfig):
     NOTE: No usage implemented!
     """
     
-    use_bbs_detection : bool = False
+    use_bbs_detection : bool = True
     """
     True: Whether to use a general approach to detect vehicles invading other lanes due to the offset.
 
@@ -758,17 +930,20 @@ class BasicAgentObstacleSettings(AgentConfig):
     base_tlight_threshold : float = 5.0
     """
     Base distance to traffic lights to check if they affect the vehicle
-        
-    Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
-    Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+    
+    Usage:
+        max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
     
     base_vehicle_threshold : float = 5.0
     """
     Base distance to vehicles to check if they affect the vehicle
             
-    Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
-    Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+    Usage:
+        Only vehicles with distance < `nearby_vehicles_max_distance` are checked for 
+        max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
+        
+        A vehicle is considered if distance < max_vehicle_distance < nearby_vehicles_max_distance
     """
 
     detection_speed_ratio : float = 1.0
@@ -797,10 +972,65 @@ class BasicAgentObstacleSettings(AgentConfig):
 @dataclass
 class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
     nearby_vehicles_max_distance: float = 45
-    """For performance filters out vehicles that are further away than this distance in meters"""
+    """
+    For performance filters out vehicles that are further away than this distance in meters
+    
+    Info:
+        These vehicles are stored in `vehicles_nearby`.
+    """
     
     nearby_walkers_max_distance: float = 10
-    """For performance filters out pedestrians that are further away than this distance in meters"""
+    """
+    For performance filters out pedestrians that are further away than this distance in meters
+    
+    Info:
+        These pedestrians are stored in `walkers_nearby`.
+    """
+    
+    min_proximity_threshold : float = 10
+    """
+    When making lane changes determines the minimum distance to check for vehicles.
+    
+    max_distance_check = max(obstacles.min_proximity_threshold, 
+                             live_info.current_speed_limit / speed_detection_downscale)
+                             
+    Hint:
+        Lower values mean that further away vehicles are maybe not considered,
+        an agent might ignore fast vehicles coming from behind in the other lane,
+        or ignores slower vehicles in front of it in the other lane.
+    """
+    
+    @dataclass
+    class SpeedLimitDetectionDownscale(AgentConfig):
+        """see `speed_detection_downscale`"""
+        same_lane : float = 3.0
+        other_lane : float = 2.0
+        overtaking : float = 1.5
+        """
+        Used by SimpleOvertakeRule, look further ahead for overtaking
+        """
+        
+        tailgating : float = 2
+        """
+        Used by AvoidTailgatorRule, look further behind for tailgators
+        """
+        
+        
+        
+    
+    speed_detection_downscale : SpeedLimitDetectionDownscale = field(default_factory=SpeedLimitDetectionDownscale)
+    """
+    When making lane changes determines the maximum distance to check for vehicles.
+    
+    max_distance_check = max(obstacles.min_proximity_threshold, 
+                             live_info.current_speed_limit / speed_detection_downscale.[same|other]_lane)
+                             
+    Hint:
+        Higher values mean that further away vehicles are not considered,
+        an agent might ignore fast vehicles coming from behind in the other lane,
+        or ignores slower vehicles in front of it in the other lane.
+    """
+    
 
 
 @dataclass
@@ -832,6 +1062,11 @@ class LunaticAgentObstacleDetectionAngles(BasicAgentObstacleDetectionAngles):
     NotImplemented
     """
     
+    # --------------------------
+    # Randomization of detection
+    # Note: Unused and deprecated
+    # --------------------------
+    
     walkers_angle_adjust_chance : float = 0.0
     """Chance that the detection angle for walkers is adjusted"""
     
@@ -857,6 +1092,24 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     """
     
     detection_angles: LunaticAgentObstacleDetectionAngles = field(default_factory=LunaticAgentObstacleDetectionAngles)
+    
+    nearby_statics_max_distance: float = 60
+    """For performance filters out pedestrians that are further away than this distance in meters"""
+    
+    base_static_threshold : float = 2.0
+    """
+    Base distance to vehicles to check if they affect the vehicle
+            
+    Usage: 
+        static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
+    """
+    
+    static_detection_speed_ratio : float = 0.5
+    """
+    Usage: 
+        static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
+    """
+    
     
 # ---------------------
 # Emergency
@@ -911,7 +1164,7 @@ class LunaticAgentControllerSettings(AutopilotControllerSettings, BehaviorAgentC
 # ---------------------
 
 @dataclass
-class PIDControllerDict:
+class PIDControllerDict(AgentConfig):
     """
     PID controller using the following semantics:
         K_P -- Proportional term
@@ -1164,20 +1417,19 @@ class DataMatrixSettings(AgentConfig):
                     }
     hud: Dict[str, Any] = field(default_factory=__hud_default.copy)
     """
-    XXX
-    
-    TODO: do not have this in Agent config but in
-    hud : ${camera.hud.data_matrix}
+    TODO: do not have this in Agent config; instead
+        hud : ${camera.hud.data_matrix}
+        However: problem cannot interpolate to LaunchConfig
      #drawing_options -> see camera.yaml
-     #NOTE: this interpolation might fail if the parent has been removed!
     
     ---
         
     Keyword arguments for `DataMatrix.render`
-    NOTE: The default_settings substitute this with an interpolation that might not work,
-    as it relies on the parent LaunchConfig that is currently removed.
+
+    Warning:
+
     
-    `camera.hud.data_matrix` is preferred.
+        `camera.hud.data_matrix` is preferred.
     """
 
 
@@ -1345,14 +1597,18 @@ class CameraConfig(AgentConfig):
         Set at WorldModel level
         """
         
-        output_path : str = '_recorder/session%03d/%08d.bmp'
+        output_path : str = '${hydra:runtime.output_dir}/recorder/session%03d/%08d.bmp'
         """
         Folder to record the camera
         
         Needs two numeric conversion placeholders.
+        
+        Note:
+            When using the ${hydra:runtime.output_dir} resolver
+            @hydra.main needs to be used or hydra must be initialized.
         """
         
-        frame_interval : int = 1
+        frame_interval : int = 4
         """Interval to record the camera"""
         
     recorder : RecorderSettings = field(default_factory=RecorderSettings)
@@ -1361,35 +1617,72 @@ class CameraConfig(AgentConfig):
     @dataclass
     class DataMatrixHudConfig:
         """
-        Camera configuration for the agent.
+        DataMatrix HUD settings for the HUD
         """
-        enabled : bool = True
-        """Whether the camera is enabled"""
         
         draw : bool = True
-        """Whether to draw the camera"""
+        """Whether to draw the data matrix"""
         
         values : bool = True
-        """Whether to draw the values"""
+        """Whether to draw the numerical values"""
         
         vertical : bool = True
-        """Whether to draw the values vertically"""
+        """Orient vertical (lanes are left to right) instead of horizontal."""
         
         imshow_settings : dict = field(default_factory=lambda: {'cmap': 'jet'})
-        """Settings for the imshow function"""
+        """Settings for the pyplot.imshow function"""
         
         text_settings : dict = field(default_factory=lambda: {'color': 'orange'})
-        """Settings for the text"""
+        """Settings for the text of pyplot.text when drawing the numerical values"""
 
     data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
     """<take doc:DataMatrixHudConfig>"""
         
-    data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
     
+@dataclass
+class _test(AgentConfig):
+        """Class Doc"""
+        
+        test_single : str
+        "Single descritpion"
+        
+        case_c :float
+        """Case C"""
+
+        test_match1 = 1
+        
+        """11111"""
+        
+        test_match12: int = 2
+        """22222"""
+        
+        test_no_match :float = 3.0
+        test_no_match2 :float = 4.0
+        """YYYYY"""
+        
+        test_avoid_comment : str = "Avoid comment"
+        # This is bad
+        "Found it"
+        
+        case_a = True
+        """Case A"""
+        
+        case_b: int = 2
+        """Case B"""
+        
+
+
 
 
 @dataclass
-class LaunchConfig:
+class LaunchConfig(AgentConfig):
+    strict_config: Union[bool, int] = 3
+    """
+    If enabled will assert that the loaded config is a subset of the `LaunchConfig` class.
+    
+    If set to >= 2, will assert that during runtime the types are correct.
+    """
+    
     verbose: bool = True
     debug: bool = True
     interactive: bool = False
@@ -1400,7 +1693,7 @@ class LaunchConfig:
     seed: Optional[int] = None
 
     # carla_service:
-    map: str = "Town04"
+    map: str = "Town04_Opt"
     host: str = "127.0.0.1"
     port: int = 2000
     
@@ -1459,6 +1752,11 @@ class LaunchConfig:
     camera : CameraConfig = field(default_factory=CameraConfig)
     """The camera settings"""
     
+if TYPE_CHECKING:
+    from hydra.conf import HydraConf
+    from typing_extensions import NotRequired
+    class LaunchConfig(LaunchConfig, DictConfig):
+        hydra : NotRequired[HydraConf] # pyright: ignore # NotRequired only for TypedDict
 
 
 def extract_annotations(parent, docs):
@@ -1527,7 +1825,7 @@ if __name__ == "__main__":
         f.write(LiveInfo.to_yaml())
     
 #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
-LunaticAgentSettings.export_options("conf/lunatic_agent_settings.yaml", with_comments=True)
+LunaticAgentSettings.export_options("conf/agent/default_settings.yaml", with_comments=True)
 
 if __name__ == "__main__":
     #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)

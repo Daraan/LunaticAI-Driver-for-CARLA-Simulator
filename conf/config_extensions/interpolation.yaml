@@ -1,7 +1,0 @@
-speed:
-  current_speed: ${live_info.current_speed}
-  current_speed_limit: ${live_info.current_speed_limit}
-  intersection_target_speed: ${min:${.max_speed}, ${subtract:${.current_speed_limit},
-    ${.intersection_speed_decrease}}}
-emergency:
-  max_emergency_brake: ${controls.max_brake}

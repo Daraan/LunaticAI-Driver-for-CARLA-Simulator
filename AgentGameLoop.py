@@ -7,8 +7,6 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
-from collections.abc import Mapping
-from dataclasses import is_dataclass
 import signal
 import sys
 import argparse
@@ -18,7 +16,6 @@ import random
 from typing import List, Union
 from pprint import pprint
 
-import pygame
 import numpy as np
 
 import hydra
@@ -30,8 +27,10 @@ from omegaconf import MISSING, DictConfig, OmegaConf
 #except ImportError as e:
 #    from utils.egg_import import carla
 import carla 
-    
+import pygame
+from classes import exceptions
 import launch_tools
+    
 from launch_tools import CarlaDataProvider
 
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
@@ -42,12 +41,13 @@ from classes.constants import Phase
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 
 from agents.tools.logging import logger
+from agents.tools.misc import draw_waypoints
 
 from agents.lunatic_agent import LunaticAgent
 from agents.rules import create_default_rules
 
 # ==============================================================================
-# TEMP # Remove
+# DEBUG
 
 PRINT_CONFIG = False
 PRINT_RULES = False
@@ -63,6 +63,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     ticking the agent and, if needed, the world.
     """
     game_framework : GameFramework = None # Set for finally block
+    traffic_manager : carla.TrafficManager = None # Set for finally block
     world_model : WorldModel = None # Set for finally block
     agent : LunaticAgent = None # Set for finally block
     ego : carla.Vehicle = None # Set for finally block
@@ -73,32 +74,36 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     # -- Load Settings Agent --
 
     print("Creating settings")
-    behavior = LunaticAgentSettings.create_from_args(args.agent)
+    # Validates and creates the agent settings. Sidenote: agent_config a copy of args.agent,
+    # you can access args.agent as copy of the original settings
+    # To not validate the config against LunaticAgentSettings, you can use OmegaConf.create(args.agent)
+    # to create a copy.
+    agent_config = LunaticAgentSettings.create_from_args(args.agent)
 
     # TEMP
     import classes.worldmodel
-    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and behavior.rss.enabled
+    classes.worldmodel.AD_RSS_AVAILABLE = classes.worldmodel.AD_RSS_AVAILABLE and agent_config.rss and agent_config.rss.enabled
     
     if PRINT_CONFIG:
         print("    \n\n\n")
-        pprint(behavior)
+        pprint(agent_config)
         from agents.tools.config_creation import AgentConfig
-        if isinstance(behavior, AgentConfig):
-            print(behavior.to_yaml())
+        if isinstance(agent_config, AgentConfig):
+            print(agent_config.to_yaml())
         else:
             try:
-                print(OmegaConf.to_yaml(behavior))
+                print(OmegaConf.to_yaml(agent_config))
             except Exception as e:
-                pprint(behavior)
+                pprint(agent_config)
     
     try:
         logger.info("Creating Game Framework ...")
         game_framework = GameFramework(args)
-        logger.debug("Created Game Framework.\n")
+        logger.info("Created Game Framework.\n")
         
         # -- Spawn Vehicles --
         all_spawn_points = game_framework.map.get_spawn_points()
-        spawn_points = launch_tools.general.csv_to_transformations("examples/highway_example_car_positions.csv")
+        spawn_points = launch_tools.csv_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
         
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
         
@@ -110,28 +115,29 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                                                                       how_many, 
                                                                       spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn_idx], 
                                                                       autopilot=True, 
-                                                                      tick=False) 
+                                                                      tick=False)
         
         # Spawn Ego
         start : carla.libcarla.Transform = spawn_points[ego_spawn_idx]
-        ego = game_framework.spawn_actor(ego_bp, start)
+        ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)
         spawned_vehicles.append(ego)
         
-        # TEMP # Test external actor, do not pass ego
+        
         logger.info("Creating agent and WorldModel ...")
-        if args.externalActor:
-            agent, world_model, global_planner, controller \
-                = game_framework.init_agent_and_interface(None, agent_class=LunaticAgent, 
-                    config=behavior)
-        else:
-            agent, world_model, global_planner, controller \
-                = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, 
-                        config=behavior)
-        agent.verify_settings()
+        agent, world_model, global_planner, controller \
+            = game_framework.init_agent_and_interface(ego=None if args.externalActor else ego, # TEMP # Test external actor, do not pass ego
+                                                      agent_class=LunaticAgent, 
+                                                      config=agent_config)
         logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:
         agent.add_rules(create_default_rules())
+        default_rules = create_default_rules()
+        from agents.rules.lane_changes import RandomLaneChangeRule
+        for rule in default_rules:
+            if isinstance(rule, RandomLaneChangeRule):
+                rule.enabled = False
+        agent.add_rules(default_rules)
         if PRINT_RULES: # TEMP
             print("Lunatic Agent Rules")
             pprint(agent.rules)
@@ -148,34 +154,42 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         # destination = random.choice(all_spawn_points).location
         destination = left_last_wp.transform.location
         
-        agent.set_destination(left_last_wp)
+        agent.set_destination(last_wp.transform.location)
         
         def loop():
             agent.verify_settings()
             while game_framework.continue_loop:
-                # Loop with traffic_manager
+                
+                # Do not use LunaticAgent but traffic manager
                 if controller._autopilot_enabled:
                     if controller.parse_events(None):
                         return
                     continue
+                
                 # Agent Loop
                 with game_framework:
                     # ------ Run step ------
-                    final_control = agent.run_step(debug=True)
+                    planned_control = agent.run_step(debug=True)
                     
                     # ------ Apply / Handle User Input ------
-                    agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=final_control)
-                    if isinstance(world_model.controller, RSSKeyboardControl):
-                        if controller.parse_events(agent.get_control()):
-                            return
-                    agent.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
+                    
+                    # Controls can be updated by the user.
+                    try:
+                        # -> Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN
+                        agent.parse_keyboard_input(allow_user_updates=True)
+                        # -> Phase.APPLY_MANUAL_CONTROLS | Phase.END
+                    except exceptions.UserInterruption:
+                        return    
                     
                     # ------ Apply Control ------
-                    agent.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=final_control)
-                    agent.apply_control() # Note Uses control from agent.ctx.control in case of last Phase changed it.
-                    agent.execute_phase(Phase.EXECUTION | Phase.END, prior_results=None)
                     
-                    # DEBUG
+                    # > Phase.EXECUTION | Phase.BEGIN
+                    agent.apply_control()
+                    # > Phase.EXECUTION | Phase.END
+                    
+                    # ------ End of Loop ------
+                    
+                    # Debug drawing of the route
                     try:
                         destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
                         destination = destination + carla.Vector3D(0, 0, 1.5) # elevate to be not in road
@@ -183,7 +197,8 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                         pass
                     game_framework.debug.draw_point(destination, life_time=0.5)
                 
-                # Continue the Loop from outside
+                # -- Stop Loop or Continue when agent is done --
+                
                 if args.loop and not game_framework.continue_loop and agent.done():
                     # TODO: Rule / Action to define next waypoint
                     print("The target has been reached, searching for another target")
@@ -222,22 +237,22 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             loop()
     except Exception as e:
         logger.error("Exception in game loop", exc_info=True)
+        raise
     finally:
         print("Quitting. - Destroying actors and stopping world.")
+        pygame.quit()
         if agent is not None:
-            agent.destroy_sensor()
-        if game_framework is not None:
-            world_settings = game_framework.world.get_settings()
-            world_settings.synchronous_mode = False
-            world_settings.fixed_delta_seconds = None
-            game_framework.world.apply_settings(world_settings)
-            traffic_manager.set_synchronous_mode(False)
+            agent.destroy()
         if world_model is not None:
             world_model.destroy(destroy_ego=False)
-
-        CarlaDataProvider.cleanup() # NOTE: unsets world, map, client, destroys actors
-
-        pygame.quit()
+        if game_framework is not None:
+            # save world for usage after CDP cleanup
+            game_framework.cleanup() # includes/or is CarlaDataProvider.cleanup()
+        else:
+            CarlaDataProvider.cleanup() # NOTE: unsets world, map, client, destroys actors
+        agent = None
+        world_model = None
+        game_framework = None
 
 
 # ==============================================================================
@@ -252,11 +267,13 @@ def main(args: LaunchConfig):
     
     logger.setLevel(log_level)
     logger.info('listening to server %s:%s', args.host, args.port)
-
+        
     print(__doc__)
     print(RSSKeyboardControl.get_docstring())
     print("Launch Arguments:\n", OmegaConf.to_yaml(args), sep="")
 
+    args = LaunchConfig.check_config(args, args.get("strict_config", 3), as_dict_config=True)
+    
     signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)
 
     try:

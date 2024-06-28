@@ -1,8 +1,0 @@
-speed:
-  target_speed: 50.0
-  follow_speed_limits: true
-rss:
-  enabled: true
-  use_stay_on_road_feature: Off
-test:
-  ex1_name: ex1

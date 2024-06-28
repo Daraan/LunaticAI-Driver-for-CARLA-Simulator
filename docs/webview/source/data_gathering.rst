@@ -13,3 +13,14 @@ Subpackages
    :maxdepth: 3
 
    data_gathering.car_detection_matrix
+
+Submodules
+----------
+
+data\_gathering.information\_manager module
+-------------------------------------------
+
+.. automodule:: data_gathering.information_manager
+   :members:
+   :undoc-members:
+   :show-inheritance:

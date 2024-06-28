@@ -11,9 +11,9 @@ import os
 import math
 from typing import ClassVar, Optional, Union
 from datetime import timedelta
-import pygame
 
 import carla
+import pygame
 
 
 from classes.keyboard_controls import RSSKeyboardControl
@@ -74,13 +74,18 @@ class HUD(object):
         self.frame = timestamp.frame
         self.simulation_time = timestamp.elapsed_seconds
 
-    def tick(self, world : "WorldModel", clock):
-        """HUD method for every tick"""
+    def tick(self, world : "WorldModel", clock, obstacles=None):
+        """
+        HUD method for every tick
+        
+        If obsta
+        """
         self._notifications.tick(clock)
         if not self._show_info:
             return
         player = world.player
         transform = player.get_transform()
+        location = transform.location
         vel = player.get_velocity()
         control = player.get_control()
         heading = 'N' if abs(transform.rotation.yaw) < 89.5 else ''
@@ -91,7 +96,11 @@ class HUD(object):
         collision = [colhist[x + self.frame - 200] for x in range(0, 200)]
         max_col = max(1.0, max(collision))
         collision = [x / max_col for x in collision]
-        vehicles = world.world.get_actors().filter('vehicle.*')
+        obstacles : "list[carla.Actor]" = obstacles or world.world.get_actors().filter('vehicle.*')
+        
+        # TODO: could also get ready distances from InformationManager, needs access to agent instance
+        # cached info would also prevent x from being destroyed in a different thread
+        obstacles_distances: "list[tuple[float, carla.Actor]]" = [(x.get_location().distance(location), x) for x in obstacles if x.id != world.player.id and x.is_alive]
 
         self._info_text = [
             'Server:  % 16.0f FPS' % self.server_fps,
@@ -138,22 +147,16 @@ class HUD(object):
             'Collision:',
             collision,
             '',
-            'Number of vehicles: % 8d' % len(vehicles)]
+            'Number of vehicles: % 8d' % len(obstacles_distances)]
 
-        if len(vehicles) > 1:
-            self._info_text += ['Nearby vehicles:']
+        if len(obstacles_distances) > 1:
+            self._info_text += ['Nearby obstacles:']
 
-        def dist(l):
-            return math.sqrt((l.x - transform.location.x) ** 2 + (l.y - transform.location.y)
-                             ** 2 + (l.z - transform.location.z) ** 2)
-
-        vehicles = [(dist(x.get_location()), x) for x in vehicles if x.id != world.player.id]
-
-        for dist, vehicle in sorted(vehicles): # TODO TypeError: '<' not supported between instances of 'Vehicle' and 'Vehicle'
-            if dist > 200.0:
+        for distance, vehicle in sorted(obstacles_distances, key=lambda dv: dv[0])[:20]: # display at most 20 actors
+            if distance > 200.0:
                 break
             vehicle_type = get_actor_display_name(vehicle, truncate=22)
-            self._info_text.append('% 4dm %s' % (dist, vehicle_type))
+            self._info_text.append('% 4dm %s' % (distance, vehicle_type))
 
     def toggle_info(self):
         """Toggle info on or off"""

@@ -1,11 +1,13 @@
 import random
 
-from typing import TYPE_CHECKING
+from agents.tools import logger
+
+from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
 
-def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", reasons:"set[str]"):
+def emergency_manager(self : "LunaticAgent", *, reasons:"set[str]", control : Optional["carla.VehicleControl"]=None) -> "carla.VehicleControl":
     """
     Modifies the control values to perform an emergency stop.
     The steering remains unchanged to avoid going out of the lane during turns.
@@ -13,11 +15,13 @@ def emergency_manager(self : "LunaticAgent", control : "carla.VehicleControl", r
     :param control: (carla.VehicleControl) control to be modified
     :param enable_random_steer: (bool, optional) Flag to enable random steering
     """
-    print("Emergency stop", reasons)
+    logger.debug("Emergency Manager: Stopping because of %s", reasons)
+    control = control or self.get_control()
     if control is None:
         control = self._local_planner.run_step(debug=self.debug)
 
-    # TODO, future: Use rules here.
+    # TODO, future: Can be turned into a rule. Problem here and with rule it will trigger each step -> new random value
+    # rule should return consistent result for a period of time
     if self.config.emergency.ignore_percentage > 0.0 and self.config.emergency.ignore_percentage / 100 > random.random():
         return control
     

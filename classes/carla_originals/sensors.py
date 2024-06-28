@@ -6,18 +6,7 @@ import carla
 
 from classes.HUD import get_actor_display_name
 
-
-class CustomSensor(object):
-    
-    sensor : carla.Sensor
-    
-    def destroy(self):
-        """Destroys the sensor"""
-        if self.sensor is not None:
-            self.sensor.stop()
-            self.sensor.destroy()
-            self.sensor = None
-
+from classes._custom_sensor import CustomSensor
 # ==============================================================================
 # -- CollisionSensor -----------------------------------------------------------
 # ==============================================================================
@@ -48,7 +37,7 @@ class CollisionSensor(CustomSensor):
         return history
 
     @staticmethod
-    def _on_collision(weak_self, event):
+    def _on_collision(weak_self, event: carla.CollisionEvent):
         """On collision method"""
         self = weak_self()
         if not self:

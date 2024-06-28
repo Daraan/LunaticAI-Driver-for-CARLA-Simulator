@@ -3,80 +3,77 @@ import carla
 
 from agents.tools.logging import logger
 
+from classes._custom_sensor import CustomSensor
 from launch_tools import CarlaDataProvider
 
 get_client = CarlaDataProvider.get_client
 get_world = CarlaDataProvider.get_world
 get_map = CarlaDataProvider.get_map
 
-def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10.0, worker_threads=0, reload_world=False, reset_settings=True, map_layers=carla.MapLayer.All):
+def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10.0, worker_threads=0, reload_world=False, reset_settings=True, map_layers=carla.MapLayer.All, sync:Union[bool, None]=True, fps:int=20):
     client = CarlaDataProvider.get_client()
     if client is None:
         client = carla.Client(ip, port, worker_threads)
         client.set_timeout(timeout)
         CarlaDataProvider.set_client(client)
-    if not CarlaDataProvider.get_world():
+    
+    world = CarlaDataProvider.get_world()
+    if not world:
         world = client.get_world()
-        CarlaDataProvider.set_world(world)
-    else:
-        world = CarlaDataProvider.get_world()
-        assert world # for type hint
-    if map_name and CarlaDataProvider.get_map().name != "Carla/Maps/" + map_name:
-        world = client.load_world(map_name, reset_settings, map_layers)
-        CarlaDataProvider.set_world(world)
+    _map = world.get_map() # CarlaDataProvider map not yet set ->  set_world
+    
+    if map_name and _map.name != "Carla/Maps/" + map_name:
+        world: carla.World = client.load_world(map_name, reset_settings, map_layers)
     elif reload_world:
         world = client.reload_world(reset_settings)
-        CarlaDataProvider.set_world(world)
         logger.info("Reloaded world - map_layers ignored.")
+    elif map_name is None:
+        logger.info("Provided map_name is None, skipped loading world. Assuming world is already loaded.")
     else:
-        logger.info("skipped loading world, already loaded - map_layers and reset_settings ignored.")
+        logger.info("skipped loading world %s, already loaded - map_layers and reset_settings ignored.", _map.name)
+    
+    world_settings = world.get_settings()
+    # Apply world settings
+    if sync is not None:
+        if sync:
+            logger.debug("Using synchronous mode.")
+            # apply synchronous mode if wanted
+            world_settings.synchronous_mode = True
+            world_settings.fixed_delta_seconds = 1/fps # 0.05
+            world.apply_settings(world_settings)
+        else:
+            logger.debug("Using asynchronous mode.")
+            world_settings.synchronous_mode = False
+        world.apply_settings(world_settings)
+    print("World Settings:", world_settings)
+    # Note: This loads multiple information. It should be called after applying the world settings.
+    CarlaDataProvider.set_world(world)
+    
     map_ = CarlaDataProvider.get_map()
     return client, world, map_
 
-# Note: Overwritten
-def spawn_actor(bp: carla.ActorBlueprint, spawn_point: Union[carla.Waypoint, carla.Transform], must_spawn=False, track_physics=True, attach_to: Optional[carla.Actor]=None, attachment_type=carla.AttachmentType.Rigid):
-    # type: (carla.ActorBlueprint, carla.Waypoint | carla.Transform, bool, bool, carla.Actor | None, carla.AttachmentType) -> carla.Actor | None
-    """
-    The method will create, return and spawn an actor into the world. 
-    The actor will need an available blueprint to be created.
-    It can also be attached to a parent with a certain attachment type. 
+spawn_actor = CarlaDataProvider.spawn_actor
 
-    Args:
-        bp (carla.ActorBlueprint): The blueprint of the actor to spawn.
-        spawn_point (Union[carla.Waypoint, carla.Transform]): The spawn point of the actor.
-        must_spawn (bool, optional): 
-            If True, the actor will be spawned or an exception will be raised.
-            If False, the function returns None if the actor could not be spawned.
-            Defaults to False.
-        track_physics (bool, optional): 
-            If True, `get_location`, `get_transform` and `get_velocity` 
-            can be used for this actor. 
-            Defaults to True.
-        attach_to (Optional[carla.Actor], optional): 
-            The parent object that the spawned actor will follow around. 
-            Defaults to None.
-        attachment_type (carla.AttachmentType, optional): 
-            Determines how fixed and rigorous should be the changes in position 
-            according to its parent object.
-            Defaults to carla.AttachmentType.Rigid.
+def destroy_actors(actors: "list[carla.Actor | CustomSensor]"):
+    batch: "list[carla.Actor]" = []
+    for actor in actors:
+        if isinstance(actor, (carla.Sensor, CustomSensor)):
+            actor.stop()
+        if isinstance(carla.Actor, actor):
+            if actor.is_alive:
+                batch.append(carla.command.DestroyActor(actor))
+        else:
+            actor.destroy()
 
-    Returns:
-        carla.Actor | None: The spawned actor if successful, None otherwise.
-        
-    Raises:
-        RuntimeError: if `must_spawn` is True and the actor could not be spawned.
-    """
-    if isinstance(spawn_point, carla.Waypoint):
-        spawn_point = spawn_point.transform
-    world = CarlaDataProvider.get_world()
-    if must_spawn:
-        actor = world.spawn_actor(bp, spawn_point, attach_to, attachment_type)
-    else:
-        actor = world.try_spawn_actor(bp, spawn_point, attach_to, attachment_type)
-        if actor is None:
-            return None
-    CarlaDataProvider._carla_actor_pool[actor.id] = actor
-    if track_physics:
-        CarlaDataProvider.register_actor(actor, spawn_point)
-    return actor
-
+    if batch and CarlaDataProvider._client:
+        try:
+            CarlaDataProvider._client.apply_batch(batch)
+        except RuntimeError as e:
+            if "time-out" in str(e):
+                pass
+            else:
+                raise e
+        else:
+            for actor in batch:
+                if CarlaDataProvider.actor_id_exists(actor.id):
+                    del CarlaDataProvider._carla_actor_pool[actor.id] # remove by batch and not by individual command
