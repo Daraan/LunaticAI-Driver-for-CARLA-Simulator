@@ -64,47 +64,58 @@ class Phase(Flag):
 
     DETECT_TRAFFIC_LIGHTS = auto()
     DETECT_PEDESTRIANS = auto()
+    DETECT_STATIC_OBSTACLES = auto()
 
     DETECT_CARS = auto()
     TAKE_NORMAL_STEP = auto()
 
     RSS_EVALUATION = auto()
+    """
+    See Also:
+        - [LunaticAgent.parse_keyboard_input](#LunaticAgent.parse_keyboard_input)
+        - [RssKeyboardControls.parse_events](#RssKeyboardControls.parse_events)
+    """
     
-    """Applied manually via human user interface."""
     APPLY_MANUAL_CONTROLS = auto()
+    """Applied manually via human user interface."""
 
     EXECUTION = auto() # Out of loop
+    """
+    Executed when the control is applied to the agent.
+    
+    See Also:
+        agent.apply_control()
+    """
 
     # --- Special situations ---
     CAR_DETECTED = auto()
 
     TURNING_AT_JUNCTION = auto()
+    """Indicates that the agent is turning at a junction."""
 
     HAZARD = auto()
     EMERGENCY = auto()
     COLLISION = auto()
 
     DONE = auto() # agent.done() -> True
+    """Indicates that the agent is at the end of its path. agent.done() is True"""
+    
     TERMINATING = auto() # When closing the loop
+    """Can be called when the agent is terminating. Must be executed by the user."""
+    
+    CUSTOM_PHASE_CHANGE = auto()
+    """Can be used to indicate that the phase change is currently handled by the user."""
     # States which the agent can be in outside of a normal Phase0-5 loop 
 
     # --- Aliases & Combination Phases ---
     # NOTE: # CRITICAL : Alias creation should be done after all the phases are created.!!!
 
-
-    DETECT_NON_CARS = DETECT_TRAFFIC_LIGHTS | DETECT_PEDESTRIANS
+    DETECT_NON_CARS = DETECT_STATIC_OBSTACLES | DETECT_TRAFFIC_LIGHTS | DETECT_PEDESTRIANS
     DETECTION_PHASE = DETECT_NON_CARS | DETECT_CARS
-
-    PHASE_0 = UPDATE_INFORMATION
-    PHASE_1 = PLAN_PATH # alias
-    PHASE_2 = DETECT_NON_CARS  # alias
-    PHASE_3 = DETECT_CARS # alias
-    PHASE_4 = TAKE_NORMAL_STEP # alias
-    PHASE_5 = EXECUTION # out of loop
 
     EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE | TERMINATING
     
-    USER_CONTROLLED = APPLY_MANUAL_CONTROLS | EXECUTION | TERMINATING
+    USER_CONTROLLED = CUSTOM_PHASE_CHANGE | APPLY_MANUAL_CONTROLS | EXECUTION | TERMINATING
     """Phases that might or not be went through as they must be implemented manually by the user."""
 
     NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP

@@ -3,7 +3,7 @@ from __future__ import annotations # todo: can this be removed?
 from collections.abc import Mapping
 from functools import partial, wraps
 
-from classes.exceptions import DoNotEvaluateChildRules
+from classes.exceptions import DoNotEvaluateChildRules, LunaticAIException
 
 try: # Python 3.8+
     from functools import singledispatchmethod
@@ -356,6 +356,9 @@ class Rule(_GroupRule):
     NOT_APPLICABLE : ClassVar = object()
     """Object that indicates that no action was executed."""
     
+    NO_RESULT : ClassVar = object()
+    """Indicates that the action raised an exception."""
+    
     description : str
     """Description of what this rule should do"""
     
@@ -694,22 +697,31 @@ class Rule(_GroupRule):
 
     def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *, ignore_phase=False, ignore_cooldown=False) -> Any:
         # Check phase
-        assert ctx.agent.current_phase in self.phases
+        assert ignore_phase or ctx.agent.current_phase in self.phases
             
         if not self.is_ready() and not ignore_cooldown:
             return self.NOT_APPLICABLE
         if not ignore_phase and ctx.agent.current_phase not in self.phases: #NOTE: This is currently never False as checked in execute_phase and the agents dictionary.
             return self.NOT_APPLICABLE # not applicable for this phase
-        result = self.evaluate(ctx, overwrite)
 
-        ctx.evaluation_results[ctx.agent.current_phase] = result
-        if result in self.actions:
-            self.reset_cooldown()
-            action_result = self.actions[result](ctx) #todo allow priority, random chance
-            ctx.action_results[ctx.agent.current_phase] = action_result
-            return action_result
-        return self.NOT_APPLICABLE # No action was executed
-    
+        exception = None
+        result = Rule.NO_RESULT
+        try:
+            result = self.evaluate(ctx, overwrite)
+        except LunaticAIException as e:
+            exception = e
+        else:
+            ctx.evaluation_results[ctx.agent.current_phase] = result
+            if result in self.actions:
+                self.reset_cooldown()
+                action_result = self.actions[result](ctx) #todo allow priority, random chance
+                ctx.action_results[ctx.agent.current_phase] = action_result
+                return action_result
+            return self.NOT_APPLICABLE # No action was executed
+        finally:
+            if exception:
+                self.reset_cooldown() # assume that the
+                raise exception
     # 
     
     def __str__(self) -> str:

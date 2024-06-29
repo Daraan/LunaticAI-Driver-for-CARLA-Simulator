@@ -15,6 +15,7 @@ from omegaconf import DictConfig, OmegaConf
 import carla
 import pygame
 import numpy.random as random
+from agents.rules.BlockingRule import BlockingRule
 from agents.tools.config_creation import AgentConfig, class_or_instance_method
 from classes.exceptions import UserInterruption
 from classes.HUD import HUD
@@ -104,8 +105,8 @@ class AccessCarlaDataProviderMixin:
 # ==============================================================================
 
 class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
-    clock : ClassVar[pygame.time.Clock]
-    display : ClassVar[pygame.Surface]
+    clock : ClassVar[pygame.time.Clock] = None
+    display : ClassVar[pygame.Surface] = None
     controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
     
     traffic_manager : Optional[carla.TrafficManager] = None
@@ -182,7 +183,13 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             np.random.seed(args.seed)
         self._args = args
         self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
-        self.clock, self.display = self.init_pygame(args)
+        clock, display = self.init_pygame(args)
+        if GameFramework.clock is not None:
+            logger.warning("GameFramework.clock already set. Overwriting.")
+        if GameFramework.display is not None:
+            logger.warning("GameFramework.display already set. Overwriting.")
+        GameFramework.clock = clock
+        GameFramework.display = display
 
         self.config = config
         self.agent = None
@@ -194,6 +201,8 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
         self.traffic_manager : Optional[carla.TrafficManager] = None
+        
+        BlockingRule.gameframework = weakref.proxy(self)
         
     @staticmethod
     def init_pygame(args:Optional["LaunchConfig"]=None):
