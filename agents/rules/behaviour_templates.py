@@ -8,7 +8,7 @@ import carla
 from launch_tools import CarlaDataProvider
 
 from classes.constants import Phase
-from classes.rule import Rule, EvaluationFunction, TruthyEvaluationFunction, Context, always_execute
+from classes.rule import Rule, ConditionFunction, TruthyConditionFunction, Context, always_execute
 from agents.tools.logging import logger
 
 from typing import TYPE_CHECKING, List
@@ -34,7 +34,7 @@ def if_config(config_path, value):
     """
     Returns a partial function that checks if a value in the config is set to a certain value.
     """
-    return EvaluationFunction(partial(_if_config_checker, config_path=config_path, value=value), 
+    return ConditionFunction(partial(_if_config_checker, config_path=config_path, value=value), 
                               name=f"Checks if {config_path} is {value}", 
                               use_self=False #NOTE: Has to be used as _if_config_checker has > 1 argument and no self usage.
                               )
@@ -62,7 +62,7 @@ class SlowDownAtIntersectionRule(Rule):
     Slow down the car when turning at a junction.
     """
     phases = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
-    rule = always_execute
+    condition = always_execute
     action = set_default_intersection_speed
     overwrite_settings = {"speed": {"intersection_speed_decrease": 10}}
     description = "Set speed to intersection speed"
@@ -87,7 +87,7 @@ class NormalSpeedRule(Rule):
     i.e. no junctions, no obstacles, etc. detected.
     """
     phases = Phase.TAKE_NORMAL_STEP | Phase.BEGIN
-    rule = always_execute
+    condition = always_execute
     action = set_default_speed
     description = "Set speed to normal speed"
 
@@ -103,7 +103,7 @@ def random_spawnpoint_destination(ctx: "Context", waypoints: List[carla.Waypoint
         waypoints = ctx.get_map().get_spawn_points()
     ctx.agent.set_destination(random.choice(waypoints))
     
-@EvaluationFunction
+@ConditionFunction
 def is_agent_done(ctx: Context) -> bool:
     """
     Agent has reached its destination.
@@ -115,7 +115,7 @@ class TargetRandomSpawnpointWhenDone(Rule):
     Sets random waypoint when done
     """
     phases = Phase.DONE | Phase.BEGIN
-    rule = is_agent_done
+    condition = is_agent_done
     action = random_spawnpoint_destination
     description = "Sets random waypoint when done"
 
@@ -134,7 +134,7 @@ def set_next_waypoint_nearby(ctx : "Context"):
 class SetNextWaypointNearby(Rule):
     "Sets random waypoint when done to a nearby point ahead" 
     phases = Phase.DONE | Phase.BEGIN
-    rule = is_agent_done
+    condition = is_agent_done
     action = set_next_waypoint_nearby
 
 
@@ -151,19 +151,19 @@ def accept_rss_updates(ctx : Context):
     logger.debug("Accepting RSS updates %s", ctx)
     ctx.control = ctx.prior_result
     
-assert isinstance(if_config("rss.enabled", True), EvaluationFunction)
+assert isinstance(if_config("rss.enabled", True), ConditionFunction)
 
 class AlwaysAcceptRSSUpdates(Rule):
     """Always accept RSS updates if rss is enabled in the config"""
     phases = Phase.RSS_EVALUATION | Phase.END
-    rule=if_config("rss.enabled", True)
+    condition=if_config("rss.enabled", True)
     action = accept_rss_updates
     description = "Always accepts the updates calculated by the RSS System."
 
 class ConfigBasedRSSUpdates(Rule):
     """Always accept RSS updates if `rss.always_accept_update` is set to True in the config."""
     phases = Phase.RSS_EVALUATION | Phase.END
-    rule = if_config("rss.always_accept_update", True)
+    condition = if_config("rss.always_accept_update", True)
     action = accept_rss_updates
     #description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
 
@@ -177,10 +177,10 @@ if __name__ == "__main__" or DEBUG_RULES:
     test = AlwaysAcceptRSSUpdates()
     
     # Check static type hints
-    class_like = EvaluationFunction(truthy=True) # this is actually a partial[type[EvaluationFunction]]
-    assert issubclass(class_like.func, EvaluationFunction)
-    instance = EvaluationFunction(int)
-    assert isinstance(instance, EvaluationFunction)
+    class_like = ConditionFunction(truthy=True) # this is actually a partial[type[ConditionFunction]]
+    assert issubclass(class_like.func, ConditionFunction)
+    instance = ConditionFunction(int)
+    assert isinstance(instance, ConditionFunction)
     
     def assert_type(instance, cls):
         assert isinstance(instance, cls)
@@ -195,13 +195,13 @@ if __name__ == "__main__" or DEBUG_RULES:
         assert isinstance(ctx, Context)
         return True
     
-    @EvaluationFunction
+    @ConditionFunction
     def eval_context_method(self, ctx : "Context") -> bool:
         assert isinstance(self, Rule)
         assert isinstance(ctx, Context)
         return True
 
-    @EvaluationFunction
+    @ConditionFunction
     def eval_context_function(ctx : "Context") -> bool:
         assert isinstance(ctx, Context)
         return True
@@ -226,18 +226,18 @@ if __name__ == "__main__" or DEBUG_RULES:
     @Rule
     class SimpleRule1:
         phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
-        rule = context_function
+        condition = context_function
         action = lambda ctx: assert_type(ctx, Context)
         description = "Simple Rule 1"
     
     class SimpleRule(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
-        rule = context_method
+        condition = context_method
         action = lambda self, ctx: ctx_self_action(self, ctx)
 
     class ReverseWhenCollide(Rule):
         phases = Phase.COLLISION | Phase.END
-        rule = context_method
+        condition = context_method
         def action(ctx : Context): 
             assert_type(ctx, Context)
             ctx.control.reverse = True
@@ -245,25 +245,25 @@ if __name__ == "__main__" or DEBUG_RULES:
     @Rule
     class SimpleRule1B:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
-        rule = eval_context_function.copy() # TODO: can I copy this via a __set__
-        rule.register_action(ctx_self_action_kwargs, arg1="arg1")
+        condition = eval_context_function.copy() # TODO: can I copy this via a __set__
+        condition.register_action(ctx_self_action_kwargs, arg1="arg1")
     
     class SimpleRuleB(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
-        rule = eval_context_method.copy()
-        rule.register_action(ctx_action) 
+        condition = eval_context_method.copy()
+        condition.register_action(ctx_action) 
 
 
     class DebugRuleWithEval(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         
-        @EvaluationFunction("AlwaysTrue")
-        def rule(self, ctx : "Context") -> bool:
+        @ConditionFunction("AlwaysTrue")
+        def condition(self, ctx : "Context") -> bool:
             assert isinstance(ctx, Context)
             assert isinstance(self, DebugRuleWithEval)
             return True
         
-        @rule.register_action(True, arg1="arg1")
+        @condition.register_action(True, arg1="arg1")
         def true_action(self, ctx : "Context", arg1):
             assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
             assert isinstance(ctx, Context)
@@ -273,7 +273,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     class Another(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         
-        rule = always_execute
+        condition = always_execute
         
         actions = {True: lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context)),
                 False: lambda ctx: assert_type(ctx, Context)}
@@ -281,7 +281,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     class Another(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         
-        rule = always_execute
+        condition = always_execute
         
         actions = {True: lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context)),
                 False: lambda ctx: assert_type(ctx, Context)}
@@ -289,13 +289,13 @@ if __name__ == "__main__" or DEBUG_RULES:
     class CustomInitRule(Rule):
         def __init__(self, phases=None):
             # NOTE: The 
-            super().__init__(phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, rule=always_execute, action=lambda ctx: assert_type(ctx, Context))
+            super().__init__(phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, condition=always_execute, action=lambda ctx: assert_type(ctx, Context))
             self._custom = True
         
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
         
         _cooldown = 0
-        rule = lambda ctx: [][1] # This should not be executed, overwritten in the custom Init
+        condition = lambda ctx: [][1] # This should not be executed, overwritten in the custom Init
         
         actions = {True: lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context)),
                 False: lambda ctx: assert_type(ctx, Context)}
@@ -315,7 +315,7 @@ if __name__ == "__main__" or DEBUG_RULES:
         phase = Phase.BEGIN
         
     assert CheckDescription.description == """This is my description"""
-    cd_rule = CheckDescription(Phase.END, action=lambda ctx: assert_type(ctx, Context), rule=lambda self, ctx: (assert_type(self, Rule)))
+    cd_rule = CheckDescription(Phase.END, action=lambda ctx: assert_type(ctx, Context), condition=lambda self, ctx: (assert_type(self, Rule)))
     print(cd_rule.phases)
     phase = list(cd_rule.phases).pop() # does not work with frozenset
     cd_rule.phases = set()

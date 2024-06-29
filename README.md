@@ -53,8 +53,8 @@ class SlowDownAtIntersectionRule(Rule):
     Slow down the agent when it is at a junction.
     """
     phase = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
-    @EvaluationFunction
-    def rule(self, ctx: Context) -> Hashable:
+    @ConditionFunction
+    def condition(self, ctx: Context) -> Hashable:
         return ctx.agent.is_at_junction
     def action(self, ctx: Context):
         ctx.agent.set_target_speed(agent.live_info.target_speed - 10)

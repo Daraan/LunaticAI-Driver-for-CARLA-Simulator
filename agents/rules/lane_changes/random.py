@@ -8,7 +8,7 @@ __all__ = ["RandomLaneChangeRule"]
 
 class RandomLaneChangeRule(Rule):
     phases = Phase.TAKE_NORMAL_STEP | Phase.BEGIN
-    rule = always_execute # TODO: Could implement check here, instead of relying on `lane_change`
+    condition = always_execute # TODO: Could implement check here, instead of relying on `lane_change`
     cooldown_reset_value = None
 
     priority = RulePriority.LOWEST

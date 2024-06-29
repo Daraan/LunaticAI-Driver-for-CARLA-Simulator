@@ -1583,7 +1583,7 @@ class CameraConfig(AgentConfig):
     """HUD settings: Not implemented"""
     
     @dataclass
-    class RecorderSettings:
+    class RecorderSettings(AgentConfig):
         """
         Recorder settings for the camera.
         """
@@ -1613,16 +1613,16 @@ class CameraConfig(AgentConfig):
     """<take doc:RecorderSettings>"""
     
     @dataclass
-    class DetectionMatrixHudConfig:
+    class DetectionMatrixHudConfig(AgentConfig):
         """
-        DetectionMatrix HUD settings for the HUD
+        DetectionMatrix settings for the HUD
         """
         
         draw : bool = True
-        """Whether to draw the data matrix"""
+        """Whether to draw the detection matrix"""
         
         values : bool = True
-        """Whether to draw the numerical values"""
+        """Whether to draw the numerical values as text"""
         
         vertical : bool = True
         """Orient vertical (lanes are left to right) instead of horizontal."""

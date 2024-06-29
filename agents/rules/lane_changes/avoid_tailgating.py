@@ -6,10 +6,10 @@ from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
 from classes.constants import Phase
-from classes.rule import Context, EvaluationFunction, Rule, RulePriority
+from classes.rule import Context, ConditionFunction, Rule, RulePriority
 
 
-@EvaluationFunction(truthy=True)
+@ConditionFunction(truthy=True)
 def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
     """
     Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
@@ -43,8 +43,8 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
 
 class AvoidTailgatorRule(Rule):
     phase = Phase.DETECT_CARS | Phase.END
-    rule = avoid_tailgator_check.copy()
-    rule.register_action(rule_lane_change, True, order=("right", "left"))
+    condition = avoid_tailgator_check.copy()
+    condition.register_action(rule_lane_change, True, order=("right", "left"))
     #action = make_lane_change # NOTE: when using register_action you can omit this.
     cooldown_reset_value = 200
     group = "lane_change"

@@ -2,7 +2,7 @@
 from agents.rules.behaviour_templates import DEBUG_RULES
 
 from classes.constants import AgentState, Phase
-from classes.rule import Rule, MultiRule, EvaluationFunction, Context
+from classes.rule import Rule, MultiRule, ConditionFunction, Context
 
 from agents.tools.logging import logger
 
@@ -20,8 +20,8 @@ class StoppedTooLongTrigger(MultiRule):
     stop_time_threshold = 60
     """Time in seconds the agent is allowed to stop before triggering the rule."""
     
-    @EvaluationFunction
-    def rule(self, ctx: Context) -> bool:
+    @ConditionFunction
+    def condition(self, ctx: Context) -> bool:
         # time stopped in seconds # NOTE: Only in sync mode!
         s_stopped = ctx.agent.current_states[AgentState.STOPPED] * ctx.config.planner.dt
         if s_stopped < self.stop_time_threshold:

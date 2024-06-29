@@ -4,27 +4,27 @@ import carla
 from agents.lunatic_agent import LunaticAgent
 from classes.constants import Phase
 
-from classes.rule import Rule, EvaluationFunction, Context, always_execute
+from classes.rule import Rule, ConditionFunction, Context, always_execute
 from agents.tools.config_creation import LunaticAgentSettings, LunaticAgentSpeedSettings
 
 arule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
-                                      rule=always_execute, 
+                                      condition=always_execute, 
                                       action=lambda ctx: print("Hello World"), 
                                       overwrite_settings= {"speed": {"intersection_speed_decrease": 10}},
                                       description="Set speed to intersection speed")
 
 print(arule)
 
-print(EvaluationFunction("Testing this"))
+print(ConditionFunction("Testing this"))
 
-named_wrapper = EvaluationFunction("Testing this")
+named_wrapper = ConditionFunction("Testing this")
 
 
 class AnotherRule(Rule):
     phases = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
     
-    @EvaluationFunction("Always execute this rule")
-    def rule(ctx):
+    @ConditionFunction("Always execute this condition")
+    def condition(ctx):
         return True
     
     def action(ctx):
@@ -39,8 +39,8 @@ class AnotherRule2:
     """
     phases = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
     
-    @EvaluationFunction("Always execute this rule")
-    def rule(ctx):
+    @ConditionFunction("Always execute this condition")
+    def condition(ctx):
         return True
     
     def action(ctx):
@@ -55,7 +55,7 @@ AnotherRule2.myfuc()
  
 
 drule = Rule({"phase": Phase.TURNING_AT_JUNCTION | Phase.BEGIN,
-      "rule": always_execute,
+      "condition": always_execute,
       "action": lambda ctx: print("Hello World"),
       "overwrite_settings": {"speed": {"intersection_speed_decrease": 10}},
       "description": "Rule created from dictionary"})

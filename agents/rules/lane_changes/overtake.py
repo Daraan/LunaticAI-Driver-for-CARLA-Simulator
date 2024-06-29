@@ -10,7 +10,7 @@ from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
 from agents.tools.logging import logger
 from classes.constants import Phase
-from classes.evaluation_function import EvaluationFunction
+from classes.evaluation_function import ConditionFunction
 from classes.rule import Rule, RulePriority
 
 from agents.rules.lane_changes.misc import rule_lane_change
@@ -18,7 +18,7 @@ from agents.rules.lane_changes.misc import rule_lane_change
 if TYPE_CHECKING:
     from classes.rule import Context
     
-@EvaluationFunction(truthy=True)
+@ConditionFunction(truthy=True)
 def overtake_check(self: "SimpleOvertakeRule", ctx: "Context") -> bool:
     """
     Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
@@ -29,7 +29,7 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context") -> bool:
     Check if a lane change can happen is done in the action, combine two rules!
     """
     
-    #    TODO?: add option in rule to receive the result of the DETECT_CARS phase
+    #    TODO?: add option in condition to receive the result of the DETECT_CARS phase
     #    - Is this not in the Context already?
     
     waypoint = ctx.agent._current_waypoint
@@ -64,6 +64,6 @@ class SimpleOvertakeRule(Rule):
     
     priority = RulePriority.LOW
     
-    rule = overtake_check.copy()
-    rule.register_action(rule_lane_change, True, order=("left", "right")) # less strict
+    condition = overtake_check.copy()
+    condition.register_action(rule_lane_change, True, order=("left", "right")) # less strict
     cooldown_reset_value = 200

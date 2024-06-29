@@ -19,11 +19,11 @@ At the beginning (`Phase.BEGIN`) and end (`Phase.END`) of a phase associated rul
 ### Functional API
 
 With the functional API the rule object will be instantiated from the rule class.
-**While `rule` and `action` are able** to access the `self` object, providing additional attributes they have to be written outside from the class.
+**While `condition` and `action` are able** to access the `self` object, providing additional attributes they have to be written outside from the class.
 
 ```python
 slow_down_rule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
-                        rule=lambda ctx: True, 
+                        condition=lambda ctx: True, 
                         action=...
                         overwrite_settings= {"speed": {"intersection_speed_decrease": 10}},
                         description="Set speed to intersection speed")
@@ -41,10 +41,10 @@ class SlowDownAtIntersectionRule(Rule):
     This will be the description
     """
     phases = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
-    # rule and action can be defined as functions (only the Context argument)
+    # condition and action can be defined as functions (only the Context argument)
     # or as methods (self and Context argument)
-    @EvaluationFunction
-    def rule(ctx: Context) -> bool:
+    @ConditionFunction
+    def condition(ctx: Context) -> bool:
         return True
     def action(self, ctx: Context):
         ...
@@ -65,40 +65,40 @@ class slow_down_rule:
     Slow down the car when turning at a junction.
     """
     phases = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
-    rule = always_execute
+    condition = always_execute
     action = set_default_intersection_speed
     overwrite_settings = {"speed": {"intersection_speed_decrease": 10}}
     description = "Set speed to intersection speed"
 ```
 
-### Duplicating a rule
+### Duplicating a Rule
 
 Rules can be duplicated by calling the `new_rule = old_rule.clone()` method on the rule object.
 Similarly, `new_rule = Rule(old_rule)` is also valid, which allows to copy attributes to a different class should this be necessary.
 
-## rule functions & EvaluationFunction
+## condition functions & ConditionFunction
 
-The passed `rule` can be simple functions with a signature of `(Context) -> Hashable` or `(self: Rule, Context) -> Hashable`,
+The passed `condition` can be simple functions with a signature of `(Context) -> Hashable` or `(self: Rule, Context) -> Hashable`,
 if two or more arguments are detected the `self` argument for the Rule instance will be provided.
 
-The `EvaluationFunction` extends a simple function with additional utility, it can be used in the following ways:
+The `ConditionFunction` extends a simple function with additional utility, it can be used in the following ways:
 
 ### As decorator
 
 ```python
 
 # Plain
-@EvaluationFunction
+@ConditionFunction
 def foo(...):
     ...
 
 # Provide a name for the function
-@EvaluationFunction("This function always returns True")
+@ConditionFunction("This function always returns True")
 def foo(...):
     ...
 
 # Keyword only arguments
-@EvaluationFunction(truthy=True, use_self=False)
+@ConditionFunction(truthy=True, use_self=False)
 def evaluate_this(ctx: Context, value=None) -> bool:
     # In the background this will be converted to bool(value)
     return value 
@@ -106,20 +106,20 @@ def evaluate_this(ctx: Context, value=None) -> bool:
 
 ### Functional
 
-The functional approach has the advantage that a function can be used in different EvaluationFunctions.
-This is especially useful if actions are tied to conditions through `EvaluationFunction.register_action`
+The functional approach has the advantage that a function can be used in different ConditionFunctions.
+This is especially useful if actions are tied to conditions through `ConditionFunction.register_action`
 
 ```python
 def bar(self, ctx: Context):
     ...
 
-eval_bar1 = EvaluationFunction(bar)
-eval_bar2 = EvaluationFunction(bar)
+eval_bar1 = ConditionFunction(bar)
+eval_bar2 = ConditionFunction(bar)
 ```
 
-## Registering actions
+## Registering Actions
 
-There are multiple ways how actions can be defined to be executed when a rule is triggered.
+There are multiple ways how actions can be defined to be executed when a condition is fulfilled.
 In general a rule can execute multiple actions, depending on the returned value of the condition function.
 By default the action is only executed if the condition returns `True` and does not be specified specially.
 
@@ -129,13 +129,13 @@ By default the action is only executed if the condition returns `True` and does 
 
 ```python
 true_false_rule = Rule(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, 
-                        rule=lambda ctx: choice([True, False])
+                        condition=lambda ctx: choice([True, False])
                         action=true_action,
                         false_action=false_action)
 
 class TrueFalseRule(Rule):
     phases = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
-    rule = lambda ctx: choice([True, False])
+    condition = lambda ctx: choice([True, False])
     def action(self, ctx: Context): # NOTE: This function NEEDS to be called "action"
         ...
     false_action = false_action # NOTE: This attribute needs to be called "false_action"
@@ -143,13 +143,13 @@ class TrueFalseRule(Rule):
 
 #### Any Return Type
 
-To use more than two actions depending on the return value of the condition function, the `actions` dict for a rule can be used.
+To use more than two actions depending on the return value of the condition function, the `actions` dict for a condition can be used.
 The definition of for the functional API also uses the `actions` parameter.
 
 ```python
 class AnyReturnRule(Rule):
     phases = Phase.NONE
-    rule = lambda ctx: choice([True, False, "foo"])
+    condition = lambda ctx: choice([True, False, "foo"])
     actions = {
         True: true_action,
         False: false_action,
@@ -157,16 +157,16 @@ class AnyReturnRule(Rule):
     }
 ```
 
-### EvaluationFunction.register_action
+### ConditionFunction.register_action
 
-Using the `EvaluationFunction.register_action` method allows to bind actions to a condition function,
-when creating a rule the `action(s)` parameter is omitted.
+Using the `ConditionFunction.register_action` method allows to bind actions to a condition function,
+when creating a `Rule` the `action(s)` parameter is then omitted.
 
 ```python
 class TrueFalseRule(Rule):
     phases = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
-    @EvaluationFunction
-    def rule(ctx: Context) -> bool: # NOTE: That the function must still be called rule
+    @ConditionFunction
+    def condition(ctx: Context) -> bool: # NOTE: That the function must still be called condition
         return choice([True, False, "foo"])
     
     # These two are equivalent, use only one of them
@@ -188,14 +188,16 @@ class TrueFalseRule(Rule):
 
 ```python
 
-@EvaluationFunction
+@ConditionFunction
 def foo(ctx: Context):
     ...
 
-def action(ctx: Context):
+def action(ctx: Context, value=True):
     ...
 
-foo.register_action(action, True)
+foo.register_action(action, use_self=False)
+foo2 = foo.copy()
+foo2.register_action(action, use_self=False, value=False)
 ```
 
 ## Adding Rules to an Agent
@@ -222,7 +224,7 @@ In short the function requires at least one positional argument, but none was pr
 IndexError: tuple index out of range
 ```
 
-Likely the problem is that a rule was instantiated without a positional `phase(s)` argument, e.g. `Rule(phases=Phase.NONE)`.
+Likely the problem is that the condition was instantiated without a positional `phase(s)` argument, e.g. `Rule(phases=Phase.NONE)`.
 To fix it use `Rule(Phase.NONE)`.
 
 ### TypeError(f'{funcname} requires at least 1 positional argument')

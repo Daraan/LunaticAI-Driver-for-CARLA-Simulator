@@ -514,7 +514,7 @@ class LunaticAgent(BehaviorAgent):
                 
                 # ----------------------------
                 # Phase Emergency
-                # no rule with Phase.EMERGENCY | BEGIN cleared the provided hazards in ctx.prior_results
+                # no Rule with Phase.EMERGENCY | BEGIN cleared the provided hazards in ctx.prior_results
                 # ----------------------------
                 
                 emergency_controls = self.emergency_manager(reasons=emergency.hazards_detected)
@@ -596,7 +596,7 @@ class LunaticAgent(BehaviorAgent):
             # An EmergencyStopException is raised
             # ----------------------------
 
-            self.react_to_hazard(pedestrians_or_traffic_light) # type: Optional[NoReturn]
+            self.react_to_hazard(pedestrians_or_traffic_light) # Optional[NoReturn]
     
         # ----------------------------
         # Phase 3 - Detection of Cars
@@ -770,7 +770,7 @@ class LunaticAgent(BehaviorAgent):
         if exact_distance < self.config.distance.emergency_braking_distance:
             # Note: If the passed set is not cleared by a Phase.EMERGENCY | Phase.BEGIN rule, 
             # an EmergencyStopException is raised.
-            self.react_to_hazard(hazard_detected={Hazard.CAR}) # type: Optional[NoReturn]
+            self.react_to_hazard(hazard_detected={Hazard.CAR}) # Optional[NoReturn]
         controls = self.car_following_manager(vehicle, exact_distance)
         return controls
 

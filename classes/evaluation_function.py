@@ -16,30 +16,31 @@ if TYPE_CHECKING:
 # NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
 
 
-class EvaluationFunction:
+class ConditionFunction:
     """
-    Implements a decorator to wrap function to be used with rule classes.
-    The function must return a hashable type, which is used to access the action to be taken by the rule.
+    Implements a decorator to wrap function to be used with `Rule` classes.
+    The function must return a hashable type, which is used to access the action to be taken 
+    by the `condition` function of the rule.
     
     Evaluation functions can be combined using the AND, OR and NOT operators to build up more complex rules
     from simpler ones.
     The operators + or &, | and ~ are aliases for AND, OR and NOT respectively.
     e.g. 
-    `func1 = EvaluationFunction(lambda ctx: ctx.speed > 10)`
-    `func2 = EvaluationFunction(lambda ctx: ctx.speed < 20)`
+    `func1 = ConditionFunction(lambda ctx: ctx.speed > 10)`
+    `func2 = ConditionFunction(lambda ctx: ctx.speed < 20)`
 
     These statements are all equivalent:
-        * `EvaluationFunction(lambda ctx: 10 < ctx.speed < 20)`
+        * `ConditionFunction(lambda ctx: 10 < ctx.speed < 20)`
         * `func1 + func2`
         * `func1 & func2`
         * `func1.AND(func2)`
-        * `EvaluationFunction.AND(func1, func2)`
+        * `ConditionFunction.AND(func1, func2)`
     
     Hint:
-        EvaluationFunctions also allow for more specific returns types
+        ConditionFunctions also allow for more specific returns types
         ..  code-block:: python
         
-        @EvaluationFunction
+        @ConditionFunction
         def is_speeding(ctx: Context) -> Hashable:
             config = ctx.agent.config
             if config.speed > config.speed_limit+20:
@@ -56,29 +57,29 @@ class EvaluationFunction:
                                   })
 
     Returns:
-        `EvaluationFunction`
+        `ConditionFunction`
     
     """
     
     actions: ClassVar[Dict[Hashable, Callable[["Union[Context, Rule]"], Any]]] = {}
     
-    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="EvaluationFunction", *, truthy=False, use_self=None) -> "type[EvaluationFunction]":
-        # @EvaluationFunction("name")
+    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="ConditionFunction", *, truthy=False, use_self=None) -> "type[ConditionFunction]":
+        # @ConditionFunction("name")
         if isinstance(first_argument, str):
             return partial(cls, name=first_argument, truthy=truthy, use_self=use_self) # Calling decorator with a string
-        # @EvaluationFunction(name="name") or @EvaluationFunction(truthy=True)
+        # @ConditionFunction(name="name") or @ConditionFunction(truthy=True)
         if first_argument is None:
             return partial(cls, name=name, truthy=truthy, use_self=use_self)
         assert isinstance(first_argument, Callable), f"First argument must be a callable, not {type(first_argument)}"
-        # @EvaluationFunction or EvaluationFunction(function)
+        # @ConditionFunction or ConditionFunction(function)
         instance = super().__new__(cls)
         return instance
     
-    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="EvaluationFunction", *, truthy=False, use_self: Optional[bool]=None):
+    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="ConditionFunction", *, truthy=False, use_self: Optional[bool]=None):
         update_wrapper(self, evaluation_function, assigned=("__qualname__", "__module__", "__annotations__", "__doc__"))
         self.evaluation_function = evaluation_function
         self.truthy = truthy
-        if name != "EvaluationFunction":
+        if name != "ConditionFunction":
             self.name = name
         elif hasattr(evaluation_function, "__name__"):
             self.name = evaluation_function.__name__
@@ -91,13 +92,13 @@ class EvaluationFunction:
         """
         Note:
         To handle the method vs. function difference depending on __get__ 
-        `ctx` can be either a Context (rule as function) or a Rule (rule as method),
+        `ctx` can be either a Context (condition as function) or a Rule (condition as method),
         In the method case the real Context object is args[0]
         """
         try:
             rule_result = self.evaluation_function(ctx, *args, **kwargs)
         except Exception:
-            print(f"ERROR: in rule {self.name} with function {self.evaluation_function}")
+            print(f"ERROR: in Rule {self.name} with function {self.evaluation_function}")
             raise
         # Handle function vs. method
         if not isinstance(ctx, Context):
@@ -109,8 +110,8 @@ class EvaluationFunction:
         assert isinstance(rule_result, Hashable), f"evaluation_function must return a hashable type, not {type(rule_result)}"
         return rule_result
     
-    def __get__(self, instance: "Optional[Rule]", owner): # pylint: disable=unused-argument # for in class usage like Rule.rule
-        # NOTE: instance.rule is not an EvaluationFunction, it is a partial of one.
+    def __get__(self, instance: "Optional[Rule]", owner): # pylint: disable=unused-argument # for in class usage like Rule.condition
+        # NOTE: instance.condition is not an ConditionFunction, it is a partial of one.
         if instance is None:
             return self # called on class
         return partial(self, instance) # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
@@ -140,7 +141,7 @@ class EvaluationFunction:
         if not hasattr(func, "__name__"):
             return str(func)
         if func.__name__ == "<lambda>":
-            return EvaluationFunction._complete_func_to_string(func)
+            return ConditionFunction._complete_func_to_string(func)
         return func.__name__
 
     @property
@@ -151,7 +152,7 @@ class EvaluationFunction:
         return self.name
     
     def __repr__(self):
-        if self.name == "EvaluationFunction":
+        if self.name == "ConditionFunction":
             s = self.__class__.__name__ + f"({self.evaluation_function}"
         else:
             s = self.__class__.__name__ + f'(name="{self.name}", evaluation_function={self.evaluation_function}'
@@ -195,12 +196,12 @@ class EvaluationFunction:
     _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
     
     def _check_action(self, action_function: Callable[["Union[Context, Rule]"], Any], key, **kwargs):
-        if action_function.__name__ in EvaluationFunction._INVALID_NAMES:
-            raise ValueError(f"When using EvaluationFunction.add_action, the action function's name may not be in {EvaluationFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
+        if action_function.__name__ in ConditionFunction._INVALID_NAMES:
+            raise ValueError(f"When using ConditionFunction.add_action, the action function's name may not be in {ConditionFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
         if key in self.actions:
             print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
         if kwargs:
-            # TODO: # CRITICAL: are args problematic? 
+            # TODO: # CRITICAL: are args problematic?
             action_function = partial(action_function, **kwargs)
         return action_function
     
@@ -217,17 +218,17 @@ class EvaluationFunction:
         action_function = self._check_action(action_function, key, **kwargs)
         self.actions[key] = action_function # register action
 
-def TruthyEvaluationFunction(func: Callable) -> EvaluationFunction:
+def TruthyConditionFunction(func: Callable) -> ConditionFunction:
     """
-    Allows a rule to return any value, but will be converted to a boolean.
+    Allows a condition to return any value, but will be converted to a boolean.
     
-    TODO: Still does "store the result". Add a attribute to ctx that stores the last rule result.
+    TODO: Still does "store the result". Add a attribute to ctx that stores the last condition result.
     
-    todo (low priority): instead of extra function make this a parameter of EvaluationFunction
+    todo (low priority): instead of extra function make this a parameter of ConditionFunction
     """
-    return EvaluationFunction(func, truthy=True)
+    return ConditionFunction(func, truthy=True)
     
-    @EvaluationFunction
+    @ConditionFunction
     @wraps(func)
     def wrapper(self: "Rule", ctx : "Context"): 
         result = func(self, ctx) # TODO: not method vs. function aware
@@ -235,7 +236,7 @@ def TruthyEvaluationFunction(func: Callable) -> EvaluationFunction:
         return bool(result)
     return wrapper
 
-class ActionFunction(EvaluationFunction):
+class ActionFunction(ConditionFunction):
     def __init__(self, action_function: Callable[["Context"], Any], name="ActionFunction"):
         super().__init__(action_function, name)
 
