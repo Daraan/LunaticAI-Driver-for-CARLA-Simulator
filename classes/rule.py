@@ -496,6 +496,8 @@ class Rule(_GroupRule):
                 self.actions[True] = action
             if false_action is not None:
                 self.actions[False] = false_action
+        # actions can be the dict of the class, we do not want the same dict instance
+        self.actions = dict(self.actions)
         
         # Assure that method(self, ctx) like functions are accessible like them
         for key, func in self.actions.items():
