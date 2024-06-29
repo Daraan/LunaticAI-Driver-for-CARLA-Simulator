@@ -279,7 +279,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.controller.render(self.display)
         dm_render_conf = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
         if dm_render_conf and self.agent:
-            self.agent.render_road_matrix(self.display, dm_render_conf)
+            self.agent.render_detection_matrix(self.display, dm_render_conf)
         self.world_model.finalize_render(self.display)
         
     @staticmethod

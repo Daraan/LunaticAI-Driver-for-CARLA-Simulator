@@ -1,6 +1,8 @@
 # Example of full Agent Settings
 
-Note: This file is a documentation only, it describes the full merge of the different setting files in the *./agent* folder.
+Note: This file is a documentation only, it describes the full merge of the different setting files in the conf/agent* folder.
+
+You can find the typed version of this schema in [`agents/tools/config_creation.py`](#agents.tools.config_creation).
 
 ```yaml
 # LunaticAgentSettings
@@ -108,8 +110,6 @@ speed:
 #  
 # Usage: max_distance = max(min_proximity_threshold, self._speed_limit / (2 if <LANE CHANGE> else 3 ) )
 distance:
-  # Range in which cars are detected. NOTE: Speed limit overwrites
-  min_proximity_threshold: 10.0
   # Emergency Stop Distance Trigger
   emergency_braking_distance: 5.0
 
@@ -231,6 +231,32 @@ obstacles:
   # Info:
   #     These pedestrians are stored in `walkers_nearby`.
   nearby_walkers_max_distance: 10.0
+
+  # When making lane changes determines the minimum distance to check for vehicles.
+  #  
+  # max_distance_check = max(obstacles.min_proximity_threshold, 
+  #                          live_info.current_speed_limit / speed_detection_downscale)
+  #                          
+  # Hint:
+  #     Lower values mean that further away vehicles are maybe not considered,
+  #     an agent might ignore fast vehicles coming from behind in the other lane,
+  #     or ignores slower vehicles in front of it in the other lane.
+  min_proximity_threshold: 10.0
+
+  # When making lane changes determines the maximum distance to check for vehicles.
+  #  
+  # max_distance_check = max(obstacles.min_proximity_threshold, 
+  #                          live_info.current_speed_limit / speed_detection_downscale.[same|other]_lane)
+  #                          
+  # Hint:
+  #     Higher values mean that further away vehicles are not considered,
+  #     an agent might ignore fast vehicles coming from behind in the other lane,
+  #     or ignores slower vehicles in front of it in the other lane.
+  speed_detection_downscale:
+    same_lane: 3.0
+    other_lane: 2.0
+    overtaking: 1.5
+    tailgating: 2.0
   # Percentage of time to ignore traffic lights
   ignore_lights_percentage: 0.0
   # Percentage of time to ignore stop signs
@@ -355,8 +381,8 @@ rss:
   # For fast vehicles RSS currently is unreliable, disables rss updates when the vehicle is faster than this.
   rss_max_speed: ???
 
-data_matrix:
-  # Use the DataMatrix
+detection_matrix:
+  # Activate or deactivate the detection matrix
   enabled: true
 
   # When the world uses synchronous mode and sync is true, the data matrix will be updated every sync_interval ticks.
@@ -367,20 +393,17 @@ data_matrix:
   # The interval in frames after which the data matrix should be updated. Sync must be true.
   sync_interval: 5
 
-  # XXX
-  #  
-  # TODO: do not have this in Agent config but in
-  # hud : ${camera.hud.data_matrix}
+  # TODO: do not have this in Agent config; instead
+  #     hud : ${camera.hud.detection_matrix}
+  #     However: problem cannot interpolate to LaunchConfig
   #  #drawing_options -> see camera.yaml
-  #  #NOTE: this interpolation might fail if the parent has been removed!
   #  
   # ---
   #     
-  # Keyword arguments for `DataMatrix.render`
-  # NOTE: The default_settings substitute this with an interpolation that might not work,
-  # as it relies on the parent LaunchConfig that is currently removed.
+  # Keyword arguments for `DetectionMatrix.render`
   #  
-  # `camera.hud.data_matrix` is preferred.
+  # Warning:
+  #     `camera.hud.detection_matrix` is preferred.
   hud:
     draw: true
     values: true

@@ -1389,11 +1389,10 @@ class RssSettings(AgentConfig):
                 self.use_stay_on_road_feature = bool(self.use_stay_on_road_feature)
                 
 
-
 @dataclass
-class DataMatrixSettings(AgentConfig):
+class DetectionMatrixSettings(AgentConfig):
     enabled : bool = True
-    """Use the DataMatrix"""
+    """Activate or deactivate the detection matrix"""
     
     sync: bool = True
     """
@@ -1418,18 +1417,16 @@ class DataMatrixSettings(AgentConfig):
     hud: Dict[str, Any] = field(default_factory=__hud_default.copy)
     """
     TODO: do not have this in Agent config; instead
-        hud : ${camera.hud.data_matrix}
+        hud : ${camera.hud.detection_matrix}
         However: problem cannot interpolate to LaunchConfig
      #drawing_options -> see camera.yaml
     
     ---
         
-    Keyword arguments for `DataMatrix.render`
+    Keyword arguments for `DetectionMatrix.render`
 
     Warning:
-
-    
-        `camera.hud.data_matrix` is preferred.
+        `camera.hud.detection_matrix` is preferred.
     """
 
 
@@ -1545,8 +1542,8 @@ class LunaticAgentSettings(AgentConfig):
     """<take doc:LunaticAgentEmergencySettings>"""
     rss : RssSettings = field(default_factory=RssSettings, init=False)
     """<take doc:RssSettings>"""
-    data_matrix : DataMatrixSettings = field(default_factory=DataMatrixSettings, init=False)
-    """<take doc:DataMatrixSettings>"""
+    detection_matrix : DetectionMatrixSettings = field(default_factory=DetectionMatrixSettings, init=False)
+    """<take doc:DetectionMatrixSettings>"""
 
 @dataclass
 class SimpleBasicAgentSettings(SimpleConfig, LiveInfo, BasicAgentSpeedSettings, BasicAgentDistanceSettings, BasicAgentLaneChangeSettings, BasicAgentObstacleSettings, BasicAgentControllerSettings, BasicAgentPlannerSettings, BasicAgentEmergencySettings):
@@ -1583,6 +1580,7 @@ class CameraConfig(AgentConfig):
         camera_blueprints : list = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
     
     hud : dict = "???"
+    """HUD settings: Not implemented"""
     
     @dataclass
     class RecorderSettings:
@@ -1615,9 +1613,9 @@ class CameraConfig(AgentConfig):
     """<take doc:RecorderSettings>"""
     
     @dataclass
-    class DataMatrixHudConfig:
+    class DetectionMatrixHudConfig:
         """
-        DataMatrix HUD settings for the HUD
+        DetectionMatrix HUD settings for the HUD
         """
         
         draw : bool = True
@@ -1635,43 +1633,8 @@ class CameraConfig(AgentConfig):
         text_settings : dict = field(default_factory=lambda: {'color': 'orange'})
         """Settings for the text of pyplot.text when drawing the numerical values"""
 
-    data_matrix : DataMatrixHudConfig = field(default_factory=DataMatrixHudConfig)
-    """<take doc:DataMatrixHudConfig>"""
-        
-    
-@dataclass
-class _test(AgentConfig):
-        """Class Doc"""
-        
-        test_single : str
-        "Single descritpion"
-        
-        case_c :float
-        """Case C"""
-
-        test_match1 = 1
-        
-        """11111"""
-        
-        test_match12: int = 2
-        """22222"""
-        
-        test_no_match :float = 3.0
-        test_no_match2 :float = 4.0
-        """YYYYY"""
-        
-        test_avoid_comment : str = "Avoid comment"
-        # This is bad
-        "Found it"
-        
-        case_a = True
-        """Case A"""
-        
-        case_b: int = 2
-        """Case B"""
-        
-
-
+    detection_matrix : DetectionMatrixHudConfig = field(default_factory=DetectionMatrixHudConfig)
+    """<take doc:DetectionMatrixHudConfig>"""
 
 
 @dataclass
@@ -1684,12 +1647,17 @@ class LaunchConfig(AgentConfig):
     """
     
     verbose: bool = True
+    """unused kept for compatibility with carla examples."""
+    
     debug: bool = True
+    """If true will print out some more information and draws waypoints"""
+    
     interactive: bool = False
     """
     If True will create an interactive session with command line input
     - NOTE: Needs custom code in the main file (Not implemented)
     """
+    
     seed: Optional[int] = None
 
     # carla_service:
@@ -1698,6 +1666,12 @@ class LaunchConfig(AgentConfig):
     port: int = 2000
     
     fps: int = 20
+    """
+    Used to fix `carla.WorldSettings.fixed_delta_seconds`
+    
+    Experimental also used to cap fps in the simulation.
+    """
+    
     sync: Union[bool, None] = True
     """
     If True, the simulation will be set to run in synchronous mode.
@@ -1720,7 +1694,9 @@ class LaunchConfig(AgentConfig):
 
     # camera:
     width: int = 1280
+    """width of pygame window"""
     height: int = 720
+    """height of pygame window"""
     gamma: float = 2.2
     """
     Gamma correction of the camera.
@@ -1735,15 +1711,22 @@ class LaunchConfig(AgentConfig):
     
     This vehicle needs to be spawned by another process, e.g. through the scenario runner.
     """
+    
     rolename: str = "hero"
     """Actor name to wait for if `externalActor` is True."""
+    
     filter: str = "vehicle.*"
+    """Filter for the ego blueprint. Kept for compatibility with carla examples."""
+    
     generation: int = 2
+    """Generation for the ego blueprint. Kept for compatibility with carla examples."""
     
     autopilot: bool = False
     """
-    Whether or not to use the Carla's TraficManager to autpilot  the agent
-    - NOTE: This disables the usage of the LunaticAgent
+    Whether or not to use the Carla's TrafficManager to autopilot the agent
+    Note: 
+        This disables the usage of the LunaticAgent, however needs to be 
+        enabled in the main script by the user to work.
     """
     
     agent : LunaticAgentSettings = MISSING
@@ -1826,6 +1809,7 @@ if __name__ == "__main__":
     
 #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
 LunaticAgentSettings.export_options("conf/agent/default_settings.yaml", with_comments=True)
+LaunchConfig.export_options("conf/launch_config_default.yaml", with_comments=True)
 
 if __name__ == "__main__":
     #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)

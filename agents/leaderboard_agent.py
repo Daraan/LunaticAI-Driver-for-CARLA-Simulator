@@ -38,7 +38,7 @@ from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 if TYPE_CHECKING:
     from scenario_runner.srunner.autoagents.sensor_interface import SensorInterface
     from agents.navigation.local_planner import RoadOption
-    from data_gathering.car_detection_matrix.run_matrix import DataMatrix
+    from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 
 import logging
 logger.setLevel(logging.DEBUG)
@@ -48,7 +48,8 @@ def get_entry_point():
     print("Getting entry point")
     return "LunaticChallenger"
 
-# TODO: Pack this in an extra config
+# --- DEBUG OVERWRITES ---
+# as the leaderboard agent cannot accept command line overrides these can be set here.
 DEBUG = False
 
 WORLD_MODEL_DESTROY_SENSORS = True
@@ -56,7 +57,7 @@ ENABLE_RSS = AD_RSS_AVAILABLE and False
 
 ENABLE_DATA_MATRIX = True
 DATA_MATRIX_ASYNC = False
-"""Run the datamatrix update in a separate thread."""
+"""Run the DetectionMatrix update in a separate thread."""
 
 DATA_MATRIX_SYNC_INTERVAL = 5
 """When running synchronously: How many ticks should be between two updates."""
@@ -82,7 +83,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     _global_plan_world_coord: "list[tuple[carla.Transform, RoadOption]]" = None
     _global_plan_waypoints: "list[tuple[carla.Waypoint, RoadOption]]" = None 
     
-    _road_matrix_updater : "DataMatrix" = None
+    _road_matrix_updater : "DetectionMatrix" = None
     
     def __init__(self, carla_host, carla_port, debug=False):
         print("Initializing LunaticChallenger")
@@ -109,8 +110,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                                         config_dir=os.path.abspath(config_dir), 
                                         job_name="LeaderboardAgent")
                 if not ENABLE_DATA_MATRIX:
-                    overrides.append("agent.data_matrix.enabled="+str(ENABLE_DATA_MATRIX).lower())
-                overrides.append("agent.data_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
+                    overrides.append("agent.detection_matrix.enabled="+str(ENABLE_DATA_MATRIX).lower())
+                overrides.append("agent.detection_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
                 if not ENABLE_RSS:
                     overrides.append("agent.rss.enabled=false")
                 args = compose(config_name=config_name, return_hydra_config=True, 
@@ -133,8 +134,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                     logger.warning("When using the leaderboard agent, sync should be None.")
                     args.sync = None
                 args.debug = DEBUG
-                args.agent.data_matrix.sync = not DATA_MATRIX_ASYNC
-                args.agent.data_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
+                args.agent.detection_matrix.sync = not DATA_MATRIX_ASYNC
+                args.agent.detection_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
                 print(OmegaConf.to_yaml(args))
             else:
                 args = compose(config_name=config_name, return_hydra_config=True, 

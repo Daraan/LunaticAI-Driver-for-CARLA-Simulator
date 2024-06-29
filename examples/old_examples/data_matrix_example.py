@@ -3,7 +3,7 @@ import sys
 import carla
 
 import launch_tools
-from data_gathering.car_detection_matrix.run_matrix import DataMatrix
+from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 from launch_tools.carla_service import initialize_carla
 # TODO: maybe we can merge these or make them more unfied
 from classes.driver import Driver
@@ -32,7 +32,7 @@ def main():
 
     # TODO: let Driver class manage autopilot and not the TrafficMangerD class
 
-    matrix = DataMatrix(ego, world)
+    matrix = DetectionMatrix(ego, world)
 
     # spawn others
     for sp in spawn_points[1:]:

@@ -6,7 +6,7 @@ import carla
 
 from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
 from data_gathering.car_detection_matrix.matrix_wrap import get_car_coords
-from data_gathering.car_detection_matrix.run_matrix import AsyncDataMatrix, DataMatrix
+from data_gathering.car_detection_matrix.run_matrix import AsyncDetectionMatrix, DetectionMatrix
 from classes.camera_manager import camera_function
 from classes.vehicle_spawner import VehicleSpawner
 
@@ -39,7 +39,7 @@ def main():
         camera_thread.start()
 
         # Initialize matrix thread
-        data_matrix = AsyncDataMatrix(ego_vehicle, world, road_lane_ids)
+        data_matrix = AsyncDetectionMatrix(ego_vehicle, world, road_lane_ids)
         data_matrix.start()
 
         print("Starting game loop")

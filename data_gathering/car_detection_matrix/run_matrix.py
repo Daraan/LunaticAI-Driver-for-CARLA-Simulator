@@ -30,7 +30,7 @@ async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_q
         await result_queue.put(matrix)
         await asyncio.sleep(1)
 
-class DataMatrix:
+class DetectionMatrix:
     def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids=None):
         self.ego_vehicle = ego_vehicle
         self.world = world
@@ -108,7 +108,7 @@ class DataMatrix:
     def sync(self):
         return self._sync
 
-class AsyncDataMatrix(DataMatrix):
+class AsyncDetectionMatrix(DetectionMatrix):
     def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids=None, *, sleep_time=0.1):
         super().__init__(ego_vehicle, world, road_lane_ids)
         self._sync = False
@@ -149,7 +149,7 @@ class AsyncDataMatrix(DataMatrix):
             if self.worker_thread.is_alive():
                 self.worker_thread.join()
             else:
-                logger.info("DataMatrix.stop called multiple times.")
+                logger.info("DetectionMatrix.stop called multiple times.")
         except ImportError:
             print("Cannot import logger from agents.tools.logging. Stopping data matrix.")
             self.worker_thread.join()

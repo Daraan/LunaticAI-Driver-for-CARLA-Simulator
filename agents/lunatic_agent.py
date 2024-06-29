@@ -24,7 +24,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult
 from classes.exceptions import *
-from data_gathering.car_detection_matrix.run_matrix import AsyncDataMatrix, DataMatrix
+from data_gathering.car_detection_matrix.run_matrix import AsyncDetectionMatrix, DetectionMatrix
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
@@ -228,14 +228,14 @@ class LunaticAgent(BehaviorAgent):
         self.rules = deepcopy(self.__class__.rules) # Copies the ClassVar to the instance
         
         # Data Matrix
-        if self.config.data_matrix and self.config.data_matrix.enabled:
-            if self.config.data_matrix.sync and self._world_model.world_settings.synchronous_mode:
-                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world)
+        if self.config.detection_matrix and self.config.detection_matrix.enabled:
+            if self.config.detection_matrix.sync and self._world_model.world_settings.synchronous_mode:
+                self._detection_matrix = DetectionMatrix(self._vehicle, self._world_model.world)
             else:
-                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world)
-            self._road_matrix_updater.start()  # TODO maybe find a nicer way
+                self._detection_matrix = AsyncDetectionMatrix(self._vehicle, self._world_model.world)
+            self._detection_matrix.start()  # TODO maybe find a nicer way
         else:
-            self._road_matrix_updater = None
+            self._detection_matrix = None
         self._road_matrix_counter = 0 # TODO: Todo make this nicer and maybe get ticks from world.
         
         # Information Manager
@@ -247,18 +247,18 @@ class LunaticAgent(BehaviorAgent):
         return self._live_info
 
     @property
-    def road_matrix(self):
-        if self._road_matrix_updater:
-            return self._road_matrix_updater.getMatrix()
+    def detection_matrix(self):
+        if self._detection_matrix:
+            return self._detection_matrix.getMatrix()
     
     @property
     def _map(self) -> carla.Map:
         """Get the current map of the world.""" # Needed *only* for set_destination
         return CarlaDataProvider.get_map()
     
-    def render_road_matrix(self, display:"pygame.Surface", options:Dict[str, Any]={}):
-        if self._road_matrix_updater:
-            self._road_matrix_updater.render(display, **options)
+    def render_detection_matrix(self, display:"pygame.Surface", options:Dict[str, Any]={}):
+        if self._detection_matrix:
+            self._detection_matrix.render(display, **options)
 
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
@@ -271,9 +271,9 @@ class LunaticAgent(BehaviorAgent):
         self._collision_sensor.listen(self._collision_event)
 
     def destroy_sensor(self):
-        if self._road_matrix_updater:
-            self._road_matrix_updater.stop()
-            self._road_matrix_updater = None
+        if self._detection_matrix:
+            self._detection_matrix.stop()
+            self._detection_matrix = None
         if self._collision_sensor:
             self._collision_sensor.destroy()
             self._collision_sensor = None
@@ -361,12 +361,12 @@ class LunaticAgent(BehaviorAgent):
             
             # Data Matrix
             # update not every frame to save performance
-            if self._road_matrix_updater and self._road_matrix_updater.sync:
+            if self._detection_matrix and self._detection_matrix.sync:
                 self._road_matrix_counter += 1
-                if (self._road_matrix_counter % self.config.data_matrix.sync_interval) == 0:
+                if (self._road_matrix_counter % self.config.detection_matrix.sync_interval) == 0:
                     #logger.debug("Updating Road Matrix")
                     # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
-                    self._road_matrix_updater.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
+                    self._detection_matrix.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
                 else:
                     pass
             
@@ -933,13 +933,13 @@ class LunaticAgent(BehaviorAgent):
     def set_vehicle(self, vehicle:carla.Vehicle):
         self._vehicle = vehicle
         # Data Matrix
-        if self.config.data_matrix.enabled:
+        if self.config.detection_matrix.enabled:
             if self._world_model.world_settings.synchronous_mode:
-                self._road_matrix_updater = DataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+                self._detection_matrix = DetectionMatrix(self._vehicle, self._world_model.world, self._world_model.map)
             else:
-                self._road_matrix_updater = AsyncDataMatrix(self._vehicle, self._world_model.world, self._world_model.map)
+                self._detection_matrix = AsyncDetectionMatrix(self._vehicle, self._world_model.world, self._world_model.map)
         else:
-            self._road_matrix_updater = None
+            self._detection_matrix = None
         self._local_planner = DynamicLocalPlannerWithRss(self._vehicle, opt_dict=self.config, map_inst=CarlaDataProvider.get_map(), world=self._world_model.world, rss_sensor=self._world_model.rss_sensor)
     
     #@override 

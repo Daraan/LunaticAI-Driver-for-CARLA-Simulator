@@ -9,7 +9,7 @@ camera:
   gamma: 3.3
 
 agent:
-  data_matrix :
+  detection_matrix :
     enabled: true
     sync: true
     sync_interval: 60

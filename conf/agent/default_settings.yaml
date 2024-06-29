@@ -374,8 +374,8 @@ rss:
   # For fast vehicles RSS currently is unreliable, disables rss updates when the vehicle is faster than this.
   rss_max_speed: ???
 
-data_matrix:
-  # Use the DataMatrix
+detection_matrix:
+  # Activate or deactivate the detection matrix
   enabled: true
 
   # When the world uses synchronous mode and sync is true, the data matrix will be updated every sync_interval ticks.
@@ -387,18 +387,16 @@ data_matrix:
   sync_interval: 5
 
   # TODO: do not have this in Agent config; instead
-  #     hud : ${camera.hud.data_matrix}
+  #     hud : ${camera.hud.detection_matrix}
   #     However: problem cannot interpolate to LaunchConfig
   #  #drawing_options -> see camera.yaml
   #  
   # ---
   #     
-  # Keyword arguments for `DataMatrix.render`
+  # Keyword arguments for `DetectionMatrix.render`
   #  
   # Warning:
-  #  
-
-  #     `camera.hud.data_matrix` is preferred.
+  #     `camera.hud.detection_matrix` is preferred.
   hud:
     draw: true
     values: true

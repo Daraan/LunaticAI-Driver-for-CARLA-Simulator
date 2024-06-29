@@ -105,7 +105,7 @@ rss:
   use_stay_on_road_feature: 'On'
   log_level: info
 
-data_matrix:
+detection_matrix:
   enabled: false
   # When the world uses synchronous mode and sync is true, the data matrix will be updated every sync_interval ticks.
   # A low value will have a negative impact on the fps.
