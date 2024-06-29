@@ -300,7 +300,7 @@ class InformationManager:
             try:
                 actor = CarlaDataProvider._carla_actor_pool[actor_id] # might be deleted in parallel
                 if actor is None or not actor.is_alive:
-                    logger.warning("Detected dead actor in the pool. %s", (actor.id, actor.type_id, actor.attributes))
+                    logger.debug("Detected dead actor in the pool. %s", (actor.id, actor.type_id, actor.attributes))
                     del CarlaDataProvider._carla_actor_pool[actor_id]
                     continue
             except KeyError:

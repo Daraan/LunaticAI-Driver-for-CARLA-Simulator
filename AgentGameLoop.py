@@ -69,7 +69,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     ego : carla.Vehicle = None # Set for finally block
     spawned_vehicles : List[carla.Actor] = [] # Set for finally block
     
-    args.seed = 631 # TEMP
+    args.seed = 631
 
     # -- Load Settings Agent --
 

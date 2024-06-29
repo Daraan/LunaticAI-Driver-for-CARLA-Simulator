@@ -25,6 +25,14 @@ classes.evaluation\_function module
    :undoc-members:
    :show-inheritance:
 
+classes.exceptions module
+-------------------------
+
+.. automodule:: classes.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 classes.rule module
 -------------------
 
