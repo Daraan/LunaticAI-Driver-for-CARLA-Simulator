@@ -21,7 +21,7 @@ from weakref import WeakSet
 from omegaconf import OmegaConf
 
 from launch_tools import CarlaDataProvider
-from classes.constants import Phase
+from classes.constants import Hazard, Phase
 from classes.evaluation_function import ConditionFunction, TruthyConditionFunction
 from agents.tools.logging import logger
 
@@ -70,6 +70,13 @@ class Context(CarlaDataProvider):
         The correctness should *not* be assumed. 
         The user is responsible for setting this value to True if a second pass is required.
     """
+    
+    _detected_hazards : Set[Hazard]
+    """
+    Detected hazards in the current phase.
+    
+    If not empty at the end of the inner step an EmergencyStopException is raised.
+    """
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
@@ -79,6 +86,7 @@ class Context(CarlaDataProvider):
         self.action_results = {}
         self.last_phase_evaluation_results = {}
         self.last_phase_action_results = {}
+        self.detected_hazards = set()
         self.__dict__.update(kwargs)
 
     @property
@@ -105,6 +113,21 @@ class Context(CarlaDataProvider):
     def set_control(self, control : Optional["carla.VehicleControl"]):
         """Set the control, allows to set it to None."""
         self._control = control
+        
+    @property
+    def detected_hazards(self) -> Set[Hazard]:
+        """
+        Detected hazards in the current phase.
+        
+        If not empty at the end of the inner step an EmergencyStopException is raised.
+        """
+        return self._detected_hazards
+    
+    @detected_hazards.setter
+    def detected_hazards(self, hazards : Set[Hazard]):
+        if not isinstance(hazards, set):
+            raise TypeError("detected_hazards must be a set of Hazards.")
+        self._detected_hazards = hazards
     
     def end_of_phase(self): # TODO: keep or remove? unused
         self.last_phase_action_results = self.action_results.copy()
@@ -750,7 +773,10 @@ class MultiRule(metaclass=Rule):
                 phases (Union[Phase, Iterable]): The phase or phases in which the rule should be active.
                 rules (List[Rule]): The list of child rules to be called if the rule's condition is true.
                 condition (Callable[[Context]], optional): The condition that determines if the rules should be evaluated. Defaults to always_execute.
-                execute_all_rules (bool, optional): Flag indicating whether to execute all child rules or stop after one rule as been applied. Defaults to False.
+                execute_all_rules (bool, optional): 
+                    If False will only execute the first rule with a applicable condition, i.e. this MultiRule is like a node in a decision tree.
+                    If True all rules are evaluated, unless one raises a `DoNotEvaluateChildRules` exception.
+                    Defaults to False.
                 sort_rules (bool, optional): Flag indicating whether to sort the rules by priority. Defaults to True.
                 action (Callable[[Context]], optional): The action to be executed before the passed rules are evaluated. Defaults to None.
                 ignore_phase (bool, optional): Flag indicating whether to ignore the Phase of the passed child rules. Defaults to True.

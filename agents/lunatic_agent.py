@@ -15,7 +15,7 @@ from __future__ import annotations
 import sys
 from copy import deepcopy
 import random
-from typing import Any, ClassVar, Dict, List, NoReturn, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
+from typing import Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
 import weakref
 
 import carla
@@ -29,7 +29,7 @@ from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
 import agents.tools
-from agents.tools.lunatic_agent_tools import detect_vehicles
+from agents.tools.lunatic_agent_tools import detect_vehicles, must_clear_hazard
 from agents.tools.misc import (is_within_distance,
                                compute_distance, lanes_have_same_direction)
 import agents.tools.lunatic_agent_tools
@@ -250,6 +250,21 @@ class LunaticAgent(BehaviorAgent):
     def detection_matrix(self):
         if self._detection_matrix:
             return self._detection_matrix.getMatrix()
+        
+    @property
+    def detected_hazards(self) -> Set[Hazard]:
+        return self.ctx.detected_hazards
+    
+    @detected_hazards.setter
+    def detected_hazards(self, hazards : Set[Hazard]):
+        if not isinstance(hazards, set):
+            raise TypeError("detected_hazards must be a set of Hazards.")
+        self.ctx._detected_hazards = hazards
+    
+    def add_hazard(self, hazard: Hazard):
+        if not isinstance(hazard, Hazard): # Maybe could check for list / iterable here.
+            logger.error("Adding a non Hazard to the detected_hazards set. Type %s", type(hazard))
+        self.detected_hazards.add(hazard)
     
     @property
     def _map(self) -> carla.Map:
@@ -509,6 +524,8 @@ class LunaticAgent(BehaviorAgent):
             # ----------------------------
             try:
                 planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
+                if self.detected_hazards:
+                    raise EmergencyStopException(self.detected_hazards)
     
             except EmergencyStopException as emergency:
                 
@@ -518,6 +535,8 @@ class LunaticAgent(BehaviorAgent):
                 # ----------------------------
                 
                 emergency_controls = self.emergency_manager(reasons=emergency.hazards_detected)
+                
+                # TODO: somehow backup the control defined before.
                 self.execute_phase(Phase.EMERGENCY | Phase.END, update_controls=emergency_controls, prior_results=emergency.hazards_detected)
                 planned_control = self.get_control()
             
@@ -570,9 +589,14 @@ class LunaticAgent(BehaviorAgent):
         return self.get_control()
 
     @result_to_context("control")
+    @must_clear_hazard
     def _inner_step(self, debug=False) -> carla.VehicleControl:
         """
-        This is our main entry point that runs every tick.  
+        This is our main entry point that runs every tick.
+        
+        Raises:
+            EmergencyStopException: If self.detected_hazards is not empty when the 
+            function returns.
         """
         self.debug = debug
 
@@ -582,13 +606,13 @@ class LunaticAgent(BehaviorAgent):
 
         # Detect hazards
         # phases are executed in detect_hazard
-        Phase.DETECT_TRAFFIC_LIGHTS | Phase.BEGIN # phases executed inside
+        # > Phase.DETECT_TRAFFIC_LIGHTS | Phase.BEGIN # phases executed inside
         pedestrians_or_traffic_light = self.detect_hazard()
-        Phase.DETECT_PEDESTRIANS | Phase.END
+        # > Phase.DETECT_PEDESTRIANS | Phase.END
 
         # Pedestrian avoidance behaviors
         # currently doing either emergency (detect_hazard) stop or nothing 
-        if pedestrians_or_traffic_light:
+        if self.detected_hazards:
 
             # ----------------------------
             # Phase Hazard Detected (traffic light or pedestrian)
@@ -617,7 +641,7 @@ class LunaticAgent(BehaviorAgent):
             # ----------------------------
 
             self.execute_phase(Phase.CAR_DETECTED | Phase.BEGIN, prior_results=vehicle_detection_result)
-            control = self.car_following_behavior(*vehicle_detection_result) # NOTE: can currently go into EMEGENCY phase
+            control = self.car_following_behavior(*vehicle_detection_result) # Optional[NoReturn]
             self.execute_phase(Phase.CAR_DETECTED | Phase.END, update_controls=control, prior_results=vehicle_detection_result)
             return self.get_control()
         
@@ -691,14 +715,13 @@ class LunaticAgent(BehaviorAgent):
     # ------------------ Hazard Detection & Reaction ------------------ #
 
     def detect_hazard(self) -> Set[Hazard]:
-        hazard_detected: Set[Hazard] = set()
         # Red lights and stops behavior
 
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.BEGIN, prior_results=None)
         tlight_detection_result = self.traffic_light_manager()
         if tlight_detection_result.traffic_light_was_found:
             assert tlight_detection_result.traffic_light.id
-            hazard_detected.add(Hazard.TRAFFIC_LIGHT)             #TODO: Currently cannot give fine grained priority results
+            self.add_hazard(Hazard.TRAFFIC_LIGHT)             #TODO: Currently cannot give fine grained priority results
             #assert self.live_info.next_traffic_light.id == tlight_detection_result.traffic_light.id, "Next assumed traffic light should be the same as the detected one." # TEMP
             # DEBUG
             if self.live_info.next_traffic_light and self.live_info.next_traffic_light.id != tlight_detection_result.traffic_light.id:
@@ -712,14 +735,14 @@ class LunaticAgent(BehaviorAgent):
         hazard, detection_result = self.pedestrian_avoidance_behavior(self._current_waypoint)
         if detection_result.obstacle_was_found:
             if hazard:   #TODO: Currently cannot give very fine grained priority results, i.e. slow down or stop
-                hazard_detected.add(Hazard.PEDESTRIAN | Hazard.EMERGENCY)
+                self.add_hazard(Hazard.PEDESTRIAN | Hazard.EMERGENCY)
             else:
-                hazard_detected.add(Hazard.PEDESTRIAN | Hazard.WARNING)
+                self.add_hazard(Hazard.PEDESTRIAN | Hazard.WARNING)
         self.execute_phase(Phase.DETECT_PEDESTRIANS | Phase.END, prior_results=(hazard, detection_result))
         
-        return hazard_detected
+        return self.detected_hazards
     
-    def react_to_hazard(self, hazard_detected : set) -> Optional[NoReturn]:
+    def react_to_hazard(self, hazard_detected : Union[Hazard, Iterable[Hazard], None]) -> Optional[NoReturn]:
         """
         Called when a hazard was detected-
         
@@ -729,14 +752,20 @@ class LunaticAgent(BehaviorAgent):
         Raises:
             EmergencyStopException: If a hazard was detected and no rule cleared it.
         """
-        # TODO: # CRITICAL: needs creative overhaul
-        # Stop indicates if the loop shoul
 
-        # TODO: update state? prevent flodding of log information
-        #logger.info("Hazard(s) detected: %s", hazard_detected)
-
-        self.execute_phase(Phase.EMERGENCY | Phase.BEGIN, prior_results=hazard_detected)
+        # update state? prevent flodding of log information
+        #logger.info("Hazard(s) detected: %s", self.detected_hazards)
         if hazard_detected:
+            if not isinstance(hazard_detected, Hazard):
+                self.detected_hazards.update(hazard_detected)
+            else:
+                self.detected_hazards.add(hazard_detected)
+        
+        if self.detected_hazards:
+            self.execute_phase(Phase.EMERGENCY | Phase.BEGIN, prior_results=hazard_detected)
+        else:
+            logger.info("react_to_hazard was called without any detected hazards.")
+        if self.detected_hazards:
             raise EmergencyStopException(hazard_detected)
         logger.info("Hazards have been cleared.")
         
@@ -770,6 +799,7 @@ class LunaticAgent(BehaviorAgent):
         if exact_distance < self.config.distance.emergency_braking_distance:
             # Note: If the passed set is not cleared by a Phase.EMERGENCY | Phase.BEGIN rule, 
             # an EmergencyStopException is raised.
+            self.add_hazard(Hazard.CAR)
             self.react_to_hazard(hazard_detected={Hazard.CAR}) # Optional[NoReturn]
         controls = self.car_following_manager(vehicle, exact_distance)
         return controls

@@ -137,8 +137,6 @@ class SetNextWaypointNearby(Rule):
     condition = is_agent_done
     action = set_next_waypoint_nearby
 
-
-
 # ----------- RSS Rules -----------
 
 def accept_rss_updates(ctx : Context):
@@ -148,7 +146,7 @@ def accept_rss_updates(ctx : Context):
     if ctx.prior_result is None:
         return None
     assert isinstance(ctx.prior_result, carla.VehicleControl)
-    logger.debug("Accepting RSS updates %s", ctx)
+    logger.debug("Accepting RSS updates %s", ctx.prior_result)
     ctx.control = ctx.prior_result
     
 assert isinstance(if_config("rss.enabled", True), ConditionFunction)

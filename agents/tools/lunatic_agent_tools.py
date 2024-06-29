@@ -311,3 +311,18 @@ def result_to_context(key):
         
     return decorator
 
+def must_clear_hazard(func):
+    """
+    Decorator which raises an EmergencyStopException if self.detected_hazards
+    is not empty after the function call.
+    
+    Raises:
+        EmergencyStopException: If self.detected_hazards is not empty after the function call.
+    """
+    @wraps(func)
+    def wrapper(self: "LunaticAgent", *args, **kwargs):
+        result = func(self, *args, **kwargs)
+        if self.detected_hazards:
+            raise EmergencyStopException(self.detected_hazards)
+        return result
+    return wrapper
