@@ -879,6 +879,8 @@ class RandomRule(metaclass=MultiRule):
 
     """
     
+    # TODO: add a dummy attribute for one additional weight, that skips the evaluation. Should only considered once.
+    
     @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable], #/, # phases must be positional; python3.8+ only

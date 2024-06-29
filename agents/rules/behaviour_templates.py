@@ -297,6 +297,13 @@ if __name__ == "__main__" or DEBUG_RULES:
         
         actions = {True: lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context)),
                 False: lambda ctx: assert_type(ctx, Context)}
+        
+    class RuleAttributes(Another):
+        DEFAULT_COOLDOWN_RESET = 10
+        start_cooldown = 20
+        cooldown = 50
+        
+    test_init = RuleAttributes()
 
     new_rule = DebugRuleWithEval()
     #new_rule.action

@@ -71,8 +71,6 @@ class PassiveKeyboardControl(object):
 
 class RSSKeyboardControl(object):
     """
-    TODO: This documentation is not up to date!
-
     Use ARROWS or WASD keys for control.
 
         W            : throttle
@@ -80,7 +78,7 @@ class RSSKeyboardControl(object):
         AD           : steer
         Q            : toggle reverse
         Space        : hand-brake
-        P            : toggle autopilot
+        P            : toggle autopilot (depends on setup)
 
         TAB          : change view
         Backspace    : change vehicle
@@ -93,9 +91,9 @@ class RSSKeyboardControl(object):
         F5           : increase map log level
         F6           : decrease map log level
         B            : toggle RSS Road Boundaries Mode
-        G            : RSS check drop current route
+        G            : RSS check drop current route (experimental)
         T            : toggle RSS (NotImplemented)
-        N            : pause simulation
+        N            : pause simulation (only slow down)
 
         F1           : toggle HUD
         H/?          : toggle help

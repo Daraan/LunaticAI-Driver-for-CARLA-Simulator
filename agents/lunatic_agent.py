@@ -738,6 +738,10 @@ class LunaticAgent(BehaviorAgent):
                 self.add_hazard(Hazard.PEDESTRIAN | Hazard.EMERGENCY)
             else:
                 self.add_hazard(Hazard.PEDESTRIAN | Hazard.WARNING)
+                # NOTE: its a flag, could pack all in one bin
+                # Pro: easier to check
+                # Con: when to remove other states like warning
+                # Make it a dict with the state as key and the detection result as value!
         self.execute_phase(Phase.DETECT_PEDESTRIANS | Phase.END, prior_results=(hazard, detection_result))
         
         return self.detected_hazards
