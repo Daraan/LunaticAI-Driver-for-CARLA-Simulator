@@ -104,15 +104,13 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         logger.info("Created Game Framework.\n")
         
         # -- Spawn Vehicles --
-        all_spawn_points = game_framework.map.get_spawn_points()
         spawn_points = launch_tools.csv_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
         
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
         
         # Spawn Others
-        how_many = 33
-        ego_spawn_idx = 3
-        traffic_manager = game_framework.init_traffic_manager(CarlaDataProvider.get_traffic_manager_port())
+        how_many = 4
+        ego_spawn_idx = -12
         spawned_vehicles = CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3", 
                                                                       how_many, 
                                                                       spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn_idx], 
@@ -124,7 +122,6 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)
         spawned_vehicles.append(ego)
         
-        
         logger.info("Creating agent and WorldModel ...")
         agent, world_model, global_planner, controller \
             = game_framework.init_agent_and_interface(ego=None if args.externalActor else ego, # TEMP # Test external actor, do not pass ego
@@ -133,7 +130,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         logger.debug("Created agent and WorldModel.\n")
         
         # Add Rules:
-        agent.add_rules(create_default_rules())
+        #agent.add_rules(create_default_rules(game_framework))
         default_rules = create_default_rules()
         from agents.rules.lane_changes import RandomLaneChangeRule
         for rule in default_rules:
@@ -271,6 +268,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         else:
             loop()
     except Exception as e:
+        print("ERROR, exception in game loop", e)
         logger.error("Exception in game loop", exc_info=True)
         raise
     finally:
