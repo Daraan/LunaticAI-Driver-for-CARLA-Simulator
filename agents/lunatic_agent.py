@@ -29,7 +29,7 @@ from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
 import agents.tools
-from agents.tools.lunatic_agent_tools import detect_vehicles, must_clear_hazard
+from agents.tools.lunatic_agent_tools import detect_vehicles, must_clear_hazard, phase_callback
 from agents.tools.misc import (is_within_distance,
                                compute_distance, lanes_have_same_direction)
 import agents.tools.lunatic_agent_tools

@@ -108,8 +108,16 @@ class Phase(Flag):
     TERMINATING = auto() # When closing the loop
     """Can be called when the agent is terminating. Must be executed by the user."""
     
-    CUSTOM_PHASE_CHANGE = auto()
-    """Can be used to indicate that the phase change is currently handled by the user."""
+    CUSTOM_CYCLE = auto()
+    """
+    Can be used to indicate that the phase change is currently handled by the user.
+    
+    Note:
+        agent.execute_phase checks for exact match
+    
+    See Also:
+        Executes in BlockedRule.loop_agent()
+    """
     # States which the agent can be in outside of a normal Phase0-5 loop 
 
     # --- Aliases & Combination Phases ---
@@ -120,7 +128,7 @@ class Phase(Flag):
 
     EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE | TERMINATING
     
-    USER_CONTROLLED = CUSTOM_PHASE_CHANGE | APPLY_MANUAL_CONTROLS | EXECUTION | TERMINATING
+    USER_CONTROLLED = APPLY_MANUAL_CONTROLS | EXECUTION | TERMINATING | CUSTOM_CYCLE
     """Phases that might or not be went through as they must be implemented manually by the user."""
 
     NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP
@@ -172,10 +180,16 @@ class Phase(Flag):
             return Phase.BEGIN | Phase((self & ~Phase.END).value * 2)
         raise ValueError(f"Phase {self} is not a valid phase")
         return Phase(self.value * 2)
+    
+    def validate_next_phase(current_phase, next_phase):
+        assumed_next = current_phase.next_phase()
+        NotImplemented # Currently done in agent.execute_phase
 
     @classmethod
     def get_user_controlled_phases(cls):
-        return cls.APPLY_MANUAL_CONTROLS, cls.EXECUTION, cls.TERMINATING
+        user_phases = cls.APPLY_MANUAL_CONTROLS, cls.EXECUTION, cls.TERMINATING, cls.CUSTOM_CYCLE
+        assert all(p & cls.USER_CONTROLLED for p in user_phases)
+        return user_phases
 
     @classmethod
     def get_phases(cls):
