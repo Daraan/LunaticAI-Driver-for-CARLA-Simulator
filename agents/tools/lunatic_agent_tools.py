@@ -1,3 +1,5 @@
+from inspect import isclass
+from operator import attrgetter
 from shapely.geometry import Polygon
 from functools import partial, wraps
 
@@ -7,9 +9,10 @@ from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
                                compute_distance)
 
-from classes.exceptions import EmergencyStopException, LunaticAIException, SkipInnerLoopException
+from classes.constants import Phase
+from classes.exceptions import EmergencyStopException, LunaticAgentException, SkipInnerLoopException
 from launch_tools import CarlaDataProvider, Literal
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
@@ -41,7 +44,7 @@ def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal[
                self.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
 
 
-def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Actor], min_detection_threshold: float, speed_limit_divisors=(2,3)) -> ObstacleDetectionResult:
+def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Actor]) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     and managing possible tailgating chances.
@@ -66,6 +69,9 @@ def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Ac
         As the first argument is the agent, this function can be used as a method, i.e
         it can be added / imported directly into the agent class' body.
     """
+
+    if obstacle_list in (None, "all"):
+        obstacle_list = self.all_obstacles_nearby
 
     # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
     if self.live_info.incoming_direction == RoadOption.CHANGELANELEFT:

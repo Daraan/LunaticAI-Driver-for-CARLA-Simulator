@@ -128,7 +128,6 @@ class InformationManager:
             # Is at an intersection
             self._relevant_traffic_light_location = None
             self.relevant_traffic_light_distance = None
-            logger.debug("No traffic light found - at intersection?")
         # TODO: Assure that the traffic light is not behind the actor, but in front of it.
         # TODO: Do not use the CDP but use the planned route instead.
     

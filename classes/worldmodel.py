@@ -15,7 +15,6 @@ from omegaconf import DictConfig, OmegaConf
 import carla
 import pygame
 import numpy.random as random
-from agents.rules.BlockingRule import BlockingRule
 from agents.tools.config_creation import AgentConfig, class_or_instance_method
 from classes.exceptions import UserInterruption
 from classes.HUD import HUD
@@ -24,7 +23,6 @@ from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 
 from classes.exceptions import AgentDoneException, ContinueLoopException
-from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
 from classes.keyboard_controls import RSSKeyboardControl
@@ -42,7 +40,7 @@ from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
 
 from launch_tools import CarlaDataProvider, Literal
 
-class AccessCarlaDataProviderMixin:
+class AccessCarlaMixin:
     """
     Mixin class that delegates `client`, `map`, and `world` CarlaDataProvider if available to keep in Sync.
     
@@ -81,7 +79,7 @@ class AccessCarlaDataProviderMixin:
 # -- Game Framework ---------------------------------------------------------------
 # ==============================================================================
 
-class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
+class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     clock : ClassVar[pygame.time.Clock] = None
     display : ClassVar[pygame.Surface] = None
     controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
@@ -177,9 +175,11 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         self.continue_loop = True
         self.traffic_manager : Optional[carla.TrafficManager] = None
         
+        # Import here to avoid circular imports
+        from classes.rule import BlockingRule, Rule
         self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
         
-        BlockingRule.gameframework = weakref.proxy(self)
+        BlockingRule._gameframework = weakref.proxy(self)
         
     @staticmethod
     def init_pygame(args:Optional["LaunchConfig"]=None):
@@ -400,7 +400,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
 # -- World ---------------------------------------------------------------
 # ==============================================================================
 
-class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
+class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     """ Class representing the surrounding environment """
 
     controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy

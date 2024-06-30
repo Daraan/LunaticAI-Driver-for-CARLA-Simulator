@@ -12,7 +12,7 @@ if __name__ == "__main__": # TEMP clean at the end, only here for testing
     sys.path.append(os.path.abspath("../"))
 
 from enum import Enum, IntEnum
-from functools import partial
+from functools import partial, wraps
 from dataclasses import dataclass, field, asdict, is_dataclass
 import typing
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast
@@ -80,12 +80,18 @@ class class_or_instance_method:
     
     def __init__(self, call):
         self.__wrapped__ = call
-        self._wrapper = lambda x : x # TODO: functools.partial and functools.wraps shadow the signature, this reveals it again.
+        self._wrapper = lambda x : x # TODO/BUG: functools.partial and functools.wraps shadow the signature and doc, this reveals it again.
 
-    def __get__(self, instance : Union[None, "AgentConfig"], owner : Type["AgentConfig"]):
-        if instance is None:  # called on class 
-            return self._wrapper(partial(self.__wrapped__, owner))
-        return self._wrapper(partial(self.__wrapped__, instance)) # called on instance
+    if TYPE_CHECKING:
+        def __get__(self, instance : Union[None, "AgentConfig"], owner : Type["AgentConfig"]):
+            if instance is None:  # called on class 
+                return self._wrapper(partial(self.__wrapped__, owner))
+            return self._wrapper(partial(self.__wrapped__, instance)) # called on instance
+    else:
+        def __get__(self, instance : Union[None, "AgentConfig"], owner : Type["AgentConfig"]):
+            if instance is None:  # called on class 
+                return partial(self.__wrapped__, owner)
+            return partial(self.__wrapped__, instance) # called on instance
 
 
 def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
@@ -473,22 +479,27 @@ class AgentConfig:
         cls_or_self._flatten_dict(resolved, options)
         return options
     
-    def update(self, options : "Union[dict, AgentConfig]", clean=True):
+    def update(self, options : "Union[dict, AgentConfig, Literal[False], None]", clean=True):
         """Updates the options with a new dictionary."""
-        if isinstance(options, AgentConfig):
-            key_values = options.__dataclass_fields__.items()
-        elif isinstance(options, DictConfig):
-            options = OmegaConf.to_container(options)
-            key_values = options.items() # Calling this with missing keys will raise an error
-        else:
-            key_values = options.items()
-        for k, v in key_values:
-            if isinstance(getattr(self, k), AgentConfig):
-                getattr(self, k).update(v)
+        try:
+            if isinstance(options, AgentConfig):
+                key_values = options.__dataclass_fields__.items()
+            elif isinstance(options, DictConfig):
+                options = OmegaConf.to_container(options)
+                key_values = options.items() # Calling this with missing keys will raise an error
             else:
-                setattr(self, k, v)
-        if clean:
-            self._clean_options()
+                key_values = options.items()
+            
+            for k, v in key_values:
+                if isinstance(getattr(self, k), AgentConfig):
+                    getattr(self, k).update(v)
+                else:
+                    setattr(self, k, v)
+            if clean:
+                self._clean_options()
+        except Exception as e:
+            print("\n ERROR updating", self.__class__.__name__, "with >", options, "< Error:", e, "\n")
+            raise
 
     def _clean_options(self):
         """Postprocessing of possibly wrong values"""
@@ -516,6 +527,9 @@ class AgentConfig:
                         if not OmegaConf.is_missing(value, live_info_key):
                             print("Warning: live_info should only consist of missing values. Setting", live_info_key, "to", value[live_info_key])
                             setattr(live_info_dict, live_info_key, value[live_info_key])
+                elif value in (False, None, "None") and self.__dataclass_fields__[key].metadata.get("can_be_false", False):
+                    # Rss or Datamatrix settings
+                    getattr(self, key).update({"enabled" : False})
                 elif issubclass(self.__annotations__[key], AgentConfig):
                     getattr(self, key).update(value) # AgentConfig.update
                 else:
@@ -1540,9 +1554,11 @@ class LunaticAgentSettings(AgentConfig):
     """<take doc:LunaticAgentPlannerSettings>"""
     emergency : LunaticAgentEmergencySettings = field(default_factory=LunaticAgentEmergencySettings, init=False)
     """<take doc:LunaticAgentEmergencySettings>"""
-    rss : RssSettings = field(default_factory=RssSettings, init=False)
+    
+    # Can be set to False/None to disable
+    rss : RssSettings = field(default_factory=RssSettings, init=False, metadata={"can_be_false": True})
     """<take doc:RssSettings>"""
-    detection_matrix : DetectionMatrixSettings = field(default_factory=DetectionMatrixSettings, init=False)
+    detection_matrix : DetectionMatrixSettings = field(default_factory=DetectionMatrixSettings, init=False, metadata={"can_be_false": True})
     """<take doc:DetectionMatrixSettings>"""
 
 @dataclass

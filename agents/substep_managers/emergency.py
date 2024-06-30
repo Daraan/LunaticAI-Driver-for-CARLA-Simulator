@@ -18,7 +18,7 @@ def emergency_manager(self : "LunaticAgent", *, reasons:"set[str]", control : Op
     logger.debug("Emergency Manager: Stopping because of %s", reasons)
     control = control or self.get_control()
     if control is None:
-        control = self._local_planner.run_step(debug=self.debug)
+        control = self._calculate_control(debug=self.debug)
 
     # TODO, future: Can be turned into a rule. Problem here and with rule it will trigger each step -> new random value
     # rule should return consistent result for a period of time

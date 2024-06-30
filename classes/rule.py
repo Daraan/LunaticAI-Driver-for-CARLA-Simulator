@@ -114,6 +114,28 @@ class Context(CarlaDataProvider):
         """Set the control, allows to set it to None."""
         self._control = control
         
+    def get_or_calculate_control(self) -> "carla.VehicleControl":
+        """
+        Get the control if it is set, otherwise calculate it by 
+        executing the local planner.
+        
+        Returns:
+            The control the agent should use.
+            
+        Note:
+            Use this function inside rules to acquire a control object-
+            
+        Warning:
+            This is equivalent to ending the inner step of the agent.
+        
+        See Also:
+            - [LunaticAgent.calculate_control](#LunaticAgent.calculate_control)
+        """
+        if self.control:
+            return self.control
+        self.control = self.agent._calculate_control()
+        return self.control
+        
     @property
     def detected_hazards(self) -> Set[Hazard]:
         """
@@ -724,7 +746,7 @@ class Rule(_GroupRule):
         result = Rule.NO_RESULT
         try:
             result = self.evaluate(ctx, overwrite)
-        except LunaticAIException as e:
+        except LunaticAgentException as e:
             exception = e
         else:
             ctx.evaluation_results[ctx.agent.current_phase] = result

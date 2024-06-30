@@ -1,5 +1,5 @@
 import random
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 import carla
 from carla import TrafficLightState
@@ -32,7 +32,8 @@ def affected_by_traffic_light(self : "LunaticAgent",
 
         if not lights_list:
             if self._world_model._args.debug:
-                logger.warning("No traffic lights list provided, using all traffic lights in the scene. This should not happen.")
+                logger.warning("No traffic lights list provided, using all traffic lights in the scene. This should not happen."
+                               "You possibly want to pass agent._lights_list instead.")
             lights_list = self._world.get_actors().filter("*traffic_light*")
 
         if not max_distance:
@@ -76,7 +77,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
         return TrafficLightDetectionResult(False, None)
 
 
-def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.TrafficLight"]) -> TrafficLightDetectionResult:
+def traffic_light_manager(self : "LunaticAgent", traffic_lights : Optional[List["carla.TrafficLight"]] = None) -> TrafficLightDetectionResult:
         """
         This method is in charge of behaviors for red lights.
         """
@@ -84,6 +85,8 @@ def traffic_light_manager(self : "LunaticAgent", traffic_lights : List["carla.Tr
         # Introduce a random chance to ignore the traffic light
         if random.random() < self.config.obstacles.ignore_lights_percentage:
             return TrafficLightDetectionResult(False, None)
+        
+        traffic_lights = traffic_lights or self._lights_list
 
         # Behavior setting:
         max_tlight_distance = self.config.obstacles.base_tlight_threshold
