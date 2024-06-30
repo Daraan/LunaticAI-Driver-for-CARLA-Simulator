@@ -470,6 +470,8 @@ class LunaticAgent(BehaviorAgent):
                 #todo check here for the phase instead of in the rule
                 assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
                 rule(self.ctx)
+        except NoFurtherRulesException:
+            pass
         except omegaconf.ReadonlyConfigError:
             print("WARNING: A action likely tried to change `ctx.config` which is non-permanent. Use `ctx.agent.config.` instead.")
             raise
@@ -569,7 +571,7 @@ class LunaticAgent(BehaviorAgent):
                 else:
                     logger.warning("UpdatedPathException was raised in the inner step, this should be done in Phase.PLAN_PATH ", e)
                 return self.run_step(debug=debug, second_pass=int(second_pass)+1) 
-            except LunaticAIException as e:
+            except LunaticAgentException as e:
                 if self.ctx.control is None:
                     raise ValueError("A VehicleControl object must be set on the agent when %s is raised during `._inner_step`" % type(e).__name__) from e
             
@@ -733,7 +735,7 @@ class LunaticAgent(BehaviorAgent):
             allow_user_updates: If True, the user can update the controls manually.
                 Otherwise only the normal hotkeys do work.
         """
-        planned_control = self.get_control()
+        planned_control = control or self.get_control()
         self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=planned_control)
         
         # Controls can be updated inplace by the user.        
@@ -743,6 +745,7 @@ class LunaticAgent(BehaviorAgent):
        
         self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
     
+    @phase_callback(on_exit=Phase.EXECUTION | Phase.END)
     def apply_control(self, control: Optional[carla.VehicleControl]=None):
         """
         Applies the control to the agent's actor.
@@ -761,7 +764,6 @@ class LunaticAgent(BehaviorAgent):
         # Set automatic control-related vehicle lights
         self.update_lights(control)
         self._vehicle.apply_control(control)
-        self.execute_phase(Phase.EXECUTION | Phase.END, prior_results=control)
     
     # ------------------ Hazard Detection & Reaction ------------------ #
 

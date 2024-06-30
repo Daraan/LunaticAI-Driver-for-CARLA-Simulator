@@ -3,8 +3,14 @@ from __future__ import annotations # todo: can this be removed?
 from collections.abc import Mapping
 from functools import partial, wraps
 
-from classes.exceptions import DoNotEvaluateChildRules, LunaticAIException
+from carla.libcarla import VehicleControl
+
+from data_gathering.information_manager import InformationManager
 from launch_tools import CarlaDataProvider
+import pygame
+
+from classes.exceptions import DoNotEvaluateChildRules, LunaticAgentException, SkipInnerLoopException, UnblockRuleException
+from classes.worldmodel import GameFramework
 
 try: # Python 3.8+
     from functools import singledispatchmethod
@@ -17,7 +23,7 @@ from inspect import isclass
 from itertools import accumulate
 from enum import IntEnum
 from typing import Any, ClassVar, FrozenSet, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
-from weakref import WeakSet
+from weakref import WeakSet, proxy
 
 from omegaconf import OmegaConf
 
@@ -429,6 +435,9 @@ class Rule(_GroupRule):
     priority: RulePriority = RulePriority.NORMAL
     
     # Initialization functions
+    
+    _ctx : Optional[Context] = None
+    """No hard attachment, to not keep the context objects alive, use with care. Check where it is set in a rule."""
 
     def clone(self):
         """
@@ -720,6 +729,7 @@ class Rule(_GroupRule):
     # -----------------------
 
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, _NO_RESULT_TYPE]:
+        self._ctx = proxy(ctx)
         settings = self.overwrite_settings.copy()   
         if overwrite:
             settings = self.overwrite_settings.copy()
@@ -757,6 +767,7 @@ class Rule(_GroupRule):
                 return action_result
             return self.NOT_APPLICABLE # No action was executed
         finally:
+            self._ctx = None
             if exception:
                 self.reset_cooldown() # 
                 raise exception
@@ -773,6 +784,12 @@ class Rule(_GroupRule):
 
     def __repr__(self) -> str:
         return str(self)
+    
+    def execute_phase(self, *args, **kwargs):
+        try:
+            self._ctx.agent.execute_phase(*args, **kwargs)
+        except AttributeError:
+            logger.exception("Error in Rule.execute_phase. Weakproxy might have been deleted")
 
 class MultiRule(metaclass=Rule):
 
