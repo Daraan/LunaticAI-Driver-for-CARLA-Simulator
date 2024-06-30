@@ -35,7 +35,9 @@ if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import LunaticAgentSettings, LiveInfo
-
+    from typing import override
+    # Note: gameframework.py adds GameFramework to this module's variables
+    # at this position it would be a circular import
 
 class Context(CarlaDataProvider):
     """
@@ -83,6 +85,9 @@ class Context(CarlaDataProvider):
     
     If not empty at the end of the inner step an EmergencyStopException is raised.
     """
+    
+    detected_hazards_info : Dict[Hazard, Any]
+    """Information about the detected hazards."""
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
@@ -93,6 +98,7 @@ class Context(CarlaDataProvider):
         self.last_phase_evaluation_results = {}
         self.last_phase_action_results = {}
         self.detected_hazards = set()
+        self.detected_hazards_info = {h: None for h in Hazard}
         self.__dict__.update(kwargs)
 
     @property
@@ -170,7 +176,11 @@ class Context(CarlaDataProvider):
     def live_info(self) -> "LiveInfo":
         return self.config.live_info
     
+    @property
+    def active_blocking_rules(self) -> List["BlockingRule"]:
+        return self.agent._active_blocking_rules
     
+   
 
 class RulePriority(IntEnum):
     """
@@ -1038,6 +1048,199 @@ class RandomRule(metaclass=MultiRule):
             weights = list(accumulate(r.priority.value for r in rules))
         return result
 
+
+
+
+
+class BlockingRule(metaclass=Rule):
+
+    _gameframework: ClassVar[Union["GameFramework", "proxy[GameFramework]", None]] = None
+
+    ticks_passed : int
+    """Count how many ticks have been performed by this rule and blocked the agent."""
+    
+    MAX_TICKS = 5000 # 5000 * 1/20 = 250 seconds
+    
+    max_tick_callback : Optional[Callable[[BlockingRule, Context], Any]] = None
+
+    @singledispatchmethod
+    def __init__(self, 
+                 phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
+                 #/, # phases must be positional; python3.8+ only
+                 condition : Optional[Union[ConditionFunction, Callable[[Context], Hashable]]]=None, 
+                 action: Optional[Union[Callable[[Context], Any], Dict[Any, Callable]]] = None,
+                 false_action: Optional[Callable[[Context], Any]] = None,
+                 *, 
+                 gameframework: Optional["GameFramework"],
+                 actions : Optional[Dict[Any, Callable[[Context], Any]]] = None,
+                 description: str = "What does this rule do?",
+                 overwrite_settings: Optional[Dict[str, Any]] = None,
+                 priority: RulePriority = RulePriority.NORMAL,
+                 cooldown_reset_value : Optional[int] = None,
+                 group : Optional[str] = None,
+                 enabled: bool = True,
+                 ignore_chance = NotImplemented,
+                 ):
+        super().__init__(phases, condition, action, false_action, actions=actions, description=description, overwrite_settings=overwrite_settings, priority=priority, cooldown_reset_value=cooldown_reset_value, group=group, enabled=enabled, ignore_chance=ignore_chance)
+        if gameframework:
+            BlockingRule._gameframework = gameframework
+        if not GameFramework.clock or not GameFramework.display:
+            breakpoint()
+            logger.warning("%s : GameFramework should be initialized before using this rule.", self.__class__.__name__)
+            GameFramework.clock, GameFramework.display = GameFramework.init_pygame()
+        self.ticks_passed = 0
+
+    @__init__.register(_CountdownRule)
+    @__init__.register(type)
+    def __init_by_decorating_class(self, cls: "BlockingRule"): # pylint: disable=unused-variable
+        """
+        Initialize by passing a Rule or class object to the __init__ method.
+        
+        This allows the usage of the @Rule decorator and easy copying.
+        """
+        phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
+        cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
+        self.__init__(phases, cls.condition, action=getattr(cls, "action", None), false_action=getattr(cls, "false_action", None), gameframework=getattr(cls, "gameframework", BlockingRule._gameframework), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
+    
+    def _render_everything(self, ctx: Context):
+        if self._gameframework:
+            self._gameframework.render_everything()
+        else:
+            world_model = ctx.agent._world_model
+            display = GameFramework.display
+            world_model.tick(GameFramework.clock)
+            world_model.render(display, finalize=False)
+            world_model.controller.render(display)
+            dm_render_conf = OmegaConf.select(world_model._args, "camera.hud.data_matrix", default=None)
+
+            if dm_render_conf and ctx.agent:
+                ctx.agent.render_detection_matrix(display, dm_render_conf)
+            world_model.finalize_render(display)
+        pygame.display.flip()
+
+    if TYPE_CHECKING:
+        @override
+        def loop_agent(self, ctx: Context, *, execute_planner: True, execute_phases:Any) -> VehicleControl: ...
+            
+        @override
+        def loop_agent(self, ctx: Context, *, execute_planner: False, execute_phases:Any) -> None: ...
+
+    def loop_agent(self, ctx: Context, control: Optional[carla.VehicleControl]=None, *, execute_planner: bool, execute_phases=True) -> VehicleControl | None:
+        """
+        A combination of `LunaticAgent.parse_keyboard_input`, `LunaticAgent.apply_control`, `BlockingRule.update_world`,
+        and `Context.get_or_calculate_control` to advance agent and world.
+        
+        Args:
+            ctx (Context): The current context object
+            control (Optional[carla.VehicleControl], optional): The control to apply; will overwrite the context's control.
+                If None takes the context's control.
+                Defaults to None.
+        
+        See Also:
+            - [](#LunaticAgent.parse_keyboard_input)
+            - [](#LunaticAgent.apply_control)
+            - [](#BlockingRule.update_world)
+            - [](#Context.get_or_calculate_control)
+        """
+        ctx.agent.parse_keyboard_input(control=control) # NOTE: if skipped the user has no option to stop the agent
+        ctx.agent.apply_control(control)
+            
+        # NOTE: This ticks the world forward by one step
+        # The ctx.control is reset to None; execute_plan
+        # > Phase.UPDATE_INFORMATION | Phase.BEGIN
+        self.update_world(ctx, execute_planner=True, execute_phases=execute_phases)
+        if execute_planner:
+            control = ctx.get_or_calculate_control()
+            return control
+        return None
+
+    @staticmethod
+    def get_world():
+        return CarlaDataProvider.get_world()
+
+    def _begin_tick(self, ctx: Context):
+        self._gameframework.clock.tick() # self.args.fps)
+        frame = None
+        if self._gameframework._args.handle_ticks: # i.e. no scenario runner doing it for us
+            if CarlaDataProvider.is_sync_mode():
+                frame = self.get_world().tick()
+            else:
+                frame = self.get_world().wait_for_tick().frame
+            CarlaDataProvider.on_carla_tick()
+
+        if CarlaDataProvider.is_sync_mode():
+            # We do this only in sync mode as frames could pass between gathering this information
+            # and an agent calling InformationManager.tick(), which in turn calls global_tick
+            # with possibly a DIFFERENT frame wasting computation.
+            if frame is None:
+                frame = self.get_world().get_snapshot().frame
+            InformationManager.global_tick(frame)
+
+        # Tick world and render everything
+        # control should be reset, we are at the "start of the tick again"
+        ctx.set_control(None)
+        self.ticks_passed += 1
+
+    def update_world(self, ctx: Context, *, execute_phases=True) -> VehicleControl | None:
+        """
+        When true, the agent will execute the 
+            execute_phase(Phase.CUSTOM_CYCLE | Phase.BEGIN, prior_results=<this Rule instance>)
+
+            Phase.UPDATE_INFORMATION | Phase.[BEGIN|END] while blocked. 
+            Default is True.
+
+        Args:
+            ctx (Context): The context to use
+            execute_update_information (bool, optional): Whether to execute the Phase.UPDATE_INFORMATION | Phase.[BEGIN|END] while blocked. Defaults to True.
+            run_step (bool, optional): 
+                Whether to run the next step of the local planner.
+            
+                Note:
+                    If you want to update the behavior of the agent after Phase.UPDATE_INFORMATION | Phase.END
+                    inside the rule's action you should should use `execute_planner=False`.
+                    If you need a ready control object for the next step to work with, use `execute_planner=True`
+                    or call `ctx.get_or_calculate_control()` inside the rule's action afterwards.
+
+        Raises:
+            UnblockRuleException: If the ticks passed are over MAX_TICKS
+        """
+        self._begin_tick(ctx)
+        ctx.agent.execute_phase(Phase.CUSTOM_CYCLE | Phase.BEGIN, prior_results=self)
+
+        # Update the agent's information
+        if execute_phases:
+            ctx.agent.execute_phase(Phase.UPDATE_INFORMATION | Phase.BEGIN, prior_results=self)
+        ctx.agent._update_information()
+        if execute_phases and Phase.UPDATE_INFORMATION | Phase.END not in self.phases:
+            ctx.agent.execute_phase(Phase.UPDATE_INFORMATION | Phase.END, prior_results=self)
+        if self.ticks_passed > self.MAX_TICKS:
+            if self.max_tick_callback:
+                self.max_tick_callback(ctx)
+            raise UnblockRuleException()
+        
+        self._render_everything(ctx)
+
+    def __call__(self, ctx: Context, overwrite=None, *args, in_loop=False, **kwargs):
+        if not in_loop:
+            self.ticks_passed = 0
+        else:
+            kwargs.setdefault("ignore_phase", True)
+            kwargs.setdefault("ignore_cooldown", True)
+        if self in ctx.agent._active_blocking_rules:
+            logger.warning("Rule %s is already blocking the agent, this is a recursive call. Not executing the rule.", self)
+            return Rule.NOT_APPLICABLE
+        try:
+            return super().__call__(ctx, overwrite, *args, **kwargs)
+        except UnblockRuleException as e:
+            return e.result
+        finally:
+            ctx.agent._active_blocking_rules.discard(self)
+            
+    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, "Rule.NO_RESULT"]:
+        result = super().evaluate(ctx, overwrite)
+        if result in self.actions:
+            ctx.agent._active_blocking_rules.add(self)
+        return result
 
 # Provide necessary imports for the evaluation_function module and prevents circular imports
 

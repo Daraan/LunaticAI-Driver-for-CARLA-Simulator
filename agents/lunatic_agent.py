@@ -41,7 +41,7 @@ from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, D
 
 from classes.constants import AgentState, Phase, Hazard
 from classes.rss_sensor import AD_RSS_AVAILABLE
-from classes.rule import Context, Rule
+from classes.rule import BlockingRule, Context, Rule
 from agents.tools.config_creation import AgentConfig, LaunchConfig, LiveInfo, LunaticAgentSettings
 
 from classes.worldmodel import WorldModel, CarlaDataProvider
@@ -89,6 +89,9 @@ class LunaticAgent(BehaviorAgent):
     
     _validate_phases = False
     """A flag to sanity check if the agent passes trough the phases in the correct order"""
+    
+    _active_blocking_rules: Set[BlockingRule] = set()
+    """Blocking rules that are currently active and have taken over the agents loop."""
     
     @classmethod
     def create_world_and_agent(cls, args: LaunchConfig, *, vehicle : carla.Vehicle, sim_world : carla.World,
@@ -260,6 +263,15 @@ class LunaticAgent(BehaviorAgent):
         if not isinstance(hazards, set):
             raise TypeError("detected_hazards must be a set of Hazards.")
         self.ctx._detected_hazards = hazards
+        
+    
+        
+    @property
+    def active_blocking_rules(self) -> Set[BlockingRule]:
+        """
+        Blocking rules that are currently active and have taken over the agents loop.
+        """
+        return self._active_blocking_rules
     
     def add_hazard(self, hazard: Hazard):
         if not isinstance(hazard, Hazard): # Maybe could check for list / iterable here.
@@ -438,17 +450,33 @@ class LunaticAgent(BehaviorAgent):
 
     # ------------------ Step & Loop Logic ------------------ #
 
-    def add_rule(self, rule : Rule, position=-1):
+    def add_rule(self, rule : Rule, position:Union[int, None]=None):
+        """
+        Add a rule to the agent. The rule will be inserted at the given position.
+        
+        Args:
+            rule (Rule): The rule to add
+            position (Union[int, None], optional): 
+                The position to insert the rule at. 
+                If None the rule list will be sorted by priority.
+                Defaults to None.
+        """
         for p in rule.phases:
-            self.rules[p].append(rule)
-            self.rules[p].sort(key=lambda r: r.priority, reverse=True)
+            if p not in self.rules:
+                logger.warning("Phase %s from Rule %s is not a default phase. Adding a new phase.", p, rule)
+                self.rules[p] = []
+            if position is None:
+                self.rules[p].append(rule)
+                self.rules[p].sort(key=lambda r: r.priority, reverse=True)
+            else:
+                self.rules[p].insert(position, rule)
             
     def add_rules(self, rules : List[Rule]):
         """Add a list of rules and sort the agents rules by priority."""
         for rule in rules:
             for phase in rule.phases:
                 self.rules[phase].append(rule)
-        for phase in Phase.get_phases():
+        for phase in self.rules.keys():
             self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
         
     def execute_phase(self, phase : Phase, *, prior_results, update_controls:carla.VehicleControl=None) -> Context:
@@ -464,7 +492,7 @@ class LunaticAgent(BehaviorAgent):
         if update_controls is not None:
             self.ctx.set_control(update_controls)
         self.ctx.prior_result = prior_results
-        rules_to_check = self.rules[phase]
+        rules_to_check = self.rules.get(phase, ()) # use get if a custom phase is added, without a rule
         try:
             for rule in rules_to_check: # todo: maybe dict? grouped by phase?
                 #todo check here for the phase instead of in the rule
