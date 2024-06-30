@@ -1,11 +1,16 @@
 from enum import Enum, Flag, IntEnum, auto
 from functools import lru_cache
-from typing import Union, TYPE_CHECKING
+from typing import NewType, Union, TYPE_CHECKING
 
 import carla
 
 if TYPE_CHECKING:
     from agents.navigation.local_planner import RoadOption
+    
+NO_RESULT_TYPE = NewType("NO_RESULT_TYPE", object)
+"""Type helper for objects that indicate no result."""
+
+RULE_NO_RESULT = NO_RESULT_TYPE(object())
 
 class StreetType(str, Enum):
     ON_HIGHWAY = "On highway"

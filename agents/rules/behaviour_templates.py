@@ -300,7 +300,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     class RuleAttributes(Another):
         DEFAULT_COOLDOWN_RESET = 10
         start_cooldown = 20
-        cooldown = 50
+        cooldown_reset_value = 50
         
     test_init = RuleAttributes()
 

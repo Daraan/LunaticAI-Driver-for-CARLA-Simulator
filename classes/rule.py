@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from functools import partial, wraps
 
 from classes.exceptions import DoNotEvaluateChildRules, LunaticAIException
+from launch_tools import CarlaDataProvider
 
 try: # Python 3.8+
     from functools import singledispatchmethod
@@ -20,8 +21,7 @@ from weakref import WeakSet
 
 from omegaconf import OmegaConf
 
-from launch_tools import CarlaDataProvider
-from classes.constants import Hazard, Phase
+from classes.constants import RULE_NO_RESULT, Hazard, Phase, NO_RESULT_TYPE as _NO_RESULT_TYPE
 from classes.evaluation_function import ConditionFunction, TruthyConditionFunction
 from agents.tools.logging import logger
 
@@ -353,11 +353,20 @@ class Rule(_GroupRule):
     
     # Indicate that no rule was applicable in the current phase
     # i.e.  rule(ctx) in actions was False 
-    NOT_APPLICABLE : ClassVar = object()
+    NOT_APPLICABLE : ClassVar[object] = object()
     """Object that indicates that no action was executed."""
     
-    NO_RESULT : ClassVar = object()
+    NO_RESULT = RULE_NO_RESULT
     """Indicates that the action raised an exception."""
+    
+    _PROPERTY_MEMBERS : ClassVar[Set[str]] = {"cooldown", "has_group", "enabled"}
+    """
+    A subclass can only overwrite these attributes with properties. This prevents a user accidentally overwriting the property,
+    e.g. `cooldown = 20` with a method or variable.
+    
+    TODO:
+        Consider making enabled a variable and not a property.
+    """
     
     description : str
     """Description of what this rule should do"""
@@ -504,7 +513,8 @@ class Rule(_GroupRule):
             except Exception as e:
                 raise ValueError("Either only one of 'action' and 'actions' can be set, or actions[True] must be the same as action - other actions are currently not supported.") from e
         if action is None and actions is None and not hasattr(self, "actions"):
-            raise TypeError("%s.__init__() `action` and `actions` are both None. Provide at least one argument alternatively the class must have an `actions` attribute or an `action` function." % self.__class__.__name__)
+            # NOTE: the k in params check below is essential for this to work correctly.
+            raise TypeError("%s.__init__() arguments `action` and `actions` are both None. Provide at least one argument alternatively the class must have an `actions` attribute or an `action` function." % self.__class__.__name__)
 
         if action is None:
             if not isinstance(actions, Mapping):
@@ -582,6 +592,10 @@ class Rule(_GroupRule):
         if hasattr(cls, "phases") and hasattr(cls, "phase") and cls.phases and cls.phase:
             raise ValueError(f"Both 'phases' and 'phase' are set in class {cls.__name__}. Use only one. %s, %s" % (cls.phases, cls.phase))
         
+        for attr in cls._PROPERTY_MEMBERS:
+            if hasattr(cls, attr) and not hasattr(getattr(cls, attr), "__get__"):
+                raise ValueError(f"Class {cls.__name__} has overwritten property {attr} with {getattr(cls, attr)}. You may only overwrite the following attributes with properties: {cls._PROPERTY_MEMBERS}."
+                                 "Did you mean `start_cooldown` or `cooldown_reset_value` instead of `cooldown`?")
         if not cls._auto_init_ or metaclass: # TODO: Check for multirule, should _auto_init_ be set to False?
             return
         
@@ -630,13 +644,15 @@ class Rule(_GroupRule):
         # Create a __init__ function that sets some of the parameters.
         params = inspect.signature(cls.__init__).parameters # find overlapping parameters
         
+        # TODO: to be lazy Rule arguments need to be added to params so that "k in params" works
+        
         @wraps(cls.__init__)
         def partial_init(self: Rule, phases=None, *args, **kwargs):
             # Need phases as first argument
             cls_phases = getattr(cls, "phases", None) # allow for both wordings
             cls_phase = getattr(cls, "phase", None)
             if init_by_decorator:
-                # phases as first argument is the class
+                # Using @Rule phases as first argument is the class
                 phases = cls_phases or cls_phase
             else:
                 if phases is None: # NOTE: Could be Phase.NONE
@@ -681,7 +697,7 @@ class Rule(_GroupRule):
     # Evaluation functions
     # -----------------------
 
-    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable]:
+    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, _NO_RESULT_TYPE]:
         settings = self.overwrite_settings.copy()   
         if overwrite:
             settings = self.overwrite_settings.copy()
@@ -698,7 +714,7 @@ class Rule(_GroupRule):
     def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *, ignore_phase=False, ignore_cooldown=False) -> Any:
         # Check phase
         assert ignore_phase or ctx.agent.current_phase in self.phases
-            
+        
         if not self.is_ready() and not ignore_cooldown:
             return self.NOT_APPLICABLE
         if not ignore_phase and ctx.agent.current_phase not in self.phases: #NOTE: This is currently never False as checked in execute_phase and the agents dictionary.
@@ -720,7 +736,7 @@ class Rule(_GroupRule):
             return self.NOT_APPLICABLE # No action was executed
         finally:
             if exception:
-                self.reset_cooldown() # assume that the
+                self.reset_cooldown() # 
                 raise exception
     # 
     
