@@ -28,6 +28,8 @@ from omegaconf import MISSING, DictConfig, OmegaConf
 #    from utils.egg_import import carla
 import carla 
 import pygame
+from agents.navigation.local_planner import RoadOption
+from agents.tools import lane_explorer
 from classes import exceptions
 import launch_tools
     
@@ -41,7 +43,7 @@ from classes.constants import Phase
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 
 from agents.tools.logging import logger
-from agents.tools.misc import draw_waypoints
+from agents.tools.misc import draw_route, draw_waypoints, get_trafficlight_trigger_location
 
 from agents.lunatic_agent import LunaticAgent
 from agents.rules import create_default_rules
@@ -196,6 +198,39 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
                     except IndexError:
                         pass
                     game_framework.debug.draw_point(destination, life_time=0.5)
+                    lane_explorer.draw_waypoint_info(game_framework.debug, agent._current_waypoint, lt=10)
+                    if agent._current_waypoint.is_junction:
+                        junction = agent._current_waypoint.get_junction()
+                        lane_explorer.draw_junction(game_framework.debug, junction, 0.1)
+                    if not agent._last_traffic_light:
+                        traffic_light = agent.live_info.next_traffic_light
+                    else:
+                        traffic_light = agent._last_traffic_light
+                    
+                    if traffic_light:
+                        wps = traffic_light.get_stop_waypoints()
+                        for wp in wps:
+                            game_framework.debug.draw_point(wp.transform.location + carla.Location(z=2), life_time=0.6)
+                            lane_explorer.draw_waypoint_info( game_framework.debug, wp)
+                        trigger_loc = get_trafficlight_trigger_location(traffic_light)
+                        trigger_wp = CarlaDataProvider.get_map().get_waypoint(trigger_loc)
+                        game_framework.debug.draw_point(trigger_wp.transform.location + carla.Location(z=2), life_time=0.6, size=0.2, color=carla.Color(0,0,255))
+                        
+                        affected_wps = traffic_light.get_affected_lane_waypoints()
+                        
+                        draw_route(world_model.world, 
+                                   waypoints=[ (wp, RoadOption.LANEFOLLOW) for wp in trigger_wp.next_until_lane_end(0.4) ], 
+                                   size=0.1)
+                        draw_route(world_model.world, 
+                                   waypoints=[ (wp, RoadOption.STRAIGHT) for wp in trigger_wp.next_until_lane_end(0.4) ], 
+                                   size=0.1)
+                        draw_route(world_model.world, 
+                                   waypoints=[ (wp, RoadOption.LEFT) for wp in affected_wps ], 
+                                   size=0.1)
+                        
+                        
+                    else:
+                        print("No traffic light")
                 
                 # -- Stop Loop or Continue when agent is done --
                 
