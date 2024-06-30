@@ -43,62 +43,39 @@ from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
 from launch_tools import CarlaDataProvider, Literal
 
 class AccessCarlaDataProviderMixin:
-    """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
+    """
+    Mixin class that delegates `client`, `map`, and `world` CarlaDataProvider if available to keep in Sync.
     
-    if CarlaDataProvider is not None:
-        @property
-        def client(self) -> carla.Client:
-            return CarlaDataProvider.get_client()
-        
-        @client.setter
-        def client(self, value: carla.Client):
-            CarlaDataProvider.set_client(value)
-        
-        @property
-        def world(self) -> carla.World:
-            return CarlaDataProvider.get_world()
-        
-        @world.setter
-        def world(self, value: carla.World):
-            CarlaDataProvider.set_world(value)
-        
-        @property
-        def map(self) -> carla.Map:
-            return CarlaDataProvider.get_map()
-        
-        @map.setter
-        def map(self, value: carla.Map):
-            if CarlaDataProvider.get_map() != value:
-                raise ValueError("CarlaDataProvider.get_map() and passed map are not the same.")
-            # Do nothing as map is set when using get_map or set_world
-    else:
-        __client: carla.Client = None # type: ignore
-        __map: carla.Map = None  # type: ignore
-        __world: carla.World = None # type: ignore
-        
-        @property
-        def client(self) -> carla.Client:
-            return AccessCarlaDataProviderMixin.__client
-        
-        @client.setter
-        def client(self, value: carla.Client):
-            AccessCarlaDataProviderMixin.__client = value
-            
-        @property
-        def world(self) -> carla.World:
-            return AccessCarlaDataProviderMixin.__world
-        
-        @world.setter
-        def world(self, value: carla.World):
-            AccessCarlaDataProviderMixin.__world = value
-            
-        @property
-        def map(self) -> carla.Map:
-            return AccessCarlaDataProviderMixin.__map
-        
-        @map.setter
-        def map(self, value: carla.Map):
-            AccessCarlaDataProviderMixin.__map = value
+    Note:
+        This mixin only works for instances, they are not class attributes.
+    """
+    
+    @property
+    def client(self) -> carla.Client:
+        return CarlaDataProvider.get_client()
+    
+    @client.setter
+    def client(self, value: carla.Client):
+        CarlaDataProvider.set_client(value)
+    
+    @property
+    def world(self) -> carla.World:
+        return CarlaDataProvider.get_world()
+    
+    @world.setter
+    def world(self, value: carla.World):
+        CarlaDataProvider.set_world(value)
+    
+    @property
+    def map(self) -> carla.Map:
+        return CarlaDataProvider.get_map()
+    
+    @map.setter
+    def map(self, value: carla.Map):
+        if CarlaDataProvider.get_map() != value:
+            raise ValueError("CarlaDataProvider.get_map() and passed map are not the same.")
+        # Do nothing as map is set when using get_map or set_world
+    
 
 # ==============================================================================
 # -- Game Framework ---------------------------------------------------------------
@@ -198,9 +175,9 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         self.debug = self.world.debug
         self.continue_loop = True
+        self.traffic_manager : Optional[carla.TrafficManager] = None
         
         self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
-        self.traffic_manager : Optional[carla.TrafficManager] = None
         
         BlockingRule.gameframework = weakref.proxy(self)
         
@@ -283,7 +260,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     
     def render_everything(self):
         """Update render and hud"""
-        self.world_model.tick(self.clock) # Note: only ticks the HUD.
+        self.world_model.tick(self.clock) # NOTE: Ticks WorldMODEL not CARLA WORLD!
         self.world_model.render(self.display, finalize=False)
         self.controller.render(self.display)
         dm_render_conf = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)

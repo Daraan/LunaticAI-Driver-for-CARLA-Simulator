@@ -120,15 +120,27 @@ class Phase(Flag):
 
     NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP
     IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
+    """
+    Phases that are executed in or before the inner step, EMERGENCY is executed,
+    right after the inner step.
     
-    #def __eq__(self, other):
-    #    # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION
-    #    if isinstance(other, Phases):
-    #        if self is Phases.NONE or other is Phases.NONE:
-    #            return self is other
-    #        return self in other or other in self
-    #    return False
+    Warning:
+        Phase.COLLISION is not yet implemented in the submodule.
+    See Also:
+        - [LunaticAgent.run_step](#LunaticAgent.run_step)
+        - [collision_manager](#agents.substep_managers.collision_manager)
+    """
     
+    """
+    def __eq__(self, other):
+        # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION
+        if not isinstance(other, Phase):
+            return False
+        # Check None
+        if self is Phase.NONE or other is Phase.NONE:
+            return self is other
+        return self in other or other in self
+    """
 
     def next_phase(self):
         # Hardcoded transitions

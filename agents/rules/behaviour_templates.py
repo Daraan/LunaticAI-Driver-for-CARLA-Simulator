@@ -5,7 +5,6 @@ from omegaconf._impl import select_node
 
 import carla
 
-from launch_tools import CarlaDataProvider
 
 from classes.constants import Phase
 from classes.rule import Rule, ConditionFunction, TruthyConditionFunction, Context, always_execute

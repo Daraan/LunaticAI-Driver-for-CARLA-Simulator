@@ -63,8 +63,11 @@ def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5
         world.debug.draw_arrow(begin, end, color=color, **kwargs)
         
 def roadoption_color(option: "RoadOption") -> carla.Color:
-    return RoadOptionColor(option)
-    from agents.navigation.local_planner import RoadOption # TODO: move to constants to avoid circular import
+    """
+    Returns the RoadOptionColor for the given RoadOption.
+    
+    Approximately executes:
+    
     if option == RoadOption.LEFT:  # Yellow
         return carla.Color(128, 128, 0)
     elif option == RoadOption.RIGHT:  # Cyan
@@ -76,7 +79,9 @@ def roadoption_color(option: "RoadOption") -> carla.Color:
     elif option == RoadOption.STRAIGHT:  # Gray
         return carla.Color(64, 64, 64)
     else:  # LANEFOLLOW
-        return carla.Color(0, 128, 0)  # Green       
+        return carla.Color(0, 128, 0)  # Green
+    """
+    return RoadOptionColor(option)
     
 def _draw_route_trans(world: carla.World, waypoints: "list[tuple[carla.Transform, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
     """
@@ -134,17 +139,26 @@ def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform | carl
         print("Drawing of type:", type(waypoints[0][0]), "not supported.")
 
 
-
-def get_speed(vehicle):
+def get_speed(vehicle, kmh=True, vel=None):
     """
     Compute speed of a vehicle in Km/h.
 
         :param vehicle: the vehicle for which speed is calculated
+        :param kmh: boolean to convert speed to km/h
+        :param vel: (optional) velocity of the vehicle.
+            Note: 
+                Should be from vehicle.get_velocity() 
+                or CarlaDataProvider.get_velocity(vehicle)
         :return: speed as a float in Km/h
     """
-    vel = vehicle.get_velocity()
-
-    return 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
+    # Importing CarlaDataProvider is circular import as it uses this module
+    #vel = CarlaDataProvider.get_velocity(vehicle)
+    if not vel:
+        vel = vehicle.get_velocity()
+        vel = math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
+    if kmh:
+        return 3.6 * vel
+    return vel
 
 
 def get_trafficlight_trigger_location(traffic_light: carla.TrafficLight):

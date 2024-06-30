@@ -927,9 +927,9 @@ class BasicAgentObstacleSettings(AgentConfig):
     See `BasicAgent._vehicle_obstacle_detected`
     """
     
-    base_tlight_threshold : float = 5.0
+    base_tlight_threshold : float = 1.0
     """
-    Base distance to traffic lights to check if they affect the vehicle
+    Base distance to traffic lights trigger location to check if they affect the vehicle
     
     Usage:
         max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
@@ -946,7 +946,7 @@ class BasicAgentObstacleSettings(AgentConfig):
         A vehicle is considered if distance < max_vehicle_distance < nearby_vehicles_max_distance
     """
 
-    detection_speed_ratio : float = 1.0
+    detection_speed_ratio : float = 0.5
     """
     Increases detection range based on speed
     
@@ -1005,7 +1005,7 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
         """see `speed_detection_downscale`"""
         same_lane : float = 3.0
         other_lane : float = 2.0
-        overtaking : float = 1.5
+        overtaking : float = 2.5
         """
         Used by SimpleOvertakeRule, look further ahead for overtaking
         """

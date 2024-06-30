@@ -76,19 +76,10 @@ def game_loop(args):
 
         hud = HUD(args.width, args.height)
 
-        # carla_service = CarlaService("Town04", "127.0.0.1", 2000)
-
-        # Set the agent destination
-        # import os
-        #print(os.path.exists("examples/highway_example_car_positions.csv"))
-        #print(os.getcwd())
-        #import time
-        #time.sleep(1.5)
         try:
             spawn_points = launch_tools.csv_tools.csv_to_transformations("../examples/highway_example_car_positions.csv")
         except FileNotFoundError:
             spawn_points = launch_tools.csv_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
-        # car1 = carla_service.createCar("model3")
 
         # Spawn Ego
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(sim_world)

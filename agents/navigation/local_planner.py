@@ -21,15 +21,35 @@ from typing import NamedTuple
 class RoadOption(IntEnum):
     """
     RoadOption represents the possible topological configurations when moving from a segment of lane to other.
+    if option == RoadOption.LEFT:  # Yellow
+        return carla.Color(128, 128, 0)
+    elif option == RoadOption.RIGHT:  # Cyan
+        return carla.Color(0, 128, 128)
+    elif option == RoadOption.CHANGELANELEFT:  # Orange
+        return carla.Color(128, 32, 0)
+    elif option == RoadOption.CHANGELANERIGHT:  # Dark Cyan
+        return carla.Color(0, 32, 128)
+    elif option == RoadOption.STRAIGHT:  # Gray
+        return carla.Color(64, 64, 64)
+    else:  # LANEFOLLOW
+        return carla.Color(0, 128, 0)  # Green / Void
 
     """
+    
     VOID = -1
+    """Indicated by green"""
     LEFT = 1
+    """Indicated by yellow"""
     RIGHT = 2
+    """Indicated by cyan"""
     STRAIGHT = 3
+    """Indicated by gray"""
     LANEFOLLOW = 4
+    """Indicated by green"""
     CHANGELANELEFT = 5
+    """Indicated by orange"""
     CHANGELANERIGHT = 6
+    """Indicated by dark cyan"""
 
 class PlannedWaypoint(NamedTuple):
     waypoint: carla.Waypoint

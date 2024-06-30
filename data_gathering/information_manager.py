@@ -176,7 +176,7 @@ class InformationManager:
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
         self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle)
         # Only exact waypoint. TODO: update in agent
-        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(self.live_info.current_location)
+        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc)
         
         # Traffic Light
         # NOTE: Must be AFTER the location update
@@ -284,7 +284,8 @@ class InformationManager:
         else:
             # DEBUG; TEMP
             snap_frame = CarlaDataProvider.get_world().get_snapshot().frame
-            assert frame == snap_frame, f"Frame {frame} does not match snapshot frame {snap_frame}"
+            if frame != snap_frame:
+                logger.error(f"Frame {frame} does not match snapshot frame {snap_frame}")
         if frame == InformationManager.frame:
             return
         InformationManager.frame = frame

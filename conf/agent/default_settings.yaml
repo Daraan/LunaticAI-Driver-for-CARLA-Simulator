@@ -163,11 +163,11 @@ obstacles:
   # See `BasicAgent._vehicle_obstacle_detected`
   use_bbs_detection: true
 
-  # Base distance to traffic lights to check if they affect the vehicle
+  # Base distance to traffic lights trigger location to check if they affect the vehicle
   #  
   # Usage:
   #     max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
-  base_tlight_threshold: 5.0
+  base_tlight_threshold: 1.0
 
   # Base distance to vehicles to check if they affect the vehicle
   #         
@@ -182,7 +182,7 @@ obstacles:
   #  
   # Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
   # Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
-  detection_speed_ratio: 1.0
+  detection_speed_ratio: 0.5
 
   # Whether to add a dynamic threshold based on the vehicle speed to the base threshold.
   #  
@@ -248,7 +248,7 @@ obstacles:
   speed_detection_downscale:
     same_lane: 3.0
     other_lane: 2.0
-    overtaking: 1.5
+    overtaking: 2.5
     tailgating: 2.0
   # Percentage of time to ignore traffic lights
   ignore_lights_percentage: 0.0
