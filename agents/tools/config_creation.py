@@ -562,6 +562,8 @@ class AgentConfig:
         self._clean_options()
         if self.overwrites is None:
             return
+        if isinstance(self.overwrites, DictConfig):
+            self.overwrites = OmegaConf.to_container(self.overwrites, throw_on_missing=False) # convert to dict
         # Merge the overwrite dict into the correct ones.
         try:
             value : Union[dict, AgentConfig, DictConfig, str, bool, float, int, list, ListConfig, None]
@@ -1024,12 +1026,17 @@ class BasicAgentObstacleSettings(AgentConfig):
     See `BasicAgent._vehicle_obstacle_detected`
     """
     
-    base_tlight_threshold : float = 1.0
-    """"
-    Base distance to traffic lights trigger location to check if they affect the vehicle
+    stop_at_yellow_tlighs : bool = False
+    """
+    If the the agent will treat a yellow light like a red light and stop.
+    """
     
-    Usage:
-        max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+    base_tlight_threshold : float = 2.0
+    """
+    Base distance to traffic lights to check if they affect the vehicle
+        
+    Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
+    Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
     
     base_vehicle_threshold : float = 2.0
@@ -1047,7 +1054,7 @@ class BasicAgentObstacleSettings(AgentConfig):
         A vehicle is considered if distance < max_vehicle_distance < nearby_vehicles_max_distance
     """
 
-    detection_speed_ratio : float = 0.5
+    detection_speed_ratio : float = 0.1
     """
     Increases detection range based on speed
     

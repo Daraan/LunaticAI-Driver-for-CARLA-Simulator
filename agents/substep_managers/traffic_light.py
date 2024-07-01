@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
     return traffic_light.state == TrafficLightState.Red
 
+def _is_red_or_yellow(traffic_light : "carla.TrafficLight") -> bool:
+    return _is_red_light(traffic_light) or traffic_light.state == TrafficLightState.Yellow
+
 def affected_by_traffic_light(self : "LunaticAgent", 
                               lights_list : List["carla.TrafficLight"]=None, 
                               max_distance : float=None) -> TrafficLightDetectionResult:
@@ -49,11 +52,13 @@ def affected_by_traffic_light(self : "LunaticAgent",
         ego_vehicle_location = self.config.live_info.current_location
         ego_vehicle_waypoint = self._current_waypoint
 
-        for traffic_light in filter(_is_red_light, lights_list):
+        filtered_lights = filter(_is_red_or_yellow if self.config.obstacles.stop_at_yellow_tlighs else _is_red_light, lights_list)
+        
+        for traffic_light in filtered_lights:
             if traffic_light.id in self._lights_map:
                 trigger_wp = self._lights_map[traffic_light.id]
             else:
-                trigger_location = get_trafficlight_trigger_location(traffic_light)
+                trigger_location = CarlaDataProvider.get_trafficlight_trigger_location(traffic_light)
                 trigger_wp = CarlaDataProvider.get_map().get_waypoint(trigger_location)
                 self._lights_map[traffic_light.id] = trigger_wp
 

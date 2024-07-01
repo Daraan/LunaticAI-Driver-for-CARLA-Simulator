@@ -146,6 +146,8 @@ obstacles:
   #  
   # See `BasicAgent._vehicle_obstacle_detected`
   use_bbs_detection: true
+  # If the the agent will treat a yellow light like a red light and stop.
+  stop_at_yellow_tlighs: false
 
   # "
   # Base distance to traffic lights trigger location to check if they affect the vehicle
@@ -171,7 +173,7 @@ obstacles:
   #  
   # Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
   # Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
-  detection_speed_ratio: 0.5
+  detection_speed_ratio: 0.1
 
   # Whether to add a dynamic threshold based on the vehicle speed to the base threshold.
   #  

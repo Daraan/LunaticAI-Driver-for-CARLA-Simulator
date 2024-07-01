@@ -803,8 +803,11 @@ class Rule(_GroupRule):
         settings = self.overwrite_settings.copy()
         if overwrite:
             settings.update(overwrite)
-
-        ctx.config = OmegaConf.merge(ctx.agent.config, settings) # NOTE: if you got an error check if you used `"setting.subsetting" : value` instead of `settings : { subsetting: value}`. NO DOT NOTATION FOR KEYS!
+        if settings:
+            ctx.config = OmegaConf.merge(ctx.agent.config, settings) # NOTE: if you got an error check if you used `"setting.subsetting" : value` instead of `settings : { subsetting: value}`. NO DOT NOTATION FOR KEYS!
+        else:
+            # If settings is empty the more expensive merge is not necessary.
+            ctx.config = ctx.agent.config.copy()
             
         # NOTE: # TODO: this creates a hardlink, which means that the memory is not freed when ctx.config is updated!
         # Solution: can make self_config a weakproxy and store a parentless copy in self.overwrite_settings["self"]

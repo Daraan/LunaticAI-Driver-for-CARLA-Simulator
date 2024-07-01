@@ -28,4 +28,3 @@ def collision_detection_manager(self : "LunaticAgent"):
         
         return vehicle_detection_result, static_obstacle_detection_result
     
-    

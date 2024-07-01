@@ -203,6 +203,8 @@ def detect_vehicles(self: "LunaticAgent", vehicle_list=None, max_distance=None, 
         As the first argument is the agent, this function can be used as a method, i.e
         it can be added / imported directly into the agent class' body.
     """
+    
+    # See also scenario_runner scenario_helper.detect_lane_obstacle
 
     if self.config.obstacles.ignore_vehicles:
         return ObstacleDetectionResult(False, None, -1)
@@ -241,7 +243,7 @@ def detect_vehicles(self: "LunaticAgent", vehicle_list=None, max_distance=None, 
         return Polygon(route_bb)
 
     if not max_distance:
-        max_distance = self.config.obstacles.base_vehicle_threshold
+        max_distance = self.config.obstacles.base_vehicle_threshold # TODO: This is not modified with the dynamic threshold
 
     # TODO: can get this from CDP
     ego_transform = self._vehicle.get_transform()

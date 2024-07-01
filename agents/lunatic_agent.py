@@ -537,14 +537,53 @@ class LunaticAgent(BehaviorAgent):
                 logger.warning("UpdatedPathException was raised in the second pass. This should not happen: %s. Restrict your rule on ctx.second_pass.", e)
             return self.run_step(debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
             
-                    
-    def verify_settings(self, config : LunaticAgentSettings=None):
+    def verify_settings(self, config: LunaticAgentSettings = None, *, verify_dataclass: Union["type[AgentConfig]", bool] = True, strictness=3):
+        """
+        Verifies the settings of the LunaticAgent.
+        Foremost this checks if the planner.dt value has been set to the speed of the world ticks in synchronous mode.
+        Secondly if `verify_dataclass=True` or a different AgentConfig class is provided, it will check for 
+        correct type usage.
+
+        Args:
+            config (LunaticAgentSettings, optional): The configuration to verify. 
+                If not provided, the agent's default configuration will be used. 
+                Defaults to None.
+            verify_dataclass (Union["type[AgentConfig]", bool], optional): 
+                Determines the dataclass to use for verification. 
+                If True, the BASE_SETTINGS dataclass will be used.
+                See [`AgentConfig.check_config`](#AgentConfig.check_config) for more details.
+                Defaults to True.
+            strictness (int, optional): 
+                The strictness level for  [`AgentConfig.check_config`](#AgentConfig.check_config). 
+                Defaults to 3.
+
+        Raises:
+            TypeError: If `verify_dataclass` is not a valid AgentConfig subclass or True.
+            MissingMandatoryValue: If `config.planner.dt` is not present or not a float
+
+        """
+        config = config or self.config
+
+        if verify_dataclass:
+            if verify_dataclass == True:
+                dataclass = self.BASE_SETTINGS
+            elif issubclass(verify_dataclass, AgentConfig):
+                dataclass = verify_dataclass
+            else:
+                raise TypeError("`verify_dataclass` must be a `AgentConfig` or `True` to select the BASE_SETTINGS ")
+            dataclass.check_config(config, dataclass.get("strict_config", strictness), as_dict_config=True)
+
         if self._world_model.world_settings.synchronous_mode:
             # Assure that dt is set
-            OmegaConf.select(config or self.config,
-                "planner.dt",
-                throw_on_missing=True
-            )
+            if isinstance(config, DictConfig):
+                OmegaConf.select(config,
+                    "planner.dt",
+                    throw_on_missing=True
+                )
+            elif not isinstance(config.planner.dt, float):
+                from omegaconf import MissingMandatoryValue
+                raise MissingMandatoryValue("`config.planner.dt` needs to be set to a value. Cannot be:", type(config.planner.dt), config.planner.dt)
+                
 
     def run_step(self, debug=False, second_pass=False) -> carla.VehicleControl:
         """
