@@ -24,3 +24,11 @@ agents.rules.behaviour\_templates module
    :members:
    :undoc-members:
    :show-inheritance:
+
+agents.rules.stopped\_long\_trigger module
+------------------------------------------
+
+.. automodule:: agents.rules.stopped_long_trigger
+   :members:
+   :undoc-members:
+   :show-inheritance:

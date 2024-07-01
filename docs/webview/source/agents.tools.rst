@@ -16,11 +16,3 @@ agents.tools.config\_creation module
    :members:
    :undoc-members:
    :show-inheritance:
-
-agents.tools.lane\_explorer module
-----------------------------------
-
-.. automodule:: agents.tools.lane_explorer
-   :members:
-   :undoc-members:
-   :show-inheritance:

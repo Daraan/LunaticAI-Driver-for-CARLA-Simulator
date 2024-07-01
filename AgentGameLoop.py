@@ -7,11 +7,7 @@ Based on German Ros's (german.ros@intel.com) example of automatic_control shippe
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
-import signal
-import sys
 import argparse
-import logging
-import threading
 import random
 from typing import List, Union
 from pprint import pprint
@@ -19,15 +15,13 @@ from pprint import pprint
 import hydra
 from omegaconf import OmegaConf
 
-# Use this when carla is not installed
-#try:
-#    import carla
-#except ImportError as e:
-#    from utils.egg_import import carla
-import carla 
+"""When you use an .egg file be sure to add it to your $PYTHONPATH"""
+try:
+    import carla
+except ImportError as e:
+    from launch_tools import carla
+
 import pygame
-from agents.navigation.local_planner import RoadOption
-from agents.tools import lane_explorer
 from classes import exceptions
 import launch_tools
     
@@ -41,7 +35,7 @@ from classes.constants import Phase
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 
 from agents.tools.logging import logger
-from agents.tools.misc import debug_drawing, draw_route, draw_waypoints, get_trafficlight_trigger_location
+from agents.tools.misc import debug_drawing
 
 from agents.lunatic_agent import LunaticAgent
 from agents.rules import create_default_rules

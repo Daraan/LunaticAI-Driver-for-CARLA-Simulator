@@ -535,7 +535,7 @@ class LunaticAgent(BehaviorAgent):
         except UpdatedPathException as e:
             if second_pass:
                 logger.warning("UpdatedPathException was raised in the second pass. This should not happen: %s. Restrict your rule on ctx.second_pass.", e)
-            return self.run_step(debug=debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
+            return self.run_step(debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
             
                     
     def verify_settings(self, config : LunaticAgentSettings=None):
@@ -547,6 +547,14 @@ class LunaticAgent(BehaviorAgent):
             )
 
     def run_step(self, debug=False, second_pass=False) -> carla.VehicleControl:
+        """
+        The agent.run_step is the main method in which the agent calculates the next vehicle control object.
+        
+        Warning:
+            To be compatible with the leaderboard agent, always pass debug as a positional argument, e.g.
+            when you are using a `BlockingRule` that loops
+        """
+        
         if not second_pass:
             ctx = self.make_context(last_context=self.ctx)
         else:
@@ -580,7 +588,7 @@ class LunaticAgent(BehaviorAgent):
                     self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
                     raise AgentDoneException
                 self.execute_phase(Phase.DONE | Phase.END, prior_results=None)
-                return self.run_step(debug=debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
+                return self.run_step(second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
             
             # ----------------------------
             # Phase NONE - Before Running step
@@ -618,7 +626,7 @@ class LunaticAgent(BehaviorAgent):
                     raise RecursionError("UpdatedPathException was raised more than 50 times. Assuming an infinite loop and terminating")
                 else:
                     logger.warning("UpdatedPathException was raised in the inner step, this should be done in Phase.PLAN_PATH ", e)
-                return self.run_step(debug=debug, second_pass=int(second_pass)+1) 
+                return self.run_step(second_pass=int(second_pass)+1) 
             except LunaticAgentException as e:
                 if self.ctx.control is None:
                     raise ValueError("A VehicleControl object must be set on the agent when %s is raised during `._inner_step`" % type(e).__name__) from e
@@ -773,7 +781,7 @@ class LunaticAgent(BehaviorAgent):
         if self.ctx.control is not None:
             logger.error("Control was set before calling _calculate_control. This might lead to unexpected behavior.")
         
-        return self._local_planner.run_step(debug=debug)
+        return self._local_planner.run_step(debug)
 
     def parse_keyboard_input(self, allow_user_updates=True, *, control=None):
         """

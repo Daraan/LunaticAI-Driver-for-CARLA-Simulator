@@ -262,7 +262,7 @@ class AgentConfig:
                     _class_annotations = {}
                     extract_annotations(tree, docs=_class_annotations)
             
-            if isinstance(cls_or_self, type): # is class
+            if inspect.isclass(cls_or_self):
                 cls = cls_or_self
             else:
                 cls = cls_or_self.__class__
@@ -655,13 +655,13 @@ class SimpleConfig(object):
         NOTE: Assumes unique keys over all settings!
         # TODO: add a warning if a non-unique key is found in the overwrites.
         """
-        if isinstance(self, type): # called on class
+        if inspect.isclass(self):
             return self()
         keys = set(simple_overwrites.keys())
         removed_keys = set() # to check for duplicated keys that cannot be set via SimpleConfig unambiguously
         overwrites = {}
         for name, base in self._base_settings.__annotations__.items():
-            if not isinstance(base, type) or not issubclass(base, AgentConfig): # First out non AgentConfig attributes
+            if inspect.isclass(base) or not issubclass(base, AgentConfig): # First out non AgentConfig attributes
                 if name in keys:
                     overwrites[name] = simple_overwrites[name] # if updating a top level attribute
                     keys.remove(name)
