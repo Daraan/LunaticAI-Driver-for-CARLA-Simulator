@@ -15,7 +15,7 @@ from omegaconf import DictConfig, OmegaConf
 import carla
 import pygame
 import numpy.random as random
-from agents.tools.config_creation import AgentConfig, class_or_instance_method
+from launch_tools import class_or_instance_method
 from classes.exceptions import UserInterruption
 from classes.HUD import HUD
 
@@ -30,13 +30,13 @@ from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
+    from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
     from classes._custom_sensor import CustomSensor
 
 from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
 from launch_tools import carla_service
 from agents.tools.logging import logger
-from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
 
 from launch_tools import CarlaDataProvider, Literal
 
@@ -440,6 +440,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
+        from agents.tools.config_creation import LaunchConfig # circular import
         if not isinstance(args, (Mapping, DictConfig, LaunchConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
@@ -454,7 +455,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 print("Problem with", type(args), args) 
                 raise e
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
-        self._args : LaunchConfig = args
+        self._args : "LaunchConfig" = args
         
         self.hud = HUD(args.width, args.height, self.world)
         self.sync : bool = args.sync

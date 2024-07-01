@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 import carla
 from carla import TrafficLightState
-from agents.tools import logger
+from agents.tools.logging import logger
 from agents.tools.hints import TrafficLightDetectionResult
 from agents.tools.misc import (is_within_distance,
                                get_trafficlight_trigger_location)
@@ -36,7 +36,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
                                "You possibly want to pass agent._lights_list instead.")
             lights_list = self._world.get_actors().filter("*traffic_light*")
 
-        if not max_distance:
+        if not max_distance: # NOTE: dynamic selection is done in traffic_light_manager
             max_distance = self.config.obstacles.base_tlight_threshold
 
         # Currently affected by a traffic light
@@ -78,31 +78,31 @@ def affected_by_traffic_light(self : "LunaticAgent",
 
 
 def traffic_light_manager(self : "LunaticAgent", traffic_lights : Optional[List["carla.TrafficLight"]] = None) -> TrafficLightDetectionResult:
-        """
-        This method is in charge of behaviors for red lights.
-        """
+    """
+    This method is in charge of behaviors for red lights.
+    """
+    
+    # Introduce a random chance to ignore the traffic light
+    if random.random() < self.config.obstacles.ignore_lights_percentage:
+        return TrafficLightDetectionResult(False, None)
+    
+    traffic_lights = traffic_lights or self._lights_list
+
+    # Behavior setting:
+    max_tlight_distance = self.config.obstacles.base_tlight_threshold
+    if self.config.obstacles.dynamic_threshold:
+        # Basic agent setting:
+        #logger.info("Increased threshold for traffic light detection from {} to {}".format(max_tlight_distance, 
+        #                                                                                  max_tlight_distance + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed))
+        max_tlight_distance += self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
         
-        # Introduce a random chance to ignore the traffic light
-        if random.random() < self.config.obstacles.ignore_lights_percentage:
-            return TrafficLightDetectionResult(False, None)
-        
-        traffic_lights = traffic_lights or self._lights_list
+    # TODO: Time to pass the traffic light; i.e. can we pass it without stopping? -> How risky are we?
 
-        # Behavior setting:
-        max_tlight_distance = self.config.obstacles.base_tlight_threshold
-        if self.config.obstacles.dynamic_threshold:
-            # Basic agent setting:
-            #logger.info("Increased threshold for traffic light detection from {} to {}".format(max_tlight_distance, 
-            #                                                                                  max_tlight_distance + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed))
-            max_tlight_distance += self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
-            
-        # TODO: Time to pass the traffic light; i.e. can we pass it without stopping? -> How risky are we?
+    # TODO check if lights should be copied.
+    # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
+    affected_traffic_light : TrafficLightDetectionResult = affected_by_traffic_light(self, traffic_lights, 
+                                    max_distance=max_tlight_distance)
 
-        # TODO check if lights should be copied.
-        # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
-        affected_traffic_light : TrafficLightDetectionResult = affected_by_traffic_light(self, traffic_lights, 
-						                max_distance=max_tlight_distance)
+    # TODO: Implement other behaviors if needed, like taking a wrong turn or additional actions
 
-        # TODO: Implement other behaviors if needed, like taking a wrong turn or additional actions
-
-        return affected_traffic_light
+    return affected_traffic_light

@@ -9,9 +9,9 @@ from agents.navigation.local_planner import RoadOption
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
 from agents.tools.logging import logger
-from classes.constants import Phase
+from classes.constants import Phase, RulePriority
 from classes.evaluation_function import ConditionFunction
-from classes.rule import Rule, RulePriority
+from classes.rule import Rule
 
 from agents.rules.lane_changes.misc import rule_lane_change
 

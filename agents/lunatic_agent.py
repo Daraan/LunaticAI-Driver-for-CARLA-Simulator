@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import sys
 from copy import deepcopy
-import random
 from typing import Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
-import weakref
+
+from agents.rules import rule_from_config
 
 import carla
 import omegaconf
@@ -42,7 +42,7 @@ from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, D
 from classes.constants import AgentState, Phase, Hazard
 from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import BlockingRule, Context, Rule
-from agents.tools.config_creation import AgentConfig, LaunchConfig, LiveInfo, LunaticAgentSettings
+from agents.tools.config_creation import AgentConfig, CallFunctionFromConfig, LaunchConfig, LiveInfo, LunaticAgentSettings, CreateRuleFromConfig, RuleCreatingParameters
 
 from classes.worldmodel import WorldModel, CarlaDataProvider
 from classes.keyboard_controls import RSSKeyboardControl
@@ -51,6 +51,7 @@ from data_gathering.information_manager import InformationManager
 if TYPE_CHECKING:
     from typing import Literal # for Python 3.8
     import pygame
+    
 
 class LunaticAgent(BehaviorAgent):
     """
@@ -244,6 +245,9 @@ class LunaticAgent(BehaviorAgent):
         # Information Manager
         self.information_manager = InformationManager(self)
         self.current_states = dict.fromkeys(AgentState, 0)
+        
+        self.add_config_rules()
+
     
     @property
     def live_info(self) -> LiveInfo:
@@ -264,7 +268,6 @@ class LunaticAgent(BehaviorAgent):
             raise TypeError("detected_hazards must be a set of Hazards.")
         self.ctx._detected_hazards = hazards
         
-    
         
     @property
     def active_blocking_rules(self) -> Set[BlockingRule]:
@@ -470,15 +473,32 @@ class LunaticAgent(BehaviorAgent):
                 self.rules[p].sort(key=lambda r: r.priority, reverse=True)
             else:
                 self.rules[p].insert(position, rule)
-            
+    
     def add_rules(self, rules : List[Rule]):
         """Add a list of rules and sort the agents rules by priority."""
+        if isinstance(rules, Rule):
+            rules = [rules]
         for rule in rules:
             for phase in rule.phases:
                 self.rules[phase].append(rule)
         for phase in self.rules.keys():
             self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
-        
+            
+    def add_config_rules(self, config: Optional[Union[LunaticAgentSettings, List[RuleCreatingParameters]]]=None):
+        """
+        Adds rules 
+        """
+        if config is None:
+            config = self.config
+        rule_list : List[RuleCreatingParameters]
+        if "rules" in config:
+            rule_list = config.rules
+        else:
+            rule_list = config
+        logger.debug("Adding rules from config:\n%s", OmegaConf.to_yaml(rule_list))
+        for rule in rule_list:
+            self.add_rules(rule_from_config(rule))
+    
     def execute_phase(self, phase : Phase, *, prior_results, update_controls:carla.VehicleControl=None) -> Context:
         """
         Sets the current phase of the agent and executes all rules that are associated with it.
@@ -619,8 +639,8 @@ class LunaticAgent(BehaviorAgent):
             # NOTE: rss_updated_controls could be None. 
             ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.END, prior_results=rss_updated_controls)
             
-            if ctx.control is not planned_control:
-                logger.debug("RSS updated control accepted.")
+            #if ctx.control is not planned_control:
+            #    logger.debug("RSS updated control accepted.")
             
         except ContinueLoopException as e:
             logger.debug("ContinueLoopException skipping rest of loop.")
@@ -805,11 +825,9 @@ class LunaticAgent(BehaviorAgent):
             self.add_hazard(Hazard.TRAFFIC_LIGHT)             #TODO: Currently cannot give fine grained priority results
             #assert self.live_info.next_traffic_light.id == tlight_detection_result.traffic_light.id, "Next assumed traffic light should be the same as the detected one." # TEMP
             
-            # DEBUG
-            if self.live_info.next_traffic_light and self.live_info.next_traffic_light.id != tlight_detection_result.traffic_light.id:
-                # TODO: #26 detect when this is the case, can it be fixed and how serve is it? - Maybe because we just passed a traffic light (detected) != next in line?
-                logger.info("Next traffic light is not the same as the detected one. %s != %s", self.live_info.next_traffic_light.id, tlight_detection_result.traffic_light.id)
-        
+            # NOTE next tlight is the next bounding box and might not be the next "correct" one
+            # self.live_info.next_traffic_light.id != tlight_detection_result.traffic_light.id:
+            
         self.execute_phase(Phase.DETECT_TRAFFIC_LIGHTS | Phase.END, prior_results=tlight_detection_result)
 
         # Pedestrian avoidance behaviors
@@ -889,18 +907,16 @@ class LunaticAgent(BehaviorAgent):
         controls = self.car_following_manager(vehicle, exact_distance)
         return controls
 
-    # ------------------ Managers for Behaviour ------------------ #
+    # ------------------ Managers ------------------ #
 
+    # Moved outside of the class for organization
     from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
     from agents.substep_managers import traffic_light_manager # -> TrafficLightDetectionResult
     from agents.substep_managers import car_following_manager # -> carla.VehicleControl
+    from agents.substep_managers import emergency_manager
     
-    def _collision_event(self, event : carla.CollisionEvent):
-        # https://carla.readthedocs.io/en/latest/python_api/#carla.CollisionEvent
-        # e.g. setting ignore_vehicles to False, if it was True before.
-        # do an emergency stop (in certain situations)
-        NotImplemented  # TODO: Brainstorm and implement
-        return substep_managers.collision_manager(self, event)
+    # Subfunction of traffic_light_manager. In traffic_light_manager the parameters are chosen automatically.
+    from agents.substep_managers.traffic_light import affected_by_traffic_light
 
     # ----
 
@@ -915,7 +931,6 @@ class LunaticAgent(BehaviorAgent):
         """
         return self.emergency_manager(control, reasons)
     
-    from agents.substep_managers import emergency_manager
     
     def lane_change(self, direction: "Literal['left'] | Literal['right']", same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """
@@ -936,13 +951,11 @@ class LunaticAgent(BehaviorAgent):
             step_distance= self.config.planner.sampling_resolution
         )
         if not path:
-            print("WARNING: Ignoring the lane change as no path was found")
+            logger.info("Ignoring the lane change as no path was found")
 
         super(LunaticAgent, self).set_global_plan(path)
         # TODO: # CRITICAL: Keep old global plan if it is some end goal -> Restore it.
         
-
-    # TODO: rename & make config for look ahead distance via speed_limit
     # TODO: Use generate_lane_change_path to finetune 
     def make_lane_change(self, order=["left", "right"], up_angle_th=180, low_angle_th=0):
         """
@@ -993,11 +1006,19 @@ class LunaticAgent(BehaviorAgent):
                     logger.debug("Change Lane, moving to the %s! Reason: %s", direction, "Overtaking" if tuple(order) == ("left", "right") else "Tailgating")
 
                     end_waypoint = self._local_planner.target_waypoint
-                    # TODO: How to set waypoint order? Or better use generate_lane_change_path!!!
+                    # TODO: How to set waypoint order? Or better use generate_lane_change_path!
                     self.set_destination(end_location=other_wpt.transform.location, 
                                          start_location=end_waypoint.transform.location, clean_queue=True)
                     return True
 
+    # ------------------ Callbacks ------------------ #
+    
+    def _collision_event(self, event : carla.CollisionEvent):
+        # https://carla.readthedocs.io/en/latest/python_api/#carla.CollisionEvent
+        # e.g. setting ignore_vehicles to False, if it was True before.
+        # do an emergency stop (in certain situations)
+        NotImplemented  # TODO: Brainstorm and implement
+        return substep_managers.collision_manager(self, event)
         
     # ------------------ Other Function ------------------ #
     
@@ -1084,6 +1105,7 @@ class LunaticAgent(BehaviorAgent):
         self._world_model.rss_set_road_boundaries_mode(road_boundaries_mode)
 
     from agents.tools.lunatic_agent_tools import max_detection_distance
+    
 
     # ------------------ Overwritten functions ------------------ #
 
@@ -1095,7 +1117,7 @@ class LunaticAgent(BehaviorAgent):
     Note:
         Unused, kept for compatibility with BehaviorAgent interface
     """
-    from agents.substep_managers.traffic_light import affected_by_traffic_light
+
     
     # Staticmethod that we outsource
     _generate_lane_change_path = staticmethod(agents.tools.lunatic_agent_tools.generate_lane_change_path)

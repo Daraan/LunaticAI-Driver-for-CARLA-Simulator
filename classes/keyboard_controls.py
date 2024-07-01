@@ -375,3 +375,7 @@ class RSSKeyboardControl(object):
     @staticmethod
     def _is_quit_shortcut(key):
         return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
+
+# Stops RSS and allows hard kills if the script is stuck
+import signal
+signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)

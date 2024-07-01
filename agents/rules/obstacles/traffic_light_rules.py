@@ -1,15 +1,19 @@
+from dataclasses import dataclass
 import carla
+from omegaconf import II, SI
 
 from agents.rules.behaviour_templates import DEBUG_RULES
 from agents.tools.hints import TrafficLightDetectionResult
 from agents.tools.lunatic_agent_tools import phase_callback
 from agents.tools.logging import logger
 
-from classes.constants import Hazard, Phase
+from classes.constants import Hazard, Phase, RulePriority
 from classes.evaluation_function import ConditionFunction
 from classes.exceptions import LunaticAgentException, SkipInnerLoopException
-from classes.rule import BlockingRule, Context, RulePriority
-    
+from classes.rule import BlockingRule, Context
+
+from agents.tools.config_creation import RuleConfig
+
 __all__ = ["DriveSlowTowardsTrafficLight"]   
     
 class DriveSlowTowardsTrafficLight(BlockingRule):
@@ -32,6 +36,18 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         if self in ctx.active_blocking_rules:
             return
         return Hazard.TRAFFIC_LIGHT in ctx.detected_hazards and not {Hazard.OBSTACLE} & ctx.detected_hazards
+    
+    @dataclass
+    class self_config(RuleConfig):
+        # When being too fast -> slow down
+        max_brake : float = II("controls.max_brake")            # This refers to the agent
+        normal_brake : float = II("min:0.2,${self.max_brake}")  # This to self_config.max_brake
+        min_brake : float = 0.1
+        
+        # When being slow -> speed up slowly
+        throttle : float = 0.25
+        
+    
 
     @phase_callback(on_exit = Phase.CUSTOM_CYCLE | Phase.END, on_exit_exceptions=LunaticAgentException)
     def action(self, ctx: Context):
@@ -60,10 +76,10 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         traffic_light_group = last_traffic_light.get_group_traffic_lights()
         
         while affected and distance <= last_distance + 1/10000:
-            if self.ticks_passed % 10 == 0:
-                logger.debug("DriveSlowTowardsTrafficLight: distance: %f", distance)
-            if self.ticks_passed % 50 == 1:
-                breakpoint()
+            #if self.ticks_passed % 10 == 0:
+            #    logger.ifno("DriveSlowTowardsTrafficLight: distance: %f", distance)
+            #if self.ticks_passed % 50 == 1:
+            #    breakpoint()
             
             # You should always use ctx.agent.calculate_control() before self.loop_agent
             # This will move the planned waypoint queue forward.
@@ -83,18 +99,18 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
             if distance < ctx.config.obstacles.base_tlight_threshold + 0.2:
                 return # Handle by Emergency End
             elif distance < 8 and ctx.live_info.current_speed / 3.6 > distance:
-                control.brake = max(ctx.config.controls.max_brake, control.brake)
+                control.brake = max(self.self_config.max_brake, control.brake)
                 control.throttle = 0
             elif ctx.live_info.current_speed > 40 or ctx.live_info.current_speed / 1.8 > distance:
-                control.brake = max(min(0.20,ctx.config.controls.max_brake), control.brake)
+                control.brake = max(self.self_config.normal_brake, control.brake)
                 control.throttle = 0
             elif 15 < ctx.live_info.current_speed < 40:
-                control.brake = max(0.1, control.brake)
+                control.brake = max(self.self_config.min_brake, control.brake)
                 control.throttle = 0
             else:
                  # The local planner is not aware of a red light, it will likely be higher
                  # take the minimum instead
-                control.throttle = min(0.25, control.throttle, distance / 10)
+                control.throttle = min(self.self_config.throttle, control.throttle, distance / 10)
                 if control.throttle > 0.05:
                     control.brake = 0
 

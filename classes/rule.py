@@ -1,11 +1,12 @@
 from __future__ import annotations # todo: can this be removed?
 
 from collections.abc import Mapping
+from dataclasses import is_dataclass
 from functools import partial, wraps
 
 from carla.libcarla import VehicleControl
+import omegaconf
 
-from data_gathering.information_manager import InformationManager
 from launch_tools import CarlaDataProvider
 import pygame
 
@@ -21,21 +22,22 @@ import random
 import inspect
 from inspect import isclass
 from itertools import accumulate
-from enum import IntEnum
 from typing import Any, ClassVar, FrozenSet, List, Set, Tuple, Union, Iterable, Callable, Optional, Dict, Hashable, TYPE_CHECKING
 from weakref import WeakSet, proxy
 
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 
-from classes.constants import RULE_NO_RESULT, Hazard, Phase, NO_RESULT_TYPE as _NO_RESULT_TYPE
+from classes.constants import RULE_NO_RESULT, Hazard, Phase, NO_RESULT_TYPE as _NO_RESULT_TYPE, RulePriority
 from classes.evaluation_function import ConditionFunction, TruthyConditionFunction
 from agents.tools.logging import logger
 
+from data_gathering.information_manager import InformationManager
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
-    from agents.tools.config_creation import LunaticAgentSettings, LiveInfo
+    from agents.tools.config_creation import LunaticAgentSettings, LiveInfo, RuleConfig, ContextSettings
     from typing import override
+    
     # Note: gameframework.py adds GameFramework to this module's variables
     # at this position it would be a circular import
 
@@ -52,7 +54,7 @@ class Context(CarlaDataProvider):
     agent : "LunaticAgent"
     """Gives access to the agent."""
     
-    config : "LunaticAgentSettings"
+    config : "ContextSettings"
     """A copy of the agents config. Overwritten by the condition's settings."""
     
     evaluation_results : Dict["Phase", Hashable] # ambiguous wording, which result? here evaluation result
@@ -181,19 +183,6 @@ class Context(CarlaDataProvider):
         return self.agent._active_blocking_rules
     
    
-
-class RulePriority(IntEnum):
-    """
-    Priority of a `Rule`. The higher a value, the higher the priority.
-    Rules are sorted by their priority before being applied.
-    """
-    NULL = 0
-    LOWEST = 1
-    LOW = 2
-    NORMAL = 4
-    HIGH = 8
-    HIGHEST = 16
-
 @ConditionFunction
 def always_execute(ctx : Context): # pylint: disable=unused-argument
     """This is an `ConditionFunction` that always returns True. It can be used to always execute an action."""
@@ -440,9 +429,31 @@ class Rule(_GroupRule):
     #"""Group name for rules that should share their cooldown."""
     
     overwrite_settings : Dict[str, Any]
-    """Settings that should overwrite the agent's settings for this rule."""
+    """
+    Settings that should overwrite the agent's settings for this rule.
+    
+    Note:
+        The overwrite settings are dict objects, DictConfigs are converted to dict.
+    """
+    
+    self_config : "RuleConfig"
+    """
+    A custom sub-config for the rule that is not included in the agents settings.
+    Automatically gets a `instance` key added with the rule instance.
+    
+    Can be accessed via `ctx.config.current_rule` or `self.config.self`.
+    
+    Note:
+        Internally `self.config` and `ctx.config` is the same object, which makes
+        interpolations to the agent's settings possible.
+        
+    Warning:
+        The `self_config` object is *not* constant it is recreated each time the
+        rule is evaluated to have the current context available.
+    """
     
     priority: RulePriority = RulePriority.NORMAL
+    """Rules are executed in order of their priority, from high to low."""
     
     # Initialization functions
     
@@ -470,6 +481,7 @@ class Rule(_GroupRule):
                  actions : Optional[Dict[Any, Callable[[Context], Any]]] = None,
                  description: str = "What does this rule do?",
                  overwrite_settings: Optional[Dict[str, Any]] = None,
+                 self_config: Optional[Dict[str, Any]] = None,
                  priority: RulePriority = RulePriority.NORMAL,
                  cooldown_reset_value : Optional[int] = None,
                  group : Optional[str] = None,
@@ -592,6 +604,26 @@ class Rule(_GroupRule):
         self.priority : float | int | RulePriority = priority # used by agent.add_rule
         
         self.overwrite_settings = overwrite_settings or {}
+        if not isinstance(self.overwrite_settings, dict):
+            self.overwrite_settings = dict(self.overwrite_settings)
+        if self_config and "self" in self.overwrite_settings and self.overwrite_settings["self"] != self_config:
+            logger.debug("Warning: self_config and self.overwrite_settings['self'] must be the same object.")
+        
+        default_self_config = getattr(self, "self_config", getattr(self, "SelfConfig", {}))
+        if isclass(default_self_config):
+            if not is_dataclass(default_self_config):
+                logger.warning(f"Class {self.__class__.__name__} has a self_config class that is not a dataclass. This might lead to undesired results, i.e. missing keys in the config.")
+            default_self_config = default_self_config()
+        if not isinstance(default_self_config, DictConfig):
+            default_self_config = OmegaConf.create(default_self_config, flags={"allow_objects": True})
+        if self_config:
+            self.self_config = OmegaConf.merge(default_self_config, self_config)
+        else:
+            self.self_config = default_self_config
+        assert self.self_config._get_flag("allow_objects"), "self_config must allow objects to be used as values."
+        
+        self.overwrite_settings["self"] = self.self_config
+        self.overwrite_settings["self"]["instance"] = self
     
     def __new__(cls, phases=None, *args, **kwargs):
         """
@@ -726,13 +758,41 @@ class Rule(_GroupRule):
         This allows the usage of the @Rule decorator and easy copying.
         """
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
-        cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
-        self.__init__(phases, cls.condition, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
+        cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None))
+        
+        # TODO: Automate this via inspect.signature
+        
+        self.__init__(phases, cls.condition, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), self_config=getattr(cls, "self_config", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
         
     @__init__.register
     def __init_from_mapping(self, cls:Mapping): # pylint: disable=unused-variable
         # NOTE: This is weakly tested and not much supported.
-        self.__init__(cls.get("phases", cls.get("phase")), cls["condition"], cls.get("action"), cls.get("false_action"), actions=cls.get("actions"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True))        
+        self.__init__(cls.get("phases", cls.get("phase")), cls["condition"], cls.get("action"), cls.get("false_action"), actions=cls.get("actions"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), self_config=cls.get("self_config"),  priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True))        
+
+
+    # -----------------------
+    
+    @classmethod
+    def get_init_signature(cls):
+        """
+        Get the signature of the __init__ function.
+        
+        Returns:
+            The signature of the __init__ function.
+        """
+        return inspect.signature(cls.__init__).parameters.keys()
+
+    def execute_phase(self, *args, **kwargs):
+        """
+        Helper function to execute a phase from within a rule.
+        
+        Use with care to avoid loops or recursions.
+        """
+        try:
+            self._ctx.agent.execute_phase(*args, **kwargs)
+        except AttributeError:
+            logger.exception("Error in Rule.execute_phase. Weakproxy might have been deleted")
+            
 
     # -----------------------
     # Evaluation functions
@@ -740,13 +800,21 @@ class Rule(_GroupRule):
 
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, _NO_RESULT_TYPE]:
         self._ctx = proxy(ctx)
-        settings = self.overwrite_settings.copy()   
+        settings = self.overwrite_settings.copy()
         if overwrite:
-            settings = self.overwrite_settings.copy()
             settings.update(overwrite)
-        ctx.config = OmegaConf.merge(ctx.agent.config, settings)
+
+        ctx.config = OmegaConf.merge(ctx.agent.config, settings) # NOTE: if you got an error check if you used `"setting.subsetting" : value` instead of `settings : { subsetting: value}`. NO DOT NOTATION FOR KEYS!
+            
+        # NOTE: # TODO: this creates a hardlink, which means that the memory is not freed when ctx.config is updated!
+        # Solution: can make self_config a weakproxy and store a parentless copy in self.overwrite_settings["self"]
+        self.self_config = self.overwrite_settings["self"] = ctx.config["self"]
+        #assert self.self_config is self.overwrite_settings["self"]; this works if overwrite_settings is a dict
+        
         OmegaConf.set_readonly(ctx.config, True) # only the original agent.config can be modified. Make clear that these have no permanent effect.
-        #ctx.config.update(settings)
+        # The Rule's settings should be dynamic.
+        OmegaConf.set_readonly(self.self_config, False)
+        
         result = self.condition(ctx)
         return result
     
@@ -795,11 +863,8 @@ class Rule(_GroupRule):
     def __repr__(self) -> str:
         return str(self)
     
-    def execute_phase(self, *args, **kwargs):
-        try:
-            self._ctx.agent.execute_phase(*args, **kwargs)
-        except AttributeError:
-            logger.exception("Error in Rule.execute_phase. Weakproxy might have been deleted")
+
+    
 
 class MultiRule(metaclass=Rule):
 
@@ -839,6 +904,7 @@ class MultiRule(metaclass=Rule):
                  action : Optional[Callable[[Context], Any]] = None,
                  ignore_phase : bool = True,
                  overwrite_settings: Optional[Dict[str, Any]] = None,
+                 self_config: Optional[Dict[str, Any]] = None,
                  cooldown_reset_value : Optional[int] = None,
                  group : Optional[str] = None,
                  enabled: bool = True,
@@ -857,7 +923,7 @@ class MultiRule(metaclass=Rule):
                 sort_rules (bool, optional): Flag indicating whether to sort the rules by priority. Defaults to True.
                 action (Callable[[Context]], optional): The action to be executed before the passed rules are evaluated. Defaults to None.
                 ignore_phase (bool, optional): Flag indicating whether to ignore the Phase of the passed child rules. Defaults to True.
-                overwrite_settings (Dict[str, Any], optional): Additional settings to overwrite the rule's settings. Defaults to None.
+                overwrite_settings (Dict[str, Any], optional): Additional settings to overwrite the agent's settings. Defaults to None.
                 priority (RulePriority, optional): The priority of the rule. Defaults to RulePriority.NORMAL.
                 description (str, optional): The description of the rule. Defaults to "If its own rule is true calls the passed rules.".
                 group (str | None, optional): The group name of the rule. Defaults to None.
@@ -883,6 +949,7 @@ class MultiRule(metaclass=Rule):
                              action=action, 
                              description=description, 
                              overwrite_settings=overwrite_settings,
+                             self_config=self_config,
                              priority=priority, 
                              cooldown_reset_value=cooldown_reset_value,
                              enabled=enabled,
@@ -894,11 +961,11 @@ class MultiRule(metaclass=Rule):
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         
-        self.__init__(phases, cls.rules, cls.condition, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), sort_rules_by_priority=getattr(cls, "sort_rules_by_priority", True), execute_all_rules=getattr(cls, "execute_all_rules", False), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
+        self.__init__(phases, cls.rules, cls.condition, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), self_config=getattr(cls, "self_config", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), sort_rules_by_priority=getattr(cls, "sort_rules_by_priority", True), execute_all_rules=getattr(cls, "execute_all_rules", False), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
     
     @__init__.register(Mapping)
     def __init_from_mapping(self, cls:Mapping):
-        self.__init__(cls.get("phases", cls.get("phase")), cls["rules"], cls.get("condition"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
+        self.__init__(cls.get("phases", cls.get("phase")), cls["rules"], cls.get("condition"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), self_config=cls.get("self_config"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
 
     
     def evaluate_children(self, ctx : Context) -> Union[List[Any], Any]:
@@ -970,6 +1037,7 @@ class RandomRule(metaclass=MultiRule):
                  priority: RulePriority = RulePriority.NORMAL, 
                  description: str = "If its own condition is true calls one or more random child rules from the passed rules.", 
                  overwrite_settings: Optional[Dict[str, Any]] = None,
+                 self_config: Optional[Dict[str, Any]] = None,
                  cooldown_reset_value : Optional[int] = None,
                  group : Optional[str] = None,
                  enabled: bool = True,
@@ -1005,7 +1073,7 @@ class RandomRule(metaclass=MultiRule):
             self.weights = weights or list(accumulate(r.priority.value for r in rules))
             self.rules = rules
         self.repeat_if_not_applicable = repeat_if_not_applicable
-        super().__init__(phases, rules, condition=condition, action=action, description=description, priority=priority, ignore_phase=ignore_phase, overwrite_settings=overwrite_settings, cooldown_reset_value=cooldown_reset_value, enabled=enabled, group=group)
+        super().__init__(phases, rules, condition=condition, action=action, description=description, priority=priority, ignore_phase=ignore_phase, overwrite_settings=overwrite_settings, self_config=self_config, cooldown_reset_value=cooldown_reset_value, enabled=enabled, group=group)
 
     @__init__.register(_CountdownRule)
     @__init__.register(type)
@@ -1013,11 +1081,11 @@ class RandomRule(metaclass=MultiRule):
         phases = getattr(cls, "phases", getattr(cls, "phase", None))
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         
-        self.__init__(phases, cls.rules, repeat_if_not_applicable=cls.repeat_if_not_applicable, condition=cls.condition, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
+        self.__init__(phases, cls.rules, repeat_if_not_applicable=cls.repeat_if_not_applicable, condition=cls.condition, description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), self_config=getattr(cls, "self_config", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True), prior_action=getattr(cls, "prior_action", None), ignore_phase=getattr(cls, "ignore_phase", True))
     
     @__init__.register(Mapping)
     def __init_from_mapping(self, cls:Mapping):
-        self.__init__(cls.get("phases"), cls["rules"], repeat_if_not_applicable=cls.get("repeat_if_not_applicable", True), condition=cls.get("condition"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
+        self.__init__(cls.get("phases"), cls["rules"], repeat_if_not_applicable=cls.get("repeat_if_not_applicable", True), condition=cls.get("condition"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), self_conifg=cls.get("self_config"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
 
     def evaluate_children(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
         """
@@ -1075,19 +1143,20 @@ class BlockingRule(metaclass=Rule):
                  actions : Optional[Dict[Any, Callable[[Context], Any]]] = None,
                  description: str = "What does this rule do?",
                  overwrite_settings: Optional[Dict[str, Any]] = None,
+                 self_config: Optional[Dict[str, Any]] = None,
                  priority: RulePriority = RulePriority.NORMAL,
                  cooldown_reset_value : Optional[int] = None,
                  group : Optional[str] = None,
                  enabled: bool = True,
                  ignore_chance = NotImplemented,
                  ):
-        super().__init__(phases, condition, action, false_action, actions=actions, description=description, overwrite_settings=overwrite_settings, priority=priority, cooldown_reset_value=cooldown_reset_value, group=group, enabled=enabled, ignore_chance=ignore_chance)
+        super().__init__(phases, condition, action, false_action, actions=actions, description=description, overwrite_settings=overwrite_settings, self_config=self_config, priority=priority, cooldown_reset_value=cooldown_reset_value, group=group, enabled=enabled, ignore_chance=ignore_chance)
         if gameframework:
             BlockingRule._gameframework = gameframework
         if not GameFramework.clock or not GameFramework.display:
-            breakpoint()
-            logger.warning("%s : GameFramework should be initialized before using this rule.", self.__class__.__name__)
-            GameFramework.clock, GameFramework.display = GameFramework.init_pygame()
+            # Not much we can do about it
+            #logger.info("%s : GameFramework should be initialized before using this rule.", self.__class__.__name__)
+            GameFramework.init_pygame()
         self.ticks_passed = 0
 
     @__init__.register(_CountdownRule)
@@ -1100,7 +1169,7 @@ class BlockingRule(metaclass=Rule):
         """
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
-        self.__init__(phases, cls.condition, action=getattr(cls, "action", None), false_action=getattr(cls, "false_action", None), gameframework=getattr(cls, "gameframework", BlockingRule._gameframework), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
+        self.__init__(phases, cls.condition, action=getattr(cls, "action", None), false_action=getattr(cls, "false_action", None), gameframework=getattr(cls, "gameframework", BlockingRule._gameframework), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), self_config=getattr(cls, "self_config", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
     
     def _render_everything(self, ctx: Context):
         if self._gameframework:
@@ -1248,3 +1317,8 @@ import classes.evaluation_function as __evaluation_function
 __evaluation_function.Rule = Rule
 __evaluation_function.Context = Context
 del __evaluation_function
+
+import classes.constants as __constants
+__constants.Rule = Rule
+__constants.Context = Context
+del __constants

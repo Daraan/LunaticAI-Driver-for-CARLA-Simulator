@@ -1,6 +1,6 @@
 import random
 
-from agents.tools import logger
+from agents.tools.logging import logger
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:

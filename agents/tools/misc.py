@@ -19,6 +19,8 @@ from classes.constants import RoadOptionColor # pylint: disable=unused-import
 
 if TYPE_CHECKING:
     from agents.navigation.local_planner import RoadOption
+    from agents.lunatic_agent import LunaticAgent
+    from classes.worldmodel import GameFramework
     # also checkout RoadOptionColor
 
 __all__ = [
@@ -32,7 +34,7 @@ __all__ = [
     'distance_vehicle',
     'vector',
     'compute_distance',
-    'positive'
+    'positive',
 ]
 
 
@@ -305,3 +307,50 @@ def lanes_have_same_direction(wp1: carla.Waypoint, wp2: carla.Waypoint) -> bool:
         True if the lanes have the same direction, False otherwise
     """
     return wp1.lane_id * wp2.lane_id > 0
+
+
+def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destination:carla.Waypoint):
+    # Import here to avoid circular imports
+    from launch_tools import CarlaDataProvider
+    from agents.tools import lane_explorer
+    from agents.navigation.local_planner import RoadOption
+    
+    world_model = game_framework.world_model
+    
+    # Debug drawing of the route
+    try:
+        destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
+        destination = destination + carla.Vector3D(0, 0, 1.5) # elevate to be not in road
+    except IndexError:
+        pass
+    game_framework.debug.draw_point(destination, life_time=0.5)
+    lane_explorer.draw_waypoint_info(game_framework.debug, agent._current_waypoint, lt=10)
+    if agent._current_waypoint.is_junction:
+        junction = agent._current_waypoint.get_junction()
+        lane_explorer.draw_junction(game_framework.debug, junction, 0.1)
+    if not agent._last_traffic_light:
+        traffic_light = agent.live_info.next_traffic_light
+    else:
+        traffic_light = agent._last_traffic_light
+    
+    if traffic_light:
+        wps = traffic_light.get_stop_waypoints()
+        for wp in wps:
+            game_framework.debug.draw_point(wp.transform.location + carla.Location(z=2), life_time=0.6)
+            lane_explorer.draw_waypoint_info( game_framework.debug, wp)
+        trigger_loc = get_trafficlight_trigger_location(traffic_light)
+        trigger_wp = CarlaDataProvider.get_map().get_waypoint(trigger_loc)
+        game_framework.debug.draw_point(trigger_wp.transform.location + carla.Location(z=2), life_time=0.6, size=0.2, color=carla.Color(0,0,255))
+        
+        affected_wps = traffic_light.get_affected_lane_waypoints()
+        
+        draw_route(world_model.world, 
+                    waypoints=[ (wp, RoadOption.LANEFOLLOW) for wp in trigger_wp.next_until_lane_end(0.4) ], 
+                    size=0.1)
+        draw_route(world_model.world, 
+                    waypoints=[ (wp, RoadOption.STRAIGHT) for wp in trigger_wp.next_until_lane_end(0.4) ], 
+                    size=0.1)
+        draw_route(world_model.world, 
+                    waypoints=[ (wp, RoadOption.LEFT) for wp in affected_wps ], 
+                    size=0.1)
+

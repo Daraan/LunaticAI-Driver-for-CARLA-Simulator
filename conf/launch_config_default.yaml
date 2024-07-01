@@ -12,7 +12,7 @@ debug: true
 # If True will create an interactive session with command line input
 # - NOTE: Needs custom code in the main file (Not implemented)
 interactive: false
-seed:
+seed: 1
 map: Town04_Opt
 host: 127.0.0.1
 port: 2000
@@ -69,12 +69,7 @@ camera:
   height: 720
   gamma: 2.2
   camera_blueprints:
-  - !!python/object/new:classes.camera_manager.CameraBlueprint
-    - sensor.camera.rgb
-    - !!python/object/new:carla.libcarla.ColorConverter
-      - 0
-    - RGB camera
-    - 
+  - NotImplemented
   hud: ???
   recorder:
     enabled: ???

@@ -113,7 +113,7 @@ distance:
   distance_to_leading_vehicle: ???
 
 
-# Lane Change -----
+# Lane Change
 #  
 # Adjust probability that in each timestep the actor will perform a left/right lane change, 
 # dependent on lane change availability. 
@@ -121,22 +121,6 @@ lane_change:
   same_lane_time: 0.0
   other_lane_time: 0.0
   lane_change_time: 2.0
-  # Turns on or off lane changing behavior for a vehicle.
-  auto_lane_change: true
-
-  # Adjust probability that in each timestep the actor will perform a left/right lane change, 
-  # dependent on lane change availability.
-  random_left_lanechange_percentage: 0.1
-
-  # Adjust probability that in each timestep the actor will perform a left/right lane change, 
-  # dependent on lane change availability.
-  random_right_lanechange_percentage: 0.1
-
-  # During the localization stage, this method sets a percent chance that vehicle will follow the keep right rule, 
-  # and stay in the right lane.
-  keep_right_rule_percentage: 0.7
-  # Cooldown value for a lane change in the 'lane_change' group.
-  random_lane_change_interval: 200
 
 
 # --------------------------
@@ -163,6 +147,7 @@ obstacles:
   # See `BasicAgent._vehicle_obstacle_detected`
   use_bbs_detection: true
 
+  # "
   # Base distance to traffic lights trigger location to check if they affect the vehicle
   #  
   # Usage:
@@ -172,11 +157,15 @@ obstacles:
   # Base distance to vehicles to check if they affect the vehicle
   #         
   # Usage:
-  #     Only vehicles with distance < `nearby_vehicles_max_distance` are checked for 
-  #     max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
+  #     Only vehicles with distance < `nearby_vehicles_max_distance` are checked for
+  #     ```python
+  #     max_vehicle_distance = base_vehicle_threshold 
+  #     if dynamic_threshold:
+  #         max_vehicle_distance += detection_speed_ratio * vehicle_speed
+  #     ```
   #     
   #     A vehicle is considered if distance < max_vehicle_distance < nearby_vehicles_max_distance
-  base_vehicle_threshold: 5.0
+  base_vehicle_threshold: 2.0
 
   # Increases detection range based on speed
   #  
@@ -366,7 +355,7 @@ rss:
   # If RSS is not available (no ad-rss library) this will be set to False.
   enabled: true
   use_stay_on_road_feature: 1
-  log_level: 3
+  log_level: 4
   # Sets the visualization mode that should be rendered on the screen.
   debug_visualization_mode: RouteOnly
   # Setting for the default rule to always accept RSS updates if they are valid
@@ -405,3 +394,31 @@ detection_matrix:
       cmap: jet
     text_settings:
       color: orange
+
+# A list of Rule parameters that allow the instantiation of Rules,
+# with the Hydra instantiate feature.
+#  
+# See Also:
+#     - `CreateRuleFromConfig`
+#     - `CallFunctionFromConfig`
+#     - `_from_config_default_rules` : Creates the default rules in the YAML file
+rules:
+- _target_: create_default_rules
+  _args_: []
+- _target_: agents.rules.obstacles.traffic_light_rules.DriveSlowTowardsTrafficLight
+  phases: Phase.EMERGENCY|BEGIN
+  self_config:
+    max_brake: ${controls.max_brake}
+    normal_brake: ${min:0.2,${self.max_brake}}
+    min_brake: 0.1
+    throttle: 0.25
+  gameframework:
+- _target_: agents.rules.lane_changes.random.RandomLaneChangeRule
+  phases: Phase.TAKE_NORMAL_STEP|BEGIN
+  overwrite_settings:
+    lane_change:
+      same_lane_time: 0
+  self_config:
+    random_lane_change_interval: 200
+    random_right_lanechange_percentage: 0.1
+    random_left_lanechange_percentage: 0.1

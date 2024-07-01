@@ -1021,24 +1021,20 @@ class BasicAgentObstacleSettings(AgentConfig):
     """
     
     base_tlight_threshold : float = 1.0
-    """"
+    """
     Base distance to traffic lights trigger location to check if they affect the vehicle
     
     Usage:
         max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
     
-    base_vehicle_threshold : float = 2.0
+    base_vehicle_threshold : float = 5.0
     """
     Base distance to vehicles to check if they affect the vehicle
             
     Usage:
-        Only vehicles with distance < `nearby_vehicles_max_distance` are checked for
-        ```python
-        max_vehicle_distance = base_vehicle_threshold 
-        if dynamic_threshold:
-            max_vehicle_distance += detection_speed_ratio * vehicle_speed
-        ```
+        Only vehicles with distance < `nearby_vehicles_max_distance` are checked for 
+        max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
         
         A vehicle is considered if distance < max_vehicle_distance < nearby_vehicles_max_distance
     """
@@ -1453,7 +1449,7 @@ class RssSettings(AgentConfig):
         use_stay_on_road_feature : carla.RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On 
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : carla.RssLogLevel = carla.RssLogLevel.err 
+        log_level : carla.RssLogLevel = carla.RssLogLevel.warn 
         """Set the initial log level of the RSSSensor"""
     else:
         enabled = False
@@ -1461,7 +1457,7 @@ class RssSettings(AgentConfig):
         use_stay_on_road_feature : "RssRoadBoundariesModeAlias" = "On" # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : "RssLogLevelAlias" = "err" # type: ignore
+        log_level : "RssLogLevelAlias" = "warn" # type: ignore
         """Set the initial log level of the RSSSensor"""
         
     debug_visualization_mode: RssDebugVisualizationMode = RssDebugVisualizationMode.RouteOnly

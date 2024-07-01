@@ -145,7 +145,6 @@ def accept_rss_updates(ctx : Context):
     if ctx.prior_result is None:
         return None
     assert isinstance(ctx.prior_result, carla.VehicleControl)
-    logger.debug("Accepting RSS updates %s", ctx.prior_result)
     ctx.control = ctx.prior_result
     
 assert isinstance(if_config("rss.enabled", True), ConditionFunction)
@@ -164,6 +163,8 @@ class ConfigBasedRSSUpdates(Rule):
     action = accept_rss_updates
     #description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
 
+
+# ----------- Tests -----------
 
 
 if __name__ == "__main__" or DEBUG_RULES:

@@ -1,5 +1,5 @@
 from enum import Enum, Flag, IntEnum, auto
-from functools import lru_cache
+from functools import lru_cache, reduce
 from typing import NewType, Union, TYPE_CHECKING
 
 import carla
@@ -228,6 +228,20 @@ class Phase(Flag):
         if phase is None:
             return cls.NONE
         return getattr(cls, f"PHASE_{phase}") | (Phase.END if end else Phase.BEGIN)
+    
+    @classmethod
+    def from_string(cls, string: str) -> "Phase":
+        """
+        Utility method that turns a string 'Phase_# | Phase.BEGIN | ...' into a Phase.
+        
+        NOTE:
+            Only supports the operator |.
+        """
+        
+        elements = string.split("|") # Phase.NAME
+        elements = [cls[e.split(".")[-1].strip()] for e in elements]
+        phase = reduce(lambda x, y: x | y, elements) # build union
+        return  phase
 
 
 class Hazard(Flag):
@@ -251,6 +265,19 @@ class Hazard(Flag):
     EMERGENCY = CRITICAL | EMERGENCY_ONLY # Level 3
 
     OBSTACLE = PEDESTRIAN | CAR
+
+
+class RulePriority(IntEnum):
+    """
+    Priority of a `Rule`. The higher a value, the higher the priority.
+    Rules are sorted by their priority before being applied.
+    """
+    NULL = 0
+    LOWEST = 1
+    LOW = 2
+    NORMAL = 4
+    HIGH = 8
+    HIGHEST = 16
 
 class __ItemAccess(type):
     def __getitem__(cls, key) -> carla.Color:

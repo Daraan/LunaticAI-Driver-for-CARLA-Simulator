@@ -9,9 +9,8 @@ import random
 from omegaconf import DictConfig
 import carla
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List, Optional, Tuple
 
-from agents.navigation import local_planner 
 from agents.navigation.local_planner import LocalPlanner, RoadOption, PlannedWaypoint
 
 
