@@ -1,11 +1,16 @@
 from enum import Enum, Flag, IntEnum, auto
-from functools import lru_cache
-from typing import Union, TYPE_CHECKING
+from functools import lru_cache, reduce
+from typing import NewType, Union, TYPE_CHECKING
 
 import carla
 
 if TYPE_CHECKING:
     from agents.navigation.local_planner import RoadOption
+    
+NO_RESULT_TYPE = NewType("NO_RESULT_TYPE", object)
+"""Type helper for objects that indicate no result."""
+
+RULE_NO_RESULT = NO_RESULT_TYPE(object())
 
 class StreetType(str, Enum):
     ON_HIGHWAY = "On highway"
@@ -64,60 +69,91 @@ class Phase(Flag):
 
     DETECT_TRAFFIC_LIGHTS = auto()
     DETECT_PEDESTRIANS = auto()
+    DETECT_STATIC_OBSTACLES = auto()
 
     DETECT_CARS = auto()
     TAKE_NORMAL_STEP = auto()
 
     RSS_EVALUATION = auto()
+    """
+    See Also:
+        - [LunaticAgent.parse_keyboard_input](#LunaticAgent.parse_keyboard_input)
+        - [RssKeyboardControls.parse_events](#RssKeyboardControls.parse_events)
+    """
     
-    """Applied manually via human user interface."""
     APPLY_MANUAL_CONTROLS = auto()
+    """Applied manually via human user interface."""
 
     EXECUTION = auto() # Out of loop
+    """
+    Executed when the control is applied to the agent.
+    
+    See Also:
+        agent.apply_control()
+    """
 
     # --- Special situations ---
     CAR_DETECTED = auto()
 
     TURNING_AT_JUNCTION = auto()
+    """Indicates that the agent is turning at a junction."""
 
     HAZARD = auto()
     EMERGENCY = auto()
     COLLISION = auto()
 
     DONE = auto() # agent.done() -> True
+    """Indicates that the agent is at the end of its path. agent.done() is True"""
+    
     TERMINATING = auto() # When closing the loop
+    """Can be called when the agent is terminating. Must be executed by the user."""
+    
+    CUSTOM_CYCLE = auto()
+    """
+    Can be used to indicate that the phase change is currently handled by the user.
+    
+    Note:
+        agent.execute_phase checks for exact match
+    
+    See Also:
+        Executes in BlockedRule.loop_agent()
+    """
     # States which the agent can be in outside of a normal Phase0-5 loop 
 
     # --- Aliases & Combination Phases ---
     # NOTE: # CRITICAL : Alias creation should be done after all the phases are created.!!!
 
-
-    DETECT_NON_CARS = DETECT_TRAFFIC_LIGHTS | DETECT_PEDESTRIANS
+    DETECT_NON_CARS = DETECT_STATIC_OBSTACLES | DETECT_TRAFFIC_LIGHTS | DETECT_PEDESTRIANS
     DETECTION_PHASE = DETECT_NON_CARS | DETECT_CARS
-
-    PHASE_0 = UPDATE_INFORMATION
-    PHASE_1 = PLAN_PATH # alias
-    PHASE_2 = DETECT_NON_CARS  # alias
-    PHASE_3 = DETECT_CARS # alias
-    PHASE_4 = TAKE_NORMAL_STEP # alias
-    PHASE_5 = EXECUTION # out of loop
 
     EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE | TERMINATING
     
-    USER_CONTROLLED = APPLY_MANUAL_CONTROLS | EXECUTION | TERMINATING
+    USER_CONTROLLED = APPLY_MANUAL_CONTROLS | EXECUTION | TERMINATING | CUSTOM_CYCLE
     """Phases that might or not be went through as they must be implemented manually by the user."""
 
     NORMAL_LOOP = UPDATE_INFORMATION | PLAN_PATH | DETECTION_PHASE | TAKE_NORMAL_STEP
     IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
+    """
+    Phases that are executed in or before the inner step, EMERGENCY is executed,
+    right after the inner step.
     
-    #def __eq__(self, other):
-    #    # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION
-    #    if isinstance(other, Phases):
-    #        if self is Phases.NONE or other is Phases.NONE:
-    #            return self is other
-    #        return self in other or other in self
-    #    return False
+    Warning:
+        Phase.COLLISION is not yet implemented in the submodule.
+    See Also:
+        - [LunaticAgent.run_step](#LunaticAgent.run_step)
+        - [collision_manager](#agents.substep_managers.collision_manager)
+    """
     
+    """
+    def __eq__(self, other):
+        # Makes sure that we can use current_phase == Phases.UPDATE_INFORMATION
+        if not isinstance(other, Phase):
+            return False
+        # Check None
+        if self is Phase.NONE or other is Phase.NONE:
+            return self is other
+        return self in other or other in self
+    """
 
     def next_phase(self):
         # Hardcoded transitions
@@ -144,10 +180,16 @@ class Phase(Flag):
             return Phase.BEGIN | Phase((self & ~Phase.END).value * 2)
         raise ValueError(f"Phase {self} is not a valid phase")
         return Phase(self.value * 2)
+    
+    def validate_next_phase(current_phase, next_phase):
+        assumed_next = current_phase.next_phase()
+        NotImplemented # Currently done in agent.execute_phase
 
     @classmethod
     def get_user_controlled_phases(cls):
-        return cls.APPLY_MANUAL_CONTROLS, cls.EXECUTION, cls.TERMINATING
+        user_phases = cls.APPLY_MANUAL_CONTROLS, cls.EXECUTION, cls.TERMINATING, cls.CUSTOM_CYCLE
+        assert all(p & cls.USER_CONTROLLED for p in user_phases)
+        return user_phases
 
     @classmethod
     def get_phases(cls):
@@ -186,6 +228,20 @@ class Phase(Flag):
         if phase is None:
             return cls.NONE
         return getattr(cls, f"PHASE_{phase}") | (Phase.END if end else Phase.BEGIN)
+    
+    @classmethod
+    def from_string(cls, string: str) -> "Phase":
+        """
+        Utility method that turns a string 'Phase_# | Phase.BEGIN | ...' into a Phase.
+        
+        NOTE:
+            Only supports the operator |.
+        """
+        
+        elements = string.split("|") # Phase.NAME
+        elements = [cls[e.split(".")[-1].strip()] for e in elements]
+        phase = reduce(lambda x, y: x | y, elements) # build union
+        return  phase
 
 
 class Hazard(Flag):
@@ -209,6 +265,19 @@ class Hazard(Flag):
     EMERGENCY = CRITICAL | EMERGENCY_ONLY # Level 3
 
     OBSTACLE = PEDESTRIAN | CAR
+
+
+class RulePriority(IntEnum):
+    """
+    Priority of a `Rule`. The higher a value, the higher the priority.
+    Rules are sorted by their priority before being applied.
+    """
+    NULL = 0
+    LOWEST = 1
+    LOW = 2
+    NORMAL = 4
+    HIGH = 8
+    HIGHEST = 16
 
 class __ItemAccess(type):
     def __getitem__(cls, key) -> carla.Color:

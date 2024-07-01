@@ -7,7 +7,9 @@
 #  
 # If set to >= 2, will assert that during runtime the types are correct.
 strict_config: 3
+# unused kept for compatibility with carla examples.
 verbose: true
+# If true will print out some more information and draws waypoints
 debug: true
 
 # If True will create an interactive session with command line input
@@ -17,6 +19,10 @@ seed:
 map: Town04_Opt
 host: 127.0.0.1
 port: 2000
+
+# Used to fix `carla.WorldSettings.fixed_delta_seconds`
+#  
+# Experimental also used to cap fps in the simulation.
 fps: 20
 
 # If True, the simulation will be set to run in synchronous mode.
@@ -32,7 +38,9 @@ handle_ticks: true
 # If True the agent will look for a new waypoint after the initial route is done.
 # - NOTE: Needs custom implementation in the main file.
 loop: true
+# width of pygame window
 width: 1280
+# height of pygame window
 height: 720
 
 # Gamma correction of the camera.
@@ -46,11 +54,15 @@ gamma: 2.2
 externalActor: true
 # Actor name to wait for if `externalActor` is True.
 rolename: hero
+# Filter for the ego blueprint. Kept for compatibility with carla examples.
 filter: vehicle.*
+# Generation for the ego blueprint. Kept for compatibility with carla examples.
 generation: 2
 
-# Whether or not to use the Carla's TraficManager to autpilot  the agent
-# - NOTE: This disables the usage of the LunaticAgent
+# Whether or not to use the Carla's TrafficManager to autopilot the agent
+# Note: 
+#     This disables the usage of the LunaticAgent, however needs to be 
+#     enabled in the main script by the user to work.
 autopilot: false
 # The Settings of the agent
 agent: ???
@@ -59,6 +71,8 @@ camera:
   width: 1280
   height: 720
   gamma: 2.2
+  camera_blueprints:
+  - NotImplemented
   hud: ???
   recorder:
     enabled: ???

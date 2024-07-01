@@ -31,7 +31,7 @@ def car_following_manager(self:"LunaticAgent", vehicle : carla.Vehicle, distance
                 self.config.speed.max_speed,
                 self.config.live_info.current_speed_limit - self.config.speed.speed_lim_dist])
             self._local_planner.set_speed(target_speed)
-            control = self._local_planner.run_step(debug=debug)
+            control = self._calculate_control(debug=debug)
 
         # Actual safety distance area, try to follow the speed of the vehicle in front.
         elif 2 * self.config.speed.safety_time > ttc >= self.config.speed.safety_time:
@@ -40,7 +40,7 @@ def car_following_manager(self:"LunaticAgent", vehicle : carla.Vehicle, distance
                 self.config.speed.max_speed,
                 self.config.live_info.current_speed_limit - self.config.speed.speed_lim_dist])
             self._local_planner.set_speed(target_speed)
-            control = self._local_planner.run_step(debug=debug)
+            control = self._calculate_control(debug=debug)
 
         # Normal behavior.
         else:
@@ -48,6 +48,6 @@ def car_following_manager(self:"LunaticAgent", vehicle : carla.Vehicle, distance
                 self.config.speed.max_speed,
                 self.config.live_info.current_speed_limit - self.config.speed.speed_lim_dist])
             self._local_planner.set_speed(target_speed)
-            control = self._local_planner.run_step(debug=debug)
+            control = self._calculate_control(debug=debug)
 
         return control

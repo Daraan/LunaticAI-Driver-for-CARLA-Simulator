@@ -1,3 +1,5 @@
+from inspect import isclass
+from operator import attrgetter
 from shapely.geometry import Polygon
 from functools import partial, wraps
 
@@ -7,13 +9,107 @@ from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
                                compute_distance)
 
-from classes.exceptions import EmergencyStopException, LunaticAIException, SkipInnerLoopException
+from classes.constants import Phase
+from classes.exceptions import EmergencyStopException, LunaticAgentException, SkipInnerLoopException
 from launch_tools import CarlaDataProvider, Literal
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     from classes.rule import Context
+
+
+# ------------------------------
+# Decorators
+# ------------------------------    
+    
+def result_to_context(key):
+    """
+    Decorator to insert the result into the context object
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self : "LunaticAgent", *args, **kwargs):
+            result = func(self, *args, **kwargs)
+            setattr(self.ctx, key, result)
+            return result
+        return wrapper
+        
+    return decorator
+
+def must_clear_hazard(func):
+    """
+    Decorator which raises an EmergencyStopException if self.detected_hazards
+    is not empty after the function call.
+    
+    Raises:
+        EmergencyStopException: If self.detected_hazards is not empty after the function call.
+    """
+    @wraps(func)
+    def wrapper(self: "LunaticAgent", *args, **kwargs):
+        result = func(self, *args, **kwargs)
+        if self.detected_hazards:
+            raise EmergencyStopException(self.detected_hazards)
+        return result
+    return wrapper
+
+def phase_callback(*, on_enter: Phase = None, 
+                      on_exit: Phase = None, 
+                      on_exit_exceptions: Union[Tuple["type[BaseException]"], bool, None] = (),
+                      prior_result: Optional["Callable | str"] = None):
+        """
+        Decorator function for defining phase callbacks that are executed at the start and end of a function.
+
+        Args:
+            on_enter (Phase, optional): 
+                The phase to execute before the decorated function.
+                Defaults to None.
+            on_exit (Phase, optional): 
+                The phase to execute after the decorated function.
+                Defaults to None.
+            on_exit_exceptions (Tuple[BaseException] | bool), optional):
+                If True, the on_exit phase will be executed if any [AgentException](#classes.exceptions.AgentException) is raised.
+                Defaults to empty tuple().
+        """
+        # Validate exception -> Tuple
+        if on_exit_exceptions == True:
+            on_exit_exceptions = (LunaticAgentException,)
+        elif isclass(on_exit_exceptions) and issubclass(on_exit_exceptions, BaseException):
+            on_exit_exceptions = (on_exit_exceptions,)
+        else:
+            on_exit_exceptions = tuple(on_exit_exceptions)
+        # Validate prior_result -> Callable
+        if prior_result and not callable(prior_result):
+            prior_result = attrgetter(prior_result) # raises Type Error if not string
+
+        def decorator(func):
+            if not on_enter and not on_exit:
+                print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` decorator for function %s. Ignoring decorator." % func.__name__)
+                return func
+            @wraps(func)
+            def wrapper(self: "LunaticAgent", *args, **kwargs):
+                if on_enter:
+                    prior_result = prior_result(self) if prior_result else None
+                    # if the attribute is a callable, e.g. get_control(), call it
+                    if callable(prior_result):
+                        prior_result = prior_result()
+                    self.execute_phase(on_enter, prior_results=prior_result)
+                if on_exit_exceptions:
+                    try:
+                        result = func(self, *args, **kwargs)
+                    except on_exit_exceptions as e:
+                        if on_exit:
+                            self.execute_phase(on_exit, prior_results=e)
+                        raise
+                else:
+                    result = func(self, *args, **kwargs)
+                if on_exit:
+                    self.execute_phase(on_exit, prior_results=result)
+                return result
+
+            return wrapper
+
+        return decorator
 
 # ------------------------------
 # Obstacle Detection
@@ -41,7 +137,7 @@ def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal[
                self.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
 
 
-def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Actor], min_detection_threshold: float, speed_limit_divisors=(2,3)) -> ObstacleDetectionResult:
+def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Actor]) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     and managing possible tailgating chances.
@@ -66,6 +162,9 @@ def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Ac
         As the first argument is the agent, this function can be used as a method, i.e
         it can be added / imported directly into the agent class' body.
     """
+
+    if obstacle_list in (None, "all"):
+        obstacle_list = self.all_obstacles_nearby
 
     # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
     if self.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
@@ -297,32 +396,3 @@ def generate_lane_change_path(waypoint : carla.Waypoint, direction:"Literal['lef
     return plan
 
     
-def result_to_context(key):
-    """
-    Decorator to insert the result into the context object
-    """
-    def decorator(func):
-        @wraps(func)
-        def wrapper(self : "LunaticAgent", *args, **kwargs):
-            result = func(self, *args, **kwargs)
-            setattr(self.ctx, key, result)
-            return result
-        return wrapper
-        
-    return decorator
-
-def must_clear_hazard(func):
-    """
-    Decorator which raises an EmergencyStopException if self.detected_hazards
-    is not empty after the function call.
-    
-    Raises:
-        EmergencyStopException: If self.detected_hazards is not empty after the function call.
-    """
-    @wraps(func)
-    def wrapper(self: "LunaticAgent", *args, **kwargs):
-        result = func(self, *args, **kwargs)
-        if self.detected_hazards:
-            raise EmergencyStopException(self.detected_hazards)
-        return result
-    return wrapper

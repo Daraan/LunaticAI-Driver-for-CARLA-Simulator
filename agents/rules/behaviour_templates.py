@@ -5,7 +5,6 @@ from omegaconf._impl import select_node
 
 import carla
 
-from launch_tools import CarlaDataProvider
 
 from classes.constants import Phase
 from classes.rule import Rule, ConditionFunction, TruthyConditionFunction, Context, always_execute
@@ -146,7 +145,6 @@ def accept_rss_updates(ctx : Context):
     if ctx.prior_result is None:
         return None
     assert isinstance(ctx.prior_result, carla.VehicleControl)
-    logger.debug("Accepting RSS updates %s", ctx.prior_result)
     ctx.control = ctx.prior_result
     
 assert isinstance(if_config("rss.enabled", True), ConditionFunction)
@@ -165,6 +163,8 @@ class ConfigBasedRSSUpdates(Rule):
     action = accept_rss_updates
     #description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
 
+
+# ----------- Tests -----------
 
 
 if __name__ == "__main__" or DEBUG_RULES:
@@ -301,7 +301,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     class RuleAttributes(Another):
         DEFAULT_COOLDOWN_RESET = 10
         start_cooldown = 20
-        cooldown = 50
+        cooldown_reset_value = 50
         
     test_init = RuleAttributes()
 

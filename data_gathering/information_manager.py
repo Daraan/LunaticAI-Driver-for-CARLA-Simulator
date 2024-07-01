@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 from launch_tools import CarlaDataProvider
 
-from agents.tools import logger
+from agents.tools.logging import logger
 
 
 from classes.constants import AgentState
@@ -128,7 +128,6 @@ class InformationManager:
             # Is at an intersection
             self._relevant_traffic_light_location = None
             self.relevant_traffic_light_distance = None
-            logger.debug("No traffic light found - at intersection?")
         # TODO: Assure that the traffic light is not behind the actor, but in front of it.
         # TODO: Do not use the CDP but use the planned route instead.
     
@@ -174,9 +173,9 @@ class InformationManager:
         # - Location -
         # NOTE: That transform.location and location are similar but not identical.
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
-        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle)
+        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not clean
         # Only exact waypoint. TODO: update in agent
-        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(self.live_info.current_location)
+        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc) # NOTE: Might throw error if past run was not cleaned!
         
         # Traffic Light
         # NOTE: Must be AFTER the location update
@@ -284,7 +283,8 @@ class InformationManager:
         else:
             # DEBUG; TEMP
             snap_frame = CarlaDataProvider.get_world().get_snapshot().frame
-            assert frame == snap_frame, f"Frame {frame} does not match snapshot frame {snap_frame}"
+            if frame != snap_frame:
+                logger.error(f"Frame {frame} does not match snapshot frame {snap_frame}")
         if frame == InformationManager.frame:
             return
         InformationManager.frame = frame
@@ -326,3 +326,4 @@ class InformationManager:
     @staticmethod
     def get_walkers():
         return InformationManager.walkers
+

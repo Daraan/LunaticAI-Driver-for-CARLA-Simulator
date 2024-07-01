@@ -262,7 +262,7 @@ class AgentConfig:
                     _class_annotations = {}
                     extract_annotations(tree, docs=_class_annotations)
             
-            if inspect.isclass(cls_or_self):
+            if isinstance(cls_or_self, type): # is class
                 cls = cls_or_self
             else:
                 cls = cls_or_self.__class__
@@ -655,13 +655,13 @@ class SimpleConfig(object):
         NOTE: Assumes unique keys over all settings!
         # TODO: add a warning if a non-unique key is found in the overwrites.
         """
-        if inspect.isclass(self):
+        if isinstance(self, type): # called on class
             return self()
         keys = set(simple_overwrites.keys())
         removed_keys = set() # to check for duplicated keys that cannot be set via SimpleConfig unambiguously
         overwrites = {}
         for name, base in self._base_settings.__annotations__.items():
-            if inspect.isclass(base) or not issubclass(base, AgentConfig): # First out non AgentConfig attributes
+            if not isinstance(base, type) or not issubclass(base, AgentConfig): # First out non AgentConfig attributes
                 if name in keys:
                     overwrites[name] = simple_overwrites[name] # if updating a top level attribute
                     keys.remove(name)
@@ -1021,24 +1021,20 @@ class BasicAgentObstacleSettings(AgentConfig):
     """
     
     base_tlight_threshold : float = 1.0
-    """"
+    """
     Base distance to traffic lights trigger location to check if they affect the vehicle
     
     Usage:
         max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
     
-    base_vehicle_threshold : float = 2.0
+    base_vehicle_threshold : float = 5.0
     """
     Base distance to vehicles to check if they affect the vehicle
             
     Usage:
-        Only vehicles with distance < `nearby_vehicles_max_distance` are checked for
-        ```python
-        max_vehicle_distance = base_vehicle_threshold 
-        if dynamic_threshold:
-            max_vehicle_distance += detection_speed_ratio * vehicle_speed
-        ```
+        Only vehicles with distance < `nearby_vehicles_max_distance` are checked for 
+        max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
         
         A vehicle is considered if distance < max_vehicle_distance < nearby_vehicles_max_distance
     """
@@ -1453,7 +1449,7 @@ class RssSettings(AgentConfig):
         use_stay_on_road_feature : carla.RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On 
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : carla.RssLogLevel = carla.RssLogLevel.err 
+        log_level : carla.RssLogLevel = carla.RssLogLevel.warn 
         """Set the initial log level of the RSSSensor"""
     else:
         enabled = False
@@ -1461,7 +1457,7 @@ class RssSettings(AgentConfig):
         use_stay_on_road_feature : "RssRoadBoundariesModeAlias" = "On" # type: ignore
         """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : "RssLogLevelAlias" = "err" # type: ignore
+        log_level : "RssLogLevelAlias" = "warn" # type: ignore
         """Set the initial log level of the RSSSensor"""
         
     debug_visualization_mode: RssDebugVisualizationMode = RssDebugVisualizationMode.RouteOnly

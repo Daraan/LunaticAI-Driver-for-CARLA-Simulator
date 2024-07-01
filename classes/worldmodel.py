@@ -15,7 +15,7 @@ from omegaconf import DictConfig, OmegaConf
 import carla
 import pygame
 import numpy.random as random
-from agents.tools.config_creation import AgentConfig, class_or_instance_method
+from launch_tools import class_or_instance_method
 from classes.exceptions import UserInterruption
 from classes.HUD import HUD
 
@@ -23,7 +23,6 @@ from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 
 from classes.exceptions import AgentDoneException, ContinueLoopException
-from classes.rule import Rule
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
 from classes.keyboard_controls import RSSKeyboardControl
@@ -31,81 +30,58 @@ from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
+    from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
     from classes._custom_sensor import CustomSensor
 
 from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
 from launch_tools import carla_service
 from agents.tools.logging import logger
-from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
 
 from launch_tools import CarlaDataProvider, Literal
 
-class AccessCarlaDataProviderMixin:
-    """Mixin class that delegates to CarlaDataProvider if available to keep in Sync."""
+class AccessCarlaMixin:
+    """
+    Mixin class that delegates `client`, `map`, and `world` CarlaDataProvider if available to keep in Sync.
     
-    if CarlaDataProvider is not None:
-        @property
-        def client(self) -> carla.Client:
-            return CarlaDataProvider.get_client()
-        
-        @client.setter
-        def client(self, value: carla.Client):
-            CarlaDataProvider.set_client(value)
-        
-        @property
-        def world(self) -> carla.World:
-            return CarlaDataProvider.get_world()
-        
-        @world.setter
-        def world(self, value: carla.World):
-            CarlaDataProvider.set_world(value)
-        
-        @property
-        def map(self) -> carla.Map:
-            return CarlaDataProvider.get_map()
-        
-        @map.setter
-        def map(self, value: carla.Map):
-            if CarlaDataProvider.get_map() != value:
-                raise ValueError("CarlaDataProvider.get_map() and passed map are not the same.")
-            # Do nothing as map is set when using get_map or set_world
-    else:
-        __client: carla.Client = None # type: ignore
-        __map: carla.Map = None  # type: ignore
-        __world: carla.World = None # type: ignore
-        
-        @property
-        def client(self) -> carla.Client:
-            return AccessCarlaDataProviderMixin.__client
-        
-        @client.setter
-        def client(self, value: carla.Client):
-            AccessCarlaDataProviderMixin.__client = value
-            
-        @property
-        def world(self) -> carla.World:
-            return AccessCarlaDataProviderMixin.__world
-        
-        @world.setter
-        def world(self, value: carla.World):
-            AccessCarlaDataProviderMixin.__world = value
-            
-        @property
-        def map(self) -> carla.Map:
-            return AccessCarlaDataProviderMixin.__map
-        
-        @map.setter
-        def map(self, value: carla.Map):
-            AccessCarlaDataProviderMixin.__map = value
+    Note:
+        This mixin only works for instances, they are not class attributes.
+    """
+    
+    @property
+    def client(self) -> carla.Client:
+        return CarlaDataProvider.get_client()
+    
+    @client.setter
+    def client(self, value: carla.Client):
+        CarlaDataProvider.set_client(value)
+    
+    @property
+    def world(self) -> carla.World:
+        return CarlaDataProvider.get_world()
+    
+    @world.setter
+    def world(self, value: carla.World):
+        CarlaDataProvider.set_world(value)
+    
+    @property
+    def map(self) -> carla.Map:
+        return CarlaDataProvider.get_map()
+    
+    @map.setter
+    def map(self, value: carla.Map):
+        if CarlaDataProvider.get_map() != value:
+            raise ValueError("CarlaDataProvider.get_map() and passed map are not the same.")
+        # Do nothing as map is set when using get_map or set_world
+    
 
 # ==============================================================================
 # -- Game Framework ---------------------------------------------------------------
 # ==============================================================================
 
-class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
-    clock : ClassVar[pygame.time.Clock]
-    display : ClassVar[pygame.Surface]
+class GameFramework(AccessCarlaMixin, CarlaDataProvider):
+    clock : ClassVar[pygame.time.Clock] = None
+    display : ClassVar[pygame.Surface] = None
     controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
     
     traffic_manager : Optional[carla.TrafficManager] = None
@@ -182,8 +158,10 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
             np.random.seed(args.seed)
         self._args = args
         self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
-        self.clock, self.display = self.init_pygame(args)
-
+        
+        # These are class variables
+        clock, display = self.init_pygame(args) # pylint: disable=unused-variable
+        
         self.config = config
         self.agent = None
         self.world_model = None
@@ -191,19 +169,24 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
         
         self.debug = self.world.debug
         self.continue_loop = True
-        
-        self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
         self.traffic_manager : Optional[carla.TrafficManager] = None
         
+        # Import here to avoid circular imports
+        from classes.rule import BlockingRule, Rule
+        self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
+        
+        BlockingRule._gameframework = weakref.proxy(self)
+        
     @staticmethod
-    def init_pygame(args:Optional["LaunchConfig"]=None):
-        pygame.init()
-        pygame.font.init()
-        clock = pygame.time.Clock()
-        display = pygame.display.set_mode(
-            (args.width, args.height) if args else (1280, 720),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
-        return clock, display
+    def init_pygame(args:Optional["LaunchConfig"]=None, recreate=False):
+        if recreate or GameFramework.clock is None or GameFramework.display is None:  
+            pygame.init()
+            pygame.font.init()
+            GameFramework.clock = pygame.time.Clock()
+            GameFramework.display = pygame.display.set_mode(
+                (args.width, args.height) if args else (1280, 720),
+                pygame.HWSURFACE | pygame.DOUBLEBUF)
+        return GameFramework.clock, GameFramework.display
     
     @staticmethod
     def init_carla(args: Optional["LaunchConfig"]=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
@@ -274,7 +257,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
     
     def render_everything(self):
         """Update render and hud"""
-        self.world_model.tick(self.clock) # Note: only ticks the HUD.
+        self.world_model.tick(self.clock) # NOTE: Ticks WorldMODEL not CARLA WORLD!
         self.world_model.render(self.display, finalize=False)
         self.controller.render(self.display)
         dm_render_conf = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
@@ -414,7 +397,7 @@ class GameFramework(AccessCarlaDataProviderMixin, CarlaDataProvider):
 # -- World ---------------------------------------------------------------
 # ==============================================================================
 
-class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
+class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     """ Class representing the surrounding environment """
 
     controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
@@ -457,6 +440,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
+        from agents.tools.config_creation import LaunchConfig # circular import
         if not isinstance(args, (Mapping, DictConfig, LaunchConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
@@ -471,7 +455,7 @@ class WorldModel(AccessCarlaDataProviderMixin, CarlaDataProvider):
                 print("Problem with", type(args), args) 
                 raise e
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
-        self._args : LaunchConfig = args
+        self._args : "LaunchConfig" = args
         
         self.hud = HUD(args.width, args.height, self.world)
         self.sync : bool = args.sync

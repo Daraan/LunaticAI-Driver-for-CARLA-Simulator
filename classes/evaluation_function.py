@@ -91,9 +91,9 @@ class ConditionFunction:
     def __call__(self, ctx: "Context | Rule", *args, **kwargs) -> Hashable:
         """
         Note:
-        To handle the method vs. function difference depending on __get__ 
-        `ctx` can be either a Context (condition as function) or a Rule (condition as method),
-        In the method case the real Context object is args[0]
+            To handle the method vs. function difference depending on __get__ 
+            `ctx` can be either a Context (condition as function) or a Rule (condition as method),
+            In the method case the real Context object is args[0]!
         """
         try:
             rule_result = self.evaluation_function(ctx, *args, **kwargs)
@@ -110,10 +110,10 @@ class ConditionFunction:
         assert isinstance(rule_result, Hashable), f"evaluation_function must return a hashable type, not {type(rule_result)}"
         return rule_result
     
-    def __get__(self, instance: "Optional[Rule]", owner): # pylint: disable=unused-argument # for in class usage like Rule.condition
+    def __get__(self, instance: "Optional[Rule]", objtype:"type[Rule]"=None): # pylint: disable=unused-argument # for in class usage like Rule.condition
         # NOTE: instance.condition is not an ConditionFunction, it is a partial of one.
         if instance is None:
-            return self # called on class
+            return self # called on class Rule.condition
         return partial(self, instance) # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
     
     def copy(self, copy_actions=False):

@@ -1,6 +1,13 @@
-from .car_following import car_following_manager                     # pylint: line-too-long, pylint: disable=unused-import
-from .collision_and_car_avoidance import collision_detection_manager # pylint: line-too-long, pylint: disable=unused-import
-from .traffic_light import traffic_light_manager                     # pylint: line-too-long, pylint: disable=unused-import
-from .pedestrian_avoidance import pedestrian_detection_manager       # pylint: line-too-long, pylint: disable=unused-import
-from .emergency import emergency_manager                             # pylint: line-too-long, pylint: disable=unused-import
-from .collision import collision_manager                             # pylint: line-too-long, pylint: disable=unused-import
+"""
+Helpers that can take over certain parts, some are directly imported 
+into the LunaticAgent but here for easier access and to keep the 
+class cleaner.
+"""
+
+# pylint: disable=unused-import
+from .car_following import car_following_manager
+from .collision_and_car_avoidance import collision_detection_manager
+from .traffic_light import traffic_light_manager
+from .pedestrian_avoidance import pedestrian_detection_manager
+from .emergency import emergency_manager
+from .collision import collision_manager

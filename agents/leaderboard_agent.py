@@ -1,3 +1,4 @@
+"""Leaderboard 2.0 compatible version of the Lunatic Agent"""
 import operator
 import os
 from typing import Any, Dict, TYPE_CHECKING, Union
@@ -13,10 +14,12 @@ from classes.exceptions import UserInterruption
 
 try:
     # Prefer the current submodule version
-    from launch_tools import CarlaDataProvider, GameTime
+    from launch_tools import CarlaDataProvider, GameTime, singledispatchmethod
 except ModuleNotFoundError:
     from srunner.scenariomanager.timer import GameTime                        # pyright: ignore[reportMissingImports]      
     from srunner.scenariomanager.carla_data_provider import CarlaDataProvider # pyright: ignore[reportMissingImports]
+    from functools import singledispatchmethod # If this fails please use Python3.10+
+    
 
 try:
     from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track # pyright: ignore[reportMissingImports]
@@ -160,6 +163,12 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         LunaticAgent.__init__(self, config, self.world_model)
         print("LunaticAgent initialized")
         
+        from agents.rules.lane_changes.random import RandomLaneChangeRule
+        for rules in self.rules.values():
+            for rule in rules:
+                if isinstance(rule, RandomLaneChangeRule):
+                    rule.enabled = False
+            
         # Set plan
         if self._global_plan_waypoints:
             self._local_planner_set_plan(self._global_plan_waypoints)
@@ -218,8 +227,15 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 print("[{} -- {:06d}] ".format(key, val[0]))
         print("<=====================")
         return True
+    
+    # This allows BlockingRules to pick up the coorect function
+    @singledispatchmethod
+    def run_step(self, debug:bool=False, second_pass=False):
+        return super(AutonomousAgent, self).run_step(debug=self.args.debug, second_pass=second_pass)
 
-    def run_step(self, input_data:"Dict[str, tuple[int, Any]]", timestamp):
+    @run_step.register(dict)
+    def _(self, input_data:"Dict[str, tuple[int, Any]]", timestamp=None):
+        """Function that is called by leaderboard framework"""
         try:
             if self._print_input_data(input_data) and "OpenDRIVE" in input_data:
                 frame, data = input_data["OpenDRIVE"]
@@ -237,7 +253,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.agent_engaged = True # remove this, if not used
             
             with self.game_framework:
-                control = super(AutonomousAgent, self).run_step(debug=self.args.debug) # Call Lunatic Agent run_step
+                control = self.run_step(self.args.debug) # Call Lunatic Agent run_step
             # Handle render updates
             
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=control)
@@ -256,6 +272,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 logger.error("Error in LunaticChallenger.run_step:", exc_info=True)
             self.destroy()
             raise e
+    
+
     
     # TODO maybe move to misc / tools
     @staticmethod
