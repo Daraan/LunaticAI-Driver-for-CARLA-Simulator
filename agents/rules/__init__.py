@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from classes.worldmodel import GameFramework
     from agents.tools.config_creation import RuleCreatingParameters
 
-def create_default_rules(gameframework: Optional["GameFramework"]=None):
+def create_default_rules(gameframework: Optional["GameFramework"]=None, random_lane_change: bool = True) -> Iterable[Rule]:
 
     avoid_tailgator_rule = AvoidTailgatorRule()
     simple_overtake_rule = SimpleOvertakeRule()
@@ -39,7 +39,10 @@ def create_default_rules(gameframework: Optional["GameFramework"]=None):
     #slow_towards_traffic_light = DriveSlowTowardsTrafficLight(gameframework=gameframework) # Blocking Rule
 
     default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, 
-                           simple_overtake_rule, set_close_waypoint_when_done, config_based_rss_updates]
+                           simple_overtake_rule, set_close_waypoint_when_done, config_based_rss_updates,]
+    if random_lane_change:
+        default_rules.append(RandomLaneChangeRule())
+    
     if DEBUG_RULES:
         default_rules.append(StoppedTooLongTrigger())
         from agents.rules.behaviour_templates import SimpleRule1, SimpleRule1B, debug_rules

@@ -223,7 +223,11 @@ class AgentConfig:
                             if OmegaConf.is_missing(rule, "self_config"):
                                 rule.self_config = OmegaConf.to_container(self_config, enum_to_str=True)
                             else:
-                                rule.self_config.update(self_config)
+                                try:
+                                    rule.self_config.update(self_config)
+                                except:
+                                    with open_dict(rule):
+                                        rule.self_config = OmegaConf.to_container(OmegaConf.merge(self_config, rule.self_config), enum_to_str=True)
                         
                         if "phases" in rule and not isinstance(rule.phases, str):
                             assert isinstance(rule.phases, Phase), "Currently only supports a Phase as string or Phase object."
@@ -1563,6 +1567,10 @@ class CreateRuleFromConfig:
     The name of the rule class to instantiate to be used with the
     hydra.utils.instantiate function.
     
+    - overwrite_settings: These will be used to overwrite the settings of the agent.
+    - self_config: This is a private storage for this rule instance to be used with 
+        its own condition and action functions.
+    
     Note:
         The class must be imported in agents.rules.__init__ or
         `_target_` must be a dotted path to the class (see hydra docs).
@@ -1583,7 +1591,20 @@ class CreateRuleFromConfig:
     actions : Optional[Dict[Any, str]] = MISSING
     description: str = MISSING
     overwrite_settings: Optional[Dict[str, Any]] = MISSING
+    """These will be used to overwrite the settings of the agent."""
+    
     self_config: Optional[Dict[str, Any]] = MISSING
+    """
+    This is a private storage for this rule instance to be used with
+    its own condition and action functions.
+    
+    Interpolation to agent, or rather, context keys is possible.
+    
+    Note:
+        - Also has an "instance" key which is the instance of the rule.
+        - You can access config rule also with ctx.current_rule
+    """
+    
     priority: RulePriority = MISSING
     cooldown_reset_value : Optional[int] = MISSING
     group : Optional[str] = MISSING
@@ -1640,12 +1661,17 @@ def _from_config_default_rules():
     rules = [
         # Rules cann be added from 
         CallFunctionFromConfig("create_default_rules"),
-        CreateRuleFromConfig("DriveSlowTowardsTrafficLight", gameframework=None),
+        CreateRuleFromConfig("DriveSlowTowardsTrafficLight", gameframework=None,
+                              # NOTE: Dot notation is NOT SUPPORTED you need to nest dictionaries 
+                                overwrite_settings={"speed" : {"follow_speed_limits" : True}},
+                                self_config= {"throttle" : 0.33},
+                                description="Drive slow towards while trying not to cross the line (experimental)."
+                             ),
         
-        CreateRuleFromConfig("RandomLaneChangeRule",
-                # NOTE: Dot notation is NOT SUPPORTED you need to nest dictionaries 
-                overwrite_settings={"lane_change" : {"same_lane_time" : 0}},
-                )   
+        #CreateRuleFromConfig("RandomLaneChangeRule",
+        #        # NOTE: Dot notation is NOT SUPPORTED you need to nest dictionaries 
+        #        overwrite_settings={"lane_change" : {"same_lane_time" : 0}},
+        #        )   
     ]
     return rules
 

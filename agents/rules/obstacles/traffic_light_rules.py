@@ -46,8 +46,6 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         
         # When being slow -> speed up slowly
         throttle : float = 0.25
-        
-    
 
     @phase_callback(on_exit = Phase.CUSTOM_CYCLE | Phase.END, on_exit_exceptions=LunaticAgentException)
     def action(self, ctx: Context):
@@ -164,7 +162,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
                 affected = False
             last_distance = distance
             distance = ctx.live_info.current_location.distance(clostest_wp.transform.location)
-        logger.info("Exiting DriveSlowTowardsTrafficLight rule after %s ticks.", self.ticks_passed)
+        #logger.info("Exiting DriveSlowTowardsTrafficLight rule after %s ticks.", self.ticks_passed)
         if ctx.control: # NOTE: This is unset with self.update_world
             raise SkipInnerLoopException(ctx.control)
 

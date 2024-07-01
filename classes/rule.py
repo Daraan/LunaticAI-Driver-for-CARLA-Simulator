@@ -834,6 +834,8 @@ class Rule(_GroupRule):
         result = Rule.NO_RESULT
         try:
             result = self.evaluate(ctx, overwrite)
+        except BaseException as e:
+            exception = e
         except LunaticAgentException as e:
             exception = e
         else:

@@ -407,18 +407,13 @@ rules:
   _args_: []
 - _target_: agents.rules.obstacles.traffic_light_rules.DriveSlowTowardsTrafficLight
   phases: Phase.EMERGENCY|BEGIN
+  description: Drive slow towards while trying not to cross the line (experimental).
+  overwrite_settings:
+    speed:
+      follow_speed_limits: true
   self_config:
     max_brake: ${controls.max_brake}
     normal_brake: ${min:0.2,${self.max_brake}}
     min_brake: 0.1
-    throttle: 0.25
+    throttle: 0.33
   gameframework:
-- _target_: agents.rules.lane_changes.random.RandomLaneChangeRule
-  phases: Phase.TAKE_NORMAL_STEP|BEGIN
-  overwrite_settings:
-    lane_change:
-      same_lane_time: 0
-  self_config:
-    random_lane_change_interval: 200
-    random_right_lanechange_percentage: 0.1
-    random_left_lanechange_percentage: 0.1
