@@ -1,0 +1,32 @@
+"""Turn some of the hardcoded parts into a rule"""
+from contextvars import Context
+from agents.tools.hints import ObstacleDetectionResult
+from classes.constants import Hazard, Phase
+from classes.evaluation_function import ConditionFunction
+from classes.rule import Rule
+
+
+class PedestrianAvoidanceRule(Rule):
+    phase = Phase.EMERGENCY | Phase.BEGIN
+    @ConditionFunction
+    def condition(ctx: Context):
+        # Check that we have a pedestrian hazard
+        current_hazards = ctx.get_hazards()
+        return current_hazards & {Hazard.PEDESTRIAN}
+    
+    @condition.register_action(Hazard.PEDESTRIAN)
+    def action(ctx: Context):
+        current_hazards = ctx.get_hazards()
+        detection_result: ObstacleDetectionResult = ctx.prior_result
+        if (detection_result.obstacle_was_found
+            and (detection_result.distance - max(detection_result.obstacle.bounding_box.extent.y, 
+                                                detection_result.obstacle.bounding_box.extent.x)
+                                        - max(ctx.agent._vehicle.bounding_box.extent.y, 
+                                                ctx.agent._vehicle.bounding_box.extent.x)
+            < ctx.config.distance.emergency_braking_distance)):
+            # pedestrian too close -> emergency stop
+            return ctx.hazard_not_cleared() # simple object
+        # Slow down
+        ctx.agent.config.speed.target_speed = 0.5 * ctx.agent.config.speed.target_speed
+        ctx.clear_hazard(Hazard.PEDESTRIAN) # do not perform emergency stop
+         
