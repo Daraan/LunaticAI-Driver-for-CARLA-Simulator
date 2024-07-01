@@ -6,6 +6,14 @@ agents.rules package
    :undoc-members:
    :show-inheritance:
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 3
+
+   agents.rules.obstacles
+
 Submodules
 ----------
 
