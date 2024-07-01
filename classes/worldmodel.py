@@ -158,14 +158,10 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             np.random.seed(args.seed)
         self._args = args
         self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
-        clock, display = self.init_pygame(args)
-        if GameFramework.clock is not None:
-            logger.warning("GameFramework.clock already set. Overwriting.")
-        if GameFramework.display is not None:
-            logger.warning("GameFramework.display already set. Overwriting.")
-        GameFramework.clock = clock
-        GameFramework.display = display
-
+        
+        # These are class variables
+        clock, display = self.init_pygame(args) # pylint: disable=unused-variable
+        
         self.config = config
         self.agent = None
         self.world_model = None
@@ -182,14 +178,15 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         BlockingRule._gameframework = weakref.proxy(self)
         
     @staticmethod
-    def init_pygame(args:Optional["LaunchConfig"]=None):
-        pygame.init()
-        pygame.font.init()
-        clock = pygame.time.Clock()
-        display = pygame.display.set_mode(
-            (args.width, args.height) if args else (1280, 720),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
-        return clock, display
+    def init_pygame(args:Optional["LaunchConfig"]=None, recreate=False):
+        if recreate or GameFramework.clock is None or GameFramework.display is None:  
+            pygame.init()
+            pygame.font.init()
+            GameFramework.clock = pygame.time.Clock()
+            GameFramework.display = pygame.display.set_mode(
+                (args.width, args.height) if args else (1280, 720),
+                pygame.HWSURFACE | pygame.DOUBLEBUF)
+        return GameFramework.clock, GameFramework.display
     
     @staticmethod
     def init_carla(args: Optional["LaunchConfig"]=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
