@@ -627,71 +627,7 @@ class AgentConfig:
             #breakpoint()
             raise
 
-class SimpleConfig(object):
-    """
-    A class that allows a more simple way to initialize settings.
-    Initializing an instance changes the type the the given base class, defined via `_base_settings`.
-    
-    :param _base_settings: The base class to port the settings to.
-    
-    TODO: NOTE: This class assumes that there are NO DUPLICATE keys in the underlying base
-    """
-    
-    _base_settings: ClassVar["AgentConfig"] = None
-    
-    def __new__(cls, overwrites:Optional[Dict[str, Union[dict, AgentConfig]]]=None) -> "AgentConfig":
-        """
-        Transforms a SimpleConfig class into the given _base_settings
-        
-        :param overwrites: That allow overwrites during initialization.
-        """
-        if cls._base_settings is None:
-            raise TypeError("{cls.__name__} must have a class set in the `_base_settings` to initialize to.")
-        if cls is SimpleConfig:
-            raise TypeError("SimpleConfig class may not be instantiated")
-        simple_settings = {k:v for k,v  in cls.__dict__.items() if not k.startswith("_") } # Removes all private attributes
-        if overwrites:
-            simple_settings.update(overwrites) 
-        return super().__new__(cls).to_nested_config(simple_settings) # call from a pseudo instance.
-    
-    @class_or_instance_method
-    def to_nested_config(self, simple_overwrites:dict=None) -> AgentConfig:
-        """
-        Initializes the _base_settings with the given overwrites.
-        
-        Maps the keys of simple_overwrites to the base settings.
-        
-        More specifically builds a overwrites dict that is compatible with the nested configuration versions.
-        
-        NOTE: Assumes unique keys over all settings!
-        # TODO: add a warning if a non-unique key is found in the overwrites.
-        """
-        if inspect.isclass(self):
-            return self()
-        keys = set(simple_overwrites.keys())
-        removed_keys = set() # to check for duplicated keys that cannot be set via SimpleConfig unambiguously
-        overwrites = {}
-        for name, base in self._base_settings.__annotations__.items():
-            if inspect.isclass(base) or not issubclass(base, AgentConfig): # First out non AgentConfig attributes
-                if name in keys:
-                    overwrites[name] = simple_overwrites[name] # if updating a top level attribute
-                    keys.remove(name)
-                    removed_keys.add(name)
-                continue
-            matching = keys.intersection(base.__dataclass_fields__.keys()) # keys that match from the simple config to the real nested config
-            if len(matching) > 0:
-                if removed_keys.intersection(matching):
-                    print("WARNING: Ambiguous key", removed_keys.intersection(matching), "in the SimpleConfig", str(self), "that occurs multiple times in its given base", self._base_settings.__name__+".", "Encountered at", name, base) # TODO: remove later, left here for testing.")
-                overwrites[name] = {k: getattr(self, k) for k in matching}
-                keys -= matching
-                removed_keys.update(matching)
-        if len(keys) != 0:
-            overwrites.update({k: v for k,v in simple_overwrites.items() if k in keys}) # Add them to the top level
-            print("Warning: Unmatched keys", keys, "in", self.__class__.__name__, "not contained in base", self._base_settings.__name__+".", "Adding them to the top-level of the settings.") # TODO: remove later, left here for testing.
-        return self._base_settings(overwrites=overwrites)
-        # TODO: could add new keys after post-processing.
-        
-        
+
 # ---------------------
 
 # ---------------------
@@ -1856,22 +1792,6 @@ class ContextSettings(LunaticAgentSettings):
     """Special settings of the current rule. Only available from Context within rules ctx.config.current_rule"""
 
 
-@dataclass
-class SimpleBasicAgentSettings(SimpleConfig, LiveInfo, BasicAgentSpeedSettings, BasicAgentDistanceSettings, BasicAgentLaneChangeSettings, BasicAgentObstacleSettings, BasicAgentControllerSettings, BasicAgentPlannerSettings, BasicAgentEmergencySettings):
-    _base_settings :ClassVar[BasicAgentSettings] = BasicAgentSettings
-
-@dataclass
-class SimpleBehaviorAgentSettings(SimpleConfig, LiveInfo, BehaviorAgentSpeedSettings, BehaviorAgentDistanceSettings, BehaviorAgentLaneChangeSettings, BehaviorAgentObstacleSettings, BehaviorAgentControllerSettings, BehaviorAgentPlannerSettings, BehaviorAgentEmergencySettings):
-    _base_settings :ClassVar[BehaviorAgentSettings] = BehaviorAgentSettings
-
-
-@dataclass
-class SimpleLunaticAgentSettings(SimpleConfig, LiveInfo, LunaticAgentSpeedSettings, LunaticAgentDistanceSettings, LunaticAgentLaneChangeSettings, LunaticAgentObstacleSettings, LunaticAgentControllerSettings, LunaticAgentPlannerSettings, LunaticAgentEmergencySettings, RssSettings):
-    _base_settings :ClassVar[BehaviorAgentSettings] = LunaticAgentSettings
-
-@dataclass
-class SimpleAutopilotAgentSettings(SimpleConfig, AutopilotSpeedSettings, AutopilotDistanceSettings, AutopilotLaneChangeSettings, AutopilotObstacleSettings, AutopilotControllerSettings):
-    base_settings :ClassVar[AutopilotBehavior] = AutopilotBehavior
 
 # ---------------------
 
@@ -2053,7 +1973,6 @@ if TYPE_CHECKING:
     from typing_extensions import NotRequired
     class LaunchConfig(LaunchConfig, DictConfig):
         hydra : NotRequired[HydraConf] # pyright: ignore # NotRequired only for TypedDict
-
 
 def extract_annotations(parent, docs):
     for main_body in parent.body:
