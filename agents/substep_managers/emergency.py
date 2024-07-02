@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
 
-def emergency_manager(self : "LunaticAgent", *, reasons:"set[str]", control : Optional["carla.VehicleControl"]=None) -> "carla.VehicleControl":
+def emergency_manager(self : "LunaticAgent", *, reasons:"set[str]", control : Optional["carla.VehicleControl"]=None, force=False) -> "carla.VehicleControl":
     """
     Modifies the control values to perform an emergency stop.
     The steering remains unchanged to avoid going out of the lane during turns.
@@ -15,10 +15,12 @@ def emergency_manager(self : "LunaticAgent", *, reasons:"set[str]", control : Op
     :param control: (carla.VehicleControl) control to be modified
     :param enable_random_steer: (bool, optional) Flag to enable random steering
     """
-    logger.debug("Emergency Manager: Stopping because of %s", reasons)
     control = control or self.get_control()
     if control is None:
         control = self._calculate_control(debug=self.debug)
+    if not reasons and not force:
+        return control
+    logger.debug("Emergency Manager: Hazards not cleared or forced stopping. Reason: %s", reasons)
 
     # TODO, future: Can be turned into a rule. Problem here and with rule it will trigger each step -> new random value
     # rule should return consistent result for a period of time
