@@ -1482,6 +1482,17 @@ class DetectionMatrixSettings(AgentConfig):
 # Rules
 # ---------------------
 
+@dataclass
+class RuleConfig(AgentConfig):
+    """Subconfig for rules; can have arbitrary keys"""
+        
+    instance : object = MISSING
+    """The instance of the rule, can be accessed by ctx.current_rule.instance"""
+    
+    if TYPE_CHECKING: # Cannot import Rule, omegaconf wants type
+        instance : Rule = MISSING
+        """The instance of the rule, can be accessed by ctx.current_rule.instance"""
+
 
 @dataclass
 class CallFunctionFromConfig:
@@ -1589,7 +1600,6 @@ class CreateRuleFromConfig:
                 delattr(self, key)
 
 RuleCreatingParameters : TypeAlias = Union[CreateRuleFromConfig, CallFunctionFromConfig]
-
 
 
 def _from_config_default_rules():
@@ -1764,17 +1774,6 @@ class LunaticAgentSettings(AgentConfig):
     self : Never = field(default=MISSING, init=False)
     """Special settings of the current rule. Only available from Context within rules ctx.config.current_rule"""
 
-@dataclass
-class RuleConfig(AgentConfig):
-    """Subconfig for rules; can have arbitrary keys"""
-        
-    instance : object = MISSING
-    """The instance of the rule, can be accessed by ctx.current_rule.instance"""
-    
-    if TYPE_CHECKING: # Cannot import Rule, omegaconf wants type
-        instance : Rule = MISSING
-        """The instance of the rule, can be accessed by ctx.current_rule.instance"""
-        
 
 
 @dataclass
@@ -1791,8 +1790,8 @@ class ContextSettings(LunaticAgentSettings):
     self : RuleConfig = field(default=MISSING, init=False)
     """Special settings of the current rule. Only available from Context within rules ctx.config.current_rule"""
 
-
-
+# ---------------------
+# Launch Settings 
 # ---------------------
 
 @dataclass
@@ -1967,7 +1966,9 @@ class LaunchConfig(AgentConfig):
     
     camera : CameraConfig = field(default_factory=CameraConfig)
     """The camera settings"""
-    
+
+
+
 if TYPE_CHECKING:
     from hydra.conf import HydraConf
     from typing_extensions import NotRequired
@@ -2032,15 +2033,6 @@ def extract_annotations(parent, docs):
             del doc
 
 
-if __name__ == "__main__":
-
-    if _class_annotations is None:
-        _class_annotations = {}
-    
-    with open(__file__, "r") as f:
-        tree = ast.parse(f.read())
-    extract_annotations(tree, _class_annotations)
-    print(_class_annotations)
     
 def export_schemas(detailed_rules=False):
     """
@@ -2059,18 +2051,9 @@ def export_schemas(detailed_rules=False):
     del __lc
     LiveInfo.export_options("conf/agent/live_info.yaml", with_comments=True, detailed_rules=detailed_rules)
 
-export_schemas(detailed_rules=False)
-
-if __name__ == "__main__":
-    #basic_agent_settings = OmegaConf.structured(BasicAgentSettings)
-    #behavior_agent_settings = OmegaConf.structured(BehaviorAgentSettings)
-    lunatic_agent_settings = OmegaConf.structured(LunaticAgentSettings, flags={"allow_objects": True})
-    
-    c : LunaticAgentSettings = LunaticAgentSettings().make_config()
-    d : LunaticAgentSettings = LunaticAgentSettings.make_config()
-    try:
-        c.rss.log_level = "asda"
-        raise TypeError("Should only raise if AD_RSS_AVAILABLE is False")
-    except ValueError as e:
-        print("Correct ValueError", e)
-        pass
+# Always want the schemas to be up to date
+# Cannot extract rules because of circular imports; a second call is done in rules/__init__.py
+try:
+    export_schemas(detailed_rules=False)
+except:
+    logging.exception("Error exporting schemas")

@@ -1,3 +1,9 @@
+# NOTE: An issue is with the dependency of antlr4-python3-runtime.
+# The current release of hydra-core and omegaconf requires antlr4-python3-runtime==4.9.3
+# The leaderboard however requires antlr4-python3-runtime==4.11.*
+# While it is possible to get the stable packages to work to us no clear workaround is known
+# that is reliable.
+
 alabaster==0.7.16
 antlr4-python3-runtime==4.11.1
 asttokens==2.4.1
