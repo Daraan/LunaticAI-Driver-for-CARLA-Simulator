@@ -78,6 +78,9 @@ _file_path = __file__
 
 _NOTSET = object()
 
+# disable warnings - needed for rule creation for config
+WARN_LIVE_INFO = True
+
 # ---------------------
 # Helper methods
 # ---------------------
@@ -598,8 +601,8 @@ class AgentConfig:
                     elif key == "live_info":
                         live_info_dict = self.live_info # type: LiveInfo
                         for live_info_key in value.keys():
-                            if not OmegaConf.is_missing(value, live_info_key):
-                                print("WARNING: live_info should only consist of missing values. Setting", live_info_key, "to", value[live_info_key])
+                            if WARN_LIVE_INFO and not OmegaConf.is_missing(value, live_info_key):
+                                logging.warning("WARNING: live_info should only consist of missing values. Setting", live_info_key, "to", value[live_info_key])
                                 setattr(live_info_dict, live_info_key, value[live_info_key])
                     # Delegate False to a subfield
                     elif value in (False, None, "None") and self.__dataclass_fields__[key].metadata.get("can_be_false", False):

@@ -212,7 +212,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         self.world_model.game_framework = weakref.proxy(self)
         self.world_model.tick_server_world()
-        self.agent.verify_settings()
+        self.agent.verify_settings(strictness=-1) # NOTE: Here live info is already available and will throw some errors
         return self.agent, self.world_model, self.global_planner, controller
     
     def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
