@@ -108,8 +108,12 @@ defaults:
   # NOTE: Do not leave a space between the comma and the next entry
   # e.g. 
   #   python my_file.py "experiments=[test_experiment,test_experiment2]"
+  # Add a "# @package _global_" in the first line of the experiment; alternatively use experiments@_global_
   # -------------------------------------------
   - experiments : null
+  # you can also use one of these two in the command line, to target a specific package
+  - experiments@_global_ : null
+  - experiments@_agent_ : null
 
   # NOTE: to use another directory you have two options 
   # 1) add + sign in the command line before the containing folder followed by

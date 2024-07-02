@@ -1,3 +1,4 @@
+# @package _global_
 agent:
   speed:
     target_speed: 50.0

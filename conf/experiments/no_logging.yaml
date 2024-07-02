@@ -1,0 +1,16 @@
+# @package _global_
+
+# Note recording still works
+
+hydra:
+  output_subdir : null
+  job_logging:
+    root:
+      level: ERROR
+  # Note depending on the settings here other errors are still thrown
+  #callbacks:
+  #  save_job_info: null
+
+defaults:
+  #- override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled

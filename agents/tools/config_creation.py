@@ -452,6 +452,8 @@ class AgentConfig:
         - strictness >= 2 will return the config as a structured config,
             forcing the defined types during runtime as well.
         """
+        if "experiments" in config and not hasattr(cls, "experiments"): # For LaunchConfig
+            print("\nWARNING: There is key 'experiments' in the config. Did you forget a '# @package _global_' in the first line? Keys in experiments: %s", config.experiments.keys())
         if strictness < 1:
             if as_dict_config and not isinstance(config, DictConfig):
                 return OmegaConf.create(config, flags={"allow_objects": True})
@@ -462,7 +464,7 @@ class AgentConfig:
             if as_dict_config and not isinstance(config, DictConfig):
                 return OmegaConf.create(config, flags={"allow_objects": True})
             return config
-        # TODO: # Note: This does not assure keys:
+        # TODO: # Note: This does not assure missing keys:
         config = cls.create_from_args(config, as_dictconfig=SCMode.DICT_CONFIG, assure_copy=False)
         if strictness == 2:
             if as_dict_config and not isinstance(config, DictConfig):
@@ -562,8 +564,8 @@ class AgentConfig:
         self._clean_options()
         if self.overwrites is None:
             return
-        if isinstance(self.overwrites, DictConfig):
-            self.overwrites = OmegaConf.to_container(self.overwrites, throw_on_missing=False) # convert to dict
+        #if isinstance(self.overwrites, DictConfig):
+        #    self.overwrites = OmegaConf.to_container(self.overwrites, throw_on_missing=False) # convert to dict
         # Merge the overwrite dict into the correct ones.
         try:
             value : Union[dict, AgentConfig, DictConfig, str, bool, float, int, list, ListConfig, None]
@@ -614,12 +616,12 @@ class AgentConfig:
         except InterpolationKeyError as e:
             logging.exception(e)
             print("Interpolation error in", self.__class__.__name__)
-            breakpoint()
+            # breakpoint()
             raise
         except Exception as e:
             logging.exception(e)
             print("\n\nError updating", self.__class__.__name__, "key:", key, "value:", value, "Error:", e)
-            breakpoint()
+            #breakpoint()
             raise
 
 class SimpleConfig(object):
