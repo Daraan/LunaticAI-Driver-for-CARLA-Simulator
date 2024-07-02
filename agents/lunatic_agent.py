@@ -244,8 +244,9 @@ class LunaticAgent(BehaviorAgent):
         
         # Information Manager
         self.information_manager = InformationManager(self)
-        self.current_states = dict.fromkeys(AgentState, 0)
+        self.current_states = self.information_manager.state_counter # share the dict
         
+        # All rules defined in the configs rules list
         self.add_config_rules()
 
     
@@ -491,13 +492,17 @@ class LunaticAgent(BehaviorAgent):
         if config is None:
             config = self.config
         rule_list : List[RuleCreatingParameters]
-        if "rules" in config:
-            rule_list = config.rules
+        if "rules" in config.keys():
+            try:
+                rule_list = config.rules
+            except omegaconf.MissingMandatoryValue:
+                logger.debug("`rules` key was missing, skipping rule addition.")
+                return
         else:
             rule_list = config
         logger.debug("Adding rules from config:\n%s", OmegaConf.to_yaml(rule_list))
         for rule in rule_list:
-            self.add_rules(rule_from_config(rule))
+            self.add_rules(rule_from_config(rule)) # each call could produce one or more rules
     
     def execute_phase(self, phase : Phase, *, prior_results, update_controls:carla.VehicleControl=None) -> Context:
         """
@@ -562,6 +567,8 @@ class LunaticAgent(BehaviorAgent):
             MissingMandatoryValue: If `config.planner.dt` is not present or not a float
 
         """
+        config = config or self.config
+        
         if self._world_model.world_settings.synchronous_mode:
             # Assure that dt is set
             if isinstance(config, DictConfig):
@@ -577,9 +584,7 @@ class LunaticAgent(BehaviorAgent):
             return
         
         # NOTE: Below is experimental and might fail as the config at this point has already beeen setup
-        
-        config = config or self.config
-        
+    
         from agents.tools import config_creation
         _old = config_creation.WARN_LIVE_INFO
         config_creation.WARN_LIVE_INFO = False

@@ -60,7 +60,11 @@ class InformationManager:
         
         self._vehicle = agent._vehicle # maybe use a property
         
-        self.state_counter = {s: 0 for s in AgentState}
+        # Share the dict
+        if getattr(agent, "current_states", None) is not None:
+            self.state_counter = agent.current_states
+        else:
+            self.state_counter = agent.current_states = dict.fromkeys(AgentState, 0)
         self._states_checked = {s: False for s in AgentState}
         if update_information:
             self.tick()
