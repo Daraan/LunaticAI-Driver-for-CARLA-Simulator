@@ -149,12 +149,11 @@ obstacles:
   # If the the agent will treat a yellow light like a red light and stop.
   stop_at_yellow_tlighs: false
 
-  # "
-  # Base distance to traffic lights trigger location to check if they affect the vehicle
-  #  
-  # Usage:
-  #     max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
-  base_tlight_threshold: 1.0
+  # Base distance to traffic lights to check if they affect the vehicle
+  #     
+  # Usage: max_vehicle_distance = base_vehicle_threshold + detection_speed_ratio * vehicle_speed
+  # Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
+  base_tlight_threshold: 2.0
 
   # Base distance to vehicles to check if they affect the vehicle
   #         
