@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from classes.worldmodel import GameFramework
     from agents.tools.config_creation import RuleCreatingParameters
 
-def create_default_rules(gameframework: Optional["GameFramework"]=None, random_lane_change: bool = True) -> Iterable[Rule]:
+def create_default_rules(gameframework: Optional["GameFramework"]=None, random_lane_change: bool = True) -> "Iterable[Rule]":
 
     avoid_tailgator_rule = AvoidTailgatorRule()
     simple_overtake_rule = SimpleOvertakeRule()
