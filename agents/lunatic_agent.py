@@ -733,7 +733,7 @@ class LunaticAgent(BehaviorAgent):
         # Detect hazards
         # phases are executed in detect_hazard
         # > Phase.DETECT_TRAFFIC_LIGHTS | Phase.BEGIN # phases executed inside
-        pedestrians_or_traffic_light = self.detect_hazard()
+        pedestrians_and_tlight_hazard = self.detect_hazard()
         # > Phase.DETECT_PEDESTRIANS | Phase.END
 
         # Pedestrian avoidance behaviors
@@ -746,7 +746,7 @@ class LunaticAgent(BehaviorAgent):
             # An EmergencyStopException is raised
             # ----------------------------
 
-            self.react_to_hazard(pedestrians_or_traffic_light) # Optional[NoReturn]
+            self.react_to_hazard(pedestrians_and_tlight_hazard) # Optional[NoReturn]
     
         # -----------------------------
         # Phase Detect Static Obstacles
@@ -789,7 +789,6 @@ class LunaticAgent(BehaviorAgent):
         
         #TODO: maybe new phase instead of END or remove CAR_DETECTED and handle as rules (maybe better)
         self.execute_phase(Phase.DETECT_CARS | Phase.END, prior_results=None) # NOTE: avoiding tailgate here
-        
         
         # Intersection behavior
         # NOTE: is_taking_turn <- incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
@@ -839,7 +838,6 @@ class LunaticAgent(BehaviorAgent):
             the agent uses in [`apply_control`](#apply_control) to apply the final controls.**
             
         See Also:
-
         """
         if self.ctx.control is not None:
             logger.error("Control was set before calling _calculate_control. This might lead to unexpected behavior.")
@@ -864,7 +862,6 @@ class LunaticAgent(BehaviorAgent):
        
         self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
     
-    @phase_callback(on_exit=Phase.EXECUTION | Phase.END)
     def apply_control(self, control: Optional[carla.VehicleControl]=None):
         """
         Applies the control to the agent's actor.
@@ -877,12 +874,14 @@ class LunaticAgent(BehaviorAgent):
         if control is None:
             control = self.get_control()
         if self.current_phase != Phase.EXECUTION | Phase.BEGIN:
-            self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control)
+            self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control, control=control)
         else:
             logger.debug("Agent is already in execution phase.")
         # Set automatic control-related vehicle lights
-        self.update_lights(control)
-        self._vehicle.apply_control(control)
+        final_control = self.get_control()
+        self.update_lights(final_control)
+        self._vehicle.apply_control(final_control)
+        self.execute_phase(Phase.EXECUTION | Phase.END, prior_results=final_control)
     
     # ------------------ Hazard Detection & Reaction ------------------ #
 
