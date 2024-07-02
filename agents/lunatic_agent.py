@@ -743,6 +743,19 @@ class LunaticAgent(BehaviorAgent):
 
             self.react_to_hazard(pedestrians_or_traffic_light) # Optional[NoReturn]
     
+        # -----------------------------
+        # Phase Detect Static Obstacles
+        # -----------------------------
+        
+        self.execute_phase(Phase.DETECT_STATIC_OBSTACLES | Phase.BEGIN, prior_results=None)
+        static_obstacle_detection_result = self.detect_obstacles_in_path(self.static_obstacles_nearby)
+        if static_obstacle_detection_result.obstacle_was_found:
+            # Must plan around it
+            self.add_hazard(Hazard.STATIC_OBSTACLE)
+        # TODO: add a basic rule for circumventing static obstacles
+        self.execute_phase(Phase.DETECT_STATIC_OBSTACLES | Phase.END, prior_results=static_obstacle_detection_result)
+        # Not throwing an error here yet
+        
         # ----------------------------
         # Phase 3 - Detection of Cars
         # ----------------------------
@@ -769,14 +782,6 @@ class LunaticAgent(BehaviorAgent):
         #TODO: maybe new phase instead of END or remove CAR_DETECTED and handle as rules (maybe better)
         self.execute_phase(Phase.DETECT_CARS | Phase.END, prior_results=None) # NOTE: avoiding tailgate here
         
-        # -----------------------------
-        # Phase Detect Static Obstacles
-        # -----------------------------
-        
-        static_obstacle_detection_result = self.detect_obstacles_in_path(self.static_obstacles_nearby)
-        if static_obstacle_detection_result.obstacle_was_found:
-            # Must plan around it
-            pass
         
         # Intersection behavior
         # NOTE: is_taking_turn <- incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)

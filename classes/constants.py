@@ -36,6 +36,7 @@ class StreetOccupation(IntEnum):
 class Phase(Flag):
     """
     Order of Looped through by the agent is:
+
     <Phases.NONE: 0>,
     <Phases.UPDATE_INFORMATION|BEGIN: 5>,
     <Phases.UPDATE_INFORMATION|END: 6>,
@@ -51,7 +52,12 @@ class Phase(Flag):
     <Phases.POST_DETECTION_PHASE|END: 130>,
     <Phases.EXECUTION|BEGIN: 1025>,
     <Phases.EXECUTION|END: 1026>
+    
+    Todo: 
+        not up to date list
+    
     """
+    
 
     # NOTE: # CRITICAL : Alias creation should be done after all the phases are created.
     # see https://github.com/python/cpython/issues/91456
@@ -249,6 +255,12 @@ class Hazard(Flag):
     TRAFFIC_LIGHT = auto()
     PEDESTRIAN = auto()
     CAR = auto()
+    STATIC_OBSTACLE = auto()
+    """
+    Note:
+        These refer to actors and not the environment barriers.
+    """
+    
     OTHER = auto()
 
     JUNCTION = auto() # maybe
