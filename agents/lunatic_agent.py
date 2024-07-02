@@ -755,8 +755,11 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.DETECT_STATIC_OBSTACLES | Phase.BEGIN, prior_results=None)
         static_obstacle_detection_result = self.detect_obstacles_in_path(self.static_obstacles_nearby)
         if static_obstacle_detection_result.obstacle_was_found:
+            self.current_states[AgentState.BLOCKED_BY_STATIC] += 1 
             # Must plan around it
             self.add_hazard(Hazard.STATIC_OBSTACLE)
+        else:
+            self.current_states[AgentState.BLOCKED_BY_STATIC] = 0
         # TODO: add a basic rule for circumventing static obstacles
         self.execute_phase(Phase.DETECT_STATIC_OBSTACLES | Phase.END, prior_results=static_obstacle_detection_result)
         # Not throwing an error here yet

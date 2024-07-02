@@ -8,6 +8,7 @@ from agents.tools.hints import TrafficLightDetectionResult
 from agents.tools.misc import (is_within_distance,
                                get_trafficlight_trigger_location)
 
+from classes.constants import AgentState
 from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
@@ -107,6 +108,11 @@ def traffic_light_manager(self : "LunaticAgent", traffic_lights : Optional[List[
     # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
     affected_traffic_light : TrafficLightDetectionResult = affected_by_traffic_light(self, traffic_lights, 
                                     max_distance=max_tlight_distance)
+    
+    if affected_traffic_light.traffic_light_was_found:
+        self.current_states[AgentState.BLOCKED_RED_LIGHT] += 1
+    else:
+        self.current_states[AgentState.BLOCKED_RED_LIGHT] = 0
 
     # TODO: Implement other behaviors if needed, like taking a wrong turn or additional actions
 
