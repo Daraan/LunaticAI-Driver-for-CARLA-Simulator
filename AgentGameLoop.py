@@ -43,7 +43,7 @@ from agents.rules import create_default_rules
 # ==============================================================================
 # DEBUG
 # ==============================================================================
-PRINT_RULES = True
+PRINT_RULES = False
 
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
@@ -106,7 +106,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
             default_rules = create_default_rules()
             agent.add_rules(default_rules)
                 
-        if PRINT_RULES: # Note: this can be a bit messy as some attributes have a long repr
+        if PRINT_RULES: # NOTE: this can be a bit messy as some attributes have a long repr
             print("Lunatic Agent Rules")
             pprint(agent.rules)
         
@@ -224,7 +224,6 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     finally:
         """Cleanup the simulation by removing the used actors"""
         print("Quitting. - Destroying actors and stopping world.")
-        pygame.quit()
         if agent is not None:
             agent.destroy()
         if world_model is not None:
@@ -238,6 +237,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         world_model = None
         game_framework = None
 
+        pygame.quit()
 
 # ==============================================================================
 # -- main() --------------------------------------------------------------
