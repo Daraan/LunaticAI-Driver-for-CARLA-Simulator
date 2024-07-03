@@ -1,11 +1,11 @@
 import yaml
 
 import launch_tools
-from classes.rule_interpreter import RuleInterpreter
+from classes.experimental.rule_interpreter import RuleInterpreter
 from launch_tools.carla_service import initialize_carla
-from classes.driver import Driver
-from classes.traffic_manager import TrafficManager
-from classes.vehicle import Vehicle
+from classes.experimental.driver import Driver
+from classes.experimental.traffic_manager import TrafficManager
+from classes.experimental.vehicle import Vehicle
 from launch_tools import CarlaDataProvider
 
 

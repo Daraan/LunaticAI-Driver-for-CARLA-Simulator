@@ -8,7 +8,7 @@ from data_gathering.car_detection_matrix.informationUtils import get_all_road_la
 from data_gathering.car_detection_matrix.matrix_wrap import get_car_coords
 from data_gathering.car_detection_matrix.run_matrix import AsyncDetectionMatrix, DetectionMatrix
 from classes.camera_manager import camera_function
-from classes.vehicle_spawner import VehicleSpawner
+from classes.experimental.vehicle_spawner import VehicleSpawner
 
 spawner = None
 vehicles = []
