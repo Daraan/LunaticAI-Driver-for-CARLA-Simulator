@@ -43,7 +43,11 @@ author = ""
 # ones.
 extensions = ["myst_parser",
               'sphinx.ext.autodoc',
-              'sphinx.ext.napoleon'
+              'sphinx.ext.napoleon',
+              
+              # https://sphinxemojicodes.readthedocs.io/en/stable/
+              # https://sphinxemojicodes.readthedocs.io/#supported-codes
+              'sphinxemoji.sphinxemoji',
               ]
 
 # Autodoc settings
