@@ -17,7 +17,7 @@ agent.setup(game_framework.launch_config) # Do not forget this step!
 try:
     while game_framework.continue_loop:
         with game_framework(agent):
-            agent.run_step(input_data=None, timestamp=None)
+            agent.run_step(None, None) # NOTE: do not use a keyword arguments!
             agent.apply_control()
 except GameFramework.exceptions.UserInterruption:
     print("User interrupted. Exiting...")
