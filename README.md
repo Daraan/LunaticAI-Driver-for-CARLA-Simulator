@@ -8,24 +8,28 @@ The full documentation can be found online at [ReadTheDocs](https://lunaticai-dr
 
 This repository offers a modularized rule-based agent system for the
 [CARLA simulator](https://carla.org/)[<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/carla-simulator/carla)
-designed to be easily extendable and configurable.
+designed to be easily extendable and configurable. Special submodules like the rule system, the configuration system and the information gathering can directly or with slight modifications be used in other projects as stand alone.
 
-If you are familiar with the CARLA simulator, our agent builds up on the standard agents provided by the CARLA team but remodels and extends them in many ways. The key changes are:
+If you are familiar with the CARLA simulator, our agent builds up on the standard agents provided by the CARLA developers, but remodels and extends them in many ways. The key changes are:
 
+- Full, dynamic and transparent Configuration, backed by [Hydra<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://hydra.cc/):
+  - Adjust the agent's behavior at runtime.
+  - Automatically logged and repeatable experiments.
+  - Hierarchically structured configuration allow for coarse and fine-grained changes to configure experiments
+  - Backed by schemas that can be optionally enforced for validation and statically provide type-hints and autocompletion.
 - Rule System: Customizing the agent's behavior by defining rules and actions.
-- Full, dynamic and transparent Configuration: Allowing to adjust the agent's behavior at runtime building up from a YAML configuration.
--
+- Efficient reuse of existing information
 
-## Work in Progress
-
-### Most important Branches
+## Most important Branches
 
 | | | |
 | -- | -- | -- |
-|`main` | Supporting CARLA 0.9.14+, Python 3.7+ with/without RSS build | **Trying to keep it stable**|
+|`main` | Supporting CARLA 0.9.14+, Python 3.7+ with/without RSS build | **Trying to keep it stable** |
 |`dev/main` | Supporting CARLA 0.9.14+, Python 3.7+ with RSS build | potentially unstable |
 |`dev/daniel`| Supporting CARLA 0.9.15+, Python 3.10+ with RSS build | potentially unstable |
 |`WIP/dev_daniel` | Most recent development branch | likely unstable |
+
+Note: The [Leaderboard 2.0](https://github.com/carla-simulator/leaderboard) supporting `LunaticChallenger`, only supports CARLA 0.9.15 and Python 3.10+.
 
 ## Installation
 

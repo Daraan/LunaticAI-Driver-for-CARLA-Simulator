@@ -274,10 +274,12 @@ def main(args: LaunchConfig):
     args = LaunchConfig.check_config(args, args.get("strict_config", 3), as_dict_config=True)
     
     try:
-        game_loop(args)
-        
+        # Optional: If you return a result object it will be logged by Hydra's on_job_end callback
+        result = game_loop(args)
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
+    else:
+        return result
 
 if __name__ == '__main__':
     main()
