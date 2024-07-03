@@ -41,8 +41,15 @@ from agents.lunatic_agent import LunaticAgent
 from agents.rules import create_default_rules
 
 # ==============================================================================
-# DEBUG
+# Globals
 # ==============================================================================
+
+AMOUNT_ACTORS = 20
+"""How many actors to spawn"""
+
+EGO_SPAWN_IDX = 0
+"""Changes the start position of the ego vehicle"""
+
 PRINT_RULES = False
 
 # ==============================================================================
@@ -79,16 +86,14 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
         
         # Spawn Others
-        how_many = 4
-        ego_spawn_idx = -12
         CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3", 
-                                                                      how_many, 
-                                                                      spawn_points=[sp for i, sp in enumerate(spawn_points[:how_many+1]) if i != ego_spawn_idx], 
+                                                                      AMOUNT_ACTORS, 
+                                                                      spawn_points=[sp for i, sp in enumerate(spawn_points[:AMOUNT_ACTORS+1]) if i != EGO_SPAWN_IDX], 
                                                                       autopilot=True, 
                                                                       tick=False)
         
         # Spawn Ego
-        start : carla.libcarla.Transform = spawn_points[ego_spawn_idx]
+        start : carla.libcarla.Transform = spawn_points[EGO_SPAWN_IDX]
         ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)
         
         logger.info("Creating agent and WorldModel ...")

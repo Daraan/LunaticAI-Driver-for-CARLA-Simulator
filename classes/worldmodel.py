@@ -169,7 +169,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         
         self.debug = self.world.debug
         self.continue_loop = True
-        self.traffic_manager : Optional[carla.TrafficManager] = None
+        self.traffic_manager : Optional[carla.TrafficManager] = self.init_traffic_manager()
         
         # Import here to avoid circular imports
         from classes.rule import BlockingRule, Rule
@@ -197,12 +197,15 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             carla_service.initialize_carla(args.map, args.host, args.port, timeout=timeout, worker_threads=worker_threads, map_layers=map_layers, sync=args.sync, fps=args.fps)
         return CarlaDataProvider.get_world().get_settings()
     
-    def init_traffic_manager(self, port=8000) -> carla.TrafficManager:
+    def init_traffic_manager(self, port=None) -> carla.TrafficManager:
+        if port is None:
+            port = CarlaDataProvider.get_traffic_manager_port()
         traffic_manager = self.client.get_trafficmanager(port)
-        if self._args.sync:
-            traffic_manager.set_synchronous_mode(True)
-        traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
-        traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a LaunchConfig config variable
+        if self._args.handle_ticks:
+            if self._args.sync:
+                traffic_manager.set_synchronous_mode(True)
+            traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
+            traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a LaunchConfig config variable
         self.traffic_manager = traffic_manager
         return traffic_manager
     
