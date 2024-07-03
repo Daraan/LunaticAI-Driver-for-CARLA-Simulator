@@ -874,7 +874,7 @@ class LunaticAgent(BehaviorAgent):
         if control is None:
             control = self.get_control()
         if self.current_phase != Phase.EXECUTION | Phase.BEGIN:
-            self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control, control=control)
+            self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control, update_controls=control)
         else:
             logger.debug("Agent is already in execution phase.")
         # Set automatic control-related vehicle lights

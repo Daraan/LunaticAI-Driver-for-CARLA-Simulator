@@ -61,7 +61,7 @@ class Context(CarlaDataProvider):
     action_results : Dict["Phase", Any] 
     
     control : Optional["carla.VehicleControl"]
-    """Current control the agent should use. Set by execute_phase(control=...). Safeguarded to be not set to None."""
+    """Current control the agent should use. Set by execute_phase(update_controls=...). Safeguarded to be not set to None."""
     _control : Optional["carla.VehicleControl"]
     """Current control the agent should use."""
     
