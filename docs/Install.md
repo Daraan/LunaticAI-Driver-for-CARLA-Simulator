@@ -113,6 +113,10 @@ For all other cases, you can apply the patch manually at the error location; exc
 + for elem in list(scenario):
 ```
 
+### RuntimeError: Spawn failed because of collision at spawn position
+
+An actor is tried to spawned at a blocked position. Restart your simulation and try again.
+
 ### 'GLIBCXX_3.4.30' not found
 
 In case you run into this error, be sure to first import carla and pygame afterwards.

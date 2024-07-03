@@ -5,7 +5,6 @@ Code and API
    :maxdepth: 3
 
    AgentGameLoop
-   GameLoop
    agents
    classes
    data_gathering
