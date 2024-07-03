@@ -1,3 +1,5 @@
+import __allow_imports_from_root # pylint: disable=unused-import
+
 import threading
 import time
 import random
@@ -18,7 +20,7 @@ def main():
     global spawner, vehicles
 
     # Initialise the class for vehicle spawning
-    spawner = VehicleSpawner('conf/launch_config.yaml', 'conf/traffic_manager/vehicle_spawn.yaml')
+    spawner = VehicleSpawner('conf/launch_config.yaml', 'conf/experimental_rule_interpreter_examples/traffic_manager/vehicle_spawn.yaml')
     client, world, world_map, = spawner.initialize_carla_service()
     ego_bp, car_bp, driver1, spawn_points, rule_interpreter = spawner.prepare_vehicles(world)
 

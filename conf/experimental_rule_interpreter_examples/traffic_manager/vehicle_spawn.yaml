@@ -1,0 +1,8 @@
+driver:
+  config: "conf/experimental_rule_interpreter_examples/traffic_manager/default_driver.json"
+
+spawn_points:
+  file: "examples/highway_example_car_positions.csv"
+
+rule_interpreter:
+  config: "conf/experimental_rule_interpreter_examples/rules/yaml/default_rules.yaml"

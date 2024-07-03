@@ -1,8 +1,0 @@
-driver:
-  config: "conf/traffic_manager/default_driver.json"
-
-spawn_points:
-  file: "examples/highway_example_car_positions.csv"
-
-rule_interpreter:
-  config: "conf/rules/rule_interpreter_examples/yaml/default_rules.yaml"
