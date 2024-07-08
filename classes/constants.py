@@ -1,11 +1,19 @@
 from enum import Enum, Flag, IntEnum, auto
 from functools import lru_cache, reduce
-from typing import NewType, Union, TYPE_CHECKING
+from typing import Literal, NewType, Union, TYPE_CHECKING
 
 import carla
 
+
+
+try:
+    from typing import TypedDict
+except ImportError:
+    from typing_extensions import TypedDict
+
 if TYPE_CHECKING:
     from agents.navigation.local_planner import RoadOption
+    from agents.tools.hints import TrafficLightDetectionResult
     
 NO_RESULT_TYPE = NewType("NO_RESULT_TYPE", object)
 """Type helper for objects that indicate no result."""
@@ -35,7 +43,7 @@ class StreetOccupation(IntEnum):
 
 class Phase(Flag):
     """
-    Order of Looped through by the agent is:
+    A rough order of the looped through states of the agent is:
 
     <Phases.NONE: 0>,
     <Phases.UPDATE_INFORMATION|BEGIN: 5>,
@@ -53,12 +61,15 @@ class Phase(Flag):
     <Phases.EXECUTION|BEGIN: 1025>,
     <Phases.EXECUTION|END: 1026>
     
+    A complete list of all the main phases can be obtained by calling
+    - Phase.get_main_phases()
+    - Phase.get_phases()
+    
     Todo: 
         not up to date list
     
     """
     
-
     # NOTE: # CRITICAL : Alias creation should be done after all the phases are created.
     # see https://github.com/python/cpython/issues/91456
     # Before python version (3.12+?) auto() DOES NOT WORK AS EXPECTED when using ALIASES
@@ -105,6 +116,8 @@ class Phase(Flag):
     """Indicates that the agent is turning at a junction."""
 
     HAZARD = auto()
+    """Not implemented. Refer to EMERGENCY | BEGIN"""
+    
     EMERGENCY = auto()
     COLLISION = auto()
 
@@ -118,8 +131,9 @@ class Phase(Flag):
     """
     Can be used to indicate that the phase change is currently handled by the user.
     
-    Note:
-        agent.execute_phase checks for exact match
+    Warning:
+        agent.execute_phase checks for exact match, i.e. a phase UPDATE_INFORMATION | BEGIN | END
+        will not be executed in the normal loop.
     
     See Also:
         Executes in BlockedRule.loop_agent()
@@ -162,6 +176,12 @@ class Phase(Flag):
     """
 
     def next_phase(self):
+        """
+        Note:
+            This function is more for debugging and testing purposes,
+            because of different control flows in the agent, the next phase
+            might not be accurate.
+        """
         # Hardcoded transitions
         if self in (Phase.NONE, Phase.EXECUTION|Phase.END): # Begin loop
             return Phase.BEGIN | Phase.UPDATE_INFORMATION
@@ -252,7 +272,9 @@ class Phase(Flag):
 
 class Hazard(Flag):
     # Type
-    TRAFFIC_LIGHT = auto()
+    TRAFFIC_LIGHT_RED = auto()
+    TRAFFIC_LIGHT_YELLOW = auto()
+    
     PEDESTRIAN = auto()
     CAR = auto()
     STATIC_OBSTACLE = auto()
@@ -264,6 +286,11 @@ class Hazard(Flag):
     OTHER = auto()
 
     JUNCTION = auto() # maybe
+    
+    OBSTACLE = PEDESTRIAN | CAR | STATIC_OBSTACLE
+    TRAFFIC_LIGHT = TRAFFIC_LIGHT_RED | TRAFFIC_LIGHT_YELLOW
+
+class HazardSeverity(Flag):
 
     # Severity
     WARNING = auto() # Level 1
@@ -272,11 +299,10 @@ class Hazard(Flag):
 
     COLLISION = auto()
 
-    # Aliases
+    # Aliases - Always register at the end!
     CRITICAL = WARNING | CRITICAL_ONLY # Level 2
     EMERGENCY = CRITICAL | EMERGENCY_ONLY # Level 3
 
-    OBSTACLE = PEDESTRIAN | CAR
 
 
 class RulePriority(IntEnum):
@@ -331,3 +357,4 @@ class AgentState(Flag):
     
     # Maybe more states like CAR_IN_FRONT <- data matrix
         
+

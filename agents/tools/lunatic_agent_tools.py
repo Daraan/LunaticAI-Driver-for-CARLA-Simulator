@@ -1,21 +1,25 @@
 from inspect import isclass
 from operator import attrgetter
+from omegaconf import DictConfig
 from shapely.geometry import Polygon
 from functools import partial, wraps
 
 import carla
 from agents.navigation.local_planner import RoadOption
+from agents.tools.config_creation import AgentConfig, LunaticAgentSettings
 from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
                                compute_distance)
+from agents.tools.logging import logger
 
 from classes.constants import Phase
 from classes.exceptions import EmergencyStopException, LunaticAgentException, SkipInnerLoopException
 from launch_tools import CarlaDataProvider, Literal
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, cast as assure_type
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
+    from classes.worldmodel import WorldModel
     from classes.rule import Context
 
 
@@ -54,7 +58,7 @@ def must_clear_hazard(func):
     return wrapper
 
 def phase_callback(*, on_enter: Phase = None, 
-                      on_exit: Phase = None, 
+                      on_exit: Union[Phase, Callable] = None, 
                       on_exit_exceptions: Union[Tuple["type[BaseException]"], bool, None] = (),
                       prior_result: Optional["Callable | str"] = None):
         """
@@ -68,7 +72,9 @@ def phase_callback(*, on_enter: Phase = None,
                 The phase to execute after the decorated function.
                 Defaults to None.
             on_exit_exceptions (Tuple[BaseException] | bool), optional):
-                If True, the on_exit phase will be executed if any [AgentException](#classes.exceptions.AgentException) is raised.
+                If True, the on_exit phase will still be executed if any [LunaticAgentException](#classes.exceptions.LunaticAgentException) is raised.
+                If a tuple of exceptions is provided, the on_exit phase will only be executed if one of the exceptions is raised.
+                The exception will be re-raised after the on_exit phase is executed.
                 Defaults to empty tuple().
         """
         # Validate exception -> Tuple
@@ -99,7 +105,10 @@ def phase_callback(*, on_enter: Phase = None,
                         result = func(self, *args, **kwargs)
                     except on_exit_exceptions as e:
                         if on_exit:
-                            self.execute_phase(on_exit, prior_results=e)
+                            if isinstance(on_exit, Phase):
+                                self.execute_phase(on_exit, prior_results=e)
+                            else:
+                                on_exit(self)
                         raise
                 else:
                     result = func(self, *args, **kwargs)
@@ -137,7 +146,7 @@ def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal[
                self.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
 
 
-def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Actor]) -> ObstacleDetectionResult:
+def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: Optional[Union[Literal['all'], List[carla.Actor]]]) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     and managing possible tailgating chances.
@@ -163,7 +172,7 @@ def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: List[carla.Ac
         it can be added / imported directly into the agent class' body.
     """
 
-    if obstacle_list in (None, "all"):
+    if obstacle_list in (None, 'all'):
         obstacle_list = self.all_obstacles_nearby
 
     # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
@@ -398,3 +407,39 @@ def generate_lane_change_path(waypoint : carla.Waypoint, direction:"Literal['lef
     return plan
 
     
+def create_agent_config(self: "LunaticAgent", behavior: Union[AgentConfig, DictConfig, str, None]=None, world_model: Optional["WorldModel"]=None, overwrite_options: Optional[Dict[str, Any]]=None):
+    """
+    Method to create the agent config from different input types.
+    """
+    if behavior is None and world_model and world_model._config is not None:
+        logger.debug("Using world model config")
+        opt_dict = world_model._config
+    elif behavior is None:
+        raise ValueError("Must pass a valid config as behavior or a world model with a set config.")
+    elif isinstance(behavior, str): # Assuming Path
+        logger.debug("Creating config from yaml file")
+        opt_dict : "LunaticAgentSettings" = self.BASE_SETTINGS.from_yaml(behavior)
+    elif isinstance(behavior, AgentConfig) or isclass(behavior) and issubclass(behavior, AgentConfig):
+        logger.info("Config is a dataclass / AgentConfig")
+        _cfg : DictConfig = behavior.to_dict_config()  # base options from templates
+        _cfg.merge_with(overwrite_options) # Note uses DictConfig.update
+        opt_dict = assure_type(behavior.__class__, _cfg)
+    elif isinstance(behavior, DictConfig):
+        logger.info("Config is a DictConfig")
+        behavior.merge_with(overwrite_options)
+        opt_dict : self.BASE_SETTINGS = behavior
+    elif isclass(behavior):
+        logger.info("Config is a class using, instance of it")
+        opt_dict  = assure_type(behavior, behavior(**overwrite_options))
+    elif not overwrite_options:
+        logger.warning("Warning: Settings are not a supported Config class")
+        opt_dict = behavior  # assume the user passed something appropriate
+    else:
+        logger.warning("Warning: Settings are not a supported Config class. Trying to apply overwrite options.")
+        behavior.update(overwrite_options) 
+        opt_dict = behavior  # assume the user passed something appropriate
+    if isinstance(opt_dict, DictConfig):
+        opt_dict._set_flag("allow_objects", True)
+        opt_dict.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
+    cfg = assure_type(self.BASE_SETTINGS, opt_dict)
+    return cfg

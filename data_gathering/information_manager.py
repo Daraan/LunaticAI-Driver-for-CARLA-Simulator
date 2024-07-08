@@ -45,6 +45,8 @@ class InformationManager:
     obstacles : ClassVar["list[carla.Actor]"]
     """Union of vehicles, walkers and static_obstacles"""
     
+    lights_map : ClassVar["Dict[int, carla.Waypoint]"] = {}
+    
     frame: ClassVar["int | None"] = None
     """
     Last frame the InformationManager was updated.
@@ -124,6 +126,7 @@ class InformationManager:
     # --- Traffic Light ---
     
     def _get_next_traffic_light(self):
+        # TODO: Do not use the CDP but use the planned route instead.
         self.relevant_traffic_light = CarlaDataProvider.get_next_traffic_light(self._vehicle)
         if self.relevant_traffic_light:
             self._relevant_traffic_light_location = self.relevant_traffic_light.get_location()
@@ -132,8 +135,6 @@ class InformationManager:
             # Is at an intersection
             self._relevant_traffic_light_location = None
             self.relevant_traffic_light_distance = None
-        # TODO: Assure that the traffic light is not behind the actor, but in front of it.
-        # TODO: Do not use the CDP but use the planned route instead.
     
     
     def detect_next_traffic_light(self):
@@ -179,7 +180,7 @@ class InformationManager:
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
         self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not clean
         # Only exact waypoint. TODO: update in agent
-        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc) # NOTE: Might throw error if past run was not cleaned!
+        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet.
         
         # Traffic Light
         # NOTE: Must be AFTER the location update
@@ -225,9 +226,15 @@ class InformationManager:
         self.obstacles_nearby = self.walkers_nearby + self.static_obstacles_nearby + self.vehicles_nearby
         self.obstacles_nearby = sorted(self.obstacles_nearby, key=dist)
         
-        # TODO: Extend distances with carla lights
+        # Nearby Traffic lights
+        # By default this checks for 5 seconds range + 10 m
+        self.traffic_lights_nearby = [tl for tl, trans in InformationManager.get_traffic_lights().items() if dist(tl) < self._agent.config.obstacles.nearby_tlights_max_distance]
+        self.traffic_lights_nearby = sorted(self.traffic_lights_nearby, key=dist)
         
-        return self.Information(
+        # ----- Return Summary -----
+        
+        # TODO: Extend distances with carla lights
+        self.gathered_information = InformationManager.Information(
             current_waypoint= current_waypoint,
             current_speed= self.live_info.current_speed,
             current_states= self.state_counter,
@@ -244,9 +251,13 @@ class InformationManager:
             vehicles_nearby= self.vehicles_nearby,
             static_obstacles_nearby= self.static_obstacles_nearby,
             obstacles_nearby= self.obstacles_nearby,
+            traffic_lights_nearby= self.traffic_lights_nearby,
             
-            distances = self.obstacles,
+            distances = self.distances,
         )
+        return self.gathered_information
+
+    # Helper subclass
 
     class Information(NamedTuple):
         current_waypoint: carla.Waypoint
@@ -268,6 +279,8 @@ class InformationManager:
         static_obstacles_nearby: List[carla.Actor]
         obstacles_nearby: List[carla.Actor]
         
+        traffic_lights_nearby : List[carla.TrafficLight]
+        
         distances: Dict[carla.Actor, float]
         """Distances to all actors in `obstacles`"""
 
@@ -278,6 +291,22 @@ class InformationManager:
     fnmatch for obstacles that the agent will consider in its path.
     https://carla.readthedocs.io/en/latest/bp_library/#static 
     """
+    
+    @staticmethod
+    def get_traffic_lights():
+        return CarlaDataProvider._traffic_light_map
+    
+    @staticmethod
+    def get_trafficlight_trigger_waypoint(traffic_light : "carla.TrafficLight") -> carla.Waypoint:
+        """
+        Get the location where the traffic light is triggered.
+        """
+        if traffic_light.id in InformationManager.lights_map:
+            return InformationManager.lights_map[traffic_light.id]
+        trigger_location = CarlaDataProvider.get_trafficlight_trigger_location(traffic_light)
+        trigger_wp = CarlaDataProvider.get_map().get_waypoint(trigger_location)
+        InformationManager.lights_map[traffic_light.id] = trigger_wp
+        return trigger_wp
 
     @staticmethod
     def global_tick(frame=None):
@@ -298,6 +327,7 @@ class InformationManager:
         InformationManager.walkers = []
         InformationManager.static_obstacles = []
         InformationManager._other_actors: List[carla.Actor] = []
+        # For traffic lights use: InformationManager.get_traffic_lights(), which is map-constant
         
         # Use copy and check for None because of updates could be done by threads in parallel
         for actor_id in CarlaDataProvider._carla_actor_pool.copy():
@@ -331,3 +361,13 @@ class InformationManager:
     def get_walkers():
         return InformationManager.walkers
 
+
+    @staticmethod
+    def cleanup():
+        InformationManager.vehicles.clear()
+        InformationManager.walkers.clear()
+        InformationManager.static_obstacles.clear()
+        InformationManager.obstacles.clear()
+        InformationManager._other_actors.clear()
+        InformationManager.frame = None
+        InformationManager._tick = 0

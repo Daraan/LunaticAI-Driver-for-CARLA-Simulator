@@ -3,6 +3,7 @@ from __future__ import annotations # todo: can this be removed?
 from collections.abc import Mapping
 from dataclasses import is_dataclass
 from functools import partial, wraps
+from typing_extensions import Literal
 
 from carla.libcarla import VehicleControl
 import omegaconf
@@ -27,7 +28,7 @@ from weakref import WeakSet, proxy
 
 from omegaconf import DictConfig, OmegaConf
 
-from classes.constants import RULE_NO_RESULT, Hazard, Phase, NO_RESULT_TYPE as _NO_RESULT_TYPE, RulePriority
+from classes.constants import RULE_NO_RESULT, Hazard, HazardSeverity, Phase, NO_RESULT_TYPE as _NO_RESULT_TYPE, RulePriority
 from classes.evaluation_function import ConditionFunction, TruthyConditionFunction
 from agents.tools.logging import logger
 
@@ -68,6 +69,12 @@ class Context(CarlaDataProvider):
     prior_result : Optional[Any] # TODO: maybe rename
     """Result of the current phase."""
     
+    phase_results : Dict["Phase", Any]
+    """
+    Stores the results of the phases the agent has been in. 
+    By default the keys are set to `Context.PHASE_NOT_EXECUTED`.
+    """
+    
     last_context : Optional["Context"]
     """The context object of the last tick. Used to access the last phase's results."""
     
@@ -89,19 +96,34 @@ class Context(CarlaDataProvider):
     """
     
     detected_hazards_info : Dict[Hazard, Any]
-    """Information about the detected hazards."""
+    """
+    Information about the detected hazards.
+    
+    Note:
+        Not Implemented yet.
+    """
+
+    PHASE_NOT_EXECUTED = object()
+    """Value in phase_results to indicate that no agent.execute_phase() was called for the phase"""
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
         self.agent = agent
         self._control = kwargs.pop("control", None)
         self._init_arguments = kwargs
+        self.phase_results = dict.fromkeys(Phase.get_phases(), Context.PHASE_NOT_EXECUTED)
+        
+        self.config = agent.config.copy()
+        self.config._content["live_info"] = agent.live_info # not a copy!
+        
+        self.detected_hazards = set()
+        self.detected_hazards_info = {h: None for h in Hazard}
+        self.__dict__.update(kwargs)
+        
+        # Less used attributes
         self.evaluation_results = {}
         self.action_results = {}
         self.last_phase_evaluation_results = {}
         self.last_phase_action_results = {}
-        self.detected_hazards = set()
-        self.detected_hazards_info = {h: None for h in Hazard}
-        self.__dict__.update(kwargs)
 
     @property
     def current_phase(self) -> "Phase":
@@ -164,6 +186,39 @@ class Context(CarlaDataProvider):
         if not isinstance(hazards, set):
             raise TypeError("detected_hazards must be a set of Hazards.")
         self._detected_hazards = hazards
+        
+    def add_hazard(self, hazard: Hazard, hazard_level=HazardSeverity.EMERGENCY):
+        if hazard not in Hazard:
+            logger.warning(f"Adding {hazard} to the detected hazards which is not a member of the Hazard enum.")
+        self.detected_hazards.add(hazard)
+        self.detected_hazards_info[hazard] = hazard_level
+        
+    def discard_hazard(self, hazard: Hazard, match: Literal["exact", "subset", "intersection"]="subset"):
+        """
+        Discards a hazard from the detected hazards.
+        
+        Warning:
+            The hazard to be discarded must be 
+        """
+        if match == "subset":
+            self.detected_hazards = {h for h in self.detected_hazards if hazard not in h} # supports flags
+        elif match == "exact":
+            self.detected_hazards.discard(hazard)
+        elif match == "intersection":
+            self.detected_hazards = {h for h in self.detected_hazards if not hazard & h}
+        else:
+            raise ValueError(f"match must be 'exact', 'subset' or 'intersection', not {match}.")
+            
+        
+    def has_hazard(self, hazard: Hazard, match: Literal["exact", "subset", "intersection"]="intersection") -> bool:
+        """Checks if the hazard intersects with any of the detected hazards."""
+        if match == "exact":
+            return hazard in self.detected_hazards
+        elif match == "subset":
+            return any(hazard in h for h in self.detected_hazards)
+        elif match == "intersection":
+            return any(hazard & h for h in self.detected_hazards)
+        raise ValueError(f"match must be 'exact', 'subset' or 'intersection', not {match}.")
     
     def end_of_phase(self): # TODO: keep or remove? unused
         self.last_phase_action_results = self.action_results.copy()
@@ -605,7 +660,7 @@ class Rule(_GroupRule):
         
         self.overwrite_settings = overwrite_settings or {}
         if not isinstance(self.overwrite_settings, dict):
-            self.overwrite_settings = dict(self.overwrite_settings)
+            self.overwrite_settings = dict(self.overwrite_settings) # NOTE: If DictConfig only the outermost will be a dict, i.e. this could be dict[str,DictConfig]
         if self_config and "self" in self.overwrite_settings and self.overwrite_settings["self"] != self_config:
             logger.debug("Warning: self_config and self.overwrite_settings['self'] must be the same object.")
         
@@ -797,27 +852,33 @@ class Rule(_GroupRule):
     # -----------------------
     # Evaluation functions
     # -----------------------
-
-    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, _NO_RESULT_TYPE]:
-        self._ctx = proxy(ctx)
-        settings = self.overwrite_settings.copy()
-        if overwrite:
-            settings.update(overwrite)
-        if settings:
-            ctx.config = OmegaConf.merge(ctx.agent.config, settings) # NOTE: if you got an error check if you used `"setting.subsetting" : value` instead of `settings : { subsetting: value}`. NO DOT NOTATION FOR KEYS!
-        else:
-            # If settings is empty the more expensive merge is not necessary.
-            ctx.config = ctx.agent.config.copy()
+        
+    @staticmethod
+    def _temp_overwrite_settings(func):
+        """During the condition evaluation the ctx.config should have the overwrite settings applied but not in a permanent way."""
+        
+        @wraps(func)
+        def wrapper(self: Rule, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *args, **kwargs):
+            settings : dict = self.overwrite_settings.copy()
+            if overwrite:
+                settings.update(overwrite)
             
-        # NOTE: # TODO: this creates a hardlink, which means that the memory is not freed when ctx.config is updated!
-        # Solution: can make self_config a weakproxy and store a parentless copy in self.overwrite_settings["self"]
-        self.self_config = self.overwrite_settings["self"] = ctx.config["self"]
-        #assert self.self_config is self.overwrite_settings["self"]; this works if overwrite_settings is a dict
+            original_ctx_config = ctx.config
+            temp = OmegaConf.merge(ctx.config, settings)
+            OmegaConf.set_readonly(temp, True)
+            ctx.config = temp
+            self.self_config = self.overwrite_settings["self"] = ctx.config["self"]
+            OmegaConf.set_readonly(self.self_config, False) # The Rule's settings should still be dynamic; expected in overwrite
+            try:
+                return func(self, ctx, overwrite, *args, **kwargs)
+            finally:
+                ctx.config = original_ctx_config
+        return wrapper
         
-        OmegaConf.set_readonly(ctx.config, True) # only the original agent.config can be modified. Make clear that these have no permanent effect.
-        # The Rule's settings should be dynamic.
-        OmegaConf.set_readonly(self.self_config, False)
-        
+
+    @_temp_overwrite_settings
+    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, _NO_RESULT_TYPE]: # pylint: ignore=unused-argument
+        self._ctx = proxy(ctx)      # use with care and access over function
         result = self.condition(ctx)
         return result
     
@@ -839,12 +900,15 @@ class Rule(_GroupRule):
             result = self.evaluate(ctx, overwrite)
         except BaseException as e:
             exception = e
-        except LunaticAgentException as e:
-            exception = e
         else:
             ctx.evaluation_results[ctx.agent.current_phase] = result
             if result in self.actions:
                 self.reset_cooldown()
+                # Apply overwrite settings permanently
+                ctx.config.merge_with(self.overwrite_settings)
+                if overwrite:
+                    ctx.config.merge_with(overwrite)
+                
                 action_result = self.actions[result](ctx) #todo allow priority, random chance
                 ctx.action_results[ctx.agent.current_phase] = action_result
                 return action_result
@@ -854,7 +918,7 @@ class Rule(_GroupRule):
             if exception:
                 self.reset_cooldown() # 
                 raise exception
-    # 
+    
     
     def __str__(self) -> str:
         try:
@@ -1123,8 +1187,6 @@ class RandomRule(metaclass=MultiRule):
 
 
 
-
-
 class BlockingRule(metaclass=Rule):
 
     _gameframework: ClassVar[Union["GameFramework", "proxy[GameFramework]", None]] = None
@@ -1188,7 +1250,7 @@ class BlockingRule(metaclass=Rule):
             dm_render_conf = OmegaConf.select(world_model._args, "camera.hud.data_matrix", default=None)
 
             if dm_render_conf and ctx.agent:
-                ctx.agent.render_detection_matrix(display, dm_render_conf)
+                ctx.agent._render_detection_matrix(display, dm_render_conf)
             world_model.finalize_render(display)
         pygame.display.flip()
 

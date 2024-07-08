@@ -54,7 +54,7 @@ Additionally, for controlling the driving AI during simulation, you can utilize 
 
 During the agents creation the script waits until an external actor is found, by default named `hero`. This allows the `LunaticAgent` to be used with other scripts that set up the scenario and spawn this special actor. To initialize a route the agent should follow call:
 
-```python!
+```python
 # CARLA's BasicAgent interface
 # plan: list of [carla.Waypoint, RoadOption] representing the route to be followed
 lunatic_agent.set_global_plan(plan, clean_queue=True):

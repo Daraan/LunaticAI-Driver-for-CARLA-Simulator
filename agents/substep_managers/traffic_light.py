@@ -9,6 +9,7 @@ from agents.tools.misc import (is_within_distance,
                                get_trafficlight_trigger_location)
 
 from classes.constants import AgentState
+from data_gathering.information_manager import InformationManager
 from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
@@ -18,10 +19,10 @@ def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
     return traffic_light.state == TrafficLightState.Red
 
 def _is_red_or_yellow(traffic_light : "carla.TrafficLight") -> bool:
-    return _is_red_light(traffic_light) or traffic_light.state == TrafficLightState.Yellow
+    return traffic_light.state in (TrafficLightState.Red, TrafficLightState.Yellow)
 
 def affected_by_traffic_light(self : "LunaticAgent", 
-                              lights_list : List["carla.TrafficLight"]=None, 
+                              lights_list : Optional[List["carla.TrafficLight"]]=None, 
                               max_distance : float=None) -> TrafficLightDetectionResult:
         """
         Method to check if there is a red light affecting the vehicle.
@@ -34,39 +35,38 @@ def affected_by_traffic_light(self : "LunaticAgent",
         if self.config.obstacles.ignore_traffic_lights:
             return TrafficLightDetectionResult(False, None)
 
-        if not lights_list:
+        detect_yellow_tlighs = self.config.obstacles.detect_yellow_tlighs
+
+        # Currently affected by a traffic light
+        if self._last_traffic_light:
+            if self._last_traffic_light.state != TrafficLightState.Red and (not detect_yellow_tlighs or self._last_traffic_light.state != TrafficLightState.Yellow):
+                self._last_traffic_light = None
+            else: # Still Red
+                return TrafficLightDetectionResult(True, self._last_traffic_light)
+        
+        if lights_list is None:
             if self._world_model._args.debug:
                 logger.warning("No traffic lights list provided, using all traffic lights in the scene. This should not happen."
-                               "You possibly want to pass agent._lights_list instead.")
-            lights_list = self._world.get_actors().filter("*traffic_light*")
+                               "You possibly want to pass agent.traffic_lights_nearby or agent._lights_list instead.")
+            lights_list = CarlaDataProvider.get_all_actors().filter("*traffic_light*")
+        if len(lights_list) == 0:
+            return TrafficLightDetectionResult(False, None)
 
         if not max_distance: # NOTE: dynamic selection is done in traffic_light_manager
             max_distance = self.config.obstacles.base_tlight_threshold
 
-        # Currently affected by a traffic light
-        if self._last_traffic_light:
-            if self._last_traffic_light.state != TrafficLightState.Red:
-                self._last_traffic_light = None
-            else: # Still Red
-                return TrafficLightDetectionResult(True, self._last_traffic_light)
-
         ego_vehicle_location = self.config.live_info.current_location
         ego_vehicle_waypoint = self._current_waypoint
 
-        filtered_lights = filter(_is_red_or_yellow if self.config.obstacles.stop_at_yellow_tlighs else _is_red_light, lights_list)
+        filtered_lights = filter(_is_red_or_yellow if detect_yellow_tlighs else _is_red_light, lights_list)
         
         for traffic_light in filtered_lights:
-            if traffic_light.id in self._lights_map:
-                trigger_wp = self._lights_map[traffic_light.id]
-            else:
-                trigger_location = CarlaDataProvider.get_trafficlight_trigger_location(traffic_light)
-                trigger_wp = CarlaDataProvider.get_map().get_waypoint(trigger_location)
-                self._lights_map[traffic_light.id] = trigger_wp
-
-            if trigger_wp.transform.location.distance(ego_vehicle_location) > max_distance:
-                continue
+            trigger_wp = InformationManager.get_trafficlight_trigger_waypoint(traffic_light)
 
             if trigger_wp.road_id != ego_vehicle_waypoint.road_id:
+                continue
+            
+            if trigger_wp.transform.location.distance(ego_vehicle_location) > max_distance:
                 continue
 
             ve_dir = ego_vehicle_waypoint.transform.get_forward_vector()
@@ -83,7 +83,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
         return TrafficLightDetectionResult(False, None)
 
 
-def traffic_light_manager(self : "LunaticAgent", traffic_lights : Optional[List["carla.TrafficLight"]] = None) -> TrafficLightDetectionResult:
+def detect_traffic_light(self : "LunaticAgent", traffic_lights : Optional[List["carla.TrafficLight"]] = None) -> TrafficLightDetectionResult:
     """
     This method is in charge of behaviors for red lights.
     """
@@ -92,7 +92,7 @@ def traffic_light_manager(self : "LunaticAgent", traffic_lights : Optional[List[
     if random.random() < self.config.obstacles.ignore_lights_percentage:
         return TrafficLightDetectionResult(False, None)
     
-    traffic_lights = traffic_lights or self._lights_list
+    traffic_lights = traffic_lights or self.traffic_lights_nearby
 
     # Behavior setting:
     max_tlight_distance = self.config.obstacles.base_tlight_threshold
@@ -109,7 +109,7 @@ def traffic_light_manager(self : "LunaticAgent", traffic_lights : Optional[List[
     affected_traffic_light : TrafficLightDetectionResult = affected_by_traffic_light(self, traffic_lights, 
                                     max_distance=max_tlight_distance)
     
-    if affected_traffic_light.traffic_light_was_found:
+    if affected_traffic_light.traffic_light_was_found and affected_traffic_light.traffic_light.state == TrafficLightState.Red:
         self.current_states[AgentState.BLOCKED_RED_LIGHT] += 1
     else:
         self.current_states[AgentState.BLOCKED_RED_LIGHT] = 0
