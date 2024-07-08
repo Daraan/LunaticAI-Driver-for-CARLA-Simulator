@@ -1532,6 +1532,9 @@ class CallFunctionFromConfig:
     
     _args_ : List[Any] = field(default_factory=list)
     """Positional arguments to pass to the Rule or Function"""
+    
+    random_lane_change : bool = False
+    """For `create_default_rules`: Should the RandomLaneChangeRule be added"""
 
 @dataclass
 class CreateRuleFromConfig:
@@ -1638,12 +1641,18 @@ def _from_config_default_rules():
     """
     rules = [
         # Rules cann be added from 
-        CallFunctionFromConfig("create_default_rules"),
+        CallFunctionFromConfig("create_default_rules", random_lane_change=False),
         CreateRuleFromConfig("DriveSlowTowardsTrafficLight", gameframework=None,
                               # NOTE: Dot notation is NOT SUPPORTED you need to nest dictionaries 
                                 overwrite_settings={"speed" : {"follow_speed_limits" : True}},
-                                self_config= {"throttle" : 0.33},
                                 description="Drive slow towards while trying not to cross the line (experimental)."
+                             ),
+        CreateRuleFromConfig("PassYellowTrafficLightRule", 
+                             self_config = {
+                                 "try_to_pass" : True, 
+                                  "passing_speed" : II("max:${multiply:${live_info.current_speed_limit},1.33},${speed.target_speed}")
+                                  },
+                             description="Speed up to pass a yellow traffic light."
                              ),
         
         #CreateRuleFromConfig("RandomLaneChangeRule",

@@ -670,7 +670,7 @@ class Rule(_GroupRule):
                 logger.warning(f"Class {self.__class__.__name__} has a self_config class that is not a dataclass. This might lead to undesired results, i.e. missing keys in the config.")
             default_self_config = default_self_config()
         if not isinstance(default_self_config, DictConfig):
-            default_self_config = OmegaConf.create(default_self_config, flags={"allow_objects": True})
+            default_self_config = OmegaConf.create(default_self_config, flags={"allow_objects": True}) # NOTE: Could do structured here
         if self_config:
             self.self_config = OmegaConf.merge(default_self_config, self_config)
         else:
@@ -768,6 +768,9 @@ class Rule(_GroupRule):
             cls.description = cls.__doc__
             if not cls.description:
                 cls.description = "No description provided."
+                
+        if hasattr(cls, "self_config"):
+            do_not_overwrite.append("self_config")
         
         # Create a __init__ function that sets some of the parameters.
         params = inspect.signature(cls.__init__).parameters # find overlapping parameters
@@ -852,19 +855,22 @@ class Rule(_GroupRule):
     # -----------------------
     # Evaluation functions
     # -----------------------
-        
+    
     @staticmethod
-    def _temp_overwrite_settings(func):
+    def _use_temporary_config(func):
         """During the condition evaluation the ctx.config should have the overwrite settings applied but not in a permanent way."""
         
         @wraps(func)
         def wrapper(self: Rule, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *args, **kwargs):
-            settings : dict = self.overwrite_settings.copy()
+            settings : dict = self.overwrite_settings.copy() # Dict with "self" : SelfConfig
             if overwrite:
                 settings.update(overwrite)
             
             original_ctx_config = ctx.config
+            ctx.config["self"] = "???" # do not merge old self_config
+            
             temp = OmegaConf.merge(ctx.config, settings)
+            
             OmegaConf.set_readonly(temp, True)
             ctx.config = temp
             self.self_config = self.overwrite_settings["self"] = ctx.config["self"]
@@ -876,7 +882,7 @@ class Rule(_GroupRule):
         return wrapper
         
 
-    @_temp_overwrite_settings
+    @_use_temporary_config
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, _NO_RESULT_TYPE]: # pylint: ignore=unused-argument
         self._ctx = proxy(ctx)      # use with care and access over function
         result = self.condition(ctx)
@@ -926,7 +932,7 @@ class Rule(_GroupRule):
                 return self.__class__.__name__ + f"(description='{self.description}', phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, condition={self.condition.func}, cooldown={self.cooldown})"
             return self.__class__.__name__ + f"(description='{self.description}', phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, condition={self.condition.__name__}, cooldown={self.cooldown})" 
         except AttributeError as e:
-            logger.warning(str(e))
+            logger.info("Error during string creation: " + str(e))
             return self.__class__.__name__ + "(Error in condition.__str__: Rule has not been initialized correctly. Missing attributes: " + str(e) + ")"
 
     def __repr__(self) -> str:
@@ -1244,7 +1250,7 @@ class BlockingRule(metaclass=Rule):
         else:
             world_model = ctx.agent._world_model
             display = GameFramework.display
-            world_model.tick(GameFramework.clock)
+            world_model.tick(GameFramework.clock) # does not tick the world!
             world_model.render(display, finalize=False)
             world_model.controller.render(display)
             dm_render_conf = OmegaConf.select(world_model._args, "camera.hud.data_matrix", default=None)
@@ -1303,6 +1309,14 @@ class BlockingRule(metaclass=Rule):
             else:
                 frame = self.get_world().wait_for_tick().frame
             CarlaDataProvider.on_carla_tick()
+        else:
+            # CRITICAL: The framework expects a return value before it ticks the world,
+            # however the blocking rules should take over the ticks; so it should still do this!
+            if CarlaDataProvider.is_sync_mode():
+                frame = self.get_world().tick()
+            else:
+                frame = self.get_world().wait_for_tick().frame
+            CarlaDataProvider.on_carla_tick()
 
         if CarlaDataProvider.is_sync_mode():
             # We do this only in sync mode as frames could pass between gathering this information
@@ -1350,6 +1364,7 @@ class BlockingRule(metaclass=Rule):
         if execute_phases and Phase.UPDATE_INFORMATION | Phase.END not in self.phases:
             ctx.agent.execute_phase(Phase.UPDATE_INFORMATION | Phase.END, prior_results=self)
         if self.ticks_passed > self.MAX_TICKS:
+            logger.info("Rule %s has passed its max_ticks %s, calling max_tick_callback and unblocking it", self, self.MAX_TICKS)
             if self.max_tick_callback:
                 self.max_tick_callback(ctx)
             raise UnblockRuleException()

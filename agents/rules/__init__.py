@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from classes.worldmodel import GameFramework
     from agents.tools.config_creation import RuleCreatingParameters
 
-def create_default_rules(gameframework: Optional["GameFramework"]=None, random_lane_change: bool = True) -> "Iterable[Rule]":
+def create_default_rules(gameframework: Optional["GameFramework"]=None, random_lane_change: bool = False) -> "Iterable[Rule]":
 
     avoid_tailgator_rule = AvoidTailgatorRule()
     simple_overtake_rule = SimpleOvertakeRule()
@@ -103,6 +103,7 @@ def rule_from_config(cfg : Union["RuleCreatingParameters", DictConfig]) -> Union
         if not "_args_" in clean_cfg:
             if "self_config" in clean_cfg:
                 try:
+                    # Test. If this fails, then the instantiation will also fail -> fix it
                     OmegaConf.to_container(clean_cfg, resolve=True, throw_on_missing=True)
                 except (omegaconf.MissingMandatoryValue, omegaconf.errors.InterpolationKeyError) as e:
                     logger.debug("Could not resolve all values for %s, will set up a dummy parent", cfg._target_)
@@ -127,6 +128,8 @@ def rule_from_config(cfg : Union["RuleCreatingParameters", DictConfig]) -> Union
                     # NOTE: If this still fails, can go over the rule_class directly if found; which might be better/easier than this hack
                 
             rule: Rule = instantiate(clean_cfg, _convert_="none")
+            if "self_config" in clean_cfg:
+                rule.self_config.merge_with(clean_cfg.self_config) # Interpolations are resolved, adding them back as strings
         else:
             rule : Union[Rule, Iterable[Rule]] = call(clean_cfg, _convert_="none")
     except hydra.errors.InstantiationException:

@@ -354,3 +354,25 @@ def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destin
                     waypoints=[ (wp, RoadOption.LEFT) for wp in affected_wps ], 
                     size=0.1)
 
+
+def get_closest_tl_trigger_wp(reference_location: carla.Location, traffic_light: carla.TrafficLight):
+    """
+    Finds the closest triggering waypoint of the traffic light group to the reference location.
+
+    Args:
+        reference_location (carla.Location): The reference location to measure the distance from.
+        traffic_light (carla.TrafficLight): The traffic light object.
+
+    Returns:
+        carla.Waypoint: The closest traffic light trigger waypoint to the reference location.
+        float: The distance between the reference location and the closest waypoint.
+    """
+    affected_wps = traffic_light.get_affected_lane_waypoints()
+    distance = float("inf")
+    for wp in affected_wps:
+        test_distance = reference_location.distance(wp.transform.location)
+        if test_distance < distance:
+            closest_wp = wp
+            distance = test_distance
+    return closest_wp, distance
+

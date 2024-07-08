@@ -44,10 +44,10 @@ from agents.rules import create_default_rules
 # Globals
 # ==============================================================================
 
-AMOUNT_ACTORS = 20
+AMOUNT_ACTORS = 0
 """How many actors to spawn"""
 
-EGO_SPAWN_IDX = 0
+EGO_SPAWN_IDX = 3
 """Changes the start position of the ego vehicle"""
 
 PRINT_RULES = False
