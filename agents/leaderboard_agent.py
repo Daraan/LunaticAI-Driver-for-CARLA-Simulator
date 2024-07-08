@@ -58,7 +58,7 @@ DEBUG = False
 WORLD_MODEL_DESTROY_SENSORS = True
 ENABLE_RSS = AD_RSS_AVAILABLE and True
 
-ENABLE_DATA_MATRIX = True
+ENABLE_DATA_MATRIX = None
 DATA_MATRIX_ASYNC = False
 """Run the DetectionMatrix update in a separate thread."""
 
@@ -112,7 +112,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 initialize_config_dir(version_base=None, 
                                         config_dir=os.path.abspath(config_dir), 
                                         job_name="LeaderboardAgent")
-                if not ENABLE_DATA_MATRIX:
+                if ENABLE_DATA_MATRIX is not None:
                     overrides.append("agent.detection_matrix.enabled="+str(ENABLE_DATA_MATRIX).lower())
                 overrides.append("agent.detection_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
                 if not ENABLE_RSS:

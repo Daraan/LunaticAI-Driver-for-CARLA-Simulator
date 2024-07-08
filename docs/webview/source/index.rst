@@ -11,6 +11,7 @@ Welcome to LunatiAI's documentation!
    :caption: Contents:
 
    Installation <docs/Install>
+   Quickstart
    agents/Agents
    Configuration <conf/ConfigFiles>
    agents

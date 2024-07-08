@@ -137,8 +137,13 @@ obstacles:
 
   # Whether the agent should ignore stop signs
   #  
-  # NOTE: No usage implemented!
-  ignore_stop_signs: false
+  # Warning: 
+  #     No usage implemented!
+  #  
+  # Idea:
+  #     Nearby landmarks from waypoints need to be retrieved
+  #     and checked for stop signs.
+  ignore_stop_signs: ???
 
   # True: Whether to use a general approach to detect vehicles invading other lanes due to the offset.
   #  
@@ -146,8 +151,11 @@ obstacles:
   #  
   # See `BasicAgent._vehicle_obstacle_detected`
   use_bbs_detection: true
-  # If the the agent will treat a yellow light like a red light and stop.
-  stop_at_yellow_tlighs: false
+
+  # If the the agent will treat a yellow light like a red light. If False will not detect them.
+  #  
+  # Rules must decide how to handle yellow lights.
+  detect_yellow_tlighs: true
 
   # Base distance to traffic lights to check if they affect the vehicle
   #     
@@ -166,7 +174,7 @@ obstacles:
   #     ```
   #     
   #     A vehicle is considered if distance < max_vehicle_distance < nearby_vehicles_max_distance
-  base_vehicle_threshold: 2.0
+  base_vehicle_threshold: 4.0
 
   # Increases detection range based on speed
   #  
@@ -194,14 +202,7 @@ obstacles:
     cars_same_lane:
     - 0.0
     - 30.0
-    walkers_angle_adjust_chance: 0.0
-    walkers_adjust_angle:
-    - 20.0
-    - -20.0
-    cars_angle_adjust_chance: 0.0
-    cars_adjust_angle:
-    - 20.0
-    - -50.0
+    when_turning: ???
 
   # For performance filters out vehicles that are further away than this distance in meters
   #  
@@ -246,8 +247,8 @@ obstacles:
   ignore_signs_percentage: 0.0
   # Percentage of time to ignore pedestrians
   ignore_walkers_percentage: 0.0
-  # For performance filters out pedestrians that are further away than this distance in meters
-  nearby_statics_max_distance: 60.0
+  # For performance filters out statics that are further away than this distance in meters
+  nearby_statics_max_distance: 150.0
 
   # Base distance to vehicles to check if they affect the vehicle
   #         
@@ -258,6 +259,12 @@ obstacles:
   # Usage: 
   #     static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
   static_detection_speed_ratio: 0.5
+
+  # For performance filters out traffic lights that are further away than this distance in meters.
+  #  
+  # By default checks converts the current speed to a distance of 5 seconds and adds 10 meters.
+  nearby_tlights_max_distance: ${look_ahead_time:${live_info.current_speed_limit},
+    5.0, 10.0}
 
 
 # Limitations of the controls used one the PIDController Level
@@ -406,6 +413,7 @@ detection_matrix:
 rules:
 - _target_: create_default_rules
   _args_: []
+  random_lane_change: false
 - _target_: agents.rules.obstacles.traffic_light_rules.DriveSlowTowardsTrafficLight
   phases: Phase.EMERGENCY|BEGIN
   description: Drive slow towards while trying not to cross the line (experimental).
@@ -413,8 +421,12 @@ rules:
     speed:
       follow_speed_limits: true
   self_config:
-    max_brake: ${controls.max_brake}
-    normal_brake: ${min:0.2,${self.max_brake}}
-    min_brake: 0.1
-    throttle: 0.33
+    max_brake: ${divide:${controls.max_brake},8}
+    max_throttle: ${divide:${controls.max_throttle},4}
   gameframework:
+- _target_: agents.rules.obstacles.traffic_light_rules.PassYellowTrafficLightRule
+  phases: Phase.DETECT_TRAFFIC_LIGHTS|END
+  description: Speed up to pass a yellow traffic light.
+  self_config:
+    try_to_pass: true
+    passing_speed: ${max:${multiply:${live_info.current_speed_limit},1.33},${speed.target_speed}}

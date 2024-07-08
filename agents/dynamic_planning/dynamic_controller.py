@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import BasicAgentSettings
+    from agents.lunatic_agent import LunaticAgent
 
 STEERING_UPDATE_SPEED = 0.1
 
@@ -26,7 +27,11 @@ class DynamicVehiclePIDController(VehiclePIDController):
     low level control a vehicle from client side
     """
 
-    def __init__(self, vehicle: carla.Vehicle, config: "BasicAgentSettings"):
+    @property
+    def config(self):
+        return self._agent.ctx.config
+
+    def __init__(self, agent : "LunaticAgent"):
         """
         Constructor method.
 
@@ -45,14 +50,13 @@ class DynamicVehiclePIDController(VehiclePIDController):
         Positive values imply a right offset while negative ones mean a left one. Numbers high enough
         to cause the vehicle to drive through other lanes might break the controller.
         """
-
-        self._vehicle = vehicle
-        self.config = config
+        self._agent = agent
+        self._vehicle = agent._vehicle
         self._world = self._vehicle.get_world()
 
         self.past_steering = self._vehicle.get_control().steer
-        self._lon_controller = DynamicPIDLongitudinalController(vehicle, config)
-        self._lat_controller = DynamicPIDLateralController(vehicle, config)
+        self._lon_controller = DynamicPIDLongitudinalController(agent)
+        self._lat_controller = DynamicPIDLateralController(agent)
 
     def run_step(self, waypoint):
         """
@@ -108,7 +112,11 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
     PIDLongitudinalController implements longitudinal control using a PID.
     """
 
-    def __init__(self, vehicle, config: "BasicAgentSettings"):
+    @property
+    def config(self):
+        return self._agent.ctx.config
+
+    def __init__(self, agent: "LunaticAgent"):
         """
         Constructor method.
 
@@ -118,8 +126,8 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
             :param K_I: Integral term
             :param dt: time differential in seconds
         """
-        self._vehicle = vehicle
-        self.config = config
+        self._agent = agent
+        self._vehicle = agent._vehicle
         self._error_buffer = deque(maxlen=10)
         
     def run_step(self, debug=False):
@@ -171,7 +179,11 @@ class DynamicPIDLateralController(PIDLateralController):
     PIDLateralController implements lateral control using a PID.
     """
 
-    def __init__(self, vehicle : carla.Vehicle, config: "BasicAgentSettings"):
+    @property
+    def config(self):
+        return self._agent.ctx.config
+
+    def __init__(self, agent : "LunaticAgent"):
         """
         Constructor method.
 
@@ -183,8 +195,8 @@ class DynamicPIDLateralController(PIDLateralController):
             :param K_I: Integral term
             :param dt: time differential in seconds
         """
-        self._vehicle = vehicle
-        self.config = config
+        self._agent = agent
+        self._vehicle = agent._vehicle
         self._e_buffer = deque(maxlen=10)
 
     def _pid_control(self, waypoint : carla.Waypoint, vehicle_transform : carla.Transform):

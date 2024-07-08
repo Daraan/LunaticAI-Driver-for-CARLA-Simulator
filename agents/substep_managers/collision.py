@@ -33,5 +33,5 @@ def collision_manager(self : "LunaticAgent", event: carla.CollisionEvent):
     global PRINTED_WARNING
     if not PRINTED_WARNING:
         PRINTED_WARNING = True
-        print("WARNING: Collision manager not implemented yet!")
+        print("WARNING: Collision manager not implemented yet! Please handle collision in Phase.COLLISION")
         print("Collision detected!", event, "during", self.current_phase)

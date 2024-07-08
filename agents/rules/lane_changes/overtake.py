@@ -59,7 +59,7 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context") -> bool:
     return False
                 
 class SimpleOvertakeRule(Rule):
-    group = "lane_changeX"
+    group = "lane_change"
     phase = Phase.DETECT_CARS | Phase.BEGIN
     
     priority = RulePriority.LOW

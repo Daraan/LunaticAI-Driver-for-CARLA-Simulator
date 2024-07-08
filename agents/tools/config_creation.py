@@ -29,12 +29,13 @@ from omegaconf import DictConfig, MISSING, SI, II, ListConfig, OmegaConf, SCMode
 from omegaconf.errors import InterpolationToMissingValueError
 
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Union, cast, get_type_hints, TypeVar
-from typing_extensions import TypedDict, TypeAlias, Never # later python features
+from typing_extensions import TypedDict, TypeAlias, Never, overload, Literal, TypeVar # later python features
 
 import logging
 
 ConfigType = TypeVar("ConfigType", bound="AgentConfig")
 ReturnType = TypeVar("ReturnType")
+CL = TypeVar("CL")
 
 if TYPE_CHECKING:
     from classes.rule import Rule
@@ -85,14 +86,27 @@ WARN_LIVE_INFO = True
 # Helper methods
 # ---------------------
 
+def look_ahead_time(speed, time_to_collision, plus=0) -> float:
+    """
+    Convert the current speed in km /h and a time to collision in seconds to a distance in meters 
+    and adds a slight buffer on top.
+    
+    Use as ${look_ahead_time: ${live_info.current_speed}, time, }
+    """
+    return speed / 3.6 * time_to_collision + plus # km / h * s = m
+
 # need this check for readthedocs
 if os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
     import random
     OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
-    OmegaConf.register_new_resolver("subtract", lambda x, y: x + y)
+    OmegaConf.register_new_resolver("subtract", lambda x, y: x - y)
+    OmegaConf.register_new_resolver("multiply", lambda x, y: x * y)
+    OmegaConf.register_new_resolver("divide", lambda x, y: x / y)
     OmegaConf.register_new_resolver("min", lambda *els: min(els))
+    OmegaConf.register_new_resolver("max", lambda *els: max(els))
     OmegaConf.register_new_resolver("randint", random.randint)
     OmegaConf.register_new_resolver("randuniform", random.uniform)
+    OmegaConf.register_new_resolver("look_ahead_time", look_ahead_time)
     os.environ["_OMEGACONF_RESOLVERS_REGISTERED"] = "1"
 
 def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
@@ -118,7 +132,7 @@ def set_readonly_keys(conf : Union[DictConfig, ListConfig], keys : List[str]):
 # Base Classes
 # ---------------------
 
-class AgentConfig:
+class AgentConfig(DictConfig if TYPE_CHECKING else object):
     """
     Base interface for the agent settings. 
     
@@ -287,7 +301,11 @@ class AgentConfig:
             
             # add comments to all other attributes
             def add_comments(container, data, lookup, indent=0):
-                for key, value in container.items():
+                if isinstance(container, DictConfig):
+                    containeritems = container.items_ex(resolve=False)
+                else:
+                    containeritems = container.items()
+                for key, value in containeritems:
                     if isinstance(value, dict) and isinstance(cls_doc.get(key, None), dict):
                         add_comments(value, data[key], cls_doc[key], indent=indent+2)
                         comment_txt:str = "\n"+cls_doc[key].get("__doc__", "")
@@ -314,7 +332,7 @@ class AgentConfig:
         return cls_or_self.simplify_options(resolve=resolve, yaml=True, yaml_commented=yaml_commented, detailed_rules=detailed_rules)
         
     @classmethod
-    def from_yaml(cls, path, category : Optional[str]=None, *, merge=True):
+    def from_yaml(cls : type[CL], path, category : Optional[str]=None, *, merge=True) -> CL:
         """
         Loads the options from a yaml file.
         Args:
@@ -429,9 +447,7 @@ class AgentConfig:
         
         return cast(cls, behavior)
     
-    if TYPE_CHECKING and sys.version_info >= (3, 8):
-        from typing import overload, Literal, TypeVar
-        CL = TypeVar("CL")
+    if TYPE_CHECKING:
         @overload
         @classmethod
         def check_config(cls, config: CL, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[False]") -> CL: ... 
@@ -478,7 +494,7 @@ class AgentConfig:
         
     
     @class_or_instance_method
-    def make_config(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations=True, lock_fields:Optional[List[str]]=None) -> ConfigType:
+    def to_dict_config(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations=True, lock_fields:Optional[List[str]]=None):
         """
         Returns a dictionary of all options.
         
@@ -495,6 +511,7 @@ class AgentConfig:
             set_readonly_interpolations(conf)
         if lock_fields:
             set_readonly_keys(conf, lock_fields)
+        
         return conf
     
     def copy(self):
@@ -508,8 +525,12 @@ class AgentConfig:
         return getattr(cls_or_self, key, default)
     
     @staticmethod
-    def _flatten_dict(source : DictConfig, target):
-        for k, v in source.items():
+    def _flatten_dict(source : DictConfig, target, resolve=False):
+        if isinstance(source, DictConfig):
+            items = source.items_ex(resolve=resolve)
+        else:
+            items = source.items()
+        for k, v in items:
             if isinstance(v, dict):
                 AgentConfig._flatten_dict(v, target)
             else:
@@ -538,8 +559,7 @@ class AgentConfig:
             if isinstance(options, AgentConfig):
                 key_values = options.__dataclass_fields__.items()
             elif isinstance(options, DictConfig):
-                options = OmegaConf.to_container(options)
-                key_values = options.items() # Calling this with missing keys will raise an error
+                key_values = options.items_ex(resolve=False) # Calling this with missing keys will raise an error
             else:
                 key_values = options.items()
             
@@ -754,7 +774,7 @@ class BehaviorAgentSpeedSettings(BasicAgentSpeedSettings):
                     self._behavior.max_speed,
                     self._speed_limit - self._behavior.speed_lim_dist])
     """
-    # TODO:  deprecated max_speed use target_speed instead   # NOTE: Behavior agents are more flexible in their speed. 
+    # DEPRECATED:  deprecated max_speed use target_speed instead   # NOTE: Behavior agents are more flexible in their speed. 
     max_speed : float = 50 
     """The maximum speed in km/h your vehicle will be able to reach.
     From normal behavior. This supersedes the target_speed when following the BehaviorAgent logic."""
@@ -951,11 +971,16 @@ class BasicAgentObstacleSettings(AgentConfig):
     ignore_traffic_lights : bool = False
     """Whether the agent should ignore traffic lights"""
     
-    ignore_stop_signs : bool = False
+    ignore_stop_signs : bool = MISSING
     """
     Whether the agent should ignore stop signs
     
-    NOTE: No usage implemented!
+    Warning: 
+        No usage implemented!
+    
+    Idea:
+        Nearby landmarks from waypoints need to be retrieved
+        and checked for stop signs.
     """
     
     use_bbs_detection : bool = True
@@ -967,9 +992,11 @@ class BasicAgentObstacleSettings(AgentConfig):
     See `BasicAgent._vehicle_obstacle_detected`
     """
     
-    stop_at_yellow_tlighs : bool = False
+    detect_yellow_tlighs : bool = True
     """
-    If the the agent will treat a yellow light like a red light and stop.
+    If the the agent will treat a yellow light like a red light. If False will not detect them.
+    
+    Rules must decide how to handle yellow lights.
     """
     
     base_tlight_threshold : float = 2.0
@@ -980,7 +1007,7 @@ class BasicAgentObstacleSettings(AgentConfig):
     Usage: max_tlight_distance  = base_tlight_threshold  + detection_speed_ratio * vehicle_speed
     """
     
-    base_vehicle_threshold : float = 2.0
+    base_vehicle_threshold : float = 4.0
     """
     Base distance to vehicles to check if they affect the vehicle
             
@@ -1063,9 +1090,6 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
         """
         Used by AvoidTailgatorRule, look further behind for tailgators
         """
-        
-        
-        
     
     speed_detection_downscale : SpeedLimitDetectionDownscale = field(default_factory=SpeedLimitDetectionDownscale)
     """
@@ -1080,8 +1104,6 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
         or ignores slower vehicles in front of it in the other lane.
     """
     
-
-
 @dataclass
 class AutopilotObstacleSettings(AgentConfig):
     ignore_lights_percentage : float = 0.0
@@ -1108,25 +1130,16 @@ class LunaticAgentObstacleDetectionAngles(BasicAgentObstacleDetectionAngles):
     Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
     low_angle_th < angle < up_angle_th.
     
-    NotImplemented
+    Note:
+        These settings are NotImplemented
     """
     
     # --------------------------
-    # Randomization of detection
     # Note: Unused and deprecated
     # --------------------------
     
-    walkers_angle_adjust_chance : float = 0.0
-    """Chance that the detection angle for walkers is adjusted"""
-    
-    walkers_adjust_angle : Tuple[float, float] = (20, -20)
-    """XXX"""
-    
-    cars_angle_adjust_chance : float = 0.0
-    """Chance that the detection angle for vehicles is adjusted"""
-    
-    cars_adjust_angle : Tuple[float, float] = (20, -50)
-    """XXX"""
+    when_turning : Tuple[float, float] = MISSING
+    """Idea: When the agent is turning it might needs a wider angle to detect vehicles"""
     
 
 @dataclass
@@ -1142,8 +1155,8 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     
     detection_angles: LunaticAgentObstacleDetectionAngles = field(default_factory=LunaticAgentObstacleDetectionAngles)
     
-    nearby_statics_max_distance: float = 60
-    """For performance filters out pedestrians that are further away than this distance in meters"""
+    nearby_statics_max_distance: float = 150
+    """For performance filters out statics that are further away than this distance in meters"""
     
     base_static_threshold : float = 2.0
     """
@@ -1157,6 +1170,13 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     """
     Usage: 
         static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
+    """
+    
+    nearby_tlights_max_distance: float = II("look_ahead_time:${live_info.current_speed_limit}, 5.0, 10.0")
+    """
+    For performance filters out traffic lights that are further away than this distance in meters.
+    
+    By default checks converts the current speed to a distance of 5 seconds and adds 10 meters.
     """
     
     
@@ -1512,6 +1532,9 @@ class CallFunctionFromConfig:
     
     _args_ : List[Any] = field(default_factory=list)
     """Positional arguments to pass to the Rule or Function"""
+    
+    random_lane_change : bool = False
+    """For `create_default_rules`: Should the RandomLaneChangeRule be added"""
 
 @dataclass
 class CreateRuleFromConfig:
@@ -1618,12 +1641,18 @@ def _from_config_default_rules():
     """
     rules = [
         # Rules cann be added from 
-        CallFunctionFromConfig("create_default_rules"),
+        CallFunctionFromConfig("create_default_rules", random_lane_change=False),
         CreateRuleFromConfig("DriveSlowTowardsTrafficLight", gameframework=None,
                               # NOTE: Dot notation is NOT SUPPORTED you need to nest dictionaries 
                                 overwrite_settings={"speed" : {"follow_speed_limits" : True}},
-                                self_config= {"throttle" : 0.33},
                                 description="Drive slow towards while trying not to cross the line (experimental)."
+                             ),
+        CreateRuleFromConfig("PassYellowTrafficLightRule", 
+                             self_config = {
+                                 "try_to_pass" : True, 
+                                  "passing_speed" : II("max:${multiply:${live_info.current_speed_limit},1.33},${speed.target_speed}")
+                                  },
+                             description="Speed up to pass a yellow traffic light."
                              ),
         
         #CreateRuleFromConfig("RandomLaneChangeRule",
@@ -1973,7 +2002,8 @@ if TYPE_CHECKING:
     from hydra.conf import HydraConf
     from typing_extensions import NotRequired
     class LaunchConfig(LaunchConfig, DictConfig):
-        hydra : NotRequired[HydraConf] # pyright: ignore # NotRequired only for TypedDict
+        hydra : NotRequired[HydraConf]              # pyright: ignore # NotRequired only for TypedDict
+        leaderboard : NotRequired[DictConfig]       # pyright: ignore
 
 def extract_annotations(parent, docs):
     for main_body in parent.body:

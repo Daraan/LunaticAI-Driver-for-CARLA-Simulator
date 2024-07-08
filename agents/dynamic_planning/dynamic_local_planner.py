@@ -6,10 +6,11 @@
 """ This module contains a local planner to perform low-level waypoint following based on PID controllers. """
 from collections import deque
 import random
+import weakref
 from omegaconf import DictConfig
 import carla
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 from agents.navigation.local_planner import LocalPlanner, RoadOption, PlannedWaypoint
 
@@ -19,6 +20,8 @@ from agents.tools.misc import draw_waypoints, get_speed
 from classes.rss_sensor import RssSensor
 from agents.tools.config_creation import BasicAgentSettings
 
+if TYPE_CHECKING:
+    from agents.lunatic_agent import LunaticAgent
 
 '''
 # left here for reference
@@ -51,7 +54,11 @@ class DynamicLocalPlanner(LocalPlanner):
     """
     _waypoints_queue : "deque[Tuple[carla.Waypoint, RoadOption]]"
 
-    def __init__(self, vehicle : carla.Vehicle, opt_dict : BasicAgentSettings, map_inst : carla.Map = None, world:carla.World = None):
+    @property
+    def config(self):
+        return self._agent.ctx.config
+
+    def __init__(self, agent : "LunaticAgent", opt_dict : BasicAgentSettings, map_inst : carla.Map = None, world:carla.World = None):
         """
         :param vehicle: actor to apply to local planner logic onto
         :param opt_dict: dictionary of arguments with different parameters:
@@ -61,13 +68,18 @@ class DynamicLocalPlanner(LocalPlanner):
             lateral_control_dict: values of the lateral PID controller
             longitudinal_control_dict: values of the longitudinal PID controller
             max_throttle: maximum throttle applied to the vehicle
-            max_brake: maximum brake applied to the vehicle
             max_steering: maximum steering applied to the vehicle
             offset: distance between the route waypoints and the center of the lane
+            Note: 
+                deprecated and unused.
         :param map_inst: carla.Map instance to avoid the expensive call of getting it.
         """
-        self._vehicle = vehicle
-        self.config = opt_dict
+        if opt_dict:
+            raise ValueError("The 'opt_dict' parameter is deprecated. Do not pass")
+        
+        self._agent : LunaticAgent = weakref.proxy(agent)
+        self._vehicle = self._agent._vehicle
+        assert self._vehicle, "The agent must have a vehicle to create a local planner"
         self._world = world or self._vehicle.get_world()
         try: 
             if map_inst:
@@ -98,7 +110,7 @@ class DynamicLocalPlanner(LocalPlanner):
 
     def _init_controller(self):
         """Controller initialization"""
-        self._vehicle_controller = DynamicVehiclePIDController(self._vehicle, self.config)
+        self._vehicle_controller = DynamicVehiclePIDController(self._agent)
 
         # Compute the current vehicle waypoint
         current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
@@ -141,8 +153,7 @@ class DynamicLocalPlanner(LocalPlanner):
         :return: control to be applied
         """
         if self.config.speed.follow_speed_limits:
-            # TODO: check this config
-            self.config.speed.target_speed = self._vehicle.get_speed_limit()
+            self.config.speed.target_speed = self.config.live_info.current_speed_limit
 
         # Add more waypoints too few in the horizon
         if not self._stop_waypoint_creation and len(self._waypoints_queue) < self._min_waypoint_queue_length:
@@ -191,8 +202,8 @@ class DynamicLocalPlanner(LocalPlanner):
   
 class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
     
-    def __init__(self, vehicle, opt_dict : DictConfig, map_inst=None, world=None, rss_sensor:Optional[RssSensor]=None):
-        super().__init__(vehicle, opt_dict, map_inst, world)
+    def __init__(self, agent, opt_dict=None, map_inst=None, world=None, rss_sensor:Optional[RssSensor]=None):
+        super().__init__(agent, opt_dict, map_inst, world)
         self._rss_sensor = rss_sensor
         
         
