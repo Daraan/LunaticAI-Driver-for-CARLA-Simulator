@@ -10,31 +10,37 @@ and the simpler but less flexible [](#LunaticChallenger).
 The [](#agents.leaderboard_agent.LunaticChallenger) is wrapped around the [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent).
 It can be more easily combined with the [ScenarioRunner](https://scenario-runner.readthedocs.io/en/latest/) and be used with the [Leaderboard 2.0](https://leaderboard.carla.org/get_started/) for which this class is especially designed.
 
-In the simplest way an agent can be used like this:
+In the simplest way an agent can be used like in the snipplet below. However we recommend that you follow the documentation from the [installation](#/docs/Install) section and [Leaderboard 2.0](https://leaderboard.carla.org/get_started/), afterwards you can test this agent by executing the `run_leaderboard_agent.sh` file.
 
 ```python
-
+# examples/minimal_leaderboard.py
 from agents.leaderboard_agent import LunaticChallenger
+from classes.worldmodel import GameFramework
 
-# ... setup carla
+# Sets up Carla and Pygame, and Hydra in a minimal way
+game_framework = GameFramework.quickstart()
+ego = GameFramework.request_new_actor("car", rolename="hero", random_location=True)
 
-# Create the ego vehicle, after you have chosen a blueprint for the ego vehicle
-ego_bp.set_attribute('role_name', 'hero')
-ego = world.spawn_actor(ego_bp, ego_transform)
+# Create a lunatic agent
+agent = LunaticChallenger("localhost", carla_port=2000)
+agent.setup(game_framework.launch_config) # Do not forget this step!
+try:
+    while game_framework.continue_loop:
+        with game_framework(agent):
+            agent() # The LunaticChallenger should be called
+            agent.apply_control()
+except:
+    game_framework.cleanup()
+    raise
+```
 
-agent = LunaticChallenger()
-# Further setup the scenario in between
-
-agent.setup() # Do not forget this step!
-
-while True:
-    control = agent.run_step()
-    ego.apply_control(control)
+```{attention}
+|:warning:| The `LunaticChallenger` is easier to setup, however its usage and customization are, limited as it complies with the `AutonomousAgent` interface from [`leaderboard-2.0`](https://leaderboard.carla.org/get_started/). So far, it only supports a limited amount of features mentioned in the [Configuration](/conf/ConfigFiles.md#command-line) section. For example, changing settings over the command line is not supported as the configuration is loaded in `agent.setup` rather than a `@hydra.main` wrapped entry point.
 ```
 
 ### LunaticAgent Class
 
-The [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent) can be initialized in multiple ways
+The [](#agents.lunatic_agent.LunaticAgent) can be initialized in multiple ways and supports all features from the [Configuration](/conf/ConfigFiles.md#configuration) section:
 
 ```python
 from agents.lunatic_agent import LunaticAgent
@@ -57,7 +63,7 @@ while game_framework.continue_loop:
         agent.run_step()
 ```
 
-Alternatively it can be initialized quicker through the game framework, providing other useful instances at the same time.
+The agent can be initialized quicker and directly with the [](#GameFramework), which also provides other useful instances at the same time.
 
 ```python
 agent, world_model, global_planner, keyboard_controller = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, config=behavior)
@@ -81,3 +87,10 @@ agent.add_rule(MyRule()) # Be sure that you instantiate your rules.
 The agent can be configures by passing any attribute supporting Mapping structure, e.g. nested [(data)classes](https://docs.python.org/3/library/dataclasses.html), [attrs](https://www.attrs.org/en/stable/index.html), or [omegaconf's DictConfig](https://omegaconf.readthedocs.io/en/2.3_branch/) which can extend on these two.
 
 For more info read the [ConfigFiles.md](../conf/ConfigFiles) section.
+
+## Workflow
+
+The agent lifecycle involves several stages from initialization to continuous operation. The following diagram illustrates the lifecycle and interactions within the Lunatic AI Driver, providing its operational workflow in detail.
+
+[![AgentLifecycleDiagram.drawio](/docs/images/AgentLifecycleDiagram.drawio.svg)](/docs/images/AgentLifecycleDiagram.drawio.svg)
+(click image for fullscreen)

@@ -22,6 +22,7 @@ from classes.HUD import HUD
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 
+from classes import exceptions as _exceptions
 from classes.exceptions import AgentDoneException, ContinueLoopException
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
@@ -31,7 +32,8 @@ from data_gathering.information_manager import InformationManager
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
-    from classes._custom_sensor import CustomSensor
+    from classes._sensor_interface import CustomSensorInterface
+    from types import ModuleType
 
 from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
@@ -183,9 +185,10 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             pygame.init()
             pygame.font.init()
             GameFramework.clock = pygame.time.Clock()
-            GameFramework.display = pygame.display.set_mode(
-                (args.width, args.height) if args else (1280, 720),
-                pygame.HWSURFACE | pygame.DOUBLEBUF)
+            if not "READTHEDOCS" in os.environ:
+                GameFramework.display = pygame.display.set_mode(
+                    (args.width, args.height) if args else (1280, 720),
+                    pygame.HWSURFACE | pygame.DOUBLEBUF)
         return GameFramework.clock, GameFramework.display
     
     @staticmethod
@@ -272,11 +275,11 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     @staticmethod
     def skip_rest_of_loop(message="GameFramework.end_loop"):
         """
-        Terminates the current iteration and exits the GameFramework.
+        Terminates the current iteration and exits the GameFramework by raising a :py:exc:`.ContinueLoopException`.
         
         Note: 
             It is the users responsibility to manage the agent & local planner
-            before calling this function.
+            before calling this function, i.e. that the agent has a :py:class:`carla.VehicleControl` set.
         
         Raises: 
             ContinueLoopException
@@ -351,7 +354,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
 
     
     @class_or_instance_method
-    def cleanup(cls_or_self, *, disable_sync=True, quit_pygame=True):
+    def cleanup(cls_or_self, *, disable_sync:bool=True, quit_pygame:bool=True):
         """
         Cleans up resources and actors.
         
@@ -359,12 +362,12 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             disable_sync: If True, will disable synchronous mode. This will
                 prevent the freezing of the Unreal Editor.
                 Default is True.
-            quit_pygame: If True, will call pygame.quit(). Default is True.
+            quit_pygame: If True, will call :py:func:`pygame.quit`. Default is True.
         
         Note:
             - When called from an instance with an attached agent,
-              the `agent.destroy()` method is called.
-            - Otherwise will call CarlaDataProvider.cleanup().
+              the :python:`agent.destroy()` method is called.
+            - Otherwise will call :py:obj:`CarlaDataProvider.cleanup() <.CarlaDataProvider>`.
         """
         try:
             # Should only work for instance version, but maybe future Singleton support
@@ -392,10 +395,15 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                 pygame.quit()
     
     # Include access to our exceptions here     
-    from classes import exceptions
+    exceptions : "ModuleType" = _exceptions
+    """
+    shortcut to :py:mod:`.exceptions` module containing custom exceptions.
+    
+    :meta hide-value:
+    """
     
 
-        
+
 
 # ==============================================================================
 # -- World ---------------------------------------------------------------
@@ -505,7 +513,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self._weather_index = 0
         self.weather = None
         
-        self.actors: List[Union[carla.Actor, CustomSensor]] = []
+        self.actors: List[Union[carla.Actor, CustomSensorInterface]] = []
         
         # From interactive:
         self.constant_velocity_enabled = False
@@ -554,6 +562,11 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             CarlaDataProvider.prepare_map()
 
     def rss_set_road_boundaries_mode(self, road_boundaries_mode: Optional[Union[bool, "carla.RssRoadBoundariesMode"]]=None):
+        """
+        Choose wether or not to use the RSS road boundaries feature.
+        
+        Toggles: :py:attr:`.RssSettings.use_stay_on_road_feature`
+        """
         # Called from KeyboardControl
         if road_boundaries_mode is None:
             road_boundaries_mode = self._config.rss.use_stay_on_road_feature
@@ -568,10 +581,23 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             print("Warning: RSS Road Boundaries Mode not set. RSS sensor not found.")
 
     def toggle_pause(self):
+        """
+        Toggle pause_simulation from the KeyboardControls.
+        
+        :meta private:
+        """
         settings = self.world.get_settings()
         self.pause_simulation(not settings.synchronous_mode)
 
-    def pause_simulation(self, pause):
+    def pause_simulation(self, pause: bool):
+        """
+        Pauses the simulation by setting the world to synchronous mode.
+        
+        Attention:
+            Only works reliable in **asynchronous mode**.
+            
+        :meta private:
+        """
         settings = self.world.get_settings()
         if pause and not settings.synchronous_mode:
             settings.synchronous_mode = True
@@ -769,6 +795,11 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             self.world.load_map_layer(selected)
 
     def toggle_recording(self):
+        """
+        Start recording images from the camera output.
+        
+        Saved in :py:attr:`LaunchConfig.camera.recorder.output_path <.CameraConfig.RecorderSettings.output_path>` with the current frame number.
+        """
         if not self.recording:
             self._has_recorded = True
             dir_name, filename = os.path.split(self._args.camera.recorder.output_path)
@@ -792,6 +823,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self.recording = not self.recording
     
     def toggle_radar(self):
+        """Adds or destroys a radar sensor for the user interface"""
         if self.radar_sensor is None:
             self.radar_sensor = RadarSensor(self.player)
         elif self.radar_sensor.sensor is not None:
@@ -807,7 +839,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         except Exception:
             pass
 
-    def finalize_render(self, display):
+    def finalize_render(self, display : pygame.Surface):
         """
         Draws the HUD and saves the image if recording is enabled.
         
@@ -871,7 +903,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         real_actors: List[carla.Actor] = [actor for actor in self.actors if isinstance(actor, carla.Actor)]
         GameFramework.destroy_actors(real_actors)
         
-        self.actors: List[CustomSensor] = [actor for actor in self.actors if not isinstance(actor, carla.Actor)]
+        self.actors: List[CustomSensorInterface] = [actor for actor in self.actors if not isinstance(actor, carla.Actor)]
         while self.actors:
             actor = self.actors.pop(0)
             if actor is not None:

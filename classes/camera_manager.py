@@ -7,7 +7,7 @@ from carla import ColorConverter as cc
 
 from typing import TYPE_CHECKING, ClassVar, List, NamedTuple, Optional
 
-from classes._custom_sensor import CustomSensor
+from classes._sensor_interface import CustomSensorInterface
 from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ CameraBlueprintsSimple = [CameraBlueprints['Camera RGB']]
 # ==============================================================================
 
 
-class CameraManager(CustomSensor):
+class CameraManager(CustomSensorInterface):
     """ Class for camera management"""
 
     default_blueprints: ClassVar[List[CameraBlueprint]] = list(CameraBlueprints.values())
@@ -76,7 +76,7 @@ class CameraManager(CustomSensor):
 
         self.transform_index = 1
         # TODO: These are remnants from the original code, for our purpose most sensors are not relevant
-        # -> Move to globals or some config which should be used (also saves ressources)
+        # -> Move to globals or some config which should be used (also saves resources)
         self.sensors = sensors if sensors else self.default_blueprints
         world = self._parent.get_world()
         bp_library = CarlaDataProvider._blueprint_library

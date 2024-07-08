@@ -5,18 +5,16 @@
 
 """ This module contains a local planner to perform low-level waypoint following based on PID controllers. """
 from collections import deque
-import random
 import weakref
-from omegaconf import DictConfig
 import carla
 
 from typing import List, Optional, Tuple, TYPE_CHECKING
 
-from agents.navigation.local_planner import LocalPlanner, RoadOption, PlannedWaypoint
-
+from agents.navigation.local_planner import LocalPlanner, PlannedWaypoint
 
 from agents.dynamic_planning.dynamic_controller import DynamicVehiclePIDController
 from agents.tools.misc import draw_waypoints, get_speed
+from classes.constants import RoadOption
 from classes.rss_sensor import RssSensor
 from agents.tools.config_creation import BasicAgentSettings
 

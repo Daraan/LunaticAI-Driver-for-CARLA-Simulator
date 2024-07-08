@@ -13,57 +13,72 @@ import inspect
 
 if TYPE_CHECKING:
     from classes.rule import Context, Rule # circular import
+    from typing import NoReturn
 # NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
 
 
 class ConditionFunction:
     """
-    Implements a decorator to wrap function to be used with `Rule` classes.
+    Implements a decorator to wrap function to be used with :any:`Rule` classes.
     The function must return a hashable type, which is used to access the action to be taken 
-    by the `condition` function of the rule.
+    by the :any:`Rule.condition` function of the rule.
     
     Evaluation functions can be combined using the AND, OR and NOT operators to build up more complex rules
     from simpler ones.
-    The operators + or &, | and ~ are aliases for AND, OR and NOT respectively.
-    e.g. 
-    `func1 = ConditionFunction(lambda ctx: ctx.speed > 10)`
-    `func2 = ConditionFunction(lambda ctx: ctx.speed < 20)`
+    The operators :code:`+, &`, :code:`|` and :code:`~` are aliases for :code:`AND, OR` and :code:`NOT` respectively.
+    e.g.  with these two functions:
+    :python:`func1 = ConditionFunction(lambda ctx: ctx.speed > 10)`
+    :python:`func2 = ConditionFunction(lambda ctx: ctx.speed < 20)`
 
     These statements are all equivalent:
-        * `ConditionFunction(lambda ctx: 10 < ctx.speed < 20)`
-        * `func1 + func2`
-        * `func1 & func2`
-        * `func1.AND(func2)`
-        * `ConditionFunction.AND(func1, func2)`
+        * :python:`ConditionFunction(lambda ctx: 10 < ctx.speed < 20)`
+        * :python:`func1 + func2`
+        * :python:`func1 & func2`
+        * :python:`func1.AND(func2)`
+        * :python:`ConditionFunction.AND(func1, func2)`
     
     Hint:
         ConditionFunctions also allow for more specific returns types
+        
         ..  code-block:: python
         
-        @ConditionFunction
-        def is_speeding(ctx: Context) -> Hashable:
-            config = ctx.agent.config
-            if config.speed > config.speed_limit+20:
-                return "very fast"
-            elif config.speed > config.speed_limit+5:
-                return "fast"
-            elif: config.speed < config.speed_limit-20:
-                return "very slow"
-            else:
-                return "normal"
+            @ConditionFunction
+            def is_speeding(ctx: Context) -> Hashable:
+                config = ctx.agent.config
+                if config.speed > config.speed_limit+20:
+                    return "very fast"
+                elif config.speed > config.speed_limit+5:
+                    return "fast"
+                elif: config.speed < config.speed_limit-20:
+                    return "very slow"
+                else:
+                    return "normal"
 
-        Rule(is_speeding, action={"very fast": lambda ctx: ctx.agent.config.follow_speed_limits(), 
-                                  "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5) 
-                                  })
-
+            Rule(is_speeding, 
+                 action={
+                    "very fast": lambda ctx: ctx.agent.config.follow_speed_limits(), 
+                    "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5) 
+                 })
+    Parameters:
+        first_argument : A callable to be decorated or a string to be used as the name of the function.
+        name : The name to represent the function. Defaults to :python:`"ConditionFunction"`.
+        truthy : If True, the function will always cast the return value to a boolean value. Defaults to :code:`False`.
+        use_self : If :python:`True`, the function will be treated as a method and the first argument will be the instance of the :any:`Rule` that uses this function.
+            If :python:`None`, the decision depends on the signature of the function, if it has only one argument only the :any:`Context` object is passed,
+            if it has two or more arguments the first argument that is passed is the instance of the :any:`Rule`.
+            Use :python:`False` to not use the instance of the :any:`Rule` as the first argument.
+            Defaults to :python:`None`.
+            
     Returns:
-        `ConditionFunction`
-    
+        ConditionFunction | type[ConditionFunction] : 
+            A :py:class:`ConditionFunction` or a partially initialized version to be used as a decorator 
+            when the :code:`first_argument` is not a callable.
+
     """
     
     actions: ClassVar[Dict[Hashable, Callable[["Union[Context, Rule]"], Any]]] = {}
     
-    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name="ConditionFunction", *, truthy=False, use_self=None) -> "type[ConditionFunction]":
+    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name:str="ConditionFunction", *, truthy:bool=False, use_self=None) -> Union["type[ConditionFunction]", "ConditionFunction"]:
         # @ConditionFunction("name")
         if isinstance(first_argument, str):
             return partial(cls, name=first_argument, truthy=truthy, use_self=use_self) # Calling decorator with a string
@@ -75,7 +90,7 @@ class ConditionFunction:
         instance = super().__new__(cls)
         return instance
     
-    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name="ConditionFunction", *, truthy=False, use_self: Optional[bool]=None):
+    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None):
         update_wrapper(self, evaluation_function, assigned=("__qualname__", "__module__", "__annotations__", "__doc__"))
         self.evaluation_function = evaluation_function
         self.truthy = truthy
@@ -116,12 +131,15 @@ class ConditionFunction:
             return self # called on class Rule.condition
         return partial(self, instance) # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
     
-    def copy(self, copy_actions=False):
+    def copy(self, copy_actions:bool=False):
         """
         Copies the class by creating a new instance.
         
-        If copy_actions is True, the actions dictionary is copied as well. 
-        Be aware that the actions themselves are not copied they identical and shared.
+        Parameters:
+            copy_actions : If :python:`True`, the :py:attr:`actions` dictionary is copied as well. Defaults to :python:`False`.
+                
+                Warning:
+                    Be aware that the actions themselves are not copied; they are identical and shared.
         """
         instance = super().__new__(self.__class__)
         self.__class__.__init__(instance, self.evaluation_function, self.name, truthy=self.truthy, use_self=self.use_self)
@@ -218,13 +236,17 @@ class ConditionFunction:
         action_function = self._check_action(action_function, key, **kwargs)
         self.actions[key] = action_function # register action
 
+
 def TruthyConditionFunction(func: Callable) -> ConditionFunction:
     """
     Allows a condition to return any value, but will be converted to a boolean.
     
-    TODO: Still does "store the result". Add a attribute to ctx that stores the last condition result.
+    Note:
+        This is equivalent to :python:`ConditionFunction(func, truthy=True)`.
+        
+    .. deprecated:: x
     
-    todo (low priority): instead of extra function make this a parameter of ConditionFunction
+    :meta private:
     """
     return ConditionFunction(func, truthy=True)
     
@@ -237,11 +259,25 @@ def TruthyConditionFunction(func: Callable) -> ConditionFunction:
     return wrapper
 
 class ActionFunction(ConditionFunction):
-    def __init__(self, action_function: Callable[["Context"], Any], name="ActionFunction"):
-        super().__init__(action_function, name)
+    """
+    A decorator that can be used with :any:`Rule.action`. It is nearly equivalent to :any:`ConditionFunction`, 
+    only calling the function is more simple, i.e. does not assert a Hashable return type.
+    
+    .. deprecated:: x
+    
+    :meta private:
+    """
+    
+    def __init__(self, action_function: Callable[["Context"], Any], name="ActionFunction", *, use_self: Optional[bool]=None):
+        super().__init__(action_function, name, use_self=use_self)
 
-    # Overriding the NOT method isn't appropriate here since this class is for actions, not evaluations.
-    # If you wish to have a NOT like functionality, it should be clearly defined what "NOT" an action means.
+    @classmethod
+    def NOT(self) -> "NoReturn":
+        """
+        Raises:
+            NotImplementedError: NOT is not implemented for ActionFunction.
+        """
+        raise NotImplementedError("NOT is not implemented for ActionFunction")
 
     def __call__(self, ctx: "Context", *args, **kwargs) -> Any:
         return self.evaluation_function(ctx, *args, **kwargs)

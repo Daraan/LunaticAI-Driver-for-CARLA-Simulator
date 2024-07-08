@@ -3,7 +3,7 @@
 from typing import Any
 import carla
 
-from classes.constants import RULE_NO_RESULT, Hazard
+from classes.constants import RuleResult, Hazard
 
 class UserInterruption(Exception):
     """
@@ -11,31 +11,34 @@ class UserInterruption(Exception):
     Allows the scenario runner and leaderboard to exit gracefully, if 
     handled appropriately, e.g. by directly returning.
 
-    Thrown by [LunaticAgent.parse_keyboard_controls](#agents.lunatic_agent.LunaticAgent.parse_keyboard_controls).
+    Thrown by :py:meth:`LunaticAgent.parse_keyboard_controls <agents.lunatic_agent.LunaticAgent.parse_keyboard_controls>`.
+    
+    Note:
+        Is not a :py:class:`LunaticAgentException`.
     """
 
 class LunaticAgentException(Exception):
     """
-    Base class for all custom exceptions in the project.
+    Base class for all custom exceptions that influence the Workflow of the :py:class:`.LunaticAgent`.
     """
 
 class AgentDoneException(LunaticAgentException):
     """
     Raised when there is no more waypoint in the queue to follow and no rule set a new destination.
 
-    When the a GameFramework instance is used as context manager will set game_framework.continue_loop to False.
+    When the a :py:class:`GameFramework` instance is used as context manager will set :py:attr:`game_framework.continue_loop <classes.worldmodel.GameFramework.continue_loop>` to :python:`False`.
     """
 
 
 class ContinueLoopException(LunaticAgentException):
     """
-    Raise when `run_step` action of the agent should not be continued further.
+    Raise when :py:meth:`.LunaticAgent.run_step` action of the agent should not be continued further.
 
-    The agent returns the current ctx.control to the caller of run_step.
+    The agent returns the current :python:`ctx.control` to the caller of :code:`run_step`.
 
     Note:
-        Handled in Agent.run_step, this exception should not propagate outside.
-        It can be caught by GameFramework and skip the current loop and not apply any controls, 
+        Handled in :py:meth:`.LunaticAgent.run_step`, this exception should not propagate outside.
+        It can be caught by :py:class:`.GameFramework` and skip the current loop and not apply any controls, 
         an error will be logged.
     """
 
@@ -71,11 +74,15 @@ class UpdatedPathException(LunaticAgentException):
     """
 
 class _RuleResultException(LunaticAgentException):
-    """Abstract class for exceptions that are raised by rules and can return a result."""
+    """
+    Abstract class for exceptions that can be raised by rules, but still are able to return a result.
     
-    result : Any = RULE_NO_RESULT
+    :meta public:
+    """
     
-    def __init__(self, result: Any=RULE_NO_RESULT, *args, **kwargs):
+    result : Any = RuleResult.NO_RESULT
+    
+    def __init__(self, result: Any=RuleResult.NO_RESULT, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.result = result
 

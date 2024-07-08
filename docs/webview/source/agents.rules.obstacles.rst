@@ -1,11 +1,6 @@
 agents.rules.obstacles package
 ==============================
 
-.. automodule:: agents.rules.obstacles
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Submodules
 ----------
 
@@ -16,3 +11,13 @@ agents.rules.obstacles.traffic\_light\_rules module
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-inherited-members:
+
+Module contents
+---------------
+
+.. automodule:: agents.rules.obstacles
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :no-inherited-members:

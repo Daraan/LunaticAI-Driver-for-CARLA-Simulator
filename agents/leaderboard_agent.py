@@ -1,4 +1,10 @@
-"""Leaderboard 2.0 compatible version of the Lunatic Agent"""
+"""
+Leaderboard 2.0 compatible version of the Lunatic Agent
+
+Attention: 
+    Command line overrides are currently not supported for the leaderboard agent,
+    therefore this module defines some global constants to adjust some settings.
+"""
 import operator
 import os
 from typing import Any, Dict, TYPE_CHECKING, Union
@@ -26,7 +32,7 @@ try:
     from leaderboard.utils.route_manipulation import downsample_route          # pyright: ignore[reportMissingImports]
 except ModuleNotFoundError:
     # Leaderboard is not a submodule, cannot use it on readthedocs 
-    if "READTHEDOCS" in os.environ:
+    if "READTHEDOCS" in os.environ and not TYPE_CHECKING:
         class AutonomousAgent: pass
     else: raise
 
@@ -40,7 +46,7 @@ from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
 if TYPE_CHECKING:
     from scenario_runner.srunner.autoagents.sensor_interface import SensorInterface
-    from agents.navigation.local_planner import RoadOption
+    from classes.constants import RoadOption
     from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 
 import logging
@@ -48,7 +54,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def get_entry_point():
-    print("Getting entry point")
+    """Must return the name of the class to be used"""
     return "LunaticChallenger"
 
 # --- DEBUG OVERWRITES ---
@@ -56,18 +62,22 @@ def get_entry_point():
 DEBUG = False
 
 WORLD_MODEL_DESTROY_SENSORS = True
+
 ENABLE_RSS = AD_RSS_AVAILABLE and True
+"""If not :code:`None`, overwrites :py:attr:`LunaticAgentSettings.rss.enabled`"""
 
 ENABLE_DATA_MATRIX = None
+"""If not :code:`None`, overwrites :py:attr:`LunaticAgentSettings.detection_matrix.enabled`"""
+
 DATA_MATRIX_ASYNC = False
-"""Run the DetectionMatrix update in a separate thread."""
+"""Run the DetectionMatrix update in a separate thread; overwrites :py:attr:`LunaticAgentSettings.detection_matrix.sync`."""
 
 DATA_MATRIX_SYNC_INTERVAL = 5
-"""When running synchronously: How many ticks should be between two updates."""
+"""When running synchronously how many ticks should be between two updates; overwrites :py:attr:`LunaticAgentSettings.detection_matrix.sync_interval`"""
 
 USE_OPEN_DRIVE_DATA = False
 
-DOWNSAMPLING_FACTOR_OF_ROUTE_COORDINATES = 10
+DOWNSAMPLING_FACTOR_OF_ROUTE_COORDINATES = 5
 """
 The smaller the the value the more exact will the agent stick to the original route,
 BUT ONLY IF the route is provided as a fine-grained route.
@@ -78,10 +88,13 @@ Larger values will make the agent cut corners and drive more straight lines.
 Needs extra tools to stick to the road.
 """
 
-args: LaunchConfig 
+args: LaunchConfig
+"""Global access to the launch config; set in :py:meth:`LunaticChallenger.setup`"""
+
 class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
-    sensor_interface: "SensorInterface"
+    sensor_interface: "SensorInterface" #: :meta private:
+    
     _global_plan: "list[tuple[Dict[str, float], RoadOption]]" = None
     _global_plan_world_coord: "list[tuple[carla.Transform, RoadOption]]" = None
     _global_plan_waypoints: "list[tuple[carla.Waypoint, RoadOption]]" = None 
@@ -89,6 +102,11 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     _road_matrix_updater : "DetectionMatrix" = None
     
     def __init__(self, carla_host, carla_port, debug=False):
+        """
+        Initializes the LunaticChallenger. This does not yet load the config or calls :py:meth:`LunaticAgent.__init__ <agents.lunatic_agent.LunaticAgent.__init__>`.
+        
+        Further initialization is done in :py:meth:`LunaticChallenger.setup`.
+        """
         print("Initializing LunaticChallenger")
         self.world_model: WorldModel = None
         self.game_framework: GameFramework = None
@@ -99,6 +117,17 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self._local_planner = None
 
     def setup(self, path_to_conf_file: Union[str, LaunchConfig]):
+        """
+        Initializes the underlying :py:class:`.LunaticAgent` as well as instances of :py:class:`.GameFramework` and :py:class:`.WorldModel`.
+        
+        To some extends initializes the Hydra_ framework and load the configuration.
+        
+        Parameters:
+            path_to_conf_file : Can either be a string pointing to a configuration file to load a :py:class:`.LaunchConfig` or a :py:class:`.LaunchConfig` to be used directly.
+                
+                Note: 
+                    If a :py:class:`.LaunchConfig` is passed directly the Hydra setup will be skipped.
+        """
         self._destroyed = False
         self.track = Track.MAP
         if isinstance(path_to_conf_file, str):
@@ -181,20 +210,29 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         except Exception:
             pass
         
-    def sensors(self):
+    def sensors(self) -> "list[dict]":
         """
         Define the sensor suite required by the agent
-            :return: a list containing the required sensors in the following format
-                [
-                {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-                'width': 300, 'height': 200, 'fov': 100, 'id': 'Left'},
+        
+            Returns: 
+                A list containing the required sensors in the following format
+            
+                .. code-block:: python
+                
+                    [
+                    {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
+                    'width': 300, 'height': 200, 'fov': 100, 'id': 'Left'},
 
-                {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-                'width': 300, 'height': 200, 'fov': 100, 'id': 'Right'},
+                    {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
+                    'width': 300, 'height': 200, 'fov': 100, 'id': 'Right'},
 
-                {'type': 'sensor.lidar.ray_cast', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'yaw': 0.0, 'pitch': 0.0, 'roll': 0.0,
-                'id': 'LIDAR'}
-                ]
+                    {'type': 'sensor.lidar.ray_cast', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'yaw': 0.0, 'pitch': 0.0, 'roll': 0.0,
+                    'id': 'LIDAR'}
+                    ]
+        
+        Note:
+            The LunaticChallenger does not use any sensors; the usage of 'sensor.opendrive_map' is experimental, however
+            there is yet no parsing done for the data.
         """
         sensors: list = super().sensors() # This should be empty
         
@@ -230,11 +268,16 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     # This allows BlockingRules to pick up the coorect function
     @singledispatchmethod
-    def run_step(self, debug:bool=False, second_pass=False):
+    def run_step(self, debug:bool=False, second_pass=False) -> carla.VehicleControl:   
+        """
+        Attention:
+            Use :py:meth:`__call__` instead of this method!
+        """     
+        # TODO: Possibly singledispatch to __call__ instead
         return super(AutonomousAgent, self).run_step(debug=self.args.debug, second_pass=second_pass)
 
     @run_step.register(dict)
-    def _(self, input_data:"Dict[str, tuple[int, Any]]", timestamp=None):
+    def _(self, input_data:"Dict[str, tuple[int, Any]]", timestamp=None) -> carla.VehicleControl:
         """Function that is called by leaderboard framework"""
         try:
             if self._print_input_data(input_data) and "OpenDRIVE" in input_data:
@@ -263,7 +306,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
             
             self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control)
-            final_controls = self.get_control()
+            final_controls: carla.VehicleControl = self.get_control()
             
             # TODO: Update HUD controls info
             return final_controls
@@ -272,9 +315,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 logger.error("Error in LunaticChallenger.run_step:", exc_info=True)
             self.destroy()
             raise e
-    
+        
+    # NOTE: to update the doc use
+    #run_step.func.__doc__ += "\n" + LunaticAgent.run_step.__doc__
 
-    
     # TODO maybe move to misc / tools
     @staticmethod
     def _transform_to_waypoint(transform: "carla.Transform", project_to_road=True, lane_type=carla.LaneType.Driving) -> "carla.Waypoint":
@@ -306,10 +350,12 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
              # TODO: maybe waypoints is not necessary as we extract locations
             self._local_planner_set_plan(self._global_plan_waypoints)
     
-    def __call__(self):
+    def __call__(self) -> carla.VehicleControl:
         """
-        Execute the agent call, e.g. agent()
-        Returns the next vehicle controls
+        Executes the next step and returns the control for the vehicle.
+        
+        Attention:
+            Use this function instead of :py:meth:`run_step`!
         """
         input_data = self.sensor_interface.get_data(GameTime.get_frame())
 

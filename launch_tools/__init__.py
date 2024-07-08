@@ -3,6 +3,8 @@
 Handles problematic import deriving from version conflicts
 """
 
+import os
+
 # If carla is not installed try to find the .egg file
 try:
     import carla
@@ -34,8 +36,13 @@ class class_or_instance_method:
     def __init__(self, call):
         self.__wrapped__ = call
         self._wrapper = lambda x : x # TODO/BUG: functools.partial and functools.wraps shadow the signature and doc, this reveals it again.
+        call.__doc__ = "*This function can be called as a regular method or as a class method.*\n\n" + call.__doc__
+        if "READTHEDOCS" in os.environ:
+            # This does not work for type checks
+            from functools import wraps
+            self._wrapper = wraps(call) 
 
-    if TYPE_CHECKING:
+    if "READTHEDOCS" in os.environ or TYPE_CHECKING:
         def __get__(self, instance : Union[None, "AgentConfig"], owner : Type["AgentConfig"]):
             if instance is None:  # called on class 
                 return self._wrapper(partial(self.__wrapped__, owner))
@@ -45,4 +52,3 @@ class class_or_instance_method:
             if instance is None:  # called on class 
                 return partial(self.__wrapped__, owner)
             return partial(self.__wrapped__, instance) # called on instance
-

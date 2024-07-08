@@ -6,13 +6,13 @@ import carla
 
 from classes.HUD import get_actor_display_name
 
-from classes._custom_sensor import CustomSensor
+from classes._sensor_interface import CustomSensorInterface
 # ==============================================================================
 # -- CollisionSensor -----------------------------------------------------------
 # ==============================================================================
 
 
-class CollisionSensor(CustomSensor):
+class CollisionSensor(CustomSensorInterface):
     """ Class for collision sensors"""
 
     def __init__(self, parent_actor, hud):
@@ -56,7 +56,7 @@ class CollisionSensor(CustomSensor):
 # ==============================================================================
 
 
-class LaneInvasionSensor(CustomSensor):
+class LaneInvasionSensor(CustomSensorInterface):
     """Class for lane invasion sensors"""
 
     def __init__(self, parent_actor, hud):
@@ -88,7 +88,7 @@ class LaneInvasionSensor(CustomSensor):
 # ==============================================================================
 
 
-class GnssSensor(CustomSensor):
+class GnssSensor(CustomSensorInterface):
     """ Class for GNSS sensors"""
 
     def __init__(self, parent_actor):
@@ -120,7 +120,7 @@ class GnssSensor(CustomSensor):
 # ==============================================================================
 
 
-class RadarSensor(CustomSensor):
+class RadarSensor(CustomSensorInterface):
     def __init__(self, parent_actor):
         self.sensor = None
         self._parent = parent_actor
@@ -187,7 +187,7 @@ class RadarSensor(CustomSensor):
 # -- IMUSensor -----------------------------------------------------------------
 # ==============================================================================
 
-class IMUSensor(CustomSensor):
+class IMUSensor(CustomSensorInterface):
     def __init__(self, parent_actor):
         self.sensor = None
         self._parent = parent_actor

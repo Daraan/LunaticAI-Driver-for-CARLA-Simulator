@@ -1,4 +1,4 @@
-from functools import partial
+from functools import partial, update_wrapper
 import random
 
 from omegaconf._impl import select_node
@@ -33,7 +33,9 @@ def if_config(config_path, value):
     """
     Returns a partial function that checks if a value in the config is set to a certain value.
     """
-    return ConditionFunction(partial(_if_config_checker, config_path=config_path, value=value), 
+    func = partial(_if_config_checker, config_path=config_path, value=value)
+    func = update_wrapper(func, _if_config_checker)
+    return ConditionFunction(func,
                               name=f"Checks if {config_path} is {value}", 
                               use_self=False #NOTE: Has to be used as _if_config_checker has > 1 argument and no self usage.
                               )
@@ -150,14 +152,17 @@ def accept_rss_updates(ctx : Context):
 assert isinstance(if_config("rss.enabled", True), ConditionFunction)
 
 class AlwaysAcceptRSSUpdates(Rule):
-    """Always accept RSS updates if rss is enabled in the config"""
+    """
+    Always accept RSS updates if rss is enabled in the config.
+    
+    """
     phases = Phase.RSS_EVALUATION | Phase.END
     condition=if_config("rss.enabled", True)
     action = accept_rss_updates
     description = "Always accepts the updates calculated by the RSS System."
 
 class ConfigBasedRSSUpdates(Rule):
-    """Always accept RSS updates if `rss.always_accept_update` is set to True in the config."""
+    """Always accept RSS updates if :any:`rss.always_accept_update <LunaticAgentSettings.rss>` is set to True in the config."""
     phases = Phase.RSS_EVALUATION | Phase.END
     condition = if_config("rss.always_accept_update", True)
     action = accept_rss_updates

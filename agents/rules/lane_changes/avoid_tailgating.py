@@ -1,6 +1,6 @@
 # ----------- Avoid Beeing tailgated -----------
 
-from agents.navigation.local_planner import RoadOption
+from classes.constants import RoadOption
 from agents.rules.lane_changes.misc import rule_lane_change
 from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.lunatic_agent_tools import detect_vehicles

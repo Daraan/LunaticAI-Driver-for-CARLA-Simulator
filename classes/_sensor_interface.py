@@ -3,18 +3,20 @@ from launch_tools import CarlaDataProvider
 
 import carla
 
-__all__ = ['CustomSensor']
+__all__ = ['CustomSensorInterface']
 
-class CustomSensor(object):
+class CustomSensorInterface(object):
     """
-    This is a mixin for classes like the `CameraManager` or the `RssSensor`
-    that either wrap around carla.Sensors or should have a similar interface.
+    This is a mixin for classes like the :py:class:`.camere_manager.CameraManager` or the :py:class:`classes.rss_sensor.RssSensor`
+    that either wrap around a :py:class:`carla.Sensor` or should have a similar interface.
+    
+    Not to be confused with :py:class:`srunner.autoagents.sensor_interface.SensorInterface`.
     """
 
     sensor : carla.Sensor
 
     def destroy(self):
-        """Destroys the sensor"""
+        """Stops and destroys the actor of the sensor"""
         if self.sensor is not None:
             self.stop()
             if CarlaDataProvider.actor_id_exists(self.sensor.id):
@@ -28,6 +30,9 @@ class CustomSensor(object):
             return x
         
     def stop(self):
+        """
+        Stop the :py:attr:`sensor` if its in listening mode.
+        """
         if self.sensor is None:
             return
         if isinstance(self.sensor, carla.Sensor):
@@ -37,6 +42,11 @@ class CustomSensor(object):
             self.sensor.stop()
 
     def __del__(self):
+        """
+        Calls :py:meth:`stop` and :py:meth:`destroy` when the object is deleted.
+        
+        :meta public:
+        """
         if self.sensor is not None:
             self.stop()
             self.destroy()

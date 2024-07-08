@@ -53,7 +53,7 @@ import carla
 import ast
 import inspect
 from launch_tools import ast_parse, Literal
-from agents.navigation.local_planner import RoadOption
+from classes.constants import RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
 # TODO: Not up to date
@@ -328,21 +328,33 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         return OmegaConf.to_container(options, resolve=resolve, **kwargs)
     
     @class_or_instance_method
-    def to_yaml(cls_or_self, resolve=False, yaml_commented=True, detailed_rules=False) ->  str:
+    def to_yaml(cls_or_self, resolve:bool=False, yaml_commented:bool=True, detailed_rules:bool=False) -> str:
+        """
+        Convert the options to a YAML string representation.
+
+        Args:
+            resolve : Whether to resolve interpolations. Defaults to False.
+            yaml_commented : Whether to include comments in the YAML output. Defaults to True.
+            detailed_rules : Whether to include detailed rules in the YAML output. Defaults to False.
+
+        Returns:
+            str: The YAML string representation of the options.
+        """
         return cls_or_self.simplify_options(resolve=resolve, yaml=True, yaml_commented=yaml_commented, detailed_rules=detailed_rules)
         
     @classmethod
     def from_yaml(cls : "type[CL]", path, category : Optional[str]=None, *, merge=True) -> CL:
         """
         Loads the options from a yaml file.
+        
         Args:
-            path (str): The path to the yaml file.
-            category (Optional[str], optional): loads this subcategory only
-            merge (bool, optional): Merges the loaded yaml into the base class settings. 
+            path: The path to the yaml file.
+            category: loads this subcategory only
+            merge: Merges the loaded yaml into the base class settings. 
                 Defaults to True.
         
-        Note:
-            This returns a DictConfig version of this class.
+        Returns:
+            AgentConfig: An instance of this class
         """
         if merge:
             options : cls = OmegaConf.merge(OmegaConf.create(cls, flags={"allow_objects":True}), OmegaConf.load(path))
@@ -376,18 +388,19 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             By default this returns a DictConfig version of this class.
 
         Args:
-            cls (ConfigType): The type of the agent settings.
-            args (Union[os.PathLike, dict, DictConfig, dataclass]): The argument specifying the agent settings. It can be a path to a YAML file, a dictionary, a dataclass, or a DictConfig.
-            overwrites (Optional[Mapping]): Optional mapping containing additional settings to overwrite the default agent settings.
-            as_dictconfig (Optional[bool], optional): 
-                If True, the agent settings are returned as a DictConfig.
-                If False, the agent settings are returned as an instance of this class.
-                If None, the return type is determined by the type of the args and other arguments
-                    i.e. if args is a DictConfig and assure_copy is False, the
-                    original input is checked and returned.
+            cls : The type of the agent settings.
+            args : The argument specifying the agent settings. It can be a path to a YAML file, a dictionary, a dataclass, or a :py:class:`omegaconf.DictConfig`.
+            overwrites : Optional mapping containing additional settings to overwrite the default agent settings.
+            as_dictconfig :
+
+                - If True, the agent settings are returned as a :py:class:`DictConfig`.
+                - If False, the agent settings are returned as an instance of this class.
+                - If None, the return type is determined by the type of the args and other arguments
+                  i.e. if args is a :py:class:`DictConfig` and assure_copy is False, the
+                  original input is checked and returned.
 
         Returns:
-            AgentConfig (duck-typed): The created agent settings.
+            :py:class:`AgentConfig` (duck-typed); actually :py:class:`omegaconf.DictConfig`): The created agent settings.
 
         Raises:
             Exception: If the overwrites cannot be merged into the agent settings.
@@ -461,12 +474,11 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         def check_config(cls: type[CL], config, strictness: int, as_dict_config=True) -> CL: ...
     
     @classmethod
-    def check_config(cls, config, strictness: int = 1, as_dict_config=True):
+    def check_config(cls, config, strictness: int = 1, as_dict_config : bool=True):
         """
-        
         - strictness == 1: Will cast the config to this class, assuring all keys are present.
             However the type and correctness of the field-contents are not checked.
-        - strictness > 1 the config will be a DictConfig object, `as_dict_config` is ignored. 
+        - strictness > 1 the config will be a DictConfig object, :code:`as_dict_config` is ignored. 
         - strictness == 2: Will assure that the *initial* types are correct.
         - strictness >= 2 will return the config as a structured config,
             forcing the defined types during runtime as well.
@@ -494,12 +506,17 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         
     
     @class_or_instance_method
-    def to_dict_config(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations=True, lock_fields:Optional[List[str]]=None):
+    def to_dict_config(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations:bool=True, lock_fields:Optional[List[str]]=None):
         """
         Returns a dictionary of all options.
         
         Interpolations will be locked to prevent them from being overwritten.
         E.g. speed.current_speed does cannot diverge from live_info.current_speed.
+        
+        Parameters:
+            category: The sub-category/key of the options to retrieve. If None, retrieves all options.
+            lock_interpolations: Whether to set interpolations to readonly. Defaults to True.
+            lock_fields: A list of fields to set to readonly. Defaults to None.
         """
         if category is None:
             options = cls_or_self
@@ -515,10 +532,11 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         return conf
     
     def copy(self):
+        """Returns a deep copy of this object."""
         return deepcopy(self)
     
     @class_or_instance_method
-    def get(cls_or_self, key, default=_NOTSET):
+    def get(cls_or_self, key:str, default:Any=_NOTSET):
         """Analog of getattr"""
         if default is _NOTSET:
             return getattr(cls_or_self, key)
@@ -553,8 +571,14 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         cls_or_self._flatten_dict(resolved, options)
         return options
     
-    def update(self, options : "Union[dict, AgentConfig, Literal[False], None]", clean=True):
-        """Updates the options with a new dictionary."""
+    def update(self, options : "Union[dict, AgentConfig, Literal[False], None]", clean:bool=True):
+        """
+        Updates the options with a new dictionary.
+        
+        Parameters:
+            options: The new options to update with.
+            clean: Whether to call :py:meth:`_clean_options` after updating. Defaults to True.
+        """
         try:
             if isinstance(options, AgentConfig):
                 key_values = options.__dataclass_fields__.items()
@@ -575,7 +599,11 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             raise
 
     def _clean_options(self):
-        """Postprocessing of possibly wrong values"""
+        """
+        Postprocessing of possibly wrong values
+        
+        :meta public:
+        """
         NotImplemented
 
     def __post_init__(self):
@@ -1541,7 +1569,7 @@ class CreateRuleFromConfig:
     """
     Keywords to instantiate Rule classes
     
-    MISSING attributes will not be passed to the Rules.__init__ method.
+    :py:attr:`omegaconf.MISSING` (alias for :python:`'???'`) attributes will not be passed to a :py:class:`Rule`'s :py:meth:`~classes.rule.Rule.__init__` method.
     """
     
     _target_ : str
@@ -1786,9 +1814,9 @@ class LunaticAgentSettings(AgentConfig):
     with the Hydra instantiate feature.
     
     See Also:
-        - `CreateRuleFromConfig`
-        - `CallFunctionFromConfig`
-        - `_from_config_default_rules` : Creates the default rules in the YAML file
+        - :py:class:`CreateRuleFromConfig`
+        - :py:class:`CallFunctionFromConfig`
+        - :py:func:`_from_config_default_rules` : Creates the default rules in the YAML file
     """
     
     if TYPE_CHECKING:
@@ -1928,7 +1956,7 @@ class LaunchConfig(AgentConfig):
     
     fps: int = 20
     """
-    Used to fix `carla.WorldSettings.fixed_delta_seconds`
+    Used to fix :py:attr:`carla.WorldSettings.fixed_delta_seconds`
     
     Experimental also used to cap fps in the simulation.
     """

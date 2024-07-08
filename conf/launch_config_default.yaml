@@ -17,7 +17,7 @@ map: Town04_Opt
 host: 127.0.0.1
 port: 2000
 
-# Used to fix `carla.WorldSettings.fixed_delta_seconds`
+# Used to fix :py:attr:`carla.WorldSettings.fixed_delta_seconds`
 #  
 # Experimental also used to cap fps in the simulation.
 fps: 20

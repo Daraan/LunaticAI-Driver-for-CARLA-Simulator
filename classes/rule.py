@@ -1,14 +1,11 @@
-from __future__ import annotations # todo: can this be removed?
+#from __future__ import annotations # todo: can this be removed?
 
 from collections.abc import Mapping
 from dataclasses import is_dataclass
 from functools import partial, wraps
-from typing_extensions import Literal
 
-from carla.libcarla import VehicleControl
-import omegaconf
 
-from launch_tools import CarlaDataProvider
+from launch_tools import CarlaDataProvider, Literal
 import pygame
 
 from classes.exceptions import DoNotEvaluateChildRules, LunaticAgentException, SkipInnerLoopException, UnblockRuleException
@@ -28,7 +25,7 @@ from weakref import WeakSet, proxy
 
 from omegaconf import DictConfig, OmegaConf
 
-from classes.constants import RULE_NO_RESULT, Hazard, HazardSeverity, Phase, NO_RESULT_TYPE as _NO_RESULT_TYPE, RulePriority
+from classes.constants import Hazard, HazardSeverity, Phase, RulePriority, RuleResult
 from classes.evaluation_function import ConditionFunction, TruthyConditionFunction
 from agents.tools.logging import logger
 
@@ -37,32 +34,51 @@ if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import LunaticAgentSettings, LiveInfo, RuleConfig, ContextSettings
-    from typing import override
+    from typing import override, Literal
+    
     
     # Note: gameframework.py adds GameFramework to this module's variables
     # at this position it would be a circular import
+
 
 class Context(CarlaDataProvider):
     """
     Object to be passed as the first argument (instead of self) to rules, actions and evaluation functions.
     
-    The `Context` class derives from the scenario runner's [`CarlaDataProvider`](https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenariomanager/carla_data_provider.py) to allow access to the world, map, etc.
+    The :py:class:`Context` class derives from the scenario runner's :py:class:`CarlaDataProvider` to allow access to the world, map, etc.
     
-    Note: 
-        That Context.config are read-only settings for the given condition and actions with potential overwrites.
+    Tip:
+        There is normally no need to initialize the context object manually.
+        Its recommended to initialize the context object with :py:meth:`.LunaticAgent._make_context`.
     """
     
     agent : "LunaticAgent"
-    """Gives access to the agent."""
+    """Backreference to the agent."""
     
     config : "ContextSettings"
     """A copy of the agents config. Overwritten by the condition's settings."""
     
     evaluation_results : Dict["Phase", Hashable] # ambiguous wording, which result? here evaluation result
+    """
+    Stores the result from the :py:meth:`condition` of the last rule that was evaluated in a phase.
+    
+    .. deprecated:: in consideration
+    """
+    
     action_results : Dict["Phase", Any] 
+    """
+    Stores the result from the :py:meth:`action` of the last rule that was applicable in a phase.
+    
+    .. deprecated:: in consideration
+    """
     
     control : Optional["carla.VehicleControl"]
-    """Current control the agent should use. Set by execute_phase(update_controls=...). Safeguarded to be not set to None."""
+    """
+    Current control the agent should use. Set by :py:meth:`execute_phase(update_controls=...) <.LunaticAgent.execute_phase>`. 
+    Safeguarded to be not set to None. Setting it to :code:`None` is discouraged. 
+    Use :py:meth:`set_control` if setting it to :code:`None` is really needed.
+    """
+    
     _control : Optional["carla.VehicleControl"]
     """Current control the agent should use."""
     
@@ -72,7 +88,7 @@ class Context(CarlaDataProvider):
     phase_results : Dict["Phase", Any]
     """
     Stores the results of the phases the agent has been in. 
-    By default the keys are set to `Context.PHASE_NOT_EXECUTED`.
+    By default the keys are set to :py:attr:`Context.PHASE_NOT_EXECUTED`.
     """
     
     last_context : Optional["Context"]
@@ -95,18 +111,23 @@ class Context(CarlaDataProvider):
     If not empty at the end of the inner step an EmergencyStopException is raised.
     """
     
-    detected_hazards_info : Dict[Hazard, Any]
+    detected_hazards_info : Dict[Hazard, Union[HazardSeverity, Any]]
     """
-    Information about the detected hazards.
-    
-    Note:
-        Not Implemented yet.
+    Information about the detected hazards. :py:meth:`add_hazard` inserts the given :py:class:`.HazardSeverity` as value,
+    however, note that the values are can be arbitrary if used otherwise.
     """
 
-    PHASE_NOT_EXECUTED = object()
-    """Value in phase_results to indicate that no agent.execute_phase() was called for the phase"""
+    PHASE_NOT_EXECUTED : object = object()
+    """
+    Value in phase_results to indicate that no agent.execute_phase() was called for the phase
+    
+    :meta hide-value:
+    """
 
     def __init__(self, agent : "LunaticAgent", **kwargs):
+        """
+        Its recommended to initialize the context object with :py:meth:`.LunaticAgent._make_context`.
+        """
         self.agent = agent
         self._control = kwargs.pop("control", None)
         self._init_arguments = kwargs
@@ -116,18 +137,16 @@ class Context(CarlaDataProvider):
         self.config._content["live_info"] = agent.live_info # not a copy!
         
         self.detected_hazards = set()
-        self.detected_hazards_info = {h: None for h in Hazard}
+        self.detected_hazards_info = {h: HazardSeverity.NONE for h in Hazard}
         self.__dict__.update(kwargs)
         
         # Less used attributes
         self.evaluation_results = {}
         self.action_results = {}
-        self.last_phase_evaluation_results = {}
-        self.last_phase_action_results = {}
 
     @property
     def current_phase(self) -> "Phase":
-        """Current phase the agent is in"""
+        """Current phase the agent is in."""
         return self.agent.current_phase
     
     @property
@@ -135,8 +154,8 @@ class Context(CarlaDataProvider):
         """
         Control the agent currently should use. 
         
-        Setting it to None directly is discouraged. 
-        Use `set_control` to set it to None.
+        Setting it to :code:`None` is discouraged. 
+        Use :py:meth:`set_control` to set it to :code:`None`.
         """
         return self._control
     
@@ -165,7 +184,8 @@ class Context(CarlaDataProvider):
             This is equivalent to ending the inner step of the agent.
         
         See Also:
-            - [LunaticAgent.calculate_control](#LunaticAgent.calculate_control)
+            :any:`LunaticAgent._calculate_control`
+        
         """
         if self.control:
             return self.control
@@ -187,7 +207,11 @@ class Context(CarlaDataProvider):
             raise TypeError("detected_hazards must be a set of Hazards.")
         self._detected_hazards = hazards
         
-    def add_hazard(self, hazard: Hazard, hazard_level=HazardSeverity.EMERGENCY):
+    def add_hazard(self, hazard: Hazard, hazard_level: HazardSeverity =HazardSeverity.EMERGENCY):
+        """
+        Add the specified hazard to the detected hazards, in parallel the `hazard_level` can be set which
+        which is stored in :any:`detected_hazards_info`.
+        """
         if hazard not in Hazard:
             logger.warning(f"Adding {hazard} to the detected hazards which is not a member of the Hazard enum.")
         self.detected_hazards.add(hazard)
@@ -197,8 +221,19 @@ class Context(CarlaDataProvider):
         """
         Discards a hazard from the detected hazards.
         
-        Warning:
-            The hazard to be discarded must be 
+        Parameters:
+            hazard: Hazard to remove from :py:attr:`detected_hazards`.
+            match: How to match the hazard to remove.
+        
+                - "exact" removes if the exact :py:class:`~classes.constants.Hazard` flag is present.
+                - "subset" removes if the hazard is a subset of the detected hazard, e.g.:
+                    
+                        - :python:`discard_hazard(Hazard.VEHICLE, match="subset")` would remove
+                          :any:`Hazard.OBSTACLE` = ``Hazard.VEHICLE | PEDESTRIAN | STATIC_OBSTACLE``.
+                        
+                        - :python:`discard_hazard(Hazard.TRAFFIC_LIGHT, match="subset")` would *not* remove 
+                          :any:`Hazard.TRAFFIC_LIGHT_RED`.
+                    
         """
         if match == "subset":
             self.detected_hazards = {h for h in self.detected_hazards if hazard not in h} # supports flags
@@ -211,7 +246,11 @@ class Context(CarlaDataProvider):
             
         
     def has_hazard(self, hazard: Hazard, match: Literal["exact", "subset", "intersection"]="intersection") -> bool:
-        """Checks if the hazard intersects with any of the detected hazards."""
+        """
+        Checks if the hazard intersects with any of the detected hazards.
+        
+        See :py:meth:`discard_hazard` for the different matching options.
+        """
         if match == "exact":
             return hazard in self.detected_hazards
         elif match == "subset":
@@ -219,12 +258,6 @@ class Context(CarlaDataProvider):
         elif match == "intersection":
             return any(hazard & h for h in self.detected_hazards)
         raise ValueError(f"match must be 'exact', 'subset' or 'intersection', not {match}.")
-    
-    def end_of_phase(self): # TODO: keep or remove? unused
-        self.last_phase_action_results = self.action_results.copy()
-        self.last_phase_evaluation_results = self.evaluation_results.copy()
-        self.evaluation_results.clear()
-        self.action_results.clear()
 
     # Convenience function when using detect_vehicles
     from agents.tools.lunatic_agent_tools import max_detection_distance
@@ -240,14 +273,16 @@ class Context(CarlaDataProvider):
    
 @ConditionFunction
 def always_execute(ctx : Context): # pylint: disable=unused-argument
-    """This is an `ConditionFunction` that always returns True. It can be used to always execute an action."""
+    """
+    This is an :py:class:`.ConditionFunction` that always returns :python:`True`. It can be used to always execute an action.
+    """
     return True
 
 def _use_temporary_config(func):
     """During the condition evaluation the ctx.config should have the overwrite settings applied but not in a permanent way."""
     
     @wraps(func)
-    def wrapper(self: Rule, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *args, **kwargs):
+    def wrapper(self: "Rule", ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *args, **kwargs):
         settings : dict = self.overwrite_settings.copy() # Dict with "self" : SelfConfig
         if overwrite:
             settings.update(overwrite)
@@ -271,15 +306,22 @@ class _CountdownRule:
 
     # TODO: low prio: make cooldown dependant of tickrate or add a conversion from seconds to ticks OR make time-based
     tickrate : ClassVar[int] = NotImplemented
+    """
+    :meta private:
+    """
 
     DEFAULT_COOLDOWN_RESET : ClassVar[int] = 0
-    """Value the cooldown is reset to when `reset_cooldown` is called without a value."""
+    """
+    Value the cooldown is reset to when :py:meth:`reset_cooldown` is called without a value.
+    
+    Used *only* when :py:attr:`cooldown_reset_value` is not set.
+    """
     
     start_cooldown : ClassVar[int] = 0
-    """Initial Cooldown when initialized. if >0 the rule will not be ready for the first start_cooldown ticks."""
+    """Initial :py:attr:`cooldown` when initialized. if >0 the rule will not be ready for the first **start_cooldown** ticks."""
 
-    _instances : ClassVar[WeakSet["_CountdownRule"]] = WeakSet()
-    """Keep track of all instances for the cooldowns"""
+    _instances : ClassVar["WeakSet[_CountdownRule]"] = WeakSet()
+    """Keep track of all Rule instances for the cooldowns"""
     
     _cooldown : int
     """If 0 the rule is ready to be executed."""
@@ -290,7 +332,7 @@ class _CountdownRule:
     def __init__(self, cooldown_reset_value: Optional[int] = None, enabled: bool = True):
         self._instances.add(self)
         self._cooldown = self.start_cooldown
-        self.max_cooldown = cooldown_reset_value or self.DEFAULT_COOLDOWN_RESET
+        self.max_cooldown = cooldown_reset_value if cooldown_reset_value is not None else self.DEFAULT_COOLDOWN_RESET
         self._enabled = enabled
 
     def is_ready(self) -> bool:
@@ -308,8 +350,7 @@ class _CountdownRule:
     @property
     def cooldown(self) -> int:
         """
-        Cooldown of the rule in ticks until it can be executed again after its action was executed.
-        If 0 the rule is ready to be executed.
+        Cooldown of the rule in ticks until it can be executed again. Only if 0 the rule can be executed.
         """
         return self._cooldown
     
@@ -318,13 +359,17 @@ class _CountdownRule:
         self._cooldown = value
     
     def update_cooldown(self):
-        """Update the cooldown of *this* rule."""
+        """
+        Update the :py:attr:`cooldown` of *this* rule.
+        
+        :meta private:
+        """
         if self._cooldown > 0:
             self._cooldown -= 1
     
     @classmethod
     def update_all_cooldowns(cls):
-        """Updates the cooldown of *all* rules."""
+        """Updates the cooldowns of **all** rules."""
         for instance in cls._instances:
             instance.update_cooldown()
             
@@ -336,7 +381,7 @@ class _CountdownRule:
             
     @property
     def enabled(self) -> bool:
-        """If False the rule will not be evaluated. Contrary to `blocked` it will not be reset after the tick."""
+        """If :code:`False` the rule will not be evaluated. Contrary to :py:attr:`blocked` this permanently disables the rule."""
         return self._enabled
     
     @enabled.setter
@@ -344,11 +389,13 @@ class _CountdownRule:
         self._enabled = value
     
     def set_active(self, value: bool):
-        """Enables or disables the rule. Contrary to `blocked` it will not be reset after the tick."""
+        """Enables or disables the rule. Contrary to :py:attr:`blocked` it will not be reset after the tick."""
         self._enabled = value
     
     class CooldownFramework:
-        """Context manager that can reduce all cooldowns at the end of a `with` statement."""
+        """
+        Context manager that can reduce all cooldowns at the end of a `with` statement.
+        """
 
         def __enter__(self):
             return self
@@ -358,6 +405,13 @@ class _CountdownRule:
         
         @staticmethod
         def tick():
+            """
+            Update all cooldowns and unblock all rules.
+            
+            Calls:
+                - :py:meth:`Rule.update_all_cooldowns`
+                - :py:meth:`Rule.unblock_all_rules`
+            """
             Rule.update_all_cooldowns()
             Rule.unblock_all_rules()
                 
@@ -371,11 +425,13 @@ class _GroupRule(_CountdownRule):
     """
 
     # first two values in the list are current and max cooldown, the third is a set of all instances
-    _group_instances : ClassVar[Dict[str, List[int, int, WeakSet["_GroupRule"]]]] = {}
+    _group_instances : ClassVar[Dict[str, Tuple[int, int, "WeakSet[_GroupRule]"]]] = {}
     """
-    Dictionary of all group instances. Key is the group name. 
-    
-    Value is a list of the current cooldown, the max cooldown for reset and a WeakSet of all instances.
+    Dictionary of all group instances. 
+        Keys:
+            The group name. 
+        Values:
+            Is a list of the *current cooldown*, the *max cooldown for reset* and a *WeakSet of all instances*.
     """
     
     def __init__(self, group :Optional[str]=None, cooldown_reset_value: Optional[int] = None, enabled: bool = True):
@@ -399,6 +455,7 @@ class _GroupRule(_CountdownRule):
     
     @property
     def has_group(self) -> bool:
+        """Indicates if the rule belongs to a group, i.e. :python:`self.group is not None`."""
         return self.group is not None
     
     @cooldown.setter
@@ -416,7 +473,7 @@ class _GroupRule(_CountdownRule):
             self._group_instances[self.group][0] = value
 
     def reset_cooldown(self, value:Optional[int]=None):
-        """Reset or set the cooldown"""
+        """Reset or set the cooldown; for a group rule it resets the group cooldown."""
         if self.group:
             self.set_my_group_cooldown(value)
         else:
@@ -424,7 +481,7 @@ class _GroupRule(_CountdownRule):
 
     @classmethod
     def set_cooldown_of_group(cls, group: str, value: int):
-        """Updates the cooldown of the specified group."""
+        """Updates the cooldown of the specified group to a specific value"""
         if group in cls._group_instances:
             cls._group_instances[group][0] = value
         else:
@@ -447,22 +504,34 @@ class _GroupRule(_CountdownRule):
 class Rule(_GroupRule):
     _auto_init_: ClassVar[bool] = True
     """
-    If set to False the automatic __init__ creation is disabled when subclassing.
-    This automatic __init__ will fix parameters like `phases` and `rule` to the class.
+    If set to False the automatic :code:`__init__` creation is disabled when subclassing.
+    This automatic :code:`__init__` will fix parameters like :any:`phases` and :any:`condition` to the class.
     
-    Declaring an `__init__` method in the class has the same effect as setting `_auto_init_` to False.
+    Declaring an :code:`__init__` method in the class has the same effect as setting :code:`_auto_init_` to False.
     
     Note:
-        Using `class NewRuleType(metaclass=Rule)` equivalent to `_auto_init_=False`, but is not inherited.
+        Using :python:`class NewRuleType(metaclass=Rule)` is nearly equivalent to :python:`_auto_init_=False`, but is not inherited.
     """
     
-    # Indicate that no rule was applicable in the current phase
-    # i.e.  rule(ctx) in actions was False 
-    NOT_APPLICABLE : ClassVar[object] = object()
-    """Object that indicates that no action was executed."""
+    NOT_APPLICABLE : ClassVar[Literal[RuleResult.NOT_APPLICABLE]] = RuleResult.NOT_APPLICABLE
+    """
+    Unique object :py:attr:`.RuleResult.NOT_APPLICABLE` that indicates that no action was executed.
     
-    NO_RESULT = RULE_NO_RESULT
-    """Indicates that the action raised an exception."""
+    :meta hide-value:
+    
+    .. deprecated:: Use :py:attr:`.RuleResult.NOT_APPLICABLE` directly
+    """
+    
+    NO_RESULT: ClassVar[Literal[RuleResult.NO_RESULT]] = RuleResult.NO_RESULT
+    """
+    Unique object :py:attr:`.RuleResult.NO_RESULT` that indicates that the rules :py:meth:`action` did not return a result,
+    e.g. because an exception was raised.
+    
+    :meta hide-value:
+    
+    .. deprecated:: Use :py:attr:`.RuleResult.NOT_APPLICABLE` directly
+    """
+    
     
     _PROPERTY_MEMBERS : ClassVar[Set[str]] = {"cooldown", "has_group", "enabled"}
     """
@@ -479,7 +548,7 @@ class Rule(_GroupRule):
     phases : FrozenSet["Phase"]
     """
     The phase or phases in which the rule should be evaluated.
-    For instantiation the phases attribute can be any `Iterable[Phase]`.
+    For instantiation the phases attribute can be any :code:`Iterable` [:any:`Phase`].
     """
     
     phase : "Phase"
@@ -489,12 +558,12 @@ class Rule(_GroupRule):
     """
     The condition that determines if the rule's actions should be executed.
     
-    Simple variant:
+    Simple Variant:
         return True if the action should be executed, False otherwise.
-        if `false_action` is defined, False will execute `false_action`.
+        if :any:`false_action` is defined, False will execute :any:`false_action`.
         
-    Advanced variant:
-        return a Hashable value that is used as key in the `actions` dict.
+    Advanced Variant:
+        return a :any:`Hashable` value that is used as key in the :any:`actions` dict.
     """
     
     actions : Dict[Any, Callable[[Context], Any]]
@@ -543,8 +612,8 @@ class Rule(_GroupRule):
         Create a new instance of the rule with the same settings.
         
         Note: 
-            - The current cooldown is not taken into account.
-            - The current enabled state is taken into account.
+            - The current cooldown **is not** taken into account.
+            - The current enabled state **is** taken into account.
         """
         return self.__class__(self) # Make use over overloaded __init__
 
@@ -570,36 +639,36 @@ class Rule(_GroupRule):
         Initializes a Rule object.
 
         Parameters:
-        - phases: The phase(s) when the rule should be evaluated.
-            An iterable of Phase objects or a single Phase object.
-        - condition: A function that takes a Context object as input and returns a Hashable value. 
-            If not provided, the class must implement a `condition` function.
-        - action: A function or a dictionary of functions that take a Context object as input. 
-            If `action` behaves like `actions`.
-            Only one of `action` and `actions` can be set.
-        - false_action: A function that takes a Context object as input and returns any value. 
-            It is used when `action` is a single function and represents the action to be taken when the condition is False.
-        - actions: A dictionary of `action` functions
-            It should map the return values of `condition` to the corresponding action function. 
-            If `action` is None, `actions` must be provided.
-        - description: A string that describes what this rule does.
-        - overwrite_settings: A dictionary of settings that will overwrite the 
-            agent's setting for this Rule.
-        - priority: The priority of the rule. It can be a float, an integer, or a RulePriority enum value.
-        - cooldown_reset_value: An optional integer value that represents the cooldown reset value for the rule.
-            If not provided falls back to the class attribute DEFAULT_COOLDOWN_RESET.
-        - group: An optional string that specifies the group to which this rule belongs.
-        - enabled: A boolean value indicating whether the rule is enabled or not.
-        - ignore_chance: Not implemented.
+            phases: The phase(s) when the rule should be evaluated.
+                An iterable of Phase objects or a single Phase object.
+            condition: A function that takes a Context object as input and returns a Hashable value. 
+                If not provided, the class must implement a `condition` function.
+            action: A function or a dictionary of functions that take a Context object as input. 
+                If `action` behaves like `actions`.
+                Only one of `action` and `actions` can be set.
+            false_action: A function that takes a Context object as input and returns any value. 
+                It is used when `action` is a single function and represents the action to be taken when the condition is False.
+            actions: A dictionary of `action` functions
+                It should map the return values of `condition` to the corresponding action function. 
+                If `action` is None, `actions` must be provided.
+            description: A string that describes what this rule does.
+            overwrite_settings: A dictionary of settings that will overwrite the 
+                agent's setting for this Rule.
+            priority: The priority of the rule. It can be a float, an integer, or a RulePriority enum value.
+            cooldown_reset_value: An optional integer value that represents the cooldown reset value for the rule.
+                If not provided falls back to the class attribute :py:attr:`.Rule.DEFAULT_COOLDOWN_RESET`.
+            group: An optional string that specifies the group to which this rule belongs.
+            enabled: A boolean value indicating whether the rule is enabled or not.
 
         Raises:
-        - ValueError: If `phases` is empty or None, or if `phases` contains an object that is not of type Phase.
-        - TypeError: If `condition` is None and the class does not implement a `condition` function, or if both `action` and `actions` are None and the class does not have an `actions` attribute or an `action` function.
-        - TypeError: if actions is not a Mapping object.
-        - ValueError: If both `action` and `actions` are provided.
-        - ValueError: If `action` is a Mapping and either `false_action` or `actions` is not None.
-        - ValueError: If an action function is not callable.
-        - ValueError: If `description` is not a string.
+            ValueError: If ``phases`` is empty or None, or if ``phases`` contains an object that is not of type Phase.
+            TypeError: If ``condition`` is None and the class does not implement a :py:meth:`condition` function, 
+                or if both ``action`` and ``actions`` are None and the class does not have an :py:attr:`actions` attribute or an :py:meth:`action` function.
+            TypeError: if ``actions`` is not a Mapping object.
+            ValueError: If both ``action`` and ``actions`` are provided.
+            ValueError: If ``action`` is a Mapping and either ``false_action`` or ``actions`` is not None.
+            ValueError: If an ``action`` function is not callable.
+            ValueError: If ``description`` is not a string.
         """
         
         # Check phases
@@ -860,14 +929,19 @@ class Rule(_GroupRule):
         
         Returns:
             The signature of the __init__ function.
+            
+        :meta private:
         """
         return inspect.signature(cls.__init__).parameters.keys()
 
     def execute_phase(self, *args, **kwargs):
         """
-        Helper function to execute a phase from within a rule.
-        
-        Use with care to avoid loops or recursions.
+        Helper function to execute a phase from within a rule,
+        wrapper of :py:meth:`agents.lunatic_agent.LunaticAgent.execute_phase`.  
+        **Use with care to avoid loops or recursions.**
+            
+        Raises:
+            AttributeError: If the weak proxy pointing to the :py:class:`Context` object has been deleted.
         """
         try:
             self._ctx.agent.execute_phase(*args, **kwargs)
@@ -880,15 +954,29 @@ class Rule(_GroupRule):
     # -----------------------
 
     @_use_temporary_config
-    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, _NO_RESULT_TYPE]: # pylint: ignore=unused-argument
+    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, "Literal[Rule.NO_RESULT]"]: # pylint: ignore=unused-argument
+        """
+        Executes the condition function of the rule, should be called from a rule's :py:meth:`__call__` method.
+        The decorator automatically takes care of temporarily setting the :py:attr:`overwrite_settings`.
+        
+        :meta private:
+        """
         self._ctx = proxy(ctx)      # use with care and access over function
         result = self.condition(ctx)
         return result
     
-    def evaluate_children(self, ctx : Context):
+    def evaluate_children(self, ctx : Context): # pylint: disable=unused-argument
+        """NotImplemented for this rule class"""
         raise NotImplementedError("This method should be implemented in a subclass")
 
     def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *, ignore_phase=False, ignore_cooldown=False) -> Any:
+        """
+        1. First checks if the rule is *applicable*, i.e. is its :py:attr:`cooldown` 0, if not returns :py:attr:`NOT_APPLICABLE`.
+        2. Afterwards evaluates the rules :py:meth:`condition` function.
+            - if the result is not in :py:attr:`actions` returns :py:attr:`NOT_APPLICABLE`.
+            - otherwise merges the :py:attr:`overwrite_settings` with the py:attr:`.Context.config` and executes the action.
+        """
+        
         # Check phase
         assert ignore_phase or ctx.agent.current_phase in self.phases
         
@@ -987,19 +1075,19 @@ class MultiRule(metaclass=Rule):
             Args:
                 phases (Union[Phase, Iterable]): The phase or phases in which the rule should be active.
                 rules (List[Rule]): The list of child rules to be called if the rule's condition is true.
-                condition (Callable[[Context]], optional): The condition that determines if the rules should be evaluated. Defaults to always_execute.
+                condition (Callable[[Context]], optional): The condition that determines if the rules should be evaluated. Defaults to :py:func:`always_execute`.
                 execute_all_rules (bool, optional): 
                     If False will only execute the first rule with a applicable condition, i.e. this MultiRule is like a node in a decision tree.
                     If True all rules are evaluated, unless one raises a `DoNotEvaluateChildRules` exception.
-                    Defaults to False.
-                sort_rules (bool, optional): Flag indicating whether to sort the rules by priority. Defaults to True.
-                action (Callable[[Context]], optional): The action to be executed before the passed rules are evaluated. Defaults to None.
-                ignore_phase (bool, optional): Flag indicating whether to ignore the Phase of the passed child rules. Defaults to True.
-                overwrite_settings (Dict[str, Any], optional): Additional settings to overwrite the agent's settings. Defaults to None.
-                priority (RulePriority, optional): The priority of the rule. Defaults to RulePriority.NORMAL.
-                description (str, optional): The description of the rule. Defaults to "If its own rule is true calls the passed rules.".
-                group (str | None, optional): The group name of the rule. Defaults to None.
-                enabled (bool, optional): Flag indicating whether the rule is enabled after creation. Defaults to True.
+                    Defaults to :python:`False`.
+                sort_rules (bool, optional): Flag indicating whether to sort the rules by priority. Defaults to :python:`True`.
+                action (Callable[[Context]], optional): The action to be executed before the passed rules are evaluated. Defaults to :python:`None`.
+                ignore_phase (bool, optional): Flag indicating whether to ignore the Phase of the passed child rules. Defaults to :python:`True`.
+                overwrite_settings (Dict[str, Any], optional): Additional settings to overwrite the agent's settings. Defaults to :python:`None`.
+                priority (RulePriority, optional): The priority of the rule. :py:attr:`RulePriority.NORMAL <classes.constants.RulePriority.NORMAL>`.
+                description (str, optional): The description of the rule. Defaults to :python:`"If its own rule is true calls the passed rules."`.
+                group (str | None, optional): The group name of the rule. Defaults to :python:`None`.
+                enabled (bool, optional): Flag indicating whether the rule is enabled after creation. Defaults to :python:`True`.
             """
             self.ignore_phase = ignore_phase
             if rules is None:
@@ -1013,7 +1101,7 @@ class MultiRule(metaclass=Rule):
             if action is not None:
                 action = self._wrap_action(action)
             else:
-                action = self.evaluate_children
+                action = self.evaluate_children # will be called elsewhere
             if condition is None and not hasattr(self, "condition"):
                 condition = always_execute
             super().__init__(phases, 
@@ -1045,11 +1133,11 @@ class MultiRule(metaclass=Rule):
         Evaluates the children rules of the current rule in the given context.
 
         Args:
-            ctx (Context): The context in which the child rules are evaluated.
+            ctx : The context in which the child rules are evaluated.
 
         Returns:
-            Union[List[Any], Any]: The results of evaluating the children rules.
-                Returns a list of results if execute_all_rules is True, otherwise the result of the first rule that was applied.
+            The results of evaluating the children rules.
+            Returns a list of results if execute_all_rules is True, otherwise the result of the first rule that was applied.
         """
         results = []
         for rule in self.rules:
@@ -1067,32 +1155,25 @@ class RandomRule(metaclass=MultiRule):
     A rule that selects and evaluates one or more random child rules from a set of rules.
 
     Args:
-        phases (Union["Phase", Iterable]): The phase or phases in which the rule is applicable.
-        rules (Union[Dict[Rule, float], List[Rule]]): The set of rules from which to select random child rules.
-        repeat_if_not_applicable (bool, optional): If False, only one rule will be evaluated even if it is not applicable. Defaults to True.
-        condition (Optional[Callable[[Context], Any]], optional): 
+        phases : The phase or phases in which the rule is applicable.
+        rules : The set of rules from which to select random child rules.
+        repeat_if_not_applicable : If False, only one rule will be evaluated even if it is not applicable. Defaults to :python:`True`.
+        condition : 
             A callable that determines if the rule is applicable in a given context.
-            If None and the rule does not implement a `condition` attribute the rule always executes.
-            Defaults to None.
-        action (Optional[Callable[[Context], Any]], optional): A callable that defines the action to be performed when the rule is applicable. Defaults to None.
-        ignore_phase (bool, optional): If True, the rule will be evaluated even if it is not in the specified phase. Defaults to True.
-        priority (RulePriority, optional): The priority of the rule. Defaults to RulePriority.NORMAL.
-        description (str, optional): A description of the rule. Defaults to "If its own condition is true calls one or more random child rules from the passed rules.".
-        overwrite_settings (Optional[Dict[str, Any]], optional): A dictionary of settings to overwrite the default settings of the rule. Defaults to None.
-        cooldown_reset_value (Optional[int], optional): The value to reset the cooldown of the rule. Defaults to None.
-        group (Optional[str], optional): The group to which the rule belongs. Defaults to None.
-        enabled (bool, optional): If False, the rule will not be evaluated. Defaults to True.
-        weights (Optional[List[float]], optional): The weights associated with each rule when selecting random child rules. Defaults to None.
+            If None and the rule does not implement a :py:attr:`condition` attribute the rule always executes.
+            Defaults to :python:`None`.
+        action : A callable that defines the action to be performed when the rule is applicable. Defaults to :python:`None`.
+        ignore_phase : If True, the rule will be evaluated even if it is not in the specified phase. Defaults to :python:`True`.
+        priority : The priority of the rule. :py:attr:`RulePriority.NORMAL <classes.constants.RulePriority.NORMAL>`.
+        description : A description of the rule. Defaults to :python:`"If its own condition is true calls one or more random child rules from the passed rules."`.
+        overwrite_settings : A dictionary of settings to overwrite the default settings of the rule. Defaults to :python:`None`.
+        cooldown_reset_value : The value to reset the cooldown of the rule. Defaults to :python:`None`.
+        group : The group to which the rule belongs. Defaults to :python:`None`.
+        enabled : If False, the rule will not be evaluated. Defaults to :python:`True`.
+        weights : The weights associated with each rule when selecting random child rules. Defaults to :python:`None`.
 
     Raises:
-        ValueError: When passing rules as a dict with weights, the weights argument must be None.
-
-    Methods:
-        evaluate_children(ctx: Context, overwrite: Optional[Dict[str, Any]]) -> Any:
-            Evaluate a random child rule. If `self.repeat_if_not_applicable=False` and the randomly chosen rule is not applicable,
-            then no further rules are evaluated. For `self.repeat_if_not_applicable=False`, possible rules are evaluated in a random fashion
-            until one rule is applicable.
-
+        ValueError: When passing **rules** as a dict with weights, the **weights** argument must be None.
     """
     
     # TODO: add a dummy attribute for one additional weight, that skips the evaluation. Should only considered once.
@@ -1105,7 +1186,7 @@ class RandomRule(metaclass=MultiRule):
                  condition : Optional[Callable[[Context], Any]] = None, 
                  *,
                  action : Optional[Callable[[Context], Any]] = None,
-                 ignore_phase = True,
+                 ignore_phase : bool = True,
                  priority: RulePriority = RulePriority.NORMAL, 
                  description: str = "If its own condition is true calls one or more random child rules from the passed rules.", 
                  overwrite_settings: Optional[Dict[str, Any]] = None,
@@ -1119,22 +1200,22 @@ class RandomRule(metaclass=MultiRule):
         Initializes a Rule object that can trigger one or more random child rules.
         
         Args:
-            phases (Union["Phase", Iterable]): The phase or phases in which the rule is applicable.
-            rules (Union[Dict[Rule, float], List[Rule]]): The set of rules from which to select random child rules.
-            repeat_if_not_applicable (bool, optional): If False, only one rule will be evaluated even if it is not applicable. Defaults to True.
-            condition (Optional[Callable[[Context], Any]], optional): 
+            phases : The phase or phases in which the rule is applicable.
+            rules : The set of rules from which to select random child rules.
+            repeat_if_not_applicable : If False, only one rule will be evaluated even if it is not applicable. Defaults to :python:`True`.
+            condition : 
                 A callable that determines if the rule is applicable in a given context.
                 If None and the rule does not implement a `condition` attribute the rule always executes.
-                Defaults to None.
-            action (Optional[Callable[[Context], Any]], optional): A callable that defines the action to be performed when the rule is applicable. Defaults to None.
-            ignore_phase (bool, optional): If True, the rule will be evaluated even if it is not in the specified phase. Defaults to True.
-            priority (RulePriority, optional): The priority of the rule. Defaults to RulePriority.NORMAL.
-            description (str, optional): A description of the rule. Defaults to "If its own condition is true calls one or more random child rules from the passed rules.".
-            overwrite_settings (Optional[Dict[str, Any]], optional): A dictionary of settings to overwrite the default settings of the rule. Defaults to None.
-            cooldown_reset_value (Optional[int], optional): The value to reset the cooldown of the rule. Defaults to None.
-            group (Optional[str], optional): The group to which the rule belongs. Defaults to None.
-            enabled (bool, optional): If False, the rule will not be evaluated. Defaults to True.
-            weights (Optional[List[float]], optional): The weights associated with each rule when selecting random child rules. Defaults to None.
+                Defaults to :python:`None`.
+            action : A callable that defines the action to be performed when the rule is applicable. Defaults to :python:`None`.
+            ignore_phase : If True, the rule will be evaluated even if it is not in the specified phase. Defaults to :python:`True`.
+            priority : The priority of the rule. Defaults to :py:attr:`RulePriority.NORMAL <classes.constants.RulePriority.NORMAL>`.
+            description : A description of the rule. Defaults to :python:`"If its own condition is true calls one or more random child rules from the passed rules."`.
+            overwrite_settings : A dictionary of settings to overwrite the default settings of the rule. Defaults to :python:`None`.
+            cooldown_reset_value : The value to reset the cooldown of the rule. Defaults to :python:`None`.
+            group : The group to which the rule belongs. Defaults to :python:`None`.
+            enabled : If False, the rule will not be evaluated. Defaults to :python:`True`.
+            weights : The weights associated with each rule when selecting random child rules. Defaults to :python:`None`.
         """
         if isinstance(rules, dict):
             if weights is not None:
@@ -1191,6 +1272,11 @@ class RandomRule(metaclass=MultiRule):
 
 
 class BlockingRule(metaclass=Rule):
+    """
+    This meta rule allows to define rules that are able to takeover the agent's workflow
+    
+    
+    """
 
     _gameframework: ClassVar[Union["GameFramework", "proxy[GameFramework]", None]] = None
 
@@ -1199,7 +1285,7 @@ class BlockingRule(metaclass=Rule):
     
     MAX_TICKS = 5000 # 5000 * 1/20 = 250 seconds
     
-    max_tick_callback : Optional[Callable[[BlockingRule, Context], Any]] = None
+    max_tick_callback : Optional[Callable[["BlockingRule", Context], Any]] = None
 
     @singledispatchmethod
     def __init__(self, 
@@ -1259,12 +1345,12 @@ class BlockingRule(metaclass=Rule):
 
     if TYPE_CHECKING:
         @override
-        def loop_agent(self, ctx: Context, *, execute_planner: True, execute_phases:Any) -> VehicleControl: ...
+        def loop_agent(self, ctx: Context, *, execute_planner: True, execute_phases:Any) -> "carla.VehicleControl": ...
             
         @override
         def loop_agent(self, ctx: Context, *, execute_planner: False, execute_phases:Any) -> None: ...
 
-    def loop_agent(self, ctx: Context, control: Optional[carla.VehicleControl]=None, *, execute_planner: bool, execute_phases=True) -> VehicleControl | None:
+    def loop_agent(self, ctx: Context, control: Optional["carla.VehicleControl"]=None, *, execute_planner: bool, execute_phases=True) -> "carla.VehicleControl | None":
         """
         A combination of `LunaticAgent.parse_keyboard_input`, `LunaticAgent.apply_control`, `BlockingRule.update_world`,
         and `Context.get_or_calculate_control` to advance agent and world.
@@ -1273,13 +1359,13 @@ class BlockingRule(metaclass=Rule):
             ctx (Context): The current context object
             control (Optional[carla.VehicleControl], optional): The control to apply; will overwrite the context's control.
                 If None takes the context's control.
-                Defaults to None.
+                Defaults to :python:`None`.
         
         See Also:
-            - [](#LunaticAgent.parse_keyboard_input)
-            - [](#LunaticAgent.apply_control)
-            - [](#BlockingRule.update_world)
-            - [](#Context.get_or_calculate_control)
+            - py:meth:`.LunaticAgent.parse_keyboard_input`
+            - py:meth:`.LunaticAgent.apply_control)`
+            - py:meth:`.BlockingRule.update_world)`
+            - py:meth:`.Context.get_or_calculate_control)`
         """
         ctx.agent.parse_keyboard_input(control=control) # NOTE: if skipped the user has no option to stop the agent
         ctx.agent.apply_control(control)
@@ -1294,7 +1380,7 @@ class BlockingRule(metaclass=Rule):
         return None
 
     @staticmethod
-    def get_world():
+    def get_world() -> "carla.World":
         return CarlaDataProvider.get_world()
 
     def _begin_tick(self, ctx: Context):
@@ -1328,28 +1414,28 @@ class BlockingRule(metaclass=Rule):
         ctx.set_control(None)
         self.ticks_passed += 1
 
-    def update_world(self, ctx: Context, *, execute_phases=True) -> VehicleControl | None:
+    def update_world(self, ctx: Context, *, execute_phases=True) -> "carla.VehicleControl | None":
         """
-        When true, the agent will execute the 
-            execute_phase(Phase.CUSTOM_CYCLE | Phase.BEGIN, prior_results=<this Rule instance>)
-
-            Phase.UPDATE_INFORMATION | Phase.[BEGIN|END] while blocked. 
-            Default is True.
+        Ticks the world and takes care of the rendering.
+    
+        Will call
+            - :python:`ctx.agent.execute_phase(Phase.CUSTOM_CYCLE | Phase.BEGIN, prior_results=<this Rule instance>)`
+            - :py:meth:`.LunaticAgent.update_information`, with or without executing the phases, depending on **execute_phases**.
 
         Args:
             ctx (Context): The context to use
-            execute_update_information (bool, optional): Whether to execute the Phase.UPDATE_INFORMATION | Phase.[BEGIN|END] while blocked. Defaults to True.
-            run_step (bool, optional): 
-                Whether to run the next step of the local planner.
-            
-                Note:
-                    If you want to update the behavior of the agent after Phase.UPDATE_INFORMATION | Phase.END
-                    inside the rule's action you should should use `execute_planner=False`.
-                    If you need a ready control object for the next step to work with, use `execute_planner=True`
-                    or call `ctx.get_or_calculate_control()` inside the rule's action afterwards.
+            execute_update_information (bool, optional): 
+                Whether to execute the :python:`Phase.UPDATE_INFORMATION | Phase.[BEGIN|END]` with this function. 
+                Defaults to :python:`True`.
 
         Raises:
-            UnblockRuleException: If the ticks passed are over MAX_TICKS
+            UnblockRuleException: If the ticks passed are over :py:attr:`MAX_TICKS`
+            
+        Attention:    
+            The usage with Leaderboard is working but experimental.
+            The scenario expects the agent to return a control object in every step, however as this rule
+            takes over the ticks completely an outside ScenarioManager might not work as expected.
+        
         """
         self._begin_tick(ctx)
         ctx.agent.execute_phase(Phase.CUSTOM_CYCLE | Phase.BEGIN, prior_results=self)

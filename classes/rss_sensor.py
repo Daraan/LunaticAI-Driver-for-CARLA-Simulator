@@ -14,7 +14,7 @@ except ImportError:
     AD_RSS_AVAILABLE = False
     
 from launch_tools import CarlaDataProvider 
-from classes._custom_sensor import CustomSensor
+from classes._sensor_interface import CustomSensorInterface
 from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisualizer, RssUnstructuredSceneVisualizer # pylint: disable=relative-import
 
 from agents.tools.logging import logger
@@ -70,7 +70,7 @@ class RssStateInfo(object):
         return "RssStateInfo: object=" + str(self.rss_state.objectId) + " dangerous=" + str(self.is_dangerous)
 
 
-class RssSensor(CustomSensor):
+class RssSensor(CustomSensorInterface):
 
     def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer:"RssUnstructuredSceneVisualizer", bounding_box_visualizer, state_visualizer, *, visualizer_mode=RssDebugVisualizationMode.Off, routing_targets=None, log_level=carla.RssLogLevel.warn if AD_RSS_AVAILABLE else "warn"):
         self.sensor = None

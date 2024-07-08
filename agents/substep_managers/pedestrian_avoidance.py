@@ -1,5 +1,5 @@
 from agents.tools.hints import ObstacleDetectionResult
-from agents.navigation.local_planner import RoadOption
+from classes.constants import RoadOption
 from agents.tools.lunatic_agent_tools import detect_vehicles
 
 from typing import TYPE_CHECKING

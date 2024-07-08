@@ -5,7 +5,7 @@ import carla
 
 from typing import TYPE_CHECKING
 
-from agents.navigation.local_planner import RoadOption
+from classes.constants import RoadOption
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
 from agents.tools.logging import logger

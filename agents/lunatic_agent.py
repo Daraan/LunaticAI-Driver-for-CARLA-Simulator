@@ -39,9 +39,9 @@ from agents.tools.lunatic_agent_tools import generate_lane_change_path, result_t
 from agents.tools.logging import logger
 
 from agents import substep_managers
-from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss, RoadOption
+from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss
 
-from classes.constants import AgentState, HazardSeverity, Phase, Hazard
+from classes.constants import AgentState, HazardSeverity, Phase, Hazard, RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import BlockingRule, Context, Rule
 from agents.tools.config_creation import AgentConfig, CallFunctionFromConfig, LaunchConfig, LiveInfo, LunaticAgentSettings, CreateRuleFromConfig, RuleCreatingParameters
@@ -75,6 +75,8 @@ class LunaticAgent(BehaviorAgent):
     rules: ClassVar[Dict[Phase, List[Rule]]] = {k : [] for k in Phase.get_phases()}
     """
     The rules of the this agent class. When initialized the rules of the class are copied.
+    
+    :meta hide-value:
     """
     
     ctx : "Context"
@@ -130,28 +132,28 @@ class LunaticAgent(BehaviorAgent):
         agent = cls(agent_config, world_model)
         return agent, world_model, agent.get_global_planner()
 
-    def __init__(self, behavior: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: carla.Vehicle=None, overwrite_options: dict = {}, debug=True):
+    def __init__(self, settings: Union[str, LunaticAgentSettings], world_model: Optional[WorldModel]=None, *, vehicle: Optional[carla.Vehicle]=None, overwrite_options: dict = {}, debug=True):
         """
-        Initialization the agent parameters, the local and the global planner.
+        Initialize the LunaticAgent.
 
-            :param vehicle: actor to apply to agent logic onto
-            :param target_speed: speed (in Km/h) at which the vehicle will move
-            :param opt_dict: dictionary in case some of its parameters want to be changed.
-                This also applies to parameters related to the LocalPlanner.
-            :param map_inst: carla.Map instance to avoid the expensive call of getting it.
-
-            :debug: boolean to activate the debug mode. In the debug mode more settings will be validated.
+        Args:
+            settings : 
+                The settings of the agent to construct the :py:attr:`LunaticAgent.config`. 
+                It can be either a string pointing to a yaml file or a LunaticAgentSettings.
+            world_model : The world model to use. If None, a new WorldModel will be created.
+            vehicle : The vehicle controlled by the agent. Can be None then the :code:`world_model.player` will be used.
+            overwrite_options : Additional options to overwrite the default agent configuration.
+            debug : Whether to enable debug mode.
         """
         self._debug = debug
         if world_model is None and len(sys.argv) > 1:
             logger.error("BUG: Beware when not passing a WorldModel, the WorldModel currently ignores command line overrides, "
                          "i.e. will only use the config file.\n> Use `%s.create_world_and_agent` and provide the LaunchConfig instead.", self.__class__.__name__)
-        
 
         # Settings ---------------------------------------------------------------
         # Depending on the input type, the settings are created differently.
         
-        self.config = self._create_agent_config(behavior, world_model, overwrite_options)
+        self.config = self._create_agent_config(settings, world_model, overwrite_options)
         self.initial_config = self.config.copy()
           
         # -------------------------------
@@ -296,6 +298,9 @@ class LunaticAgent(BehaviorAgent):
 
     @property
     def detection_matrix(self):
+        """
+        Returns :any:`DetectionMatrix.getMatrix` if the matrix is set.
+        """
         if self._detection_matrix:
             return self._detection_matrix.getMatrix()
         
@@ -325,8 +330,8 @@ class LunaticAgent(BehaviorAgent):
     
     #
     @property
-    def current_traffic_light(self):
-        """Alias of self._last_traffic_light."""
+    def current_traffic_light(self) -> "carla.TrafficLight | None":
+        """Alias to :py:attr:`self._last_traffic_light <_last_traffic_light>`."""
         return self._last_traffic_light
     
     @current_traffic_light.setter
@@ -334,12 +339,12 @@ class LunaticAgent(BehaviorAgent):
         self._last_traffic_light = traffic_light
     
     @property
-    def phase_results(self):
+    def phase_results(self) -> Dict[Phase, Any]:
         """
-        (property to agent.ctx.phase_results)
+        Retrieves :py:attr:`agent.ctx.phase_results <classes.rule.Context.phase_results>`
         
         Stores the results of the phases the agent has been in. 
-        By default the keys are set to `Context.PHASE_NOT_EXECUTED`.
+        By default the keys are set to :any:`Context.PHASE_NOT_EXECUTED`.
         """
         return self.ctx.phase_results
     
@@ -477,9 +482,11 @@ class LunaticAgent(BehaviorAgent):
             OmegaConf.to_container(self.live_info, resolve=True, throw_on_missing=True)
     
     def is_taking_turn(self) -> bool:
+        """Checks if the agent is taking a turn in a few steps"""
         return self.live_info.incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
     
     def is_changing_lane(self) -> bool:
+        """Checks if the agent is changing lanes in a few steps"""
         return self.live_info.incoming_direction in (RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT)
     
             
@@ -491,11 +498,11 @@ class LunaticAgent(BehaviorAgent):
         Add a rule to the agent. The rule will be inserted at the given position.
         
         Args:
-            rule (Rule): The rule to add
-            position (Union[int, None], optional): 
+            rule : The rule to add
+            position : 
                 The position to insert the rule at. 
-                If None the rule list will be sorted by priority.
-                Defaults to None.
+                If :python:`None` the rule list will be sorted by priority.
+                Defaults to :python:`None`.
         """
         for p in rule.phases:
             if p not in self.rules:
@@ -627,24 +634,29 @@ class LunaticAgent(BehaviorAgent):
                 logger.warning("UpdatedPathException was raised in the second pass. This should not happen: %s. Restrict your rule on ctx.second_pass.", e)
             return self.run_step(debug, second_pass=True) # TODO: # CRITICAL: For child classes like the leaderboard agent this calls the higher level run_step.
         
-    def make_context(self, last_context : Union[Context, None], **kwargs):
+    def _make_context(self, last_context : Union[Context, None], **kwargs) -> Context:
+        """Creates a new context object for the agent at the start of a step."""
         if last_context is not None:
             del last_context.last_context
         ctx = Context(agent=self, last_context=last_context, **kwargs)
         self.ctx = ctx
         return ctx
+    
+    def __call__(self, debug=False) -> carla.VehicleControl:
+        """Calculates the next vehicle control object."""
+        return self.run_step(debug, second_pass=False) # debug should be positional!
                 
     def run_step(self, debug=False, second_pass=False) -> carla.VehicleControl:
         """
-        The agent.run_step is the main method in which the agent calculates the next vehicle control object.
+        Calculates the next vehicle control object.
         
         Warning:
-            To be compatible with the leaderboard agent, always pass debug as a positional argument, e.g.
-            when you are using a `BlockingRule` that loops
+            To be compatible with the :py:class:`.LunaticChallenger`, **always pass** :code:`debug` **as a positional argument**,
+            or use the :code:`__call__` method.
         """
         
         if not second_pass:
-            ctx = self.make_context(last_context=self.ctx)
+            ctx = self._make_context(last_context=self.ctx)
         else:
             ctx = self.ctx
         ctx.second_pass = second_pass
@@ -867,10 +879,8 @@ class LunaticAgent(BehaviorAgent):
             
         Warning:
             This function only calculates and returns the control object directly. 
-            **It does not set the agent/ctx.control attribute which is the one
+            **It does not set the :py:attr:`agent/ctx.control <control>` attribute which is the one
             the agent uses in [`apply_control`](#apply_control) to apply the final controls.**
-            
-        See Also:
         """
         if self.ctx.control is not None:
             logger.error("Control was set before calling _calculate_control. This might lead to unexpected behavior.")
@@ -898,11 +908,11 @@ class LunaticAgent(BehaviorAgent):
     def apply_control(self, control: Optional[carla.VehicleControl]=None):
         """
         Applies the control to the agent's actor.
-        Will execute the `Phase.EXECUTION | Phase.BEGIN` and `Phase.EXECUTION | Phase.END` phases.
+        Will execute the :py:class:`Phase.EXECUTION | Phase.BEGIN <classes.constants.Phase>` and :py:class:`Phase.EXECUTION | Phase.END <classes.constants.Phase>` phases.
         
         Note:
             The final control object that is applied to the agent's actor
-            is stored in the `ctx.control` attribute.
+            is stored in the :py:attr:`ctx.control <ctx>` attribute.
         """
         if control is None:
             control = self.get_control()
@@ -1355,6 +1365,7 @@ class LunaticAgent(BehaviorAgent):
             self._collision_sensor = None
             
     def destroy(self):
+        """Resets attributes and destroys helpers like the :py:class:`.DetectionMatrix`."""
         self._destroy_sensor()
         self._world_model = None
         self._world = None

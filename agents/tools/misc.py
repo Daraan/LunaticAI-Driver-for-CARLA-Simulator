@@ -18,7 +18,7 @@ import carla
 from classes.constants import RoadOptionColor # pylint: disable=unused-import
 
 if TYPE_CHECKING:
-    from agents.navigation.local_planner import RoadOption
+    from classes.constants import RoadOption
     from agents.lunatic_agent import LunaticAgent
     from classes.worldmodel import GameFramework
     # also checkout RoadOptionColor
@@ -313,7 +313,7 @@ def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destin
     # Import here to avoid circular imports
     from launch_tools import CarlaDataProvider
     from agents.tools import lane_explorer
-    from agents.navigation.local_planner import RoadOption
+    from classes.constants import RoadOption
     
     world_model = game_framework.world_model
     

@@ -7,6 +7,11 @@ Welcome to LunatiAI's documentation!
 ====================================
 
 .. toctree::
+   :hidden:
+
+   Home <self>
+
+.. toctree::
    :maxdepth: 1
    :caption: Contents:
 
@@ -14,9 +19,7 @@ Welcome to LunatiAI's documentation!
    Quickstart
    agents/Agents
    Configuration <conf/ConfigFiles>
-   agents
    agents/rules/Rules
-   classes
    modules
 
 Indices and tables
@@ -30,5 +33,4 @@ Readme
 ======
 
 .. include:: readme_link.rst
-
-
+.. _readme-workflow:

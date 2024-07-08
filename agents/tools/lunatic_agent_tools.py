@@ -5,7 +5,7 @@ from shapely.geometry import Polygon
 from functools import partial, wraps
 
 import carla
-from agents.navigation.local_planner import RoadOption
+from classes.constants import RoadOption
 from agents.tools.config_creation import AgentConfig, LunaticAgentSettings
 from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
@@ -126,20 +126,22 @@ def phase_callback(*, on_enter: Phase = None,
 
 def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal["same_lane", "other_lane", "overtaking", "tailgating"]):
     """
-    Convenience function to be used with `detect_vehicles` and `detect_obstacles_in_path`.
+    Convenience function to be used with :py:func:`lunatic_agent_tools.detect_vehicles` and :any:`LunaticAgent.detect_obstacles_in_path`.
     
     The max distance to consider an obstacle is calculated as:
     
-    :: 
-        .. code-block:: python
-    max(obstacles.min_proximity_threshold,
-        live_info.current_speed_limit / obstacles.speed_detection_downscale.[same|other]_lane)
+    .. code-block:: python
+
+        max(obstacles.min_proximity_threshold, 
+            live_info.current_speed_limit / obstacles.speed_detection_downscale.[same|other]_lane)
     
     Args:
-        self (Union[Context, LunaticAgent]): An object that implements the `config` and `live_info` attributes
-        lane (Literal["same_lane", "other_lane", "overtake"]): The lane to consider.
-            Note:
-                Key must be in `BehaviorAgentObstacleSettings.SpeedLimitDetectionDownscale`.
+        self : An object that implements the `config` and `live_info` attributes
+        lane : The lane to consider.
+    
+    Note:
+        :code:`lane` must be a key in :code:`BehaviorAgentObstacleSettings.SpeedLimitDetectionDownscale`.
+
     """
     
     return max(self.config.obstacles.min_proximity_threshold,

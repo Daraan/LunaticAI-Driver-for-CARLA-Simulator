@@ -5,13 +5,13 @@ To quickly start using the project with the LunaticAI Driver for CARLA simulator
 1. Begin by launching the CARLA simulator environment. Ensure it is properly configured and running on your system. 
 
 2. Next, navigate to the project directory where you have cloned the repository. Use the provided scripts and configurations to initiate the driving AI within CARLA. For a quickstart run this minimal setup script:
-    
+
     ```shell
     python examples/minimal.py
     ```
-    
+
     Alternatively you can construct a minimal example in the following way:
-    
+
     ```python
     from agents.lunatic_agent import LunaticAgent
     from classes.worldmodel import GameFramework
@@ -37,18 +37,19 @@ To quickly start using the project with the LunaticAI Driver for CARLA simulator
         game_framework.cleanup()
         raise
     ```
-    
-    ```{warning}
-    :warning: Note that this setup omits some steps and does not provide access too all features. Look into [AgentGameLoop.py](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/AgentGameLoop.py) for a comprehensive setup.
+
+    ```{attention}
+    Note that this setup omits some steps and does not provide access too all features. Look into [AgentGameLoop.py](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/AgentGameLoop.py) for a comprehensive setup.
     ```
-    
-    3. Alternatively you can use the provided `run_leaderboard_agent.sh` script to test the `LunaticChallenger`.
-        ```{warning}
-        :bulb: The default route (Town10HD) is loaded faster, however its speed is sometimes worse than the big Town12 that takes longer to load.
+
+    1. Alternatively you can use the provided `run_leaderboard_agent.sh` script to test the `LunaticChallenger`.
+
+        ```{tip}
+        The default route (Town10HD) is loaded faster, however its speed is sometimes worse than the big Town12 that takes longer to load.
         Consider turning off `ENABLE_DATA_MATRIX` or `ENABLE_RSS` to gain performance, inside the `leaderboard_agent.py` or `conf/agent/leaderboard.yaml`.
         ```
 
-Additionally, for controlling the driving AI during simulation, you can utilize the hotkeys implemented using Pygame. In-game, you can press the 'H' key to view the controls or refer to the full list of keyboard controls the [Keyboard Controls](#Keyboard-Controls).
+Additionally, for controlling the driving AI during simulation, you can utilize the hotkeys implemented using Pygame. In-game, you can press the 'H' key to view the controls or refer to the full list of keyboard controls the [Keyboard Controls](#keyboard-controls).
 
 ## External Setup: Using the ScenarioRunner and other Initializations
 
@@ -66,17 +67,16 @@ lunatic_challenger.set_global_plan(global_plan_gps, global_plan_world_coord)
 ```
 
 ```{danger}
-:warning: For performance and interface reasons the LunaticAgent uses the [`CarlaDataProvider`](https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenariomanager/carla_data_provider.py) from the [scenario runner](https://github.com/carla-simulator/scenario_runner) as a backbone to access global information.
+For performance and interface reasons the LunaticAgent uses the [`CarlaDataProvider`](https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenariomanager/carla_data_provider.py) from the [scenario runner](https://github.com/carla-simulator/scenario_runner) as a backbone to access global information.
 
 **To detect actors, all actors must be spawned over the CarlaDataProvider and the LunaticAgent must have access to the same CarlaDataProvider object**
 ```
-
 
 ## Keyboard Controls
 
 Depending on the setup certain keys, e.g. *WASD* or user input, will not work, also user input can be disabled when calling `agent.parse_keyboard_input(False)`.
 
-```
+```c
 Use ARROWS or WASD keys for control.
 
         W            : throttle

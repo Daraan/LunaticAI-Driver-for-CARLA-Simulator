@@ -59,15 +59,15 @@ def rule_from_config(cfg : Union["RuleCreatingParameters", DictConfig]) -> Union
     Instantiates Rules through Hydra's instantiate function.
     
     Note:
-        The _target_ interface also allows to call functions, e.g. create_default_rules,
+        The _target_ interface also allows to call functions, e.g. :py:func:`create_default_rules`,
         hence you need to check if the return value is a Rule or an Iterable[Rule]
         
     Returns:
         Rule or Iterable[Rule]
         
     See Also:
-        - agents.tools.config_creation.CreateRuleFromConfig
-        - agents.tools.config_creation.CallFunctionFromConfig
+        - :py:class:`agents.tools.config_creation.CreateRuleFromConfig`
+        - :py:class:`agents.tools.config_creation.CallFunctionFromConfig`
     """
     if isinstance(cfg, dict):
         cfg = OmegaConf.create(cfg, flags={"allow_objects": True})

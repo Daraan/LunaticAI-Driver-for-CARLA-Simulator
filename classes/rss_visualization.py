@@ -14,7 +14,7 @@ import carla
 
 from launch_tools import CarlaDataProvider
 
-from classes._custom_sensor import CustomSensor
+from classes._sensor_interface import CustomSensorInterface
 try:
     from carla import ad
     AD_RSS_AVAILABLE = True
@@ -160,7 +160,7 @@ class RssUnstructuredSceneVisualizerMode(Enum):
     fullscreen = 3
 
 
-class RssUnstructuredSceneVisualizer(CustomSensor):
+class RssUnstructuredSceneVisualizer(CustomSensorInterface):
     """Gives a top-view over the setting?"""
 
     def __init__(self, parent_actor, world, display_dimensions, gamma_correction=2.2):
@@ -183,7 +183,7 @@ class RssUnstructuredSceneVisualizer(CustomSensor):
     
     @sensor.setter
     def sensor(self, value):
-        # Needed for CustomSensor.destroy
+        # Needed for SensorInterface.destroy
         if value is None:
             self._camera = None
         else:

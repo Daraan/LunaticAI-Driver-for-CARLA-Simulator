@@ -85,4 +85,5 @@ For more info continue read the [Configuration](conf/ConfigFiles.md) section.
 
 ## Workflow and Component Diagram of the Agent System
 
-!["Visualization of the agents components and its workflow"](docs/images/AgentLifecycleDiagram.drawio.svg)
+[!["Visualization of the agents components and its workflow"](docs/images/AgentLifecycleDiagram.drawio.svg)](docs/images/AgentLifecycleDiagram.drawio.svg)
+(Click on the image to enlarge it)

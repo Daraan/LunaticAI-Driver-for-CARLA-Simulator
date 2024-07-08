@@ -1,11 +1,6 @@
 agents.rules package
 ====================
 
-.. automodule:: agents.rules
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Subpackages
 -----------
 
@@ -24,6 +19,7 @@ agents.rules.behaviour\_templates module
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-inherited-members:
 
 agents.rules.stopped\_long\_trigger module
 ------------------------------------------
@@ -32,3 +28,13 @@ agents.rules.stopped\_long\_trigger module
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-inherited-members:
+
+Module contents
+---------------
+
+.. automodule:: agents.rules
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :no-inherited-members:

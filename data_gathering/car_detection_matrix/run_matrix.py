@@ -4,8 +4,6 @@ matplotlib.use('Agg')
 import threading
 import time
 from typing import Dict, List, TYPE_CHECKING
-if TYPE_CHECKING:
-    from typing import Literal # For Python 3.8
 
 import asyncio
 import threading
@@ -21,9 +19,12 @@ import pygame
 from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
 from data_gathering.car_detection_matrix.matrix_wrap import wrap_matrix_functionalities
 
-from launch_tools import CarlaDataProvider
+from launch_tools import CarlaDataProvider, Literal
 
 async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_queue):
+    """
+    :meta private:
+    """
     while True:
         matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
         # Put the matrix into the queue for access outside the thread
@@ -31,6 +32,33 @@ async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_q
         await asyncio.sleep(1)
 
 class DetectionMatrix:
+    """Create a matrix representing the lanes around the ego vehicle."""
+    
+    matrix : Dict[int, List[int]]
+    """
+    A :py:class:`collections.OrderedDict`: An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id". 
+    For non-existing lanes different placeholder exist, e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction
+    The values indicate whether a vehicle is present: 0 - No vehicle, 1 - Ego vehicle, 3 - No road.
+    Format example: 
+    
+    .. code-block:: python
+        
+        {
+            "left_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+            "left_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+            "1_2": [0, 0, 0, 0, 0, 0, 0, 0],
+            "1_1": [0, 0, 0, 0, 0, 0, 0, 0],
+            "1_-1": [0, 0, 0, 0, 0, 0, 0, 0],
+            "1_-2": [0, 0, 0, 0, 0, 0, 0, 0],
+            "right_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+            "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
+        }
+            
+    Attention:
+        Currently the keys are replaces by numbers.
+                
+    """
+    
     def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids=None):
         self.ego_vehicle = ego_vehicle
         self.world = world
@@ -44,41 +72,58 @@ class DetectionMatrix:
         return wrap_matrix_functionalities(self.ego_vehicle, self.world, self.world_map,
                                                          self.road_lane_ids)
     
-    def update(self):
+    def update(self) -> Dict[int, List[int]] | None:
+        """
+        If the matrix is :py:attr:`running`, it will update the matrix and return it,
+        otherwise returns :python:`None`.
+        """
         if self.running:
             self.matrix = self._calculate_update()
             return self.matrix
 
-    def getMatrix(self):
+    def getMatrix(self) -> Dict[int, List[int]]:
         return self.matrix
 
     def start(self):
+        """Allows the matrix to update."""
         self.running = True
 
     def stop(self):
+        """Prevents the matrix from updating."""
         self.running = False
          
     def __del__(self):
         if self.running:
             self.stop()
         
-    def to_list(self):
+    def to_list(self) -> "None | List[List[int]]":
+        """
+        Returns the values of :py:attr:`matrix` as a list.
+        """
         if self.matrix is None:
             return None
         return list(self.matrix.values())
     
-    def to_numpy(self):
+    def to_numpy(self) -> "None | np.ndarray":
+        """
+        Returns the values of :py:attr:`matrix` as a numpy array.
+        """
         if self.matrix is None:
             return None
         return np.array(self.to_list())  
     
     def render(self, display : pygame.Surface, 
-               imshow_settings={'cmap':'jet'},
-               vertical=True, 
-               values=True,
-               text_settings={'color':'orange'},
+               imshow_settings:dict={'cmap':'jet'},
+               vertical:bool=True, 
+               values:bool=True,
+               text_settings:dict={'color':'orange'},
                *,
-               draw=True):
+               draw:bool=True):
+        """
+        Renders the matrix on the given surface.
+        
+        :meta private:
+        """
         if self.matrix is None or not draw:
             return
         ax : pylab.Axes
@@ -106,10 +151,20 @@ class DetectionMatrix:
 
     @property
     def sync(self):
+        """
+        Weather the matrix is synchronous or not.
+        
+        :meta private:
+        """
         return self._sync
 
 class AsyncDetectionMatrix(DetectionMatrix):
     def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids=None, *, sleep_time=0.1):
+        """
+        Asynchronous version of the :py:class:`DetectionMatrix`.
+        
+        Will calculate the matrix update in a separate thread.
+        """
         super().__init__(ego_vehicle, world, road_lane_ids)
         self._sync = False
         self.sleep_time = sleep_time
@@ -119,6 +174,7 @@ class AsyncDetectionMatrix(DetectionMatrix):
     # TODO: add signal handler to interrupt the thread faster
     
     def update(self):
+        """Not Implemented"""
         NotImplemented
 
     def _worker(self):

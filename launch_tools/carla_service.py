@@ -1,9 +1,16 @@
-from typing import Optional, Union
+"""
+Provides tools to interact with carla: access the client, world, map,
+spawn actors, destroy actors, and initialize carla.
+
+.. deprecated:: In favor of using GameFramework
+"""
+
+from typing import Union
 import carla
 
 from agents.tools.logging import logger
 
-from classes._custom_sensor import CustomSensor
+from classes._sensor_interface import CustomSensorInterface
 from launch_tools import CarlaDataProvider
 
 get_client = CarlaDataProvider.get_client
@@ -54,10 +61,15 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port=2000, *, timeout=10
 
 spawn_actor = CarlaDataProvider.spawn_actor
 
-def destroy_actors(actors: "list[carla.Actor | CustomSensor]"):
+def destroy_actors(actors: "list[carla.Actor | CustomSensorInterface]"):
+    """
+    Destroys the given actors and customs sensors implemented in this package.
+    
+    Removes destroyed actors from the :py:class:`.CarlaDataProvider` actor pool.
+    """
     batch: "list[carla.Actor]" = []
     for actor in actors:
-        if isinstance(actor, (carla.Sensor, CustomSensor)):
+        if isinstance(actor, (carla.Sensor, CustomSensorInterface)):
             actor.stop()
         if isinstance(carla.Actor, actor):
             if actor.is_alive:
@@ -77,3 +89,5 @@ def destroy_actors(actors: "list[carla.Actor | CustomSensor]"):
             for actor in batch:
                 if CarlaDataProvider.actor_id_exists(actor.id):
                     del CarlaDataProvider._carla_actor_pool[actor.id] # remove by batch and not by individual command
+    elif not CarlaDataProvider._client:
+        print("WARNING: No client available to destroy actors.")

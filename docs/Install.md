@@ -121,8 +121,8 @@ An actor is tried to spawned at a blocked position. Restart your simulation and 
 
 In case you run into this error, be sure to first import carla and pygame afterwards.
 
-```py
-ImportError: ./lib/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by /home/.cache/Python-Eggs/carla-0.9.15-py3.10-linux-x86_64.egg-tmp/carla/libcarla.cpython-310-x86_64-linux-gnu.so)
+```python
+ImportError: ./lib/libstdc++.so.6: version 'GLIBCXX_3.4.30' not found (required by /home/.cache/Python-Eggs/carla-0.9.15-py3.10-linux-x86_64.egg-tmp/carla/libcarla.cpython-310-x86_64-linux-gnu.so)
 ```
 
-This issue is tracked [here](https://github.com/carla-simulator/carla/issues/7862#issuecomment-2194905685)
+This issue is tracked [here](https://github.com/carla-simulator/carla/issues/7862#issuecomment-2194905685).

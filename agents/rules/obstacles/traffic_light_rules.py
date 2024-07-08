@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Union, List
 import carla
-from omegaconf import II, SI, DictConfig, OmegaConf
+from omegaconf import II, SI
 
 from agents.rules.behaviour_templates import DEBUG_RULES
 from agents.tools.hints import TrafficLightDetectionResult
@@ -14,7 +14,7 @@ from classes.evaluation_function import ConditionFunction
 from classes.exceptions import LunaticAgentException, SkipInnerLoopException
 from classes.rule import BlockingRule, Context, Rule
 
-from agents.tools.config_creation import AgentConfig, RuleConfig
+from agents.tools.config_creation import RuleConfig
 
 __all__ = ["DriveSlowTowardsTrafficLight", "PassYellowTrafficLightRule"]   
 
@@ -90,12 +90,12 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         # Remove triggering hazard
         logger.info("Entering DriveSlowTowardsTrafficLight rule.")
         
-        # Remove the hazard as we handle it below
+        # Remove the hazard as we handle it below; removes yellow and red light hazards
         ctx.discard_hazard(Hazard.TRAFFIC_LIGHT, "intersection") 
 
         last_traffic_light = ctx.agent.current_traffic_light
         if not last_traffic_light:
-            return
+            return # should not happen
         
         # We do not accidentally want to drive away from the traffic light
         # Problems:

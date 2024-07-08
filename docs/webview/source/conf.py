@@ -48,14 +48,34 @@ extensions = ["myst_parser",
               # https://sphinxemojicodes.readthedocs.io/en/stable/
               # https://sphinxemojicodes.readthedocs.io/#supported-codes
               'sphinxemoji.sphinxemoji',
+              'sphinx.ext.intersphinx',
+              #"sphinxawesome_theme", # Slow
+              
+              # https://www.sphinx-doc.org/en/master/usage/extensions/githubpages.html
               ]
+
+rst_prolog = """
+.. role:: python(code)
+    :language: python
+    :class: highlight
+
+.. _Hydra: https://hydra.cc/
+
+"""
+
+intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
+                                       'omegaconf' : ('https://omegaconf.readthedocs.io/en/latest/', '_omegaconf-inv_patch.inv'),
+                                       'carla' : ('https://carla.readthedocs.io/en/latest/', '_carla-inv.inv'),
+                                       'scenario_runner' : ('https://github.com/carla-simulator/scenario_runner/', '_scenario_runner-inv.inv'),
+                                       'pygame' : ("https://www.pygame.org/docs/", None),
+                                       #'cachetools' : ("https://cachetools.readthedocs.io/en/stable/", None),
+                       }
 
 # Autodoc settings
 # https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
 
 # See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_default_options
 autodoc_default_options = {
-    'members': 'var1, var2',
     'member-order': 'bysource',
     'special-members': '__init__',
     'private-members': "_auto_init_",
@@ -63,21 +83,54 @@ autodoc_default_options = {
     'exclude-members': '__weakref__',
     'inherited-members': True,
 }
+"""
+The supported options are 'members', 'member-order', 'undoc-members', 'private-members', 
+'special-members', 'inherited-members', 'show-inheritance', 'ignore-module-all', 
+'imported-members', 'exclude-members', 'class-doc-from' and 'no-value'.
+"""
+
+autodoc_class_signature = "mixed" # "separated" or "mixed"
+
+autodoc_mock_imports = ["leaderboard", "pygame", "shapely", 
+                                   "py_trees", "pandas", "numpy", "matplotlib", 
+                                   "pylab", "networkx", "graphviz", "cachetools", "six", "scenario_runner", "srunner"]
+
+autodoc_typehints="description"
+
+autodoc_typehints_description_target="all"
+"""
+This value controls whether the types of undocumented parameters and return values are documented when autodoc_typehints is set to description.
+
+The default value is "all", meaning that types are documented for all parameters and return values, whether they are documented or not.
+
+When set to "documented", types will only be documented for a parameter or a return value that is already documented by the docstring.
+
+With "documented_params", parameter types will only be annotated if the parameter is documented in the docstring. The return type is always annotated (except if it is None).
+"""
 
 autodoc_member_order = 'groupwise'
-from _edit_rules import exclude_cdp
-exclude_cdp()
+
+# patch only locally, as long as apidoc is run only locally
+if os.environ['READTHEDOCS'] == 'local':
+    import _edit_rules
+    for name, foo in vars(_edit_rules).items():
+        if name.startswith("_"):
+            continue
+        if callable(foo):
+            foo()
     
 
 # see https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#syntax-attributes-inline
 # and 
-myst_enable_extensions = ["attrs_inline"]
+myst_enable_extensions = ["attrs_inline", "attrs_block", "colon_fence"]
+myst_heading_anchors = 3
 
 # Open all external links in a new tab 
 myst_links_external_new_tab = True
 
 # True to convert the type definitions in the docstrings as references. Defaults to False.
 napoleon_preprocess_types = True
+
 
 
 #napoleon_type_aliases = {}
