@@ -243,6 +243,29 @@ def always_execute(ctx : Context): # pylint: disable=unused-argument
     """This is an `ConditionFunction` that always returns True. It can be used to always execute an action."""
     return True
 
+def _use_temporary_config(func):
+    """During the condition evaluation the ctx.config should have the overwrite settings applied but not in a permanent way."""
+    
+    @wraps(func)
+    def wrapper(self: Rule, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *args, **kwargs):
+        settings : dict = self.overwrite_settings.copy() # Dict with "self" : SelfConfig
+        if overwrite:
+            settings.update(overwrite)
+        
+        original_ctx_config = ctx.config
+        ctx.config["self"] = "???" # do not merge old self_config
+        
+        temp = OmegaConf.merge(ctx.config, settings)
+        
+        OmegaConf.set_readonly(temp, True)
+        ctx.config = temp
+        self.self_config = self.overwrite_settings["self"] = ctx.config["self"]
+        OmegaConf.set_readonly(self.self_config, False) # The Rule's settings should still be dynamic; expected in overwrite
+        try:
+            return func(self, ctx, overwrite, *args, **kwargs)
+        finally:
+            ctx.config = original_ctx_config
+    return wrapper
 
 class _CountdownRule:
 
@@ -855,32 +878,6 @@ class Rule(_GroupRule):
     # -----------------------
     # Evaluation functions
     # -----------------------
-    
-    @staticmethod
-    def _use_temporary_config(func):
-        """During the condition evaluation the ctx.config should have the overwrite settings applied but not in a permanent way."""
-        
-        @wraps(func)
-        def wrapper(self: Rule, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *args, **kwargs):
-            settings : dict = self.overwrite_settings.copy() # Dict with "self" : SelfConfig
-            if overwrite:
-                settings.update(overwrite)
-            
-            original_ctx_config = ctx.config
-            ctx.config["self"] = "???" # do not merge old self_config
-            
-            temp = OmegaConf.merge(ctx.config, settings)
-            
-            OmegaConf.set_readonly(temp, True)
-            ctx.config = temp
-            self.self_config = self.overwrite_settings["self"] = ctx.config["self"]
-            OmegaConf.set_readonly(self.self_config, False) # The Rule's settings should still be dynamic; expected in overwrite
-            try:
-                return func(self, ctx, overwrite, *args, **kwargs)
-            finally:
-                ctx.config = original_ctx_config
-        return wrapper
-        
 
     @_use_temporary_config
     def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, _NO_RESULT_TYPE]: # pylint: ignore=unused-argument

@@ -1,6 +1,6 @@
 from enum import Enum, Flag, IntEnum, auto
 from functools import lru_cache, reduce
-from typing import Literal, NewType, Union, TYPE_CHECKING
+from typing import NewType, Union, TYPE_CHECKING
 
 import carla
 

@@ -332,7 +332,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         return cls_or_self.simplify_options(resolve=resolve, yaml=True, yaml_commented=yaml_commented, detailed_rules=detailed_rules)
         
     @classmethod
-    def from_yaml(cls : type[CL], path, category : Optional[str]=None, *, merge=True) -> CL:
+    def from_yaml(cls : "type[CL]", path, category : Optional[str]=None, *, merge=True) -> CL:
         """
         Loads the options from a yaml file.
         Args:

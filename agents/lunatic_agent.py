@@ -16,7 +16,7 @@ import sys
 from copy import deepcopy
 from dataclasses import is_dataclass
 from inspect import isclass
-from typing import Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Set, Tuple, TypeAlias, TypeVar, Union, TYPE_CHECKING, cast as assure_type
+from typing import Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
 
 from agents.rules import rule_from_config
 
