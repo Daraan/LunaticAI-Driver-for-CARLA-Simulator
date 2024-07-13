@@ -7,12 +7,12 @@ The full documentation can be found online at [ReadTheDocs](https://lunaticai-dr
 ---
 
 This repository offers a modularized rule-based agent system for the
-[CARLA simulator](https://carla.org/)[<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/carla-simulator/carla)
+[CARLA simulator](https://carla.org/) [<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/carla-simulator/carla)
 designed to be easily extendable and configurable. Special submodules like the rule system, the configuration system and the information gathering can directly or with slight modifications be used in other projects as stand alone.
 
 If you are familiar with the CARLA simulator, our agent builds up on the standard agents provided by the CARLA developers, but remodels and extends them in many ways. The key changes are:
 
-- Full, dynamic and transparent Configuration, backed by [Hydra<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://hydra.cc/):
+- Full, dynamic and transparent Configuration, backed by [Hydra](https://hydra.cc/) [<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/facebookresearch/hydra):
   - Adjust the agent's behavior at runtime.
   - Automatically logged and repeatable experiments.
   - Hierarchically structured configuration allow for coarse and fine-grained changes to configure experiments

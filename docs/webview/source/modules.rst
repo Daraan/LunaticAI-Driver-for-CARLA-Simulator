@@ -1,5 +1,5 @@
-Code and API
-============
+Modules and Packages
+====================
 
 .. toctree::
    :maxdepth: 3

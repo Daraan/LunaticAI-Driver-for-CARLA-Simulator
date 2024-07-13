@@ -6,7 +6,7 @@
 
 
 # Autodoc command:
-# sphinx-apidoc -H "Code and API" -d 3 -f -M -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools classes/carla_originals classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py *logging.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools* docs/* conf/ *car_detection_matrix/[im]* _* *lane_explorer*
+# sphinx-apidoc -H "Modules and Packages" -d 3 -f -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools classes/carla_originals classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py *logging.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools* docs/* conf/ *car_detection_matrix/[im]* _* *lane_explorer*
 # sphinx-build -M html docs/webview/source/ docs/webview/build/ -v -E 
 
 # -- Path setup --------------------------------------------------------------
@@ -29,6 +29,15 @@ sys.path.insert(0, os.path.abspath('./'))
 os.environ.setdefault("READTHEDOCS", "local")
 print("Are we local or on readthedocs (True)?", os.environ["READTHEDOCS"])
 
+
+
+# Some hints for this file
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Literal
+    from typing import Optional
+
 # -- Project information -----------------------------------------------------
 
 project = 'LunaticAI'
@@ -38,11 +47,23 @@ author = ""
 
 # -- General configuration ---------------------------------------------------
 
+suppress_warnings = [
+#    "autodoc2.*",  # suppress all
+#    "autodoc2.config_error",  # suppress specific
+]
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ["myst_parser",
               'sphinx.ext.autodoc',
+              
+              #'autodoc2',
+              # https://github.com/sphinx-extensions2/sphinx-autodoc2
+              
+              # https://pypi.org/project/sphinx-autodoc-typehints/
+              'sphinx_autodoc_typehints',
+              
               'sphinx.ext.napoleon',
               
               # https://sphinxemojicodes.readthedocs.io/en/stable/
@@ -89,6 +110,7 @@ The supported options are 'members', 'member-order', 'undoc-members', 'private-m
 'imported-members', 'exclude-members', 'class-doc-from' and 'no-value'.
 """
 
+autodoc_member_order = 'groupwise' # type: Literal["alphabetical", "bysource", "groupwise"]
 autodoc_class_signature = "mixed" # "separated" or "mixed"
 
 autodoc_mock_imports = ["leaderboard", "pygame", "shapely", 
@@ -100,26 +122,45 @@ autodoc_typehints="description"
 autodoc_typehints_description_target="all"
 """
 This value controls whether the types of undocumented parameters and return values are documented when autodoc_typehints is set to description.
-
 The default value is "all", meaning that types are documented for all parameters and return values, whether they are documented or not.
-
 When set to "documented", types will only be documented for a parameter or a return value that is already documented by the docstring.
-
 With "documented_params", parameter types will only be annotated if the parameter is documented in the docstring. The return type is always annotated (except if it is None).
 """
 
-autodoc_member_order = 'groupwise'
+autodoc_typehints_format = 'fully-qualified' # "short" or "fully-qualified"
 
-# patch only locally, as long as apidoc is run only locally
-if os.environ['READTHEDOCS'] == 'local':
-    import _edit_rules
-    for name, foo in vars(_edit_rules).items():
-        if name.startswith("_"):
-            continue
-        if callable(foo):
-            foo()
-    
+autodoc_preserve_defaults = True #???
+"""
+If True, the default argument values of functions will be not evaluated on generating document. It preserves them as is in the source code.
+"""
 
+
+# -------------- 'sphinx_autodoc_typehints' --------------
+# https://pypi.org/project/sphinx-autodoc-typehints/
+
+
+typehints_defaults = "comma" # type: Literal["comma", "braces", "braces-after"] | None
+always_use_bars_union = True # | instead of Union
+always_document_param_types = True # default False
+typehints_fully_qualified = True # Use full names for types
+
+"""
+typehints_formatter = None
+
+If set to a function, this function will be called with annotation as first argument 
+and sphinx.config.Config argument second. The function is expected to return a string with 
+reStructuredText code or None to fall back to the default formatter.
+"""
+
+typehints_use_signature = True # (default: False): If True, typehints for parameters in the signature are shown.
+
+typehints_use_signature_return = True # (default: False): If True, return annotations in the signature are shown.
+
+
+
+
+            
+     
 # see https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#syntax-attributes-inline
 # and 
 myst_enable_extensions = ["attrs_inline", "attrs_block", "colon_fence"]
@@ -163,6 +204,15 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "requirements", "spawn_p
 exclude_patterns.extend(["launch_tools.blueprint_helpers", "agents.navigation", "dynamic_planning", "agents.tools"])
 
 
+# Autodoc2 settings
+
+autodoc2_packages = [
+    {
+        "path": PROJECT_ROOT,
+        "auto_mode": False,
+    },
+]
+
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -175,3 +225,14 @@ html_theme = "sphinx_rtd_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# ----- Patching the code -----
+
+# patch only locally, as long as apidoc is run only locally
+if os.environ['READTHEDOCS'] == 'local':
+    import _edit_rules
+    for name, foo in vars(_edit_rules).items():
+        if name.startswith("_"):
+            continue
+        if callable(foo):
+            foo()

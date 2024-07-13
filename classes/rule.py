@@ -34,7 +34,8 @@ if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import LunaticAgentSettings, LiveInfo, RuleConfig, ContextSettings
-    from typing import override, Literal
+    from typing import Literal
+    from typing_extensions import override
     
     
     # Note: gameframework.py adds GameFramework to this module's variables
@@ -1373,7 +1374,7 @@ class BlockingRule(metaclass=Rule):
         # NOTE: This ticks the world forward by one step
         # The ctx.control is reset to None; execute_plan
         # > Phase.UPDATE_INFORMATION | Phase.BEGIN
-        self.update_world(ctx, execute_planner=True, execute_phases=execute_phases)
+        self.update_world(ctx, execute_phases=execute_phases)
         if execute_planner:
             control = ctx.get_or_calculate_control()
             return control

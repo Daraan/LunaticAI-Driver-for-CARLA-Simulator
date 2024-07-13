@@ -178,9 +178,12 @@ def add_imported_members():
             content = content[:start] + subcontent + content[end:]
             f.seek(0)
             f.write(content)
+            
+#def make_canonical():
+#    pass
     
 
-def no_value_constants():
+def _no_value_constants():
     return
     try:
         import classes.constants, inspect, enum

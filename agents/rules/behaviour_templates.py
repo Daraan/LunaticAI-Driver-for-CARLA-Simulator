@@ -12,9 +12,6 @@ from agents.tools.logging import logger
 
 from typing import TYPE_CHECKING, List
 
-if TYPE_CHECKING:
-    from agents import LunaticAgent
-
 DEBUG_RULES = False
 
 #TODO: maybe create some omega conf dict creator that allows to create settings more easily

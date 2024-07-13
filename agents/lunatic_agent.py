@@ -1276,7 +1276,9 @@ class LunaticAgent(BehaviorAgent):
     def follow_speed_limits(self, value:bool=True):
         """
         If active, the agent will dynamically change the target speed according to the speed limits
-            :param value: (bool) whether to activate this behavior
+        
+        Arguments:
+            value: Whether to activate this behavior
         """
         self.config.speed.follow_speed_limits = value
 
@@ -1315,12 +1317,13 @@ class LunaticAgent(BehaviorAgent):
 
 
     # NOTE: the original pedestrian_avoid_manager is still usable
-    def pedestrian_avoid_manager(self, waypoint) -> NoReturn:
+    def pedestrian_avoid_manager(self, waypoint) -> NoReturn:       #pylint: disable=unused-argument
+        """This function was replaced by ", substep_managers.pedestrian_detection_manager"""
         raise NotImplementedError("This function was replaced by ", substep_managers.pedestrian_detection_manager)
 
     #@override
     def collision_and_car_avoid_manager(self, waypoint) -> NoReturn:
-        a = self.pedestrian_avoid_manager()
+        """This function was split into detect_obstacles_in_path and car_following_manager"""
         raise NotImplementedError("This function was split into detect_obstacles_in_path and car_following_manager")
     
     #@override
