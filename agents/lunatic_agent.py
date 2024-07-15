@@ -763,11 +763,14 @@ class LunaticAgent(BehaviorAgent):
     @result_to_context("control")
     def _inner_step(self, debug=False) -> carla.VehicleControl:
         """
-        This is our main entry point that runs every tick.
+        This is is the internal function to provide the next control object for
+        the agent; it should run every tick.
         
         Raises:
-            EmergencyStopException: If self.detected_hazards is not empty when the 
+            EmergencyStopException: If :py:attr:`detected_hazards` is not empty when the 
             function returns.
+            
+        :meta public:
         """
         self.debug = debug
 

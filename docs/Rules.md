@@ -13,7 +13,7 @@ There are three different ways to define a rule, with their own advantages and d
 The [](#classes.constants.Phase) enumeration defines different stages and states that the agent transitions through during its [operational cycle](/index.rst#readme-workflow).
 Each phase is represented as a flag allowing combinations.
 Foremost is each `Phase` of the workflow combined with of of the two flags [](#Phase.BEGIN) or [](#Phase.END).
- 
+
 ```{seealso}
 To see which phases are available and how they are defined, see the [](#Phase) class in [classes/constants.py](#classes.constants.Phase).
 ```
@@ -265,11 +265,11 @@ Check the [workflow diagram](/index.rst#readme-workflow) for the phases where th
 |:exclamation:| Key points:\
 ```
 
-- The [](#Context.config) is a **copy** of the agent's config **merged with the `overwrite_settings`** of the associated [Rule](#Class-API).
-- During the `condition` evaluation these changes are temporary.
-  If a rule's action is executed the `overwrite_settings` are merged into the `Context.config` for the rest of this tick. For permanent changes the agent's config needs to be adjusted seperately.
-- **The `Context.config` is the configuration used by the local planner to calculate the controls of this tick.**
-- The `ctx.control` object is used when `agent.apply_control()` is used.
+- The [](#Context.config) is a **copy** of the agent's config **merged with the {py:attr}`overwrite_settings <.Rule.overwrite_settings>`** of the associated [Rule](#Class-API).
+- During the {py:attr}`condition <Rule.condition>` evaluation these changes are temporary.
+  If a rule's action is executed the {py:attr}`overwrite_settings <.Rule.overwrite_settings>` are merged into the [](#Context.config) for the rest of this tick. For permanent changes the agent's config needs to be adjusted separately.
+- **The [](#Context.config) is the configuration used by the local planner to calculate the controls of this tick.**
+- The `ctx.control` object is used when [`agent.apply_control()`](#LunaticAgent.apply_control) is used.
 :::
 
 

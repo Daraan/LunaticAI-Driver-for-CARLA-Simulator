@@ -50,6 +50,7 @@ author = ""
 suppress_warnings = [
 #    "autodoc2.*",  # suppress all
 #    "autodoc2.config_error",  # suppress specific
+            "config.cache",
 ]
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -57,14 +58,14 @@ suppress_warnings = [
 # ones.
 extensions = ["myst_parser",
               'sphinx.ext.autodoc',
+              'sphinx.ext.napoleon',
+              
+              # https://pypi.org/project/sphinx-autodoc-typehints/
+              #'sphinx_autodoc_typehints',
               
               #'autodoc2',
               # https://github.com/sphinx-extensions2/sphinx-autodoc2
               
-              # https://pypi.org/project/sphinx-autodoc-typehints/
-              'sphinx_autodoc_typehints',
-              
-              'sphinx.ext.napoleon',
               
               # https://sphinxemojicodes.readthedocs.io/en/stable/
               # https://sphinxemojicodes.readthedocs.io/#supported-codes
@@ -73,6 +74,14 @@ extensions = ["myst_parser",
               #"sphinxawesome_theme", # Slow
               
               # https://www.sphinx-doc.org/en/master/usage/extensions/githubpages.html
+              
+              #'sphinx.ext.autosectionlabel', # many duplicates
+              
+              # https://www.sphinx-doc.org/en/master/usage/extensions/viewcode.html
+              # 'sphinx.ext.viewcode',
+              
+              #https://sphinx-tippy.readthedocs.io/en/latest/
+              #'sphinx_tippy',
               ]
 
 rst_prolog = """
@@ -117,7 +126,7 @@ autodoc_mock_imports = ["leaderboard", "pygame", "shapely",
                                    "py_trees", "pandas", "numpy", "matplotlib", 
                                    "pylab", "networkx", "graphviz", "cachetools", "six", "scenario_runner", "srunner"]
 
-autodoc_typehints="description"
+autodoc_typehints="both"
 
 autodoc_typehints_description_target="all"
 """
@@ -127,7 +136,7 @@ When set to "documented", types will only be documented for a parameter or a ret
 With "documented_params", parameter types will only be annotated if the parameter is documented in the docstring. The return type is always annotated (except if it is None).
 """
 
-autodoc_typehints_format = 'fully-qualified' # "short" or "fully-qualified"
+autodoc_typehints_format = 'short' # "short" or "fully-qualified"
 
 autodoc_preserve_defaults = True #???
 """
@@ -141,8 +150,8 @@ If True, the default argument values of functions will be not evaluated on gener
 
 typehints_defaults = "comma" # type: Literal["comma", "braces", "braces-after"] | None
 always_use_bars_union = True # | instead of Union
-always_document_param_types = True # default False
-typehints_fully_qualified = True # Use full names for types
+always_document_param_types = False # default False
+typehints_fully_qualified = False # Use full names for types
 
 """
 typehints_formatter = None
@@ -152,15 +161,46 @@ and sphinx.config.Config argument second. The function is expected to return a s
 reStructuredText code or None to fall back to the default formatter.
 """
 
+from enum import Enum
+
+config_clone = None
+from sphinx_autodoc_typehints import get_annotation_module, format_annotation
+from sphinx.config import Config
+import re
+
+import sphinx_autodoc_typehints
+
+#sphinx_autodoc_typehints.add_type_css_class = lambda x: x
+
+if "sphinx_autodoc_typehints" in extensions:
+
+    def typehints_formatter(annotation, config : Config):
+        # Default see: https://github.com/tox-dev/sphinx-autodoc-typehints/blob/df669800eef5da7e952a24b84501846694b27101/src/sphinx_autodoc_typehints/__init__.py#L180
+        if annotation is None:
+            return None
+        global config_clone
+        #breakpoint()
+        if config_clone is None:
+            config_clone = Config(config._raw_config, overrides={"typehints_formatter" : None})
+            config_clone._options = config._options
+            #config_clone.typehints_fully_qualified = True #maybe
+        formatted = format_annotation(annotation, config_clone)
+        # has style f":py:{role}:`{prefix}{full_name}`{escape}{formatted_args}"
+        formatted = formatted.replace("libcarla.", "")
+
+        #formatted = re.sub(r":py:(\w+):`~?([a-zA-Z0-9_]+\.)*?([a-zA-Z0-9_]+)`", r"\3", formatted)
+        
+        #return str(annotation)u
+        
+        return formatted
+    
+    #typehints_formatter = None
+
 typehints_use_signature = True # (default: False): If True, typehints for parameters in the signature are shown.
 
 typehints_use_signature_return = True # (default: False): If True, return annotations in the signature are shown.
 
 
-
-
-            
-     
 # see https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#syntax-attributes-inline
 # and 
 myst_enable_extensions = ["attrs_inline", "attrs_block", "colon_fence"]
@@ -173,6 +213,15 @@ myst_links_external_new_tab = True
 napoleon_preprocess_types = True
 
 
+napoleon_use_param = True
+"""Us emultiple :param: instead of :parameters: in the output. Defaults to False."""
+
+napoleon_use_rtype = True
+"""Will use """
+typehints_use_rtype = True
+
+typehints_document_rtype = False
+"""Process by autodoc_type_hints"""
 
 #napoleon_type_aliases = {}
 """

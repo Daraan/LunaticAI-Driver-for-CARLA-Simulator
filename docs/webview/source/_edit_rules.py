@@ -1,5 +1,17 @@
 import re
 
+def classes_at_top():
+    with open("classes.rst", "r+") as f:
+        contents = f.read()
+        start = contents.find("Module contents\n")
+        end = None
+        subcontent = contents[start:end] + "\n"
+
+        start2 = contents.find("Submodules\n")
+        contents = contents[:start2] + subcontent + contents[start2:start]
+        f.seek(0)
+        f.write(contents)
+
 def exclude_cdp():
 
     exclude_cdp = "\"'cleanup', 'create_blueprint', 'find_weather_presets', 'generate_spawn_points', 'get_actor_by_id', 'get_actor_by_name', 'get_local_planner', 'get_osc_global_param_value', 'get_random_seed', 'get_traffic_manager_port', 'handle_actor_batch', 'is_runtime_init_mode', 'is_sync_mode', 'on_carla_tick', 'prepare_map', 'register_actor', 'register_actors', 'remove_actor_by_id', 'remove_actors_in_surrounding', 'request_new_actor', 'request_new_actors', 'request_new_batch_actors', 'reset_lights', 'set_client', 'set_ego_route', 'set_latest_scenario', 'set_local_planner', 'set_runtime_init_mode', 'set_traffic_manager_port', 'set_world', 'spawn_actor', 'update_light_states', 'update_osc_global_params', 'world'\"".replace("'", "") #pylint: disable=line-too-long
@@ -173,15 +185,33 @@ def add_imported_members():
             else:
                 subcontent = content[start:end]
                 pattern = "\n\n"
-                extra = "\n\n"
-            subcontent = re.sub(pattern, extra+"   :imported-members: " + ", ".join(members) +extra, subcontent, count=1)
+                extra = "\n"
+            subcontent = re.sub(pattern, extra+"   :imported-members: " + ", ".join(members) +extra+"\n", subcontent, count=1)
             content = content[:start] + subcontent + content[end:]
             f.seek(0)
             f.write(content)
             
 #def make_canonical():
 #    pass
-    
+
+def remove_init():
+    module = {"classes" : ["classes.evaluation_function"]}
+    for file, members in module.items():
+        with open(file+".rst", "r+") as f:
+            content = f.read()
+            for member in members:
+                start = content.find(".. automodule:: "+member+"\n")
+                end = content.find("----", start)
+                subcontent = content[start:end]
+                subcontent = re.sub(r":members:", r"\n   ".join([":members:",
+                                                                ":special-members: __add__, __and__, __or__, __invert__",
+                                                                ]),
+                                                        string=subcontent,
+                                                        count=1)
+                content = content[:start] + subcontent + content[end:]
+            f.seek(0)
+            f.write(content)
+
 
 def _no_value_constants():
     return

@@ -33,7 +33,7 @@ Note: The [Leaderboard 2.0](https://github.com/carla-simulator/leaderboard) supp
 
 ## Installation
 
-See the [Installation Guide](docs/Install.md) for more details.
+See the [Installation Guide](docs/Install) for more details.
 
 ## Agent Classes
 
@@ -64,7 +64,7 @@ class SlowDownAtIntersectionRule(Rule):
         ctx.agent.set_target_speed(agent.live_info.target_speed - 10)
 ```
 
-For more details look into the [Rules](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/agents/rules/Rules.md) documentation.
+For more details look into the [Rules](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/docs/Rules.md) documentation.
 
 ### Phases
 
@@ -81,7 +81,7 @@ Behavioral aspects of the agent but also the environment and user interface are 
 The configuration backend is designed to make coarse and fine-grained changes by using combination of different configs on demand or by adjusting single parameters or blocks via the command line.
 The configuration files are stored in the [conf](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/conf) directory.
 
-For more info continue read the [Configuration](conf/ConfigFiles.md) section.
+For more info continue read the [Configuration](conf/ConfigFiles) section.
 
 ## Workflow and Component Diagram of the Agent System
 

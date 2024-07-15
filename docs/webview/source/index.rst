@@ -20,12 +20,12 @@ Welcome to LunatiAI's documentation!
    Quickstart
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
-   agents/Agents 
+   docs/Agents 
    Configuration <conf/ConfigFiles>
-   agents/rules/Rules
+   docs/Rules
 
 .. toctree::
    :maxdepth: 2
