@@ -9,7 +9,7 @@ The entry point to the configuration is the `conf/launch_config.yaml` file. Whic
 [Hydra](https://hydra.cc/) ![<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/facebookresearch/hydra) allows to manage the configuration in a flexible way.
 Configuration files are composed hierarchically from multiple sources. The different configuration options can be specified or overridden from the command line.
 
-Additionally, Hydra also tracks and logs the output of experiments, for example each output of a run is stored in the outputs folder configured by `hydra.run.dir` in the [LaunchConfig](#LaunchConfig), likewise will recordings and a copy of the configuration of the experiment stored in this folder.
+Additionally, Hydra also tracks and logs the output of experiments, for example each output of a run is stored in the outputs folder configured by `hydra.run.dir` in the {py:class}`.LaunchConfig`, likewise will recordings and a copy of the configuration of the experiment stored in this folder.
 
 ## Launching Customized Experiments
 
@@ -39,7 +39,7 @@ The resolution order picked from the conf/ directory is:
 6. single command line overrides
 
 :::{attention}
-The [](#GameFramework.quickstart) method is currently not available when using `@hydra.main`.
+The {py:meth}`.GameFramework.quickstart` method is currently not available when using `@hydra.main`.
 :::
 
 :::{danger} Caveats
@@ -58,7 +58,7 @@ For more information about the command line syntax refer to [Hydra override gram
 
 ### Launch Config
 
-See also [](#LaunchConfig)
+See also {py:class}`.LaunchConfig`
 
 
 
@@ -72,6 +72,6 @@ The context config is a temporary clone of the agent's con
 | ------------ | -------------- |
 | `agent.config` | `ctx.config` |
 | permanent    | temporary      |
-| updatable by actions *manually* | automatically updated by [](#Rule.overwrite_settings) |
+| updatable by actions *manually* | automatically updated by {py:attr}`.Rule.overwrite_settings` |
 | creates the context config | used to calculate the VehicleControls |
 

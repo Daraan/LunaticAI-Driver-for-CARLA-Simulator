@@ -1,10 +1,15 @@
 # Quickstart
 
-To quickly start using the project with the LunaticAI Driver for CARLA simulator, follow these initial steps:
+```{eval-rst}
+.. Note this is a MyST Markdown file to be used with Sphinx and will not render completely on GitHub. Build the documentation or refer to the online documentation at Read The Docs.
+```
 
-1. Begin by launching the CARLA simulator environment. Ensure it is properly configured and running on your system. 
+To quickly start using the project follow these initial steps:
 
-2. Next, navigate to the project directory where you have cloned the repository. Use the provided scripts and configurations to initiate the driving AI within CARLA. For a quickstart run this minimal setup script:
+1. CARLA and the repository have been setup by following the [](docs/Install.md) instructions.
+2. Begin by launching the CARLA simulator environment. Ensure it is properly configured and running on your system.
+
+3. Next, navigate to the project directory where you have cloned the repository. Use the provided scripts and configurations to initiate the driving AI within CARLA. For a quickstart run this minimal setup script:
 
     ```shell
     python examples/minimal.py
@@ -38,22 +43,22 @@ To quickly start using the project with the LunaticAI Driver for CARLA simulator
         raise
     ```
 
-    ```{attention}
-    Note that this setup omits some steps and does not provide access too all features. Look into [AgentGameLoop.py](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/AgentGameLoop.py) for a comprehensive setup.
-    ```
+    :::{attention}
+    Note that this setup omits some steps and does not provide access too all features. Look into the {py:mod}`AgentGameLoop.py <AgentGameLoop>` module for a comprehensive setup.
+    :::
 
-    1. Alternatively you can use the provided `run_leaderboard_agent.sh` script to test the `LunaticChallenger`.
+4. Alternatively you can use the provided `run_leaderboard_agent.sh` script to test the {py:class}`.LunaticChallenger`.
 
-        ```{tip}
-        The default route (Town10HD) is loaded faster, however its speed is sometimes worse than the big Town12 that takes longer to load.
-        Consider turning off `ENABLE_DATA_MATRIX` or `ENABLE_RSS` to gain performance, inside the `leaderboard_agent.py` or `conf/agent/leaderboard.yaml`.
-        ```
+    :::{tip}
+    The default route (Town10HD) is loaded faster, however its speed is sometimes worse than the big Town12 that takes longer to load.
+    Consider turning off `ENABLE_DATA_MATRIX` or `ENABLE_RSS` to gain performance inside the [leaderboard_agent.py](gh-file:agents/leaderboard_agent.py) or <gh-file:conf/agent/leaderboard.yaml>.
+    :::
 
 Additionally, for controlling the driving AI during simulation, you can utilize the hotkeys implemented using Pygame. In-game, you can press the 'H' key to view the controls or refer to the full list of keyboard controls the [Keyboard Controls](#keyboard-controls).
 
 ## External Setup: Using the ScenarioRunner and other Initializations
 
-During the agents creation the script waits until an external actor is found, by default named `hero`. This allows the `LunaticAgent` to be used with other scripts that set up the scenario and spawn this special actor. To initialize a route the agent should follow call:
+During the agents creation the script waits until an external actor is found, by default named `'hero'`. This allows the {py:class}`.LunaticAgent` to be used with other scripts that set up the scenario and spawn this special actor. To initialize a route the agent should follow call:
 
 ```python
 # CARLA's BasicAgent interface
@@ -66,11 +71,12 @@ lunatic_agent.set_global_plan(plan, clean_queue=True):
 lunatic_challenger.set_global_plan(global_plan_gps, global_plan_world_coord)
 ```
 
-```{danger}
-For performance and interface reasons the LunaticAgent uses the [`CarlaDataProvider`](https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenariomanager/carla_data_provider.py) from the [scenario runner](https://github.com/carla-simulator/scenario_runner) as a backbone to access global information.
-
-**To detect actors, all actors must be spawned over the CarlaDataProvider and the LunaticAgent must have access to the same CarlaDataProvider object**
-```
+:::{important}
+For performance and interface reasons the LunaticAgent uses the [`CarlaDataProvider`{.xref}](gh:https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenariomanager/carla_data_provider.py) from the [scenario runner](gh:https://github.com/carla-simulator/scenario_runner) as a backbone to access global information.
+<br><br>
+**To detect actors, all actors must be spawned over the `CarlaDataProvider`{.xref}, further the LunaticAgent must have access to the same `CarlaDataProvider`{.xref} object.**<br>
+Use `from launch_tools import CarlaDataProvider` to access the same instance.
+:::
 
 ## Keyboard Controls
 

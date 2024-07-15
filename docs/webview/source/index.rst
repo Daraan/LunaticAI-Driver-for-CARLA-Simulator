@@ -4,8 +4,14 @@
    contain the root `toctree` directive.
    For more infos see: https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html
 
-Welcome to LunatiAI's documentation!
-====================================
+LunaticAI Documentation
+=======================
+
+.. Add Link to Github
+.. include:: _include.md
+  :parser: myst_parser.sphinx_
+  :start-after: ## $$ GitHubRepoLink
+  :end-before: ## $$
 
 .. toctree::
    :hidden:
@@ -20,12 +26,12 @@ Welcome to LunatiAI's documentation!
    Quickstart
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
-   agents/Agents 
+   docs/Agents 
    Configuration <conf/ConfigFiles>
-   agents/rules/Rules
+   docs/Rules
 
 .. toctree::
    :maxdepth: 2

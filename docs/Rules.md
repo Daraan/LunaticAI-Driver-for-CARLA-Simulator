@@ -1,5 +1,9 @@
 # Rules
 
+```{eval-rst}
+.. Note this is a MyST Markdown file to be used with Sphinx and will not render completely on GitHub. Build the documentation or refer to the online documentation at Read The Docs.
+```
+
 Rules have three main components
 
 - a condition
@@ -10,17 +14,17 @@ There are three different ways to define a rule, with their own advantages and d
 
 ## Phases
 
-The [](#classes.constants.Phase) enumeration defines different stages and states that the agent transitions through during its [operational cycle](/index.rst#readme-workflow).
+The {py:class}`classes.constants.Phase` enumeration defines different stages and states that the agent transitions through during its [operational cycle](/index.rst#readme-workflow).
 Each phase is represented as a flag allowing combinations.
-Foremost is each `Phase` of the workflow combined with of of the two flags [](#Phase.BEGIN) or [](#Phase.END).
- 
+Foremost is each `Phase` of the workflow combined with of of the two flags {py:attr}`.Phase.BEGIN` or {py:attr}`.Phase.END`.
+
 ```{seealso}
-To see which phases are available and how they are defined, see the [](#Phase) class in [classes/constants.py](#classes.constants.Phase).
+To see which phases are available and how they are defined, see the {py:class}`.Phase` class in {py:mod}`classes.constants`.
 ```
 
 ![Image of phase logic](/docs/images/PhaseSystem.drawio.svg)
 
-When a phase is executed ([](#LunaticAgent.execute_phase)), the agent will evaluate the rules associated with this phase and execute the actions of the rules that have a fulfilled condition.
+When a phase is executed ({py:meth}`.LunaticAgent.execute_phase`), the agent will evaluate the rules associated with this phase and execute the actions of the rules that have a fulfilled condition.
 Phases are therefore a necessary part for [`Rule` creation](#creation) an need to be [registered](#adding-rules-to-an-agent) with the agent.
 
 In the default case the order of execution is `Phase.BEGIN | Phase.SOME_PHASE`, followed by the agent's function of this phase, and lastly `Phase.END | Phase.SOME_PHASE`.
@@ -28,22 +32,22 @@ However, there are some exceptions to this order like the [](#emergency-phase), 
 
 ```{attention}
 - Currently phases are checked for a correct match. 
-- Only pair wise flag combinations with [](#Phase.BEGIN) or [](#Phase.END) are used in the normal workflow.
+- Only pair wise flag combinations with {py:attr}`.Phase.BEGIN` or {py:attr}`.Phase.END` are used in the normal workflow.
 ```
 
 ```{tip}
-The [](#context-object) stores the results in [](#Context.phase_results), which is a dictionary with the keys set to the various phases.
-By default all values are set to [](#Context.PHASE_NOT_EXECUTED).
+The [](#context-object) stores the results in {py:attr}`.Context.phase_results`, which is a dictionary with the keys set to the various phases.
+By default all values are set to {py:attr}`.Context.PHASE_NOT_EXECUTED`.
 ```
 
 ### Emergency Phase
 
-If the agent detects an emergency, i.e. a pedestrian in front of it. The agent will execute the phase `Phase.BEGIN | Phase.EMERGENCY`. If during this phase not all elements of the set [](#LunaticAgent.detected_hazards) are cleared by rules an [](#EmergencyStopException) is raised.
+If the agent detects an emergency, i.e. a pedestrian in front of it. The agent will execute the phase `Phase.BEGIN | Phase.EMERGENCY`. If during this phase not all elements of the set {py:attr}`.LunaticAgent.detected_hazards` are cleared by rules an {py:class}`.EmergencyStopException` is raised.
 
-In general, if an `EmergencyStopException` is raised, which can also be done by [rule actions](#XXX), the [](#LunaticAgent.emergency_manager) will calculate a response and afterwards executes `Phase.EMERGENCY | Phase.END`.
+In general, if an `EmergencyStopException` is raised, which can also be done by [rule actions](#XXX), the {py:meth}`.LunaticAgent.emergency_manager` will calculate a response and afterwards executes `Phase.EMERGENCY | Phase.END`.
 
 ```{note}
-- The check if [](#LunaticAgent.detected_hazards) is empty is done during the workflow of the agent and not tied to the execution of the `Phase.BEGIN | Phase.EMERGENCY` itself.
+- The check if {py:attr}`.LunaticAgent.detected_hazards` is empty is done during the workflow of the agent and not tied to the execution of the `Phase.BEGIN | Phase.EMERGENCY` itself.
 
 - Currently the `emergency_manager` applies a full stop in all situations. Handling situations differently must be done by user-implemented rules.
 ```
@@ -247,15 +251,15 @@ agent.add_rules(rules)
 
 ## Context Object
 
-A tick-constant [](#Context) object gives access to all information from the agent, the current tick, and rule that currently executed. The [](#LunaticAgent.ctx) object is passed as `ctx` argument to all rule conditions and actions.
-It holds a *temporary* [`config`](#Context.config) which is the one used to calculate the controls of this tick, similarly the [](#Context.control) object holds the vehicle's *final* control command that should be executed in the end when [](#LunaticAgent.apply_control) is called.
+A tick-constant {py:class}`.Context` object gives access to all information from the agent, the current tick, and rule that currently executed. The {py:attr}`.LunaticAgent.ctx` object is passed as `ctx` argument to all rule conditions and actions.
+It holds a *temporary* {py:attr}`config <.Context.config>` which is the one used to calculate the controls of this tick, similarly the {py:attr}`.Context.control` object holds the vehicle's *final* control command that should be executed in the end when {py:meth}`.LunaticAgent.apply_control` is called.
 
-The key attributes of the [](#Context) object are:
+The key attributes of the {py:class}`.Context` object are:
 
-- [`ctx.agent`](#Context.agent) : Backreference to the agent.
-- [`ctx.config`](#Context.config) : Merge of the agents config and a rule's `overwrite_settings`; if a rules action is executed, the `overwrite_settings` are merged into the context's config for the rest of the step. The config is backed by the [](#ContextConfig) schema.
-- [`ctx.detected_hazards`](#Context.detected_hazards) : Quicker access to `agent.config.live_info`
-- **[`ctx.control`](#Context.control) : Holds the vehicle's *final* control command** that should be executed in the end and **can be replaced**.
+- {py:attr}`ctx.agent <.Context.agent>` : Backreference to the agent.
+- {py:attr}`ctx.config <.Context.config>` : Merge of the agents config and a rule's `overwrite_settings`; if a rules action is executed, the `overwrite_settings` are merged into the context's config for the rest of the step. The config is backed by the {py:class}`.ContextConfig` schema.
+- {py:attr}`ctx.detected_hazards <.Context.detected_hazards>`: Hazards detected this tick
+- **{py:attr}`ctx.control <.Context.control>` : Holds the vehicle's *final* control command** that should be executed in the end and **can be replaced**.
 It is first set at the end of the [agent's inner step](#LunaticAgent._inner_step) Formally it is updated at the end of certain phases at the end or after the agent's inner step: [`agent.execute_phase(phase, control=new_control)`](#LunaticAgent.execute_phase).  
 Check the [workflow diagram](/index.rst#readme-workflow) for the phases where this update is done.
 
@@ -265,14 +269,12 @@ Check the [workflow diagram](/index.rst#readme-workflow) for the phases where th
 |:exclamation:| Key points:\
 ```
 
-- The [](#Context.config) is a **copy** of the agent's config **merged with the `overwrite_settings`** of the associated [Rule](#Class-API).
-- During the `condition` evaluation these changes are temporary.
-  If a rule's action is executed the `overwrite_settings` are merged into the `Context.config` for the rest of this tick. For permanent changes the agent's config needs to be adjusted seperately.
-- **The `Context.config` is the configuration used by the local planner to calculate the controls of this tick.**
-- The `ctx.control` object is used when `agent.apply_control()` is used.
+- The {py:attr}`.Context.config` is a **copy** of the agent's config **merged with the {py:attr}`overwrite_settings <.Rule.overwrite_settings>`** of the associated [Rule](#Class-API).
+- During the {py:attr}`condition <Rule.condition>` evaluation these changes are temporary.
+  If a rule's action is executed the {py:attr}`overwrite_settings <.Rule.overwrite_settings>` are merged into the {py:attr}`.Context.config` for the rest of this tick. For permanent changes the agent's config needs to be adjusted separately.
+- **The {py:attr}`.Context.config` is the configuration used by the local planner to calculate the controls of this tick.**
+- The `ctx.control` object is used when {py:meth}`agent.apply_control() <.LunaticAgent.apply_control>` is used.
 :::
-
-
 
 ## Troubleshooting
 

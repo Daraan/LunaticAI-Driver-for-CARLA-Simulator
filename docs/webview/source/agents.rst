@@ -5,7 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    agents.rules
    agents.substep_managers
@@ -16,6 +16,8 @@ Submodules
 
 agents.leaderboard\_agent module
 --------------------------------
+
+.. _./agents/leaderboard_agent.py:
 
 .. automodule:: agents.leaderboard_agent
    :members:
@@ -29,16 +31,10 @@ agents.leaderboard\_agent module
 agents.lunatic\_agent module
 ----------------------------
 
+.. _./agents/lunatic_agent.py:
+
 .. automodule:: agents.lunatic_agent
    :members:
    :special-members: __call__
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: agents
-   :members:
    :undoc-members:
    :show-inheritance:

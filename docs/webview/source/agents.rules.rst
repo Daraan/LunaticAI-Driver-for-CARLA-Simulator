@@ -1,11 +1,17 @@
 agents.rules package
 ====================
 
+.. automodule:: agents.rules
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :no-inherited-members:
+
 Subpackages
 -----------
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    agents.rules.obstacles
 
@@ -25,15 +31,6 @@ agents.rules.stopped\_long\_trigger module
 ------------------------------------------
 
 .. automodule:: agents.rules.stopped_long_trigger
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :no-inherited-members:
-
-Module contents
----------------
-
-.. automodule:: agents.rules
    :members:
    :undoc-members:
    :show-inheritance:

@@ -17,6 +17,8 @@
 #
 import os
 import sys
+
+
 PROJECT_ROOT = '../../../'
 #sys.path.insert(1, os.path.abspath('../../../agents'))
 #sys.path.insert(1, os.path.abspath('../../../scenario_runner'))
@@ -27,9 +29,10 @@ sys.path.insert(0, os.path.abspath('./'))
 
 # already present at readthedocs, still want it for some code safeguards
 os.environ.setdefault("READTHEDOCS", "local")
+
+RTD_ONLINE = os.environ["READTHEDOCS"] != "local"
+
 print("Are we local or on readthedocs (True)?", os.environ["READTHEDOCS"])
-
-
 
 # Some hints for this file
 
@@ -37,6 +40,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Literal
     from typing import Optional
+    import sphinx
+    import sphinx.application
 
 # -- Project information -----------------------------------------------------
 
@@ -44,12 +49,30 @@ project = 'LunaticAI'
 copyright = ""
 author = ""
 
+REMOTE_URL = "https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator"
+
+if RTD_ONLINE:
+    GIT_BRANCH = os.environ.get("READTHEDOCS_GIT_IDENTIFIER")
+else:
+    import subprocess
+    GIT_BRANCH = subprocess.check_output("git rev-parse --abbrev-ref HEAD", shell=True, text=True).strip()
+    
+if RTD_ONLINE:
+    GIT_URL = os.environ.get("READTHEDOCS_GIT_CLONE_URL")
+    if not GIT_URL.startswith("https://"):
+        GIT_URL = REMOTE_URL
+else:
+    GIT_URL = REMOTE_URL
+    
+base_url = html_baseurl = r"/html/"
+
 
 # -- General configuration ---------------------------------------------------
 
 suppress_warnings = [
 #    "autodoc2.*",  # suppress all
 #    "autodoc2.config_error",  # suppress specific
+            "config.cache",
 ]
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -57,38 +80,67 @@ suppress_warnings = [
 # ones.
 extensions = ["myst_parser",
               'sphinx.ext.autodoc',
+              'sphinx.ext.napoleon',
+              
+              # https://pypi.org/project/sphinx-autodoc-typehints/
+              #'sphinx_autodoc_typehints',
               
               #'autodoc2',
               # https://github.com/sphinx-extensions2/sphinx-autodoc2
               
-              # https://pypi.org/project/sphinx-autodoc-typehints/
-              'sphinx_autodoc_typehints',
-              
-              'sphinx.ext.napoleon',
-              
-              # https://sphinxemojicodes.readthedocs.io/en/stable/
-              # https://sphinxemojicodes.readthedocs.io/#supported-codes
-              'sphinxemoji.sphinxemoji',
               'sphinx.ext.intersphinx',
               #"sphinxawesome_theme", # Slow
               
+              # --- On demand ---
+              
               # https://www.sphinx-doc.org/en/master/usage/extensions/githubpages.html
+              
+              # https://www.sphinx-doc.org/en/master/usage/extensions/viewcode.html
+              # 'sphinx.ext.viewcode',
+              
+              # Hover tooltips on demand
+              #https://sphinx-tippy.readthedocs.io/en/latest/
+              #'sphinx_tippy',
+              # https://github.com/readthedocs/sphinx-hoverxref
+              
+              'sphinxnotes.comboroles',
+              'sphinxemoji.sphinxemoji',
               ]
+
+VERSION = os.environ.get("READTHEDOCS_VERSION", "latest")
+
+if VERSION in ("latest", "main"):
+    extensions.append('sphinx.ext.viewcode')
+    extensions.append('sphinx.ext.githubpages')
+    # https://sphinxemojicodes.readthedocs.io/en/stable/
+    # https://sphinxemojicodes.readthedocs.io/#supported-codes
+if VERSION == "latest" and not RTD_ONLINE:
+    extensions.append("sphinx_tippy")
+elif VERSION == "latest" and RTD_ONLINE:
+    extensions.append("hoverxref.extension")
+
+print("Using extensions:", extensions)
 
 rst_prolog = """
 .. role:: python(code)
     :language: python
     :class: highlight
 
+.. role:: raw-inject
+
+.. role:: external-icon-role
+    :class: external-icon
+
 .. _Hydra: https://hydra.cc/
 
 """
 
-intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
+intersphinx_mapping = {'python': ('https://docs.python.org/3/', None),
+                                       'typing_extensions' : ("https://docs.python.org/3/", None),
                                        'omegaconf' : ('https://omegaconf.readthedocs.io/en/latest/', '_omegaconf-inv_patch.inv'),
+                                       'pygame' : ("https://www.pygame.org/docs/", None),
                                        'carla' : ('https://carla.readthedocs.io/en/latest/', '_carla-inv.inv'),
                                        'scenario_runner' : ('https://github.com/carla-simulator/scenario_runner/', '_scenario_runner-inv.inv'),
-                                       'pygame' : ("https://www.pygame.org/docs/", None),
                                        #'cachetools' : ("https://cachetools.readthedocs.io/en/stable/", None),
                        }
 
@@ -115,9 +167,10 @@ autodoc_class_signature = "mixed" # "separated" or "mixed"
 
 autodoc_mock_imports = ["leaderboard", "pygame", "shapely", 
                                    "py_trees", "pandas", "numpy", "matplotlib", 
-                                   "pylab", "networkx", "graphviz", "cachetools", "six", "scenario_runner", "srunner"]
+                                   "pylab", "networkx", "graphviz", "cachetools", "six", "scenario_runner", "srunner",
+                                   "hydra"]
 
-autodoc_typehints="description"
+autodoc_typehints="both"
 
 autodoc_typehints_description_target="all"
 """
@@ -127,7 +180,7 @@ When set to "documented", types will only be documented for a parameter or a ret
 With "documented_params", parameter types will only be annotated if the parameter is documented in the docstring. The return type is always annotated (except if it is None).
 """
 
-autodoc_typehints_format = 'fully-qualified' # "short" or "fully-qualified"
+autodoc_typehints_format = 'short' # "short" or "fully-qualified"
 
 autodoc_preserve_defaults = True #???
 """
@@ -141,8 +194,8 @@ If True, the default argument values of functions will be not evaluated on gener
 
 typehints_defaults = "comma" # type: Literal["comma", "braces", "braces-after"] | None
 always_use_bars_union = True # | instead of Union
-always_document_param_types = True # default False
-typehints_fully_qualified = True # Use full names for types
+always_document_param_types = False # default False
+typehints_fully_qualified = False # Use full names for types
 
 """
 typehints_formatter = None
@@ -152,27 +205,151 @@ and sphinx.config.Config argument second. The function is expected to return a s
 reStructuredText code or None to fall back to the default formatter.
 """
 
+if "sphinx_autodoc_typehints" in extensions:
+    config_clone = None 
+    from sphinx.config import Config
+    from sphinx_autodoc_typehints import get_annotation_module, format_annotation
+
+    def typehints_formatter(annotation, config : Config):
+        # Default see: https://github.com/tox-dev/sphinx-autodoc-typehints/blob/df669800eef5da7e952a24b84501846694b27101/src/sphinx_autodoc_typehints/__init__.py#L180
+        if annotation is None:
+            return None
+        global config_clone
+        #breakpoint()
+        if config_clone is None:
+            config_clone = Config(config._raw_config, overrides={"typehints_formatter" : None})
+            config_clone._options = config._options
+            #config_clone.typehints_fully_qualified = True #maybe
+        formatted = format_annotation(annotation, config_clone)
+        # has style f":py:{role}:`{prefix}{full_name}`{escape}{formatted_args}"
+        formatted = formatted.replace("libcarla.", "")
+
+        #formatted = re.sub(r":py:(\w+):`~?([a-zA-Z0-9_]+\.)*?([a-zA-Z0-9_]+)`", r"\3", formatted)
+        
+        #return str(annotation)u
+        
+        return formatted
+    
+    #typehints_formatter = None
+
 typehints_use_signature = True # (default: False): If True, typehints for parameters in the signature are shown.
 
 typehints_use_signature_return = True # (default: False): If True, return annotations in the signature are shown.
 
 
+# ------ Viewcode ------
+
+viewcode_line_numbers = True
+
+# -------------- Tippy --------------
+
+tippy_rtd_urls = [
+    #"https://carla.readthedocs.io/en/latest/",
+    #"https://docs.python.org",
+    #"https://docs.python.org/v3/library",
+]
+
+tippy_enable_wikitips = False # do not use
+tippy_enable_doitips = False # do not use
+
+# tippy_js = ("https://unpkg.com/@popperjs/core@2", "https://unpkg.com/tippy.js@6")
+tippy_js = ("popper.min.js", "tippy.js")
+
+tippy_add_class = "has-tippy"
+
+# ------------- hoverxref (RTD only) --------------
+
+hoverxref_auto_ref = True
+
+hoverxref_intersphinx = [
+    'https://omegaconf.readthedocs.io/en/latest/', 
+    'https://carla.readthedocs.io/en/latest/',
+    'https://typing-extensions.readthedocs.io/en/latest/',
+    'https://docs.python.org/3',
+]
+
+hoverxref_intersphinx_types = {
+    # make specific links to use a particular tooltip type
+    'readthdocs': {
+        'doc': 'modal',
+        'ref': 'tooltip',
+    },
+    'python': {
+        'class': 'modal',
+        'ref': 'tooltip',
+    },
+}
+
+hoverxref_domains = ['py']
 
 
-            
-     
+hoverxref_role_types = {
+    'hoverxref': 'modal',
+    'ref': 'modal',  # for hoverxref_auto_ref config
+    'mod': 'tooltip',  # for Python Sphinx Domain
+    'class': 'tooltip',  # for Python Sphinx Domain
+}
+
+
+# -------------- MyST Parser --------------
+
 # see https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#syntax-attributes-inline
 # and 
 myst_enable_extensions = ["attrs_inline", "attrs_block", "colon_fence"]
-myst_heading_anchors = 3
+myst_heading_anchors = 4
 
 # Open all external links in a new tab 
 myst_links_external_new_tab = True
+myst_all_links_external=False
+
+# TEST
+myst_ref_domains = ["std", "py"]
+
+myst_url_schemes = {
+    "http": None,
+    "https": None,
+    'mailto': None, 'ftp': None,
+    "carla-issue" : {
+        "url": "https://github.com/carla-simulator/carla/issues/{{path}}#{{fragment}}",
+        "title": "CARLA Issue #{{path}}",
+        "classes": ["github", "fa", "fa-github",],
+    },
+    
+    "gh-file" : {
+        "url": GIT_URL + "/blob/" + GIT_BRANCH + "/{{path}}#{{fragment}}",
+        "title": "{{path}}",
+        "classes": ["github", "fa", "fa-github", "file"],
+    },
+    
+    "py-file" : {
+        "url": GIT_URL + "/blob/" + GIT_BRANCH + "/{{path}}#{{fragment}}",
+        "title": "{{path}}",
+        "classes": ["github", "fa", "fa-file", "fa-python", "file"],
+    },
+    
+    "gh" : {
+        "url" : "{{path}}#{{fragment}}",
+        "title": "{{path}}",
+        "classes": ["github", "fa", "fa-github"],
+    },
+}
+
+
+# -------------- 'sphinx.ext.napoleon' --------------
 
 # True to convert the type definitions in the docstrings as references. Defaults to False.
 napoleon_preprocess_types = True
 
 
+napoleon_use_param = True
+"""Us emultiple :param: instead of :parameters: in the output. Defaults to False."""
+
+napoleon_use_rtype = True
+"""Will use """
+typehints_use_rtype = True
+
+typehints_document_rtype = False
+"""Process by autodoc_type_hints"""
 
 #napoleon_type_aliases = {}
 """
@@ -200,7 +377,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "requirements", "spawn_points.txt", "venv", "scenario_runner", "srunner"]
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "requirements", "spawn_points.txt", "venv", "scenario_runner", "srunner", "_include.md"]
 exclude_patterns.extend(["launch_tools.blueprint_helpers", "agents.navigation", "dynamic_planning", "agents.tools"])
 
 
@@ -221,18 +398,85 @@ autodoc2_packages = [
 #html_theme = 'alabaster'
 html_theme = "sphinx_rtd_theme"
 
+#html_theme_options = {
+#    'cssfiles': ["http://netdna.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"]
+#}
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+html_css_files = [
+    'external_icon.css',
+    'external_alternative.css',
+]
+
+# also for hoverxref cursor
+html_css_files.append("tippy.css")
+
+html_js_files = [
+   # 'stripcss.js', # inserted hardcoded
+]
+
 # ----- Patching the code -----
 
 # patch only locally, as long as apidoc is run only locally
 if os.environ['READTHEDOCS'] == 'local':
-    import _edit_rules
-    for name, foo in vars(_edit_rules).items():
+    import docs.webview.source._postprocess_autodoc as _postprocess_autodoc
+    for name, foo in vars(_postprocess_autodoc).items():
         if name.startswith("_"):
             continue
         if callable(foo):
             foo()
+    del name
+    del foo
+            
+comboroles_roles : dict[str, list[str] | tuple[list[str], bool]] = {
+    'strong_literal': ['strong', 'literal'],
+    'external_py_class' : ['external-icon-role', 'py:class'],
+    'external_py_mod' : ['external-icon-role', 'py:mod'],
+}
+"""
+The value can be list[str] with an optional bool. The list[str] is a list of existing role name to be composited, see Composite Roles for more details.
+
+The optional bool is flag of nested_parse, indicates whether the Nested Parse function is enabled. If no optional bool is given, nested_parse is disabled by default.
+"""
+
+
+def setup(app : "sphinx.application.Sphinx"):
+    #app.add_js_file("stripcss.js", priority=199) # should have higher priority
+    # if imported might be too slow, want to execute it before tippy
+    from textwrap import indent
+    try:
+        # local from root
+        with open("docs/webview/source/_static/stripcss.js", "r") as f:
+            app.add_js_file(None, body=indent(f.read(), " "*8, predicate=lambda x: not x.startswith("// disables")))
+    except FileNotFoundError:
+        with open("_static/stripcss.js", "r") as f:
+            app.add_js_file(None, body=indent(f.read(), " "*8, predicate=lambda x: not x.startswith("// disables")))
+    
+
+    #py_external = sphinx.domains.python.PyXRefRole(nodeclass="py-module", innernodeclass="py-module py-external")
+    #app.add_role_to_domain("py", "external", py_external)
+    
+    from sphinxnotes.comboroles import CompositeRole
+    
+    class InjectClassRole(CompositeRole):
+        
+        def __init__(self, rolenames: list[str]=[], nested_parse: bool=True, *, classes: list[str] ):
+            super().__init__(["raw-inject"] + rolenames, nested_parse)
+            self.classes = classes
+        
+        def run(self):
+            allnodes, messages = super().run()
+            # remove raw-inject node and insert classes
+            inner = allnodes[0].children[0]
+            inner.parent = None
+            inner.attributes["classes"].extend(self.classes) # type: ignore[attr-defined]
+            return [inner], messages
+
+    app.add_role("external-icon-parse", InjectClassRole(classes=["external-icon"]))
+
+
+    

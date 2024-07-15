@@ -1,0 +1,16 @@
+a.external:after {
+    content: "\f08e";
+    font-family: FontAwesome;
+    font-style: normal;
+    font-weight: normal;
+    text-decoration: none;
+    margin-left: 0.2em;
+    font-size: 0.8em;
+    color: #337ab7;
+}
+
+/* Disables external ref for github icons */
+
+a.fa-github:after {
+    content : "" !important;
+}

@@ -175,7 +175,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             logger.setLevel(logging.DEBUG)
             self.args = args
             
-            config = LunaticAgentSettings.create_from_args(self.args.agent, assure_copy=True, as_dictconfig=True)
+            config = LunaticAgentSettings.create(self.args.agent, assure_copy=True, as_dictconfig=True)
         else:
             self.args = path_to_conf_file
             config = self.args.agent

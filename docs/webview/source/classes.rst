@@ -1,6 +1,12 @@
 classes package
 ===============
 
+.. automodule:: classes
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :imported-members: CustomSensorInterface
+
 Submodules
 ----------
 
@@ -18,6 +24,7 @@ classes.evaluation\_function module
 
 .. automodule:: classes.evaluation_function
    :members:
+   :special-members: __add__, __and__, __or__, __invert__
    :undoc-members:
    :show-inheritance:
 
@@ -68,13 +75,3 @@ classes.worldmodel module
    :members:
    :undoc-members:
    :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: classes
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :imported-members: CustomSensorInterface
-

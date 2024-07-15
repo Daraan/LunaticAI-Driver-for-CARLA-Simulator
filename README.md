@@ -7,12 +7,12 @@ The full documentation can be found online at [ReadTheDocs](https://lunaticai-dr
 ---
 
 This repository offers a modularized rule-based agent system for the
-[CARLA simulator](https://carla.org/) [<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/carla-simulator/carla)
+[CARLA simulator](https://carla.org/) 
 designed to be easily extendable and configurable. Special submodules like the rule system, the configuration system and the information gathering can directly or with slight modifications be used in other projects as stand alone.
 
 If you are familiar with the CARLA simulator, our agent builds up on the standard agents provided by the CARLA developers, but remodels and extends them in many ways. The key changes are:
 
-- Full, dynamic and transparent Configuration, backed by [Hydra](https://hydra.cc/) [<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/facebookresearch/hydra):
+- Full, dynamic and transparent Configuration, backed by [Hydra](https://hydra.cc/):
   - Adjust the agent's behavior at runtime.
   - Automatically logged and repeatable experiments.
   - Hierarchically structured configuration allow for coarse and fine-grained changes to configure experiments
@@ -29,17 +29,17 @@ If you are familiar with the CARLA simulator, our agent builds up on the standar
 |`dev/daniel`| Supporting CARLA 0.9.15+, Python 3.10+ with RSS build | potentially unstable |
 |`WIP/dev_daniel` | Most recent development branch | likely unstable |
 
-Note: The [Leaderboard 2.0](https://github.com/carla-simulator/leaderboard) supporting `LunaticChallenger`, only supports CARLA 0.9.15 and Python 3.10+.
+Note: The [Leaderboard 2.0](https://github.com/carla-simulator/leaderboard) supporting [`LunaticChallenger`](#LunaticChallenger), only supports CARLA 0.9.15 and Python 3.10+.
 
 ## Installation
 
-See the [Installation Guide](docs/Install.md) for more details.
+See the [Installation Guide](docs/Install) for more details.
 
 ## Agent Classes
 
-At the core is the [`LunaticAgent`(agents/lunatic_agent.py)](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/agents/lunatic_agent.py) which offers full flexibility in terms of rules and actions and how you control it during a custom written game loop.
+At the core is the [`LunaticAgent`(agents/lunatic_agent.py)](./agents/lunatic_agent.py) which offers full flexibility in terms of rules and actions and how you control it during a custom written game loop.
 
-The [`LunaticChallenger`(agents/leaderboard_agent.py)](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main//agents/leaderboard_agent.py) is a simplified version wrapped version to be compatible with the [carla/leaderboard-2.0](https://github.com/carla-simulator/leaderboard) interface, i.e. providing only a `setup` and `run_step` method.
+The [`LunaticChallenger`(agents/leaderboard_agent.py)](./agents/leaderboard_agent.py) is a simplified version wrapped version to be compatible with the [carla/leaderboard-2.0](https://github.com/carla-simulator/leaderboard) interface, i.e. providing only a `setup` and `run_step` method.
 
 You can look at the workflow diagram at the end of this document to see how the agent system is structured.
 
@@ -64,7 +64,7 @@ class SlowDownAtIntersectionRule(Rule):
         ctx.agent.set_target_speed(agent.live_info.target_speed - 10)
 ```
 
-For more details look into the [Rules](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/agents/rules/Rules.md) documentation.
+For more details look into the [Rules](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/docs/Rules.md) documentation.
 
 ### Phases
 
@@ -81,7 +81,7 @@ Behavioral aspects of the agent but also the environment and user interface are 
 The configuration backend is designed to make coarse and fine-grained changes by using combination of different configs on demand or by adjusting single parameters or blocks via the command line.
 The configuration files are stored in the [conf](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/conf) directory.
 
-For more info continue read the [Configuration](conf/ConfigFiles.md) section.
+For more info continue read the [Configuration](conf/ConfigFiles) section.
 
 ## Workflow and Component Diagram of the Agent System
 

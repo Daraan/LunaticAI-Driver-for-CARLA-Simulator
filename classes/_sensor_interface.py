@@ -7,10 +7,11 @@ __all__ = ['CustomSensorInterface']
 
 class CustomSensorInterface(object):
     """
-    This is a mixin for classes like the :py:class:`.camere_manager.CameraManager` or the :py:class:`classes.rss_sensor.RssSensor`
-    that either wrap around a :py:class:`carla.Sensor` or should have a similar interface.
+    This is a mixin for classes like the :py:class:`.camera_manager.CameraManager` or the :py:class:`classes.rss_sensor.RssSensor`
+    that either wrap around a :external_py_class:`carla.Sensor` or should have a similar interface.
     
-    Not to be confused with :py:class:`srunner.autoagents.sensor_interface.SensorInterface`.
+    Attention:
+        Not to be confused with :py:class:`srunner.autoagents.sensor_interface.SensorInterface`.
     """
 
     sensor : carla.Sensor
@@ -32,6 +33,7 @@ class CustomSensorInterface(object):
     def stop(self):
         """
         Stop the :py:attr:`sensor` if its in listening mode.
+        If it is a :external_py_class:`carla.Sensor`, calls the simulator.
         """
         if self.sensor is None:
             return
@@ -47,6 +49,9 @@ class CustomSensorInterface(object):
         
         :meta public:
         """
-        if self.sensor is not None:
-            self.stop()
-            self.destroy()
+        try:
+            if self.sensor is not None:
+                self.stop()
+                self.destroy()
+        except Exception as e:
+            pass

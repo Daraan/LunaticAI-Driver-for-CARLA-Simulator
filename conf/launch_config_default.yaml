@@ -17,7 +17,7 @@ map: Town04_Opt
 host: 127.0.0.1
 port: 2000
 
-# Used to fix :py:attr:`carla.WorldSettings.fixed_delta_seconds`
+# Used to fix `carla.WorldSettings.fixed_delta_seconds`
 #  
 # Experimental also used to cap fps in the simulation.
 fps: 20
@@ -56,7 +56,8 @@ filter: vehicle.*
 # Generation for the ego blueprint. Kept for compatibility with carla examples.
 generation: 2
 
-# Whether or not to use the Carla's TrafficManager to autopilot the agent
+# Whether or not to use the CARLAS's `carla.TrafficManager` to autopilot the agent
+#  
 # Note: 
 #     This disables the usage of the LunaticAgent, however needs to be 
 #     enabled in the main script by the user to work.

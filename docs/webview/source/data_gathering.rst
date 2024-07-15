@@ -5,7 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    data_gathering.car_detection_matrix
 
@@ -16,14 +16,6 @@ data\_gathering.information\_manager module
 -------------------------------------------
 
 .. automodule:: data_gathering.information_manager
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: data_gathering
    :members:
    :undoc-members:
    :show-inheritance:

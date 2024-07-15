@@ -6,7 +6,6 @@ The conf/agent/default_settings.yaml file is automatically created
 
 """
 
-
 import os
 import sys
 from collections.abc import Mapping
@@ -82,6 +81,8 @@ _NOTSET = object()
 # disable warnings - needed for rule creation for config
 WARN_LIVE_INFO = True
 
+READTHEDOCS = os.environ.get("READTHEDOCS", False)
+
 # ---------------------
 # Helper methods
 # ---------------------
@@ -123,8 +124,17 @@ def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
     elif isinstance(conf, ListConfig):
         for key in range(len(conf)):
             set_readonly_interpolations(conf._get_node(key))
+    else:
+        print("WARNING: Could not set readonly for", type(conf))
             
 def set_readonly_keys(conf : Union[DictConfig, ListConfig], keys : List[str]):
+    """
+    Sets nodes to readonly.
+    
+    See: https://github.com/omry/omegaconf/issues/1161
+    """
+    if isinstance(keys, str):
+        keys = [keys]
     for key in keys:
         OmegaConf.set_readonly(conf._get_node(key), True)
 
@@ -147,8 +157,8 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         return cls()
     
     @class_or_instance_method
-    def export_options(cls_or_self, path, category=None, resolve=False, with_comments=False, detailed_rules=False) -> None:
-        """Exports the options to a yaml file."""
+    def export_options(cls_or_self, path : Union[str, os.PathLike], category: Optional[str]=None, resolve: bool=False, with_comments: bool=False, detailed_rules:bool=False) -> None:
+        """Exports the options to a YAML file."""
         if inspect.isclass(cls_or_self):
             cls_or_self = cls_or_self()
         if category is None:
@@ -165,9 +175,18 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             # TODO: look how we can do this directly from dataclass
             options = OmegaConf.create(options, flags={"allow_objects": True})
         OmegaConf.save(options, path, resolve=resolve) # NOTE: This might raise if options is structured, for export structured this is actually not necessary.
+    
+    if READTHEDOCS or TYPE_CHECKING:
+        @overload
+        @classmethod
+        def simplify_options(cls, category: Optional[str]=None, *, resolve:bool, to_yaml:Literal[True], yaml_commented:bool=True, detailed_rules:bool=False, **kwargs) -> str: ...
         
+        @overload
+        @classmethod
+        def simplify_options(cls, category: Optional[str]=None, *, resolve:bool, to_yaml:Literal[False]=False, yaml_commented:bool=True, detailed_rules:bool=False, **kwargs) -> dict: ...
+    
     @class_or_instance_method
-    def simplify_options(cls_or_self, category=None, *, resolve, yaml=False, yaml_commented=True, detailed_rules=False, **kwargs):
+    def simplify_options(cls_or_self, category: Optional[str]=None, *, resolve:bool, to_yaml:bool=False, yaml_commented:bool=True, detailed_rules:bool=False, **kwargs):
         """
         Returns a dictionary of all options or a string in yaml format.
         
@@ -177,6 +196,8 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         :param kwargs: Additional keyword arguments to pass to OmegaConf.to_container or OmegaConf.to_yaml.
         
         :return: The dictionary or str of options.
+        
+        :meta private:
         """
         if inspect.isclass(cls_or_self):
             cls_or_self = cls_or_self()
@@ -184,13 +205,13 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             options = cls_or_self
         else:
             options = getattr(cls_or_self, category)
-        if not isinstance(options, DictConfig) and not resolve and not yaml:
+        if not isinstance(options, DictConfig) and not resolve and not to_yaml:
             return asdict(options)
         if not isinstance(options, DictConfig):
             #options = OmegaConf.structured(options, flags={"allow_objects": True})
             pass
         
-        if yaml:
+        if to_yaml:
             # Simple YAML
             import yaml
             
@@ -264,7 +285,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
                 cfg.rules = masked_rules
                 
             container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
-            string = yaml.dump(  # type: ignore
+            string = yaml.dump(
                 container,
                 default_flow_style=False,
                 allow_unicode=True,
@@ -300,7 +321,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
             
             # add comments to all other attributes
-            def add_comments(container, data, lookup, indent=0):
+            def add_comments(container : "DictConfig | dict", data: CommentedBase, lookup : AgentConfig, indent=0):
                 if isinstance(container, DictConfig):
                     containeritems = container.items_ex(resolve=False)
                 else:
@@ -340,7 +361,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         Returns:
             str: The YAML string representation of the options.
         """
-        return cls_or_self.simplify_options(resolve=resolve, yaml=True, yaml_commented=yaml_commented, detailed_rules=detailed_rules)
+        return cls_or_self.simplify_options(resolve=resolve, to_yaml=True, yaml_commented=yaml_commented, detailed_rules=detailed_rules)
         
     @classmethod
     def from_yaml(cls : "type[CL]", path, category : Optional[str]=None, *, merge=True) -> CL:
@@ -366,30 +387,22 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         return r
     
     @classmethod
-    def uses_overwrite_interface(cls):
-        """
-        Whether or not the class is created by a single parameter "overwrites"
-        or via keyword arguments for each field.
-        """
-        return "overwrites" in inspect.signature(cls.__init__).parameters
-    
-    @classmethod
-    def create_from_args(cls, args:"Union[os.PathLike, dict, DictConfig, Mapping]", 
-                         overwrites:"Optional[Mapping]"=None, 
-                         *,
-                         assure_copy : bool = True,
-                         as_dictconfig:Optional[bool]=True,
-                         dict_config_no_parent:bool = True,
-                         ):
+    def create(cls, settings:"Union[os.PathLike, dict, DictConfig, Mapping]", 
+                    overwrites:"Optional[Mapping]"=None, 
+                    *,
+                    assure_copy : bool = True,
+                    as_dictconfig:Optional[bool]=True,
+                    dict_config_no_parent:bool = True,
+                    ):
         """
         Creates the agent settings based on the provided arguments.
         
         Note:
             By default this returns a DictConfig version of this class.
 
-        Args:
-            cls : The type of the agent settings.
-            args : The argument specifying the agent settings. It can be a path to a YAML file, a dictionary, a dataclass, or a :py:class:`omegaconf.DictConfig`.
+        Parameters:
+            settings : The argument specifying the agent settings. It can be a path to a YAML file, a dictionary, a
+                   :external-icon-parse:`:py:mod:\`@dataclass <dataclasses>\`` decorated class or a :external-icon-parse:`:py:class:\`omegaconf.DictConfig\``.
             overwrites : Optional mapping containing additional settings to overwrite the default agent settings.
             as_dictconfig :
 
@@ -400,40 +413,40 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
                   original input is checked and returned.
 
         Returns:
-            :py:class:`AgentConfig` (duck-typed); actually :py:class:`omegaconf.DictConfig`): The created agent settings.
+            :py:class:`AgentConfig` (duck-typed); actually :external-icon-parse:`:py:class:\`omegaconf.DictConfig\``): The created agent settings.
 
         Raises:
             Exception: If the overwrites cannot be merged into the agent settings.
         """
         from agents.tools.logging import logger
         behavior : cls
-        if isinstance(args, dict):
+        if isinstance(settings, dict):
             logger.debug("Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a dict config. Interpolations not available.")
-            behavior = cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
-        elif isinstance(args, str):
-            logger.info("Using agent settings from file `%s`", args)
-            behavior = cls.from_yaml(args) # DictConfig
-        elif is_dataclass(args) or isinstance(args, DictConfig):
+            behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
+        elif isinstance(settings, str):
+            logger.info("Using agent settings from file `%s`", settings)
+            behavior = cls.from_yaml(settings) # DictConfig
+        elif is_dataclass(settings) or isinstance(settings, DictConfig):
             logger.info("Using agent settings as is, as it is a dataclass or DictConfig.")
             if assure_copy:
-                behavior = cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
-            elif inspect.isclass(args):
-                behavior = args()
+                behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
+            elif inspect.isclass(settings):
+                behavior = settings()
             else:
                 # instantiate class to check keys but use original type
-                cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)# convert to class to check keys
-                behavior = args   # stays DictConfig
+                cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)# convert to class to check keys
+                behavior = settings   # stays DictConfig
         else:
             if as_dictconfig is None or as_dictconfig == SCMode.DICT:
-                logger.warning("Type `%s` of launch argument type `agent_settings` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(args))
-            if inspect.isclass(args):
-                behavior = args() # be sure to have an instance
+                logger.warning("Type `%s` of launch argument type `agent_settings` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(settings))
+            if inspect.isclass(settings):
+                behavior = settings() # be sure to have an instance
             if assure_copy:
-                behavior = cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
+                behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
             else:
                 # instantiate to class to check keys but use original type
-                cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
-                behavior = args   # stays Unknown type
+                cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
+                behavior = settings   # stays Unknown type
         
         if overwrites:
             if isinstance(behavior, DictConfig):
@@ -447,7 +460,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         if as_dictconfig and not isinstance(behavior, DictConfig):
             behavior = OmegaConf.create(behavior, flags={"allow_objects": True})  
         elif as_dictconfig == False and isinstance(behavior, DictConfig):
-            return cls(overwrites=args) if cls.uses_overwrite_interface() else cls(**args)
+            return cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
         elif as_dictconfig is None:
             logger.debug("A clear return type of %s.create_from_args has not set as config_mode is None. Returning as %s", cls.__name__, type(behavior))
         
@@ -460,7 +473,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         
         return cast(cls, behavior)
     
-    if TYPE_CHECKING:
+    if READTHEDOCS or TYPE_CHECKING:
         @overload
         @classmethod
         def check_config(cls, config: CL, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[False]") -> CL: ... 
@@ -478,12 +491,12 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         """
         - strictness == 1: Will cast the config to this class, assuring all keys are present.
             However the type and correctness of the field-contents are not checked.
-        - strictness > 1 the config will be a DictConfig object, :code:`as_dict_config` is ignored. 
+        - strictness > 1 the config will be a DictConfig object, **as_dict_config** is ignored. 
         - strictness == 2: Will assure that the *initial* types are correct.
         - strictness >= 2 will return the config as a structured config,
             forcing the defined types during runtime as well.
         """
-        if "experiments" in config and not hasattr(cls, "experiments"): # For LaunchConfig
+        if 'experiments' in config and not hasattr(cls, 'experiments'): # For LaunchConfig
             print("\nWARNING: There is key 'experiments' in the config. Did you forget a '# @package _global_' in the first line? Keys in experiments: %s", config.experiments.keys())
         if strictness < 1:
             if as_dict_config and not isinstance(config, DictConfig):
@@ -496,7 +509,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
                 return OmegaConf.create(config, flags={"allow_objects": True})
             return config
         # TODO: # Note: This does not assure missing keys:
-        config = cls.create_from_args(config, as_dictconfig=SCMode.DICT_CONFIG, assure_copy=False)
+        config = cls.create(config, as_dictconfig=SCMode.DICT_CONFIG, assure_copy=False)
         if strictness == 2:
             if as_dict_config and not isinstance(config, DictConfig):
                 return OmegaConf.create(config, flags={"allow_objects": True})
@@ -508,15 +521,18 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
     @class_or_instance_method
     def to_dict_config(cls_or_self : ConfigType, category:Optional[str]=None, *, lock_interpolations:bool=True, lock_fields:Optional[List[str]]=None):
         """
-        Returns a dictionary of all options.
+        Returns a :external-icon-parse:`:py:class:\`omegaconf.DictConfig\`` from the current options.
         
-        Interpolations will be locked to prevent them from being overwritten.
-        E.g. speed.current_speed does cannot diverge from live_info.current_speed.
+        Interpolations can be locked to prevent them from being overwritten.
+        E.g. :code:`speed.current_speed` cannot diverge from :code:`live_info.current_speed`.
         
         Parameters:
-            category: The sub-category/key of the options to retrieve. If None, retrieves all options.
-            lock_interpolations: Whether to set interpolations to readonly. Defaults to True.
-            lock_fields: A list of fields to set to readonly. Defaults to None.
+            category: The sub-category/key of the options to retrieve. If :python:`None`, retrieves all options.
+            lock_interpolations: Whether to set interpolations to readonly. Defaults to :python:`True`.
+            lock_fields: A list of fields to set to readonly. Defaults to :python:`None`.
+            
+        Returns:
+            :py:class:`AgentConfig` (duck-typed); actually :external-icon-parse:`:py:class:\`omegaconf.DictConfig\``) : The options as a :py:class:`DictConfig`.
         """
         if category is None:
             options = cls_or_self
@@ -535,9 +551,10 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         """Returns a deep copy of this object."""
         return deepcopy(self)
     
+
     @class_or_instance_method
     def get(cls_or_self, key:str, default:Any=_NOTSET):
-        """Analog of getattr"""
+        """Analog of :py:func:`.getattr`"""
         if default is _NOTSET:
             return getattr(cls_or_self, key)
         return getattr(cls_or_self, key, default)
@@ -555,11 +572,13 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
                 target[k] = v
     
     @class_or_instance_method
-    def get_flat_options(cls_or_self, *, resolve=True) -> dict:
+    def get_flat_options(cls_or_self, *, resolve:bool=True) -> dict:
         """
         Note these return a copy of the data but in a flat hierarchy.
         Also note interpolations are replaced by default.
-        E.g. target_speed and max_speed are two different references.
+        E.g. :py:attr:`target_speed` and :py:attr:`max_speed` are two *different* references.
+        
+        :meta private:
         """
         try:
             resolved = OmegaConf.to_container(OmegaConf.create(cls_or_self), resolve=resolve, throw_on_missing=False)
@@ -597,7 +616,15 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         except Exception as e:
             print("\n ERROR updating", self.__class__.__name__, "with >", options, "< Error:", e, "\n")
             raise
-
+        
+    @classmethod
+    def uses_overwrite_interface(cls) -> bool:
+        """
+        Whether or not the class is created by a single parameter "overwrites"
+        or via keyword arguments for each field.
+        """
+        return "overwrites" in inspect.signature(cls.__init__).parameters
+    
     def _clean_options(self):
         """
         Postprocessing of possibly wrong values
@@ -1562,14 +1589,14 @@ class CallFunctionFromConfig:
     """Positional arguments to pass to the Rule or Function"""
     
     random_lane_change : bool = False
-    """For `create_default_rules`: Should the RandomLaneChangeRule be added"""
+    """For :py:func:`.create_default_rules`; Should the :py:class:`.RandomLaneChangeRule` be added"""
 
 @dataclass
 class CreateRuleFromConfig:
     """
     Keywords to instantiate Rule classes
     
-    :py:attr:`omegaconf.MISSING` (alias for :python:`'???'`) attributes will not be passed to a :py:class:`Rule`'s :py:meth:`~classes.rule.Rule.__init__` method.
+    :external-icon-parse:`:py:attr:\`omegaconf.MISSING\`` (alias for :python:`'???'`) attributes will not be passed to a :py:class:`.Rule`'s :py:meth:`~.classes.rule.Rule.__init__` method.
     """
     
     _target_ : str
@@ -1620,7 +1647,7 @@ class CreateRuleFromConfig:
     group : Optional[str] = MISSING
     enabled: bool = MISSING
     
-    if TYPE_CHECKING:
+    if READTHEDOCS or TYPE_CHECKING:
         rules : List["CreateRuleFromConfig"] = MISSING
     else:
         rules : list = MISSING # List[CreateRuleFromConfig] # Cannot use this forward ref with omegaconf
@@ -1785,27 +1812,27 @@ class BehaviorAgentSettings(AgentConfig):
 class LunaticAgentSettings(AgentConfig):
     overwrites : Optional[Dict[str, dict]] = field(default_factory=dict, repr=False)
     live_info : LiveInfo = field(default_factory=LiveInfo, init=False)
-    """<take doc:LiveInfo>"""
+    """.. <take doc|LiveInfo>"""
     speed : LunaticAgentSpeedSettings = field(default_factory=LunaticAgentSpeedSettings, init=False)
-    """<take doc:LunaticAgentSpeedSettings>"""
+    """.. <take doc|LunaticAgentSpeedSettings>"""
     distance : LunaticAgentDistanceSettings = field(default_factory=LunaticAgentDistanceSettings, init=False)
-    """<take doc:LunaticAgentDistanceSettings>"""
+    """.. <take doc|LunaticAgentDistanceSettings>"""
     lane_change : LunaticAgentLaneChangeSettings = field(default_factory=LunaticAgentLaneChangeSettings, init=False)
-    """<take doc:LunaticAgentLaneChangeSettings>"""
+    """.. <take doc|LunaticAgentLaneChangeSettings>"""
     obstacles : LunaticAgentObstacleSettings = field(default_factory=LunaticAgentObstacleSettings, init=False)
-    """<take doc:LunaticAgentObstacleSettings>"""
+    """.. <take doc|LunaticAgentObstacleSettings>"""
     controls : LunaticAgentControllerSettings = field(default_factory=LunaticAgentControllerSettings, init=False)
-    """<take doc:LunaticAgentControllerSettings>"""
+    """.. <take doc|LunaticAgentControllerSettings>"""
     planner : LunaticAgentPlannerSettings = field(default_factory=LunaticAgentPlannerSettings, init=False)
-    """<take doc:LunaticAgentPlannerSettings>"""
+    """.. <take doc|LunaticAgentPlannerSettings>"""
     emergency : LunaticAgentEmergencySettings = field(default_factory=LunaticAgentEmergencySettings, init=False)
-    """<take doc:LunaticAgentEmergencySettings>"""
+    """.. <take doc|LunaticAgentEmergencySettings>"""
     
     # Can be set to False/None to disable
     rss : RssSettings = field(default_factory=RssSettings, init=False, metadata={"can_be_false": True})
-    """<take doc:RssSettings>"""
+    """.. <take doc|RssSettings>"""
     detection_matrix : DetectionMatrixSettings = field(default_factory=DetectionMatrixSettings, init=False, metadata={"can_be_false": True})
-    """<take doc:DetectionMatrixSettings>"""
+    """.. <take doc|DetectionMatrixSettings>"""
     
     # TODO: This attribute can be removed after the rules have been initialized for performance
     rules : list = field(default_factory=_from_config_default_rules)
@@ -1819,17 +1846,25 @@ class LunaticAgentSettings(AgentConfig):
         - :py:func:`_from_config_default_rules` : Creates the default rules in the YAML file
     """
     
-    if TYPE_CHECKING:
+    if READTHEDOCS or TYPE_CHECKING:
         rules : List[RuleCreatingParameters] = field(default_factory=_from_config_default_rules)
 
     # ---- Special Attributes for Context and Rule overwrites ----
     # These attributes are not usable by the agent
     
     current_rule : Never = field(default=II("self"), init=False)
-    """Special settings of the current rule. Only available from Context within rules ctx.config.current_rule"""
+    """
+    Special settings of the current rule. Only available from Context within rules ctx.config.current_rule
+    
+    :meta private:
+    """
     
     self : Never = field(default=MISSING, init=False)
-    """Special settings of the current rule. Only available from Context within rules ctx.config.current_rule"""
+    """
+    Special settings of the current rule. Only available from Context within rules ctx.config.current_rule
+    
+    :meta private:
+    """
 
 
 
@@ -1899,7 +1934,7 @@ class CameraConfig(AgentConfig):
         """Interval to record the camera"""
         
     recorder : RecorderSettings = field(default_factory=RecorderSettings)
-    """<take doc:RecorderSettings>"""
+    """.. <take doc|RecorderSettings>"""
     
     @dataclass
     class DetectionMatrixHudConfig(AgentConfig):
@@ -1923,7 +1958,7 @@ class CameraConfig(AgentConfig):
         """Settings for the text of pyplot.text when drawing the numerical values"""
 
     detection_matrix : DetectionMatrixHudConfig = field(default_factory=DetectionMatrixHudConfig)
-    """<take doc:DetectionMatrixHudConfig>"""
+    """.. <take doc|DetectionMatrixHudConfig>"""
 
 
 @dataclass
@@ -2012,7 +2047,8 @@ class LaunchConfig(AgentConfig):
     
     autopilot: bool = False
     """
-    Whether or not to use the Carla's TrafficManager to autopilot the agent
+    Whether or not to use the CARLAS's :external-icon-parse:`:py:class:\`carla.TrafficManager\`` to autopilot the agent
+    
     Note: 
         This disables the usage of the LunaticAgent, however needs to be 
         enabled in the main script by the user to work.
@@ -2026,14 +2062,19 @@ class LaunchConfig(AgentConfig):
 
 
 
-if TYPE_CHECKING:
+if READTHEDOCS or TYPE_CHECKING:
     from hydra.conf import HydraConf
     from typing_extensions import NotRequired
-    class LaunchConfig(LaunchConfig, DictConfig):
-        hydra : NotRequired[HydraConf]              # pyright: ignore # NotRequired only for TypedDict
-        leaderboard : NotRequired[DictConfig]       # pyright: ignore
+    if TYPE_CHECKING:
+        class LaunchConfig(LaunchConfig, DictConfig):
+            hydra : NotRequired[HydraConf]              # pyright: ignore # NotRequired only for TypedDict
+            leaderboard : NotRequired[DictConfig]       # pyright: ignore
+    else:
+        LaunchConfig.__annotations__["hydra"] = NotRequired[HydraConf]
+        LaunchConfig.__annotations__["leaderboard"] = NotRequired[DictConfig]
 
 def extract_annotations(parent, docs):
+    import re
     for main_body in parent.body:
         # Skip non-classes
         if not isinstance(main_body, ast.ClassDef):
@@ -2073,8 +2114,8 @@ def extract_annotations(parent, docs):
             else:
                 continue
             
-            if doc.startswith("<take doc:") and doc.endswith(">"):
-                key = doc[len("<take doc:"):-1]
+            if doc.startswith(".. <take doc|") and doc.endswith(">"):
+                key = doc[len(".. <take doc|"):-1]
                 try:
                     docs[main_body.name][target] = docs[main_body.name][key]
                 except KeyError as e:
@@ -2086,18 +2127,25 @@ def extract_annotations(parent, docs):
                         pass
                     raise NameError(f"{key} needs to be defined before {target} or globally") from e
                 continue
-            docs[main_body.name][target] = inspect.cleandoc(doc)
+            doc = inspect.cleandoc(doc)
+            # remove rst
+            doc = re.sub(r":py:\w+:\\?`[~.!]*(.+?)\\?`", r"`\1`", doc)
+            doc = re.sub(r":(?::|\w|-)+?:`+(.+?)`+", r"`\1`", doc)
+            docs[main_body.name][target] = doc
             del target # delete to get better errors
             del doc
 
-
-    
-def export_schemas(detailed_rules=False):
+def export_schemas(detailed_rules:bool =False):
     """
-    Exports the schemas to conf/folder
+    Exports the schemas as YAML files to the `conf/` folder with comment annotations.
+    
+    Parameters:
+        detailed_rules: If True, the :py:attr:`LunaticAgentSettings.rules` entry will also include comments and
+            further information. Default is :code:`False`.
     
     Note: 
-        detailed_rules: May only be true after the rules submodule has been initialized,
+        This function is executed automatically when the module is imported.<br>
+        **detailed_rules** may only be :python:`True` *after* the rules submodule has been initialized,
         i.e. cannot be called in this file.
     """
     
@@ -2111,7 +2159,8 @@ def export_schemas(detailed_rules=False):
 
 # Always want the schemas to be up to date
 # Cannot extract rules because of circular imports; a second call is done in rules/__init__.py
-try:
-    export_schemas(detailed_rules=False)
-except:
-    logging.exception("Error exporting schemas")
+if not READTHEDOCS:
+    try:
+        export_schemas(detailed_rules=False)
+    except:
+        logging.exception("Error exporting schemas")

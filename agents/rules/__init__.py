@@ -139,8 +139,9 @@ def rule_from_config(cfg : Union["RuleCreatingParameters", DictConfig]) -> Union
 
 # Add rules to extracted schema
 import agents.tools.config_creation as __config_creation
-try:
-    __config_creation.export_schemas(detailed_rules=True)
-except:
-    logger.exception("Error exporting schemas with rules")
+if not __config_creation.READTHEDOCS:
+    try:
+        __config_creation.export_schemas(detailed_rules=True)
+    except:
+        logger.exception("Error exporting schemas with rules")
 del __config_creation

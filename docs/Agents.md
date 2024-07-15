@@ -1,13 +1,17 @@
 # Agents
 
-There are two different agent classes than can be used the [](#LunaticAgent) that is fully customizable,
-and the simpler but less flexible [](#LunaticChallenger).
+```{eval-rst}
+.. Note this is a MyST Markdown file to be used with Sphinx and will not render completely on GitHub. Build the documentation or refer to the online documentation at Read The Docs.
+```
+
+There are two different agent classes than can be used the {py:class}`agents.lunatic_agent.LunaticAgent` that is fully customizable,
+and the simpler but less flexible {py:class}`agents.leaderboard_agent.LunaticChallenger`.
 
 ## Agent Classes
 
 ### LunaticChallenger Class
 
-The [](#agents.leaderboard_agent.LunaticChallenger) is wrapped around the [`LunaticAgent`](#agents.lunatic_agent.LunaticAgent).
+The {py:class}`.LunaticChallenger` is wrapped around the {py:class}`.LunaticAgent`.
 It can be more easily combined with the [ScenarioRunner](https://scenario-runner.readthedocs.io/en/latest/) and be used with the [Leaderboard 2.0](https://leaderboard.carla.org/get_started/) for which this class is especially designed.
 
 In the simplest way an agent can be used like in the snipplet below. However we recommend that you follow the documentation from the [installation](#/docs/Install) section and [Leaderboard 2.0](https://leaderboard.carla.org/get_started/), afterwards you can test this agent by executing the `run_leaderboard_agent.sh` file.
@@ -63,7 +67,7 @@ while game_framework.continue_loop:
         agent.run_step()
 ```
 
-The agent can be initialized quicker and directly with the [](#GameFramework), which also provides other useful instances at the same time.
+The agent can be initialized quicker and directly with the {py:class}`.GameFramework`, which also provides other useful instances at the same time.
 
 ```python
 agent, world_model, global_planner, keyboard_controller = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, config=behavior)

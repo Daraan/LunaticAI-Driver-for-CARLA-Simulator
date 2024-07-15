@@ -36,7 +36,7 @@ class RuleResult(Enum):
     """
 
 class StreetType(str, Enum):
-    """Used by the :py:class:`DetectionMatrix` to interpret the street type."""
+    """Used by the :py:class:`.DetectionMatrix` to interpret the street type."""
     
     ON_HIGHWAY = "On highway"
     NON_HIGHWAY_STREET = "Non highway street"

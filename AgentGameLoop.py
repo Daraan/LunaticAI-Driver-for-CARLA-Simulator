@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 """
-
-Example of the agent system
-
-Based on German Ros's (german.ros@intel.com) example of automatic_control shipped with carla.
+Example of a game loop for the :py:class:`.LunaticAgent` class.
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
@@ -15,7 +12,7 @@ from pprint import pprint
 import hydra
 from omegaconf import OmegaConf
 
-"""When you use an .egg file be sure to add it to your $PYTHONPATH"""
+# When you use an .egg file be sure to add it to your $PYTHONPATH
 try:
     import carla
 except ImportError as e:
@@ -45,21 +42,28 @@ from agents.rules import create_default_rules
 # ==============================================================================
 
 AMOUNT_ACTORS = 0
-"""How many actors to spawn"""
+"""How many other actors to spawn"""
 
 EGO_SPAWN_IDX = 3
 """Changes the start position of the ego vehicle"""
 
 PRINT_RULES = False
+# this can be messy
 
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
 # ==============================================================================
 
-def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
+def game_loop(args: LaunchConfig):
     """
-    Main loop of the simulation. It handles updating all the HUD information,
-    ticking the agent and, if needed, the world.
+    Main loop of the simulation. 
+    
+    It sets up the simulation, spawns the vehicles, and initializes the agent.
+    In the :python:`while` loop, the agent calculates one `\`carla.VehicleControl\`:py:class:`:external-icon-parse:
+    every iteration.
+    
+    The `.GameFramework`:py:class: context manager takes care of the simulation tick,
+    and camera updates.
     """
     # Avoid name errors
     game_framework : GameFramework = None         # Set for finally block
@@ -74,7 +78,7 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
     # you can access args.agent as copy of the original settings
     # To not validate the config against LunaticAgentSettings, you can use OmegaConf.create(args.agent)
     # to create a copy.
-    agent_config = LunaticAgentSettings.create_from_args(args.agent)
+    agent_config = LunaticAgentSettings.create(args.agent)
     
     try:
         logger.info("Creating Game Framework ...")
@@ -252,21 +256,21 @@ def game_loop(args: Union[argparse.ArgumentParser, LaunchConfig]):
 @hydra.main(version_base=None, config_path="./conf", config_name="launch_config")
 def main(args: LaunchConfig):
     """
-    This is the main function wrapped py @hydra that takes care of the configuration
+    This is the main function wrapped with the `@hydra <Hydra>`_ method that takes care of the configuration
     merge and sets up logging.
     
     Args:
-        args (LaunchConfig): The configuration object that is created by Hydra, it
-            contains all the settings from the yaml files merged with the command line
+        args : The configuration object that is created by Hydra_, it
+            contains all the settings from the YAML files merged with the command line
             arguments. From a high-level perspective is it a dictionary that also allows
-            dot access to its keys, e.g. args.host instead of args["host"].
+            dot access to its keys, e.g. :python:`args.host` instead of :python:`args["host"]`.
     
     See Also:
         - https://hydra.cc/
-        - [Tab Completion](https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/)
-        - [Hydra Config](https://hydra.cc/docs/configure_hydra/intro/)
-        - [Default List - How config files are merged](https://hydra.cc/docs/advanced/defaults_list/)
-        - [Override Grammar](https://hydra.cc/docs/advanced/override_grammar/basic/)
+        - `Hydra Config Intro <https://hydra.cc/docs/configure_hydra/intro/>`_
+        - `Default List - How config files are merged <https://hydra.cc/docs/advanced/defaults_list/>`_
+        - `Override Grammar <https://hydra.cc/docs/advanced/override_grammar/basic/>`_
+        - `Hydra Tab Completion <https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/>`_
     """
 
     logger.info('listening to server %s:%s', args.host, args.port)

@@ -90,26 +90,26 @@ class NoFurtherRulesException(_RuleResultException):
     """
     Raised when no further rules should be executed in this phase.
     
-    Caught by agent.execute_phase.
+    Caught by :py:meth:`.LunaticAgent.execute_phase`.
     
-    The agent will continue at the phase where the BlockedRule was triggered.
+    The agent will continue at the phase where the :py:class:`BlockedRule` was triggered.
     """
     
 
 class DoNotEvaluateChildRules(_RuleResultException):
     """
-    Can be raised in a MultiRule to prevent the evaluation of child rules.
+    Can be raised in a :py:class:`MultiRule` to prevent the evaluation of child rules.
 
     Can also be raised by child rules to prevent the evaluation of further child rules.
     """
     
 class UnblockRuleException(_RuleResultException):
     """
-    Can be raised in a BlockedRule to end it.
+    Can be raised in a :py:class:`BlockedRule` to end it.
     
-    The agent will continue at the phase where the BlockedRule was triggered.
+    The agent will continue at the phase where the :py:class:`BlockedRule` was triggered.
     
     Note:
         Further rules that are in this phase can still be executed.
-        Alternatively, consider raising a NoFurtherRulesException.
+        Alternatively, consider raising a :py:class:`NoFurtherRulesException`.
     """

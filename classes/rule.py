@@ -61,11 +61,11 @@ class Context(CarlaDataProvider):
     
     evaluation_results : Dict["Phase", Hashable] # ambiguous wording, which result? here evaluation result
     """
-    Stores the result from the :py:meth:`condition` of the last rule that was evaluated in a phase.
+    Stores the result from the :py:meth:`Rule.condition` of the last rule that was evaluated in a phase.
     
     .. deprecated:: in consideration
     """
-    
+        
     action_results : Dict["Phase", Any] 
     """
     Stores the result from the :py:meth:`action` of the last rule that was applicable in a phase.
@@ -120,7 +120,7 @@ class Context(CarlaDataProvider):
 
     PHASE_NOT_EXECUTED : object = object()
     """
-    Value in phase_results to indicate that no agent.execute_phase() was called for the phase
+    Value in :py:attr:`phase_results` to indicate that :python:`agent.execute_phase(phase)` was called for the respective phase
     
     :meta hide-value:
     """

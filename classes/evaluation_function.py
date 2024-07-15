@@ -7,6 +7,7 @@ except ImportError:
 
 
 from typing import Callable, Any, ClassVar, Dict, Hashable, TYPE_CHECKING, Optional, Union
+
 from collections import abc
 
 import inspect
@@ -78,7 +79,7 @@ class ConditionFunction:
     
     actions: ClassVar[Dict[Hashable, Callable[["Union[Context, Rule]"], Any]]] = {}
     
-    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name:str="ConditionFunction", *, truthy:bool=False, use_self=None) -> Union["type[ConditionFunction]", "ConditionFunction"]:
+    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None) -> Union["type[ConditionFunction]", "ConditionFunction"]:
         # @ConditionFunction("name")
         if isinstance(first_argument, str):
             return partial(cls, name=first_argument, truthy=truthy, use_self=use_self) # Calling decorator with a string
@@ -161,7 +162,65 @@ class ConditionFunction:
         if func.__name__ == "<lambda>":
             return ConditionFunction._complete_func_to_string(func)
         return func.__name__
-
+    
+    _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
+    
+    def _check_action(self, action_function: Callable[["Union[Context, Rule]"], Any], key, **kwargs):
+        if action_function.__name__ in ConditionFunction._INVALID_NAMES:
+            raise ValueError(f"When using ConditionFunction.add_action, the action function's name may not be in {ConditionFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
+        if key in self.actions:
+            print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
+        if kwargs:
+            # TODO: # CRITICAL: are args problematic?
+            action_function = partial(action_function, **kwargs)
+        return action_function
+    
+    @singledispatchmethod
+    def register_action(self, key: Hashable=True, **kwargs):
+        """
+        Add an action to be executed when the condition function returns a specific value.
+        
+        This function can be used as a decorator or as a method:
+        
+        .. code-block:: python
+        
+            # As decorator
+            @ConditionFunction
+            def is_speeding(ctx: Context) -> Literal["very fast", "fast", "normal", "slow"]:
+                ...
+            
+            @is_speeding.register_action(key="very fast")
+            def very_fast_action(ctx: Context):
+                ctx.agent.set_target_speed(ctx.config.target_speed-5)
+            
+            # Or functionally
+            def fast_action(ctx: Context):
+                ctx.agent.set_target_speed(ctx.config.target_speed+1)
+                
+            is_speeding.register_action(key="fast", fast_action)
+        
+        Parameters:
+            key: If the condition function returns this value, this action will be executed. Defaults to :python:`True`.
+            kwargs : Additional keyword arguments to be passed to the action function when it is executed.
+            
+        Note:
+            Only one action is allowed per key. If an action is already registered for the key, it will be overwritten.
+        """
+        def decorator(action_function):
+            action_function = self._check_action(action_function, key, **kwargs)
+            self.actions[key] = action_function # register action
+            return action_function
+        return decorator
+    
+    @register_action.register(abc.Callable)
+    def _register_action_directly(self, action_function: Callable[["Union[Context, Rule]"], Any], key: Hashable=True, **kwargs):
+        # Functional use
+        action_function = self._check_action(action_function, key, **kwargs)
+        self.actions[key] = action_function # register action
+        
+    
+    # ----------------------    
+    
     @property
     def __name__(self):
         return self.name
@@ -180,61 +239,45 @@ class ConditionFunction:
         return s
 
     @classmethod
-    def AND(cls, func1, func2):
+    def AND(cls : type["ConditionFunction"], func1 : Callable, func2 : Callable) -> "ConditionFunction":
+        """Combine two functions to return True if both return True."""
         def combined_func(ctx: "Context", *args, **kwargs):
             return func1(ctx, *args, **kwargs) and func2(ctx, *args, **kwargs)
         return cls(combined_func, name=f"{func1.name}_and_{func2.name}")
 
     @classmethod
-    def OR(cls, func1, func2):
+    def OR(cls : type["ConditionFunction"], func1, func2) -> "ConditionFunction":
+        """Combine two functions to return True if either returns True."""
         def combined_func(ctx: "Context", *args, **kwargs):
             return func1(ctx, *args, **kwargs) or func2(ctx, *args, **kwargs)
 
         return cls(combined_func, name=f"{func1.name}_or_{func2.name}")
 
     @classmethod
-    def NOT(cls, func):
+    def NOT(cls : type["ConditionFunction"], func) -> "ConditionFunction":
+        """Invert the return value of a function."""
         def combined_func(ctx: "Context", *args, **kwargs):
             return not func(ctx, *args, **kwargs)
 
         return cls(combined_func, name=f"not_{func.name}")
 
-    def __add__(self, other):
+    def __add__(self, other) -> "ConditionFunction":
+        """Combine with another function using :py:meth:`AND`."""
         return self.AND(self, other)
     
-    def __and__(self, other):
+    def __and__(self, other) -> "ConditionFunction":
+        """Combine with another function using :py:meth:`AND`."""
         return self.AND(self, other)
 
-    def __or__(self, other):
+    def __or__(self, other) -> "ConditionFunction":
+        """Combine with another function using :py:meth:`OR`."""
         return self.OR(self, other)
 
-    def __invert__(self):
+    def __invert__(self) -> "ConditionFunction":
+        """
+        Invert the return value of the function.
+        """
         return self.NOT(self)
-    
-    _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
-    
-    def _check_action(self, action_function: Callable[["Union[Context, Rule]"], Any], key, **kwargs):
-        if action_function.__name__ in ConditionFunction._INVALID_NAMES:
-            raise ValueError(f"When using ConditionFunction.add_action, the action function's name may not be in {ConditionFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
-        if key in self.actions:
-            print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
-        if kwargs:
-            # TODO: # CRITICAL: are args problematic?
-            action_function = partial(action_function, **kwargs)
-        return action_function
-    
-    @singledispatchmethod
-    def register_action(self, key: Hashable=True, **kwargs):
-        def decorator(action_function):
-            action_function = self._check_action(action_function, key, **kwargs)
-            self.actions[key] = action_function # register action
-            return action_function
-        return decorator
-    
-    @register_action.register(abc.Callable)
-    def _register_action_directly(self, action_function: Callable[["Union[Context, Rule]"], Any], key: Hashable=True, **kwargs):
-        action_function = self._check_action(action_function, key, **kwargs)
-        self.actions[key] = action_function # register action
 
 
 def TruthyConditionFunction(func: Callable) -> ConditionFunction:

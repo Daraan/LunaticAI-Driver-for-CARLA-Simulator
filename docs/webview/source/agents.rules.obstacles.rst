@@ -12,12 +12,3 @@ agents.rules.obstacles.traffic\_light\_rules module
    :undoc-members:
    :show-inheritance:
    :no-inherited-members:
-
-Module contents
----------------
-
-.. automodule:: agents.rules.obstacles
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :no-inherited-members:
