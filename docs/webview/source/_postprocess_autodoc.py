@@ -1,8 +1,25 @@
 import re
+import glob
+import os
+
+_file_contents : dict[str, str] = {}
 
 def _get_contents(file):
+    if file in _file_contents:
+        return _file_contents[file]
     with open(file, "r") as f:
-        return f.read()
+        contents = f.read()
+        _file_contents[file] = contents
+    return contents
+
+def _change_contents(file, contents):
+    assert file in _file_contents, "File not read before"
+    _file_contents[file] = contents
+
+def _write_all_contents():
+    for file, contents in _file_contents.items():
+        with open(file, "w") as f:
+            f.write(contents)
     
 def _get_subcontent(contents:str, pattern, end="----"):
     start = contents.find(pattern)
@@ -38,141 +55,131 @@ def module_contents_at_top():
             file, remove_section = file
         else:
             remove_section = False
-        with open(file, "r+") as f:
-            contents = f.read()
-            start = contents.find("Module contents\n")
-            if start == -1:
-                continue # should be already at top
-            end = contents.find("Submodules\n", start)
-            if end != -1: # already at top
-                return
-            end = None
-            subcontent = contents[start:end] + "\n"
+        contents = _get_contents(file)
+        start = contents.find("Module contents\n")
+        if start == -1:
+            continue # should be already at top
+        end = contents.find("Submodules\n", start)
+        if end != -1: # already at top
+            return
+        end = None
+        subcontent = contents[start:end] + "\n"
 
-            start2 = contents.find("Submodules\n")
-            contents = contents[:start2] + subcontent + contents[start2:start]
-            if remove_section:
-                contents = contents.replace("\nModule contents\n---------------\n", "")
-            f.seek(0)
-            f.write(contents)
+        start2 = contents.find("Submodules\n")
+        contents = contents[:start2] + subcontent + contents[start2:start]
+        if remove_section:
+            contents = contents.replace("\nModule contents\n---------------\n", "")
+        _change_contents(file, contents)
 
 def exclude_cdp():
 
     exclude_cdp = "\"'cleanup', 'create_blueprint', 'find_weather_presets', 'generate_spawn_points', 'get_actor_by_id', 'get_actor_by_name', 'get_local_planner', 'get_osc_global_param_value', 'get_random_seed', 'get_traffic_manager_port', 'handle_actor_batch', 'is_runtime_init_mode', 'is_sync_mode', 'on_carla_tick', 'prepare_map', 'register_actor', 'register_actors', 'remove_actor_by_id', 'remove_actors_in_surrounding', 'request_new_actor', 'request_new_actors', 'request_new_batch_actors', 'reset_lights', 'set_client', 'set_ego_route', 'set_latest_scenario', 'set_local_planner', 'set_runtime_init_mode', 'set_traffic_manager_port', 'set_world', 'spawn_actor', 'update_light_states', 'update_osc_global_params', 'world'\"".replace("'", "") #pylint: disable=line-too-long
     
-    with open("classes.rst", "r+") as f:
-        content = f.read()
-        start = content.find(".. automodule:: classes.rule\n")
-        end = content.find("----", start)
-        subcontent = content[start:end]
-        if exclude_cdp in subcontent:
-            return
-        # Do not write double online
-        if not ":exclude-members:" in subcontent:
-            subcontent = re.sub(".. automodule:: classes.rule\n", ".. automodule:: classes.rule\n   :exclude-members: " + exclude_cdp + "\n", subcontent)
-        else:
-            subcontent = re.sub(r':exclude-members:"', ':exclude-members: ' + exclude_cdp + ", ", subcontent)
-        
-        content = content[:start] + subcontent + content[end:]
+    content = _get_contents("classes.rst")
+    start = content.find(".. automodule:: classes.rule\n")
+    end = content.find("----", start)
+    subcontent = content[start:end]
+    if exclude_cdp in subcontent:
+        return
+    # Do not write double online
+    if not ":exclude-members:" in subcontent:
+        subcontent = re.sub(".. automodule:: classes.rule\n", ".. automodule:: classes.rule\n   :exclude-members: " + exclude_cdp + "\n", subcontent)
+    else:
+        subcontent = re.sub(r':exclude-members:"', ':exclude-members: ' + exclude_cdp + ", ", subcontent)
+    
+    content = content[:start] + subcontent + content[end:]
 
-        f.seek(0)
-        f.write(content)
+    _change_contents("classes.rst", content)
         
 def patch_rule():
-    with open("classes.rst", "r+") as f:
-        content = f.read()
-        start = content.find(".. automodule:: classes.rule\n")
-        end = content.find("----", start)
+    content = _get_contents("classes.rst")
+    start = content.find(".. automodule:: classes.rule\n")
+    end = content.find("----", start)
+    
+    subcontent = content[start:end]
+    
+    exclude = "CooldownFramework, NOT_APPLICABLE, NO_RESULT, clone, set_cooldown_of_group, unblock_all_rules, update_all_cooldowns"
+    
+    insert =f"""
+    
+    .. autoclass:: BlockingRule
+       :members:
+       :exclude-members: {exclude}
+       :undoc-members:
+       :show-inheritance:
+       :special-members: __call__
+    
+    .. autoclass:: MultiRule
+       :members:
+       :exclude-members: {exclude}
+       :undoc-members:
+       :show-inheritance:
+       :special-members: __call__
         
-        subcontent = content[start:end]
-        
-        exclude = "CooldownFramework, NOT_APPLICABLE, NO_RESULT, clone, set_cooldown_of_group, unblock_all_rules, update_all_cooldowns"
-        
-        insert =f"""
-        
-        .. autoclass:: BlockingRule
-           :members:
-           :exclude-members: {exclude}
-           :undoc-members:
-           :show-inheritance:
-           :special-members: __call__
-        
-        .. autoclass:: MultiRule
-           :members:
-           :exclude-members: {exclude}
-           :undoc-members:
-           :show-inheritance:
-           :special-members: __call__
-           
-        .. autoclass:: RandomRule
-           :members:
-           :exclude-members: {exclude}
-           :undoc-members:
-           :show-inheritance:
-           :special-members: __call__
-        
-        """
-        
-        from textwrap import dedent
-        if ".. autoclass:: BlockingRule" in subcontent and f":exclude-members: {exclude}" in subcontent: # already applied
-            return
-        
-        if ":exclude-members: \"" in subcontent:
-            subcontent = re.sub(r':exclude-members: "', ':special-members: __call__\n   :exclude-members: ", MultiRule, RandomRule, BlockingRule, ', subcontent, count=1)
-        else:
-            assert ":exclude-members:" not in subcontent, "Double execution of patch_rule"
-            subcontent = re.sub(".. automodule:: classes.rule\n", 
-                                ':special-members: __call__\n   :exclude-members: ", MultiRule, RandomRule, BlockingRule"', subcontent)
+    .. autoclass:: RandomRule
+       :members:
+       :exclude-members: {exclude}
+       :undoc-members:
+       :show-inheritance:
+       :special-members: __call__
+    
+    """
+    
+    from textwrap import dedent
+    if ".. autoclass:: BlockingRule" in subcontent and f":exclude-members: {exclude}" in subcontent: # already applied
+        return
+    
+    if ":exclude-members: \"" in subcontent:
+        subcontent = re.sub(r':exclude-members: "', ':special-members: __call__\n   :exclude-members: ", MultiRule, RandomRule, BlockingRule, ', subcontent, count=1)
+    else:
+        assert ":exclude-members:" not in subcontent, "Double execution of patch_rule"
+        subcontent = re.sub(".. automodule:: classes.rule\n", 
+                            ':special-members: __call__\n   :exclude-members: ", MultiRule, RandomRule, BlockingRule"', subcontent)
 
-        
-        subcontent = re.sub(r":\n\n", ":" + dedent(insert), subcontent, count=1)
-        
-        content = content[:start] + subcontent + content[end:]
+    
+    subcontent = re.sub(r":\n\n", ":" + dedent(insert), subcontent, count=1)
+    
+    content = content[:start] + subcontent + content[end:]
 
-        f.seek(0)
-        f.write(content)
+    _change_contents("classes.rst", content)
             
         
 def remove_inheritance():
+    """ Insert no-inherited-members directive to all modules"""
     files = ['agents.rules.obstacles.rst',
                         'agents.rules.rst']
     
     for file in files:
-        with open(file, "r") as f:
-            content = f.read()
-            if ":no-inherited-members:" in content:
-                continue # for double execution on read the docs.
-            content = re.sub(r":show-inheritance:", r"\n   ".join([":show-inheritance:",
-                                                                        #":no-index:"
-                                                                         ":no-inherited-members:"]),
-                                                                content)
-        # Shortening the content clear it
-        with open(file, "w") as f:
-            f.write(content)
+        content = _get_contents(file)
+        if ":no-inherited-members:" in content:
+            continue # for double execution on read the docs.
+        content = re.sub(r":show-inheritance:", r"\n   ".join([":show-inheritance:",
+                                                                    #":no-index:"
+                                                                        ":no-inherited-members:"]),
+                                                            content)
+        _change_contents(file, content)
             
     fine_files: dict[str, list[str]] = {"classes.rst" : ["classes.constants", "classes.exceptions"],
                                         "agents.tools.rst" : ["agents.tools.config_creation", "agents.tools.hints"],
                                   }
     
     for file, submodules in fine_files.items():
-        with open(file, "r+") as f:
-            content = f.read()
-            for submodule in submodules:
-                start = content.find(".. automodule:: "+submodule+"\n")
-                end = content.find("----", start)
-                subcontent = content[start:end]
-                if ":no-inherited-members:" in subcontent:
-                    continue
-                subcontent = re.sub(r":show-inheritance:", r"\n   ".join([":show-inheritance:",
-                                                                        #":no-index:"
-                                                                         ":no-inherited-members:"]),
-                                                                string=subcontent,
-                                                                count=1)
-                content = content[:start] + subcontent + content[end:]
-            f.seek(0)
-            f.write(content)
+        content = _get_contents(file)
+        for submodule in submodules:
+            start = content.find(".. automodule:: "+submodule+"\n")
+            end = content.find("----", start)
+            subcontent = content[start:end]
+            if ":no-inherited-members:" in subcontent:
+                continue
+            subcontent = re.sub(r":show-inheritance:", r"\n   ".join([":show-inheritance:",
+                                                                    #":no-index:"
+                                                                        ":no-inherited-members:"]),
+                                                            string=subcontent,
+                                                            count=1)
+            content = content[:start] + subcontent + content[end:]
+        _change_contents(file, content)
 
-def _patch_agent(content):
+def _patch_agent(content:str):
     start = content.find(".. automodule:: agents.lunatic_agent\n")
     end = content.find("----", start)
     subcontent = content[start:end]
@@ -187,56 +194,52 @@ def _patch_agent(content):
     
 
 def patch_challenger():
-    with open("agents.rst", "r+") as f:
-        content = f.read()
-        content = _patch_agent(content)
-        start = content.find(".. automodule:: agents.leaderboard_agent\n")
-        end = content.find("----", start)
-        subcontent = content[start:end]
-        if ":no-inherited-members:" not in subcontent:
-            subcontent = re.sub(r":show-inheritance:", r"\n   ".join([":show-inheritance:",
-                                                                            #":no-index:"
-                                                                            ":no-inherited-members:",
-                                                                            ":inherited-members: AutonomousAgent",
-                                                                            ]),
-                                                                    string=subcontent,
-                                                                    count=1)
-            
-            shown = "'set_global_plan', 'destroy', 'run_step', 'sensors', 'setup', '__init__', 'BASE_SETTINGS'".replace("'", "")
-            excluded = "get_entry_point"
-            subcontent = re.sub(r":members:", r"\n   ".join([":members:",#+shown,
-                                                            #":no-index:"
-                                                                ":exclude-members: " + excluded,
-                                                                ":special-members: __call__",]),
-                                                    string=subcontent,
-                                                    count=1)
+    content = _get_contents("agents.rst")
+    content = _patch_agent(content)
+    start = content.find(".. automodule:: agents.leaderboard_agent\n")
+    end = content.find("----", start)
+    subcontent = content[start:end]
+    if ":no-inherited-members:" not in subcontent:
+        subcontent = re.sub(r":show-inheritance:", r"\n   ".join([":show-inheritance:",
+                                                                        #":no-index:"
+                                                                        ":no-inherited-members:",
+                                                                        ":inherited-members: AutonomousAgent",
+                                                                        ]),
+                                                                string=subcontent,
+                                                                count=1)
         
-            content = content[:start] + subcontent + content[end:]
-        f.seek(0)
-        f.write(content)
+        shown = "'set_global_plan', 'destroy', 'run_step', 'sensors', 'setup', '__init__', 'BASE_SETTINGS'".replace("'", "")
+        excluded = "get_entry_point"
+        subcontent = re.sub(r":members:", r"\n   ".join([":members:",#+shown,
+                                                        #":no-index:"
+                                                            ":exclude-members: " + excluded,
+                                                            ":special-members: __call__",]),
+                                                string=subcontent,
+                                                count=1)
+    
+        content = content[:start] + subcontent + content[end:]
+    _change_contents("agents.rst", content)
         
 def add_imported_members():
     module = {"classes" : ["CustomSensorInterface"]}
     for file, members in module.items():
-        with open(file+".rst", "r+") as f:
-            content = f.read()
-            start = content.find(".. automodule:: "+file+"\n")
-            end = content.find("----", start)
-            if end == -1:
-                subcontent = content[start:]
-                pattern = "\n$"
-                extra = "\n"
-            else:
-                subcontent = content[start:end]
-                pattern = "\n\n"
-                extra = "\n"
-            members = list(filter(lambda member: member not in subcontent, members))
-            if not members:
-                continue
-            subcontent = re.sub(pattern, extra+"   :imported-members: " + ", ".join(members) +extra+"\n", subcontent, count=1)
-            content = content[:start] + subcontent + content[end:]
-            f.seek(0)
-            f.write(content)
+        content = _get_contents(file+".rst")
+        start = content.find(".. automodule:: "+file+"\n")
+        end = content.find("----", start)
+        if end == -1:
+            subcontent = content[start:]
+            pattern = "\n$"
+            extra = "\n"
+        else:
+            subcontent = content[start:end]
+            pattern = "\n\n"
+            extra = "\n"
+        members = list(filter(lambda member: member not in subcontent, members))
+        if not members:
+            continue
+        subcontent = re.sub(pattern, extra+"   :imported-members: " + ", ".join(members) +extra+"\n", subcontent, count=1)
+        content = content[:start] + subcontent + content[end:]
+        _change_contents(file+".rst", content)
             
 #def make_canonical():
 #    pass
@@ -244,56 +247,50 @@ def add_imported_members():
 def remove_init():
     module = {"classes" : ["classes.evaluation_function"]}
     for file, members in module.items():
-        with open(file+".rst", "r+") as f:
-            content = f.read()
-            for member in members:
-                start = content.find(".. automodule:: "+member+"\n")
-                end = content.find("----", start)
-                subcontent = content[start:end]
-                if "__add__, __and__, __or__, __invert__" in subcontent:
-                    continue
-                subcontent = re.sub(r":members:", r"\n   ".join([":members:",
-                                                                ":special-members: __add__, __and__, __or__, __invert__",
-                                                                ]),
-                                                        string=subcontent,
-                                                        count=1)
-                content = content[:start] + subcontent + content[end:]
-            f.seek(0)
-            f.write(content)
+        content = _get_contents(file+".rst")
+        for member in members:
+            start = content.find(".. automodule:: "+member+"\n")
+            end = content.find("----", start)
+            subcontent = content[start:end]
+            if "__add__, __and__, __or__, __invert__" in subcontent:
+                continue
+            subcontent = re.sub(r":members:", r"\n   ".join([":members:",
+                                                            ":special-members: __add__, __and__, __or__, __invert__",
+                                                            ]),
+                                                    string=subcontent,
+                                                    count=1)
+            content = content[:start] + subcontent + content[end:]
+            _change_contents(file+".rst", content)
 
 
 def insert_github_ref():
-    with open("AgentGameLoop.rst", "r+") as f:
-        contents = f.read()
-        start, end, subcontent = _get_subcontent(contents, "===\n", end=".. automodule::")
-        from textwrap import dedent
-        inject = dedent("""
-        .. include:: _include.md
-            :parser: myst_parser.sphinx_
-            :start-after: ## $$ AgentGameLoopHeader
-            :end-before: ## $$
-        """)
-        if inject in contents:
-            return
-        
-        contents = contents[:start+4] + inject + contents[start+4:]
-        f.seek(0)
-        f.write(contents)
+    contents = _get_contents("AgentGameLoop.rst")
+    start, _, _ = _get_subcontent(contents, "===\n", end=".. automodule::")
+    from textwrap import dedent
+    inject = dedent("""
+    .. include:: _include.md
+        :parser: myst_parser.sphinx_
+        :start-after: ## $$ AgentGameLoopHeader
+        :end-before: ## $$
+    """)
+    if inject in contents:
+        return
+    
+    contents = contents[:start+4] + inject + contents[start+4:]
+    _change_contents("AgentGameLoop.rst", contents)
         
 def patch_config_creation():
     # Remove init
-    with open("agents.tools.rst", "r+") as f:
-        contents = f.read()
-        start, end, subcontent = _get_subcontent(contents, ".. automodule:: agents.tools.config_creation\n")
-        if "no-special-members" in subcontent:
-            return
-        subcontent = re.sub(r":members:", r"\n   ".join([":members:",
-                                                        ":no-special-members:"]),
-                                                string=subcontent,
-                                                count=1)
-        contents = contents[:start] + subcontent + contents[end:]
-        f.seek(0)
-        f.write(contents)
+    contents = _get_contents("agents.tools.rst")
+    start, end, subcontent = _get_subcontent(contents, ".. automodule:: agents.tools.config_creation\n")
+    if "no-special-members" in subcontent:
+        return
+    subcontent = re.sub(r":members:", r"\n   ".join([":members:",
+                                                    ":no-special-members:"]),
+                                            string=subcontent,
+                                            count=1)
+    contents = contents[:start] + subcontent + contents[end:]
+    _change_contents("agents.tools.rst", contents)
         
 def remove_empty_modules():
     from textwrap import dedent
@@ -310,17 +307,46 @@ def remove_empty_modules():
         \s*:no-inherited-members:)?
         """[1:-1]))
     for file in no_modules:
-        with open(file+".rst", "r+") as f:
-            contents = f.read()
-            match = rgx.search(contents)
-            # should match
-            if not match:
-                continue
-            repl = match.group(1) if "===" in match.group(1) else ""
-            contents = rgx.sub(repl, contents)
-            f.seek(0)
-            f.write(contents)
-            f.truncate()
+        contents = _get_contents(file+".rst")
+        match = rgx.search(contents)
+        # should match
+        if not match:
+            continue
+        repl = match.group(1) if "===" in match.group(1) else ""
+        contents = rgx.sub(repl, contents)
+        _change_contents(file+".rst", contents)
+        
+def insert_file_references():
+    rst_files = filter(lambda file: file not in ("index.rst", "readme_link.rst"), 
+                       glob.glob("[!_]*.rst")) # NOTE: if prefixed with ./ need to be stripped
+    re_packages = re.compile(r"(^[a-zA-Z._]+) package\n=+")
+    
+    re_modules = re.compile(r"(.. automodule:: ([a-zA-Z0-9_.]+)\n)")
+    
+    for file in rst_files:
+        
+        content = _get_contents(file)
+        packages: "list[str]" = re_packages.findall(content)
+        for package in packages:
+            # allow file anchors to here
+            py_package = package.replace(".", "/")
+            inject = fr".. _./{py_package}:\n.. _{py_package}:\n\n{package} package\n\1"
+            content = re.sub(rf"{package} package\n(=+)", inject, content, count=1)
+            
+        modules: "list[tuple[str, str]]" = re_modules.findall(content)
+        for match in modules:
+            full_match, module = match
+            # allow file anchors to here
+            py_module = module.replace(".", "/") + ".py"
+            inject = f".. _./{py_module}:\n.. _{py_module}:\n\n{full_match}"
+            content = content.replace(full_match, inject)
+            
+        _change_contents(file, content)
+        #content = content.replace(match, f":file:`{match}`")
+        #re.sub(r"(\w+) package\n==")
+        
+    
+    
 
 def _no_value_constants():
     return
@@ -372,3 +398,22 @@ def _no_value_constants():
         content = content[:start] + subcontent + content[end:]
         f.seek(0)
         f.write(content)
+
+
+
+def patch_all():
+    """Executes all public functions of this module"""
+    from typing import Callable
+    this_module= globals().get("__name__", "docs.webview.source._postprocess_autodoc")
+    all_funcs : dict[str, "Callable"] = dict(filter(lambda v: not v[0].startswith("_")
+                                  and callable(v[1])
+                                  and v[1].__module__ == this_module
+                                  and v[0] not in ("execute_all", "patch_all", _write_all_contents.__name__)
+                                  , 
+                        globals().items()))
+    for foo in all_funcs.values():
+        if foo == insert_file_references:
+            continue
+        foo()
+    insert_file_references() # do that one later
+    _write_all_contents()

@@ -1,3 +1,6 @@
+.. _./agents:
+.. _agents:
+
 agents package
 ==============
 
@@ -18,6 +21,7 @@ agents.leaderboard\_agent module
 --------------------------------
 
 .. _./agents/leaderboard_agent.py:
+.. _agents/leaderboard_agent.py:
 
 .. automodule:: agents.leaderboard_agent
    :members:
@@ -32,6 +36,7 @@ agents.lunatic\_agent module
 ----------------------------
 
 .. _./agents/lunatic_agent.py:
+.. _agents/lunatic_agent.py:
 
 .. automodule:: agents.lunatic_agent
    :members:

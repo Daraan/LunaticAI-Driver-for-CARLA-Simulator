@@ -6,6 +6,9 @@ AgentGameLoop module
     :start-after: ## $$ AgentGameLoopHeader
     :end-before: ## $$
 
+.. _./AgentGameLoop.py:
+.. _AgentGameLoop.py:
+
 .. automodule:: AgentGameLoop
    :members:
    :undoc-members:

@@ -423,14 +423,8 @@ html_js_files = [
 
 # patch only locally, as long as apidoc is run only locally
 if os.environ['READTHEDOCS'] == 'local':
-    import docs.webview.source._postprocess_autodoc as _postprocess_autodoc
-    for name, foo in vars(_postprocess_autodoc).items():
-        if name.startswith("_"):
-            continue
-        if callable(foo):
-            foo()
-    del name
-    del foo
+    from docs.webview.source._postprocess_autodoc import patch_all
+    patch_all()
             
 comboroles_roles : dict[str, list[str] | tuple[list[str], bool]] = {
     'strong_literal': ['strong', 'literal'],

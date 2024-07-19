@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from dataclasses import is_dataclass
 from functools import partial, wraps
+from typing_extensions import Annotated
 
 
 from launch_tools import CarlaDataProvider, Literal
@@ -561,17 +562,22 @@ class Rule(_GroupRule):
     
     Simple Variant:
         return True if the action should be executed, False otherwise.
-        if :any:`false_action` is defined, False will execute :any:`false_action`.
+        if :py:attr:`.Rule.false_action` is defined, False will execute :py:attr:`.Rule.false_action`.
         
     Advanced Variant:
-        return a :any:`Hashable` value that is used as key in the :any:`actions` dict.
+        return a :term:`Hashable` value that is used as key in the :py:attr:`actions` dict.
     """
     
     actions : Dict[Any, Callable[[Context], Any]]
     """Dictionary that maps rule results to the action that should be executed."""
     
-    action : Optional[Callable[[Context], Any]]
-    """Action that should be executed if the rule is True. If `actions` is set, this is ignored."""
+    action : Annotated[Optional[Callable[[Context], Any]], "attribute not available on instance -> merged into `actions`"]
+    """
+    Action that should be executed if the rule is True. If `actions` is set, this is ignored.
+    """
+    
+    false_action : Annotated[Optional[Callable[[Context], Any]], "attribute not available on instance -> merged into `actions`"]
+    """Action that should be executed if the rule is False. May not be set if `actions` is set."""
     
     #group : Optional[str]
     #"""Group name for rules that should share their cooldown."""

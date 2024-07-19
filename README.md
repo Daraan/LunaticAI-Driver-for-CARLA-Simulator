@@ -81,7 +81,7 @@ Behavioral aspects of the agent but also the environment and user interface are 
 The configuration backend is designed to make coarse and fine-grained changes by using combination of different configs on demand or by adjusting single parameters or blocks via the command line.
 The configuration files are stored in the [conf](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/conf) directory.
 
-For more info continue read the [Configuration](conf/ConfigFiles) section.
+For more info continue read the [Configuration](conf/ConfigFiles.md) section.
 
 ## Workflow and Component Diagram of the Agent System
 

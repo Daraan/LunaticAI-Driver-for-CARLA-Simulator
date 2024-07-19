@@ -245,8 +245,8 @@ class LunaticAgent(BehaviorAgent):
         Add a rule to the agent. The rule will be inserted at the given position.
         
         Args:
-            rule (Rule): The rule to add
-            position (Union[int, None], optional): 
+            rule : The rule to add
+            position : 
                 The position to insert the rule at. 
                 If None the rule list will be sorted by priority.
                 Defaults to None.

@@ -1,5 +1,11 @@
+.. _./classes:
+.. _classes:
+
 classes package
 ===============
+
+.. _./classes.py:
+.. _classes.py:
 
 .. automodule:: classes
    :members:
@@ -13,6 +19,9 @@ Submodules
 classes.constants module
 ------------------------
 
+.. _./classes/constants.py:
+.. _classes/constants.py:
+
 .. automodule:: classes.constants
    :members:
    :undoc-members:
@@ -21,6 +30,9 @@ classes.constants module
 
 classes.evaluation\_function module
 -----------------------------------
+
+.. _./classes/evaluation_function.py:
+.. _classes/evaluation_function.py:
 
 .. automodule:: classes.evaluation_function
    :members:
@@ -31,6 +43,9 @@ classes.evaluation\_function module
 classes.exceptions module
 -------------------------
 
+.. _./classes/exceptions.py:
+.. _classes/exceptions.py:
+
 .. automodule:: classes.exceptions
    :members:
    :undoc-members:
@@ -39,6 +54,9 @@ classes.exceptions module
 
 classes.rule module
 -------------------
+
+.. _./classes/rule.py:
+.. _classes/rule.py:
 
 .. automodule:: classes.rule
    :special-members: __call__
@@ -70,6 +88,9 @@ classes.rule module
 
 classes.worldmodel module
 -------------------------
+
+.. _./classes/worldmodel.py:
+.. _classes/worldmodel.py:
 
 .. automodule:: classes.worldmodel
    :members:

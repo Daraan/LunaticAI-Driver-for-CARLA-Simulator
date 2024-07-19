@@ -15,6 +15,9 @@ Submodules
 data\_gathering.information\_manager module
 -------------------------------------------
 
+.. _./data_gathering/information_manager.py:
+.. _data_gathering/information_manager.py:
+
 .. automodule:: data_gathering.information_manager
    :members:
    :undoc-members:

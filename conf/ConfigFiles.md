@@ -1,12 +1,12 @@
 # Configuration
 
-A core element behind the agent is it's flexible and dynamic configuration. Loaded is the configuration from YAML files (`conf/`) with the help of the [Hydra](https://hydra.cc/) ![<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/facebookresearch/hydra) library, which in turn builds upon the flexible `DictConfig` from the [omegaconf](https://omegaconf.readthedocs.io/) library.
+A core element behind the agent is it's flexible and dynamic configuration. Loaded is the configuration from YAML files (`conf/`) with the help of the [Hydra](https://hydra.cc/) [<img src="https://github.githubassets.com/favicons/favicon.svg" alt="ghicon" width="14"/>](https://github.com/facebookresearch/hydra) library, which in turn builds upon the flexible `DictConfig` from the [omegaconf](https://omegaconf.readthedocs.io/) library.
 
 The entry point to the configuration is the `conf/launch_config.yaml` file. Which defines high-level settings for the simulator and user-interface.
 
 ## Hydra Framework
 
-[Hydra](https://hydra.cc/) ![<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/facebookresearch/hydra) allows to manage the configuration in a flexible way.
+[Hydra](https://hydra.cc/) [<img src="https://github.githubassets.com/favicons/favicon.svg" alt="ghicon" width="14"/>](https://github.com/facebookresearch/hydra) allows to manage the configuration in a flexible way.
 Configuration files are composed hierarchically from multiple sources. The different configuration options can be specified or overridden from the command line.
 
 Additionally, Hydra also tracks and logs the output of experiments, for example each output of a run is stored in the outputs folder configured by `hydra.run.dir` in the {py:class}`.LaunchConfig`, likewise will recordings and a copy of the configuration of the experiment stored in this folder.

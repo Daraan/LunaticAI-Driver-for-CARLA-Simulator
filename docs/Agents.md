@@ -39,12 +39,12 @@ except:
 ```
 
 ```{attention}
-|:warning:| The `LunaticChallenger` is easier to setup, however its usage and customization are, limited as it complies with the `AutonomousAgent` interface from [`leaderboard-2.0`](https://leaderboard.carla.org/get_started/). So far, it only supports a limited amount of features mentioned in the [Configuration](/conf/ConfigFiles.md#command-line) section. For example, changing settings over the command line is not supported as the configuration is loaded in `agent.setup` rather than a `@hydra.main` wrapped entry point.
+|:warning:| The `LunaticChallenger` is easier to setup, however its usage and customization are, limited as it complies with the `AutonomousAgent` interface from [`leaderboard-2.0`](https://leaderboard.carla.org/get_started/). So far, it only supports a limited amount of features mentioned in the [Configuration](conf/ConfigFiles.md#command-line) section. For example, changing settings over the command line is not supported as the configuration is loaded in `agent.setup` rather than a `@hydra.main` wrapped entry point.
 ```
 
 ### LunaticAgent Class
 
-The [](#agents.lunatic_agent.LunaticAgent) can be initialized in multiple ways and supports all features from the [Configuration](/conf/ConfigFiles.md#configuration) section:
+The [](#agents.lunatic_agent.LunaticAgent) can be initialized in multiple ways and supports all features from the [Configuration](conf/ConfigFiles.md#configuration) section:
 
 ```python
 from agents.lunatic_agent import LunaticAgent
