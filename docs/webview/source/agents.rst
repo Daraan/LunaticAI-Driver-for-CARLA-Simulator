@@ -1,5 +1,4 @@
-.. _./agents:
-.. _agents:
+.. _agents/:
 
 agents package
 ==============
@@ -17,11 +16,11 @@ Subpackages
 Submodules
 ----------
 
+
+.. _agents/leaderboard_agent:
+
 agents.leaderboard\_agent module
 --------------------------------
-
-.. _./agents/leaderboard_agent.py:
-.. _agents/leaderboard_agent.py:
 
 .. automodule:: agents.leaderboard_agent
    :members:
@@ -32,11 +31,11 @@ agents.leaderboard\_agent module
    :no-inherited-members:
    :inherited-members: AutonomousAgent
 
+
+.. _agents/lunatic_agent:
+
 agents.lunatic\_agent module
 ----------------------------
-
-.. _./agents/lunatic_agent.py:
-.. _agents/lunatic_agent.py:
 
 .. automodule:: agents.lunatic_agent
    :members:

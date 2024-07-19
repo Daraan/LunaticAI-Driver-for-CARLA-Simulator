@@ -7,7 +7,7 @@ The full documentation can be found online at [ReadTheDocs](https://lunaticai-dr
 ---
 
 This repository offers a modularized rule-based agent system for the
-[CARLA simulator](https://carla.org/) 
+[CARLA simulator](https://carla.org/)
 designed to be easily extendable and configurable. Special submodules like the rule system, the configuration system and the information gathering can directly or with slight modifications be used in other projects as stand alone.
 
 If you are familiar with the CARLA simulator, our agent builds up on the standard agents provided by the CARLA developers, but remodels and extends them in many ways. The key changes are:
@@ -31,9 +31,10 @@ If you are familiar with the CARLA simulator, our agent builds up on the standar
 
 Note: The [Leaderboard 2.0](https://github.com/carla-simulator/leaderboard) supporting [`LunaticChallenger`](#LunaticChallenger), only supports CARLA 0.9.15 and Python 3.10+.
 
+
 ## Installation
 
-See the [Installation Guide](docs/Install) for more details.
+See the [Installation Guide](docs/Install.md) for more details.
 
 ## Agent Classes
 
@@ -79,7 +80,7 @@ Behavioral aspects of the agent but also the environment and user interface are 
 [Hydra](https://hydra.cc/) [<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/facebookresearch/hydra) is used to manage the configuration files and to provide a clean way to access and manage the configuration in a flexible way.
 
 The configuration backend is designed to make coarse and fine-grained changes by using combination of different configs on demand or by adjusting single parameters or blocks via the command line.
-The configuration files are stored in the [conf](conf) directory.
+The configuration files are stored in the [conf](conf/) directory.
 
 For more info continue read the [Configuration](conf/ConfigFiles.md) section.
 

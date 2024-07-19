@@ -321,7 +321,7 @@ def insert_file_references():
                        glob.glob("[!_]*.rst")) # NOTE: if prefixed with ./ need to be stripped
     re_packages = re.compile(r"(^[a-zA-Z._]+) package\n=+")
     
-    re_modules = re.compile(r"(.. automodule:: ([a-zA-Z0-9_.]+)\n)")
+    re_modules = re.compile(r"(([a-zA-Z0-9\\_.]+) module\n)")
     
     for file in rst_files:
         
@@ -330,15 +330,17 @@ def insert_file_references():
         for package in packages:
             # allow file anchors to here
             py_package = package.replace(".", "/")
-            inject = fr".. _./{py_package}:\n.. _{py_package}:\n\n{package} package\n\1"
+            if py_package[-1] != "/":
+                py_package += "/"
+            inject = fr".. _{py_package}:\n\n{package} package\n\1"
             content = re.sub(rf"{package} package\n(=+)", inject, content, count=1)
             
         modules: "list[tuple[str, str]]" = re_modules.findall(content)
         for match in modules:
             full_match, module = match
             # allow file anchors to here
-            py_module = module.replace(".", "/") + ".py"
-            inject = f".. _./{py_module}:\n.. _{py_module}:\n\n{full_match}"
+            py_module = module.replace(".", "/").replace("\\", "")  # + ".py"; _ underscores are escaped
+            inject = f"\n.. _{py_module}:\n\n{full_match}"
             content = content.replace(full_match, inject)
             
         _change_contents(file, content)
@@ -403,6 +405,10 @@ def _no_value_constants():
 
 def patch_all():
     """Executes all public functions of this module"""
+    if os.getcwd().endswith("docs/webview/source"):
+        pass
+    else:
+        return
     from typing import Callable
     this_module= globals().get("__name__", "docs.webview.source._postprocess_autodoc")
     all_funcs : dict[str, "Callable"] = dict(filter(lambda v: not v[0].startswith("_")

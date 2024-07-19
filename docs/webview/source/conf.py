@@ -16,7 +16,9 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+import re
 import sys
+import docutils
 
 
 PROJECT_ROOT = '../../../'
@@ -42,6 +44,10 @@ if TYPE_CHECKING:
     from typing import Optional
     import sphinx
     import sphinx.application
+    import sphinx.environment
+    import sphinx.addnodes
+    import docutils.nodes
+    docutils_Node = docutils.nodes.Node 
 
 # -- Project information -----------------------------------------------------
 
@@ -465,12 +471,91 @@ def setup(app : "sphinx.application.Sphinx"):
         def run(self):
             allnodes, messages = super().run()
             # remove raw-inject node and insert classes
-            inner = allnodes[0].children[0]
+            inner: "docutils_Node" = allnodes[0].children[0]
             inner.parent = None
             inner.attributes["classes"].extend(self.classes) # type: ignore[attr-defined]
             return [inner], messages
 
     app.add_role("external-icon-parse", InjectClassRole(classes=["external-icon"]))
+    #app.connect("missing-reference", missing_reference_handle, priority=2000)
+    app.connect("include-read", include_read_listener)
+    app.connect("source-read", source_read_listener, priority=1000)
+    app.connect("doctree-read", doctree_read_listener, priority=1000)
+
+def missing_reference_handle(app : "sphinx.application.Sphinx", 
+                             env : "sphinx.environment.BuildEnvironment", 
+                             node : "sphinx.addnodes.pending_xref", 
+                             contnode : "docutils_Node"):
+    if node.attributes["refdomain"] == "py" or ":py:" in node.rawsource or node.attributes["reftype"] == "term":
+        if node.rawsource and ":py:" not in node.rawsource:
+            print("Missing reference: skipping", node.rawsource)
+        return None
+    print(env.docname, node.rawsource) # doc currently parsed
+    print("missing:  " + str(node), "  in :" + str(contnode), sep="\n")
 
 
+check_doctree = None
+is_index_rst = False
+
+from docutils.nodes import make_id
+
+def slugify(value:str):
+    slug = make_id(value)
+    if is_index_rst: # NEVER
+        breakpoint()
+        return "readme-" + slug
+    return slug
+
+#myst_heading_slug_func = "docs.webview.source.conf.slugify"
+
+def include_read_listener(app, relative_path, parent_docname, content):
+    global check_doctree
+    check_doctree = (relative_path, parent_docname, content)
+    if parent_docname == "index":
+        global is_index_rst
+        app.config["myst_heading_anchors"] = 0
+        is_index_rst = True
+    print("Include read:", relative_path, parent_docname)
     
+def source_read_listener(app : "sphinx.application.Sphinx", docname : str, content : list[str]):
+    for line in content[:10]:
+        ":parser: myst_parser.sphinx_" in line
+        global check_doctree
+        check_doctree = (None, docname, content)
+    
+import sphinx.addnodes
+
+re_match_file = re.compile(r"^(?P<path>[a-zA-Z0-9_/.]*/)(?P<file>[a-zA-Z0-9_.]+\.(?P<ext>\w+))?(?P<fragment>#.*)?$")
+
+def doctree_read_listener(app, doctree : "docutils.nodes.document"):
+    global check_doctree
+    if not check_doctree:
+        return
+    if check_doctree[1] == "index":
+        app.config["myst_heading_anchors"] = myst_heading_anchors
+        global is_index_rst
+        is_index_rst = False
+    for node in doctree.findall(sphinx.addnodes.pending_xref):
+        if "reftarget" in node.attributes:
+            reftarget :str = node.attributes["reftarget"]
+            match = re_match_file.match(reftarget)
+            if not match:
+                continue
+            if match.group("ext"):
+                if match.group("ext") == "md":
+                    # e.g. ../docs/README.md -> ../docs/README, myst should be able to resolve it
+                    node.attributes["reftarget"] = reftarget.replace(".md", "")
+                    continue
+                elif match.group("ext") == "py":
+                    # This is more tricky
+                    # could link to autodoc module or source code _modules/agents/rules.html#create_default_rules
+                    
+                    # Link to audodoc module
+                    file = match.group("file")[:-3] # remove .py
+                    # change ../agents/rules.py -> agents.
+                    path = match.group("path").replace(".", "/").lstrip("/") if match.group("path") else ""
+                    
+                    node.attributes["reftarget"] = path + file
+                    continue
+
+    check_doctree = None

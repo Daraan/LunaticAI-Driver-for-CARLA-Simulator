@@ -1,11 +1,7 @@
-.. _./classes:
-.. _classes:
+.. _classes/:
 
 classes package
 ===============
-
-.. _./classes.py:
-.. _classes.py:
 
 .. automodule:: classes
    :members:
@@ -16,11 +12,11 @@ classes package
 Submodules
 ----------
 
+
+.. _classes/constants:
+
 classes.constants module
 ------------------------
-
-.. _./classes/constants.py:
-.. _classes/constants.py:
 
 .. automodule:: classes.constants
    :members:
@@ -28,11 +24,11 @@ classes.constants module
    :show-inheritance:
    :no-inherited-members:
 
+
+.. _classes/evaluation_function:
+
 classes.evaluation\_function module
 -----------------------------------
-
-.. _./classes/evaluation_function.py:
-.. _classes/evaluation_function.py:
 
 .. automodule:: classes.evaluation_function
    :members:
@@ -40,11 +36,11 @@ classes.evaluation\_function module
    :undoc-members:
    :show-inheritance:
 
+
+.. _classes/exceptions:
+
 classes.exceptions module
 -------------------------
-
-.. _./classes/exceptions.py:
-.. _classes/exceptions.py:
 
 .. automodule:: classes.exceptions
    :members:
@@ -52,11 +48,11 @@ classes.exceptions module
    :show-inheritance:
    :no-inherited-members:
 
+
+.. _classes/rule:
+
 classes.rule module
 -------------------
-
-.. _./classes/rule.py:
-.. _classes/rule.py:
 
 .. automodule:: classes.rule
    :special-members: __call__
@@ -86,11 +82,11 @@ classes.rule module
    :show-inheritance:
    :special-members: __call__
 
+
+.. _classes/worldmodel:
+
 classes.worldmodel module
 -------------------------
-
-.. _./classes/worldmodel.py:
-.. _classes/worldmodel.py:
 
 .. automodule:: classes.worldmodel
    :members:

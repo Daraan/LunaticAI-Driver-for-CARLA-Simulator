@@ -1,5 +1,4 @@
-.. _./agents/tools:
-.. _agents/tools:
+.. _agents/tools/:
 
 agents.tools package
 ====================
@@ -7,11 +6,11 @@ agents.tools package
 Submodules
 ----------
 
+
+.. _agents/tools/config_creation:
+
 agents.tools.config\_creation module
 ------------------------------------
-
-.. _./agents/tools/config_creation.py:
-.. _agents/tools/config_creation.py:
 
 .. automodule:: agents.tools.config_creation
    :members:
@@ -20,11 +19,11 @@ agents.tools.config\_creation module
    :show-inheritance:
    :no-inherited-members:
 
+
+.. _agents/tools/hints:
+
 agents.tools.hints module
 -------------------------
-
-.. _./agents/tools/hints.py:
-.. _agents/tools/hints.py:
 
 .. automodule:: agents.tools.hints
    :members:
