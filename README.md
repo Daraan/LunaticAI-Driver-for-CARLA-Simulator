@@ -64,12 +64,12 @@ class SlowDownAtIntersectionRule(Rule):
         ctx.agent.set_target_speed(agent.live_info.target_speed - 10)
 ```
 
-For more details look into the [Rules](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/docs/Rules.md) documentation.
+For more details look into the [Rules](docs/Rules.md) documentation.
 
 ### Phases
 
 The agent system is based on a phase system, which allows to define rules for specific situations.
-To see which phases are available and how they are defined, see the `Phase` class in [constants.py](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/classes/constants.py#Phase).
+To see which phases are available and how they are defined, see the `Phase` class in [constants.py](classes/constants.py#Phase).
 
 At the beginning (`Phase.BEGIN`) and end (`Phase.END`) of a phase associated rules are evaluated and depending on their outcome the agent will perform certain actions.
 
@@ -79,7 +79,7 @@ Behavioral aspects of the agent but also the environment and user interface are 
 [Hydra](https://hydra.cc/) [<img src="https://github.githubassets.com/favicons/favicon.svg" alt="drawing" width="14"/>](https://github.com/facebookresearch/hydra) is used to manage the configuration files and to provide a clean way to access and manage the configuration in a flexible way.
 
 The configuration backend is designed to make coarse and fine-grained changes by using combination of different configs on demand or by adjusting single parameters or blocks via the command line.
-The configuration files are stored in the [conf](https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator/blob/main/conf) directory.
+The configuration files are stored in the [conf](conf) directory.
 
 For more info continue read the [Configuration](conf/ConfigFiles.md) section.
 
