@@ -49,5 +49,5 @@ Indices and tables
 Readme
 ======
 
-.. include:: readme_link.rst
+.. include:: _readme_link.rst
 .. _readme-workflow:

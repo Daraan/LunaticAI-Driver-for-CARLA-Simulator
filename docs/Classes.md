@@ -14,7 +14,7 @@ The {py:class}`.GameFramework` is a helper-class class for a quicker setup, it c
   - traffic manager
   - agent, {py:class}`.WorldModel`, [CARLAS's GlobalRoutePlanner](gh:https://github.com/carla-simulator/carla/blob/master/PythonAPI/carla/agents/navigation/global_route_planner.py), {py:class}`.KeyboardController <RSSKeyboardControl>`
 - Cooldowns of rules
-- Load the [LaunchConfig](/conf/ConfigFiles.md) via [Hydra's compose API](https://hydra.cc/docs/advanced/compose_api/){.external-icon}
+- Load the [LaunchConfig](conf/ConfigFiles.md) via [Hydra's compose API](https://hydra.cc/docs/advanced/compose_api/){.external-icon}
 - Interface to the [CarlaDataProvider](gh:https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenariomanager/carla_data_provider.py) from the [scenario_runner](gh:https://github.com/carla-simulator/scenario_runner) package.
 - Handling of special [exceptions](#exceptions-overview) during the agent's `run_step` loop
 - Ticking of the world HUD rendering {py:meth}`.GameFramework.render_everything`. Note: This function is the recommended way to render everything.

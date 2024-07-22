@@ -92,6 +92,15 @@ args: LaunchConfig
 """Global access to the launch config; set in :py:meth:`LunaticChallenger.setup`"""
 
 class LunaticChallenger(AutonomousAgent, LunaticAgent):
+    """
+    Variant of the :py:class:`.LunaticAgent` that is compatible with the 
+    `Leaderboard 2.0 <https://leaderboard.carla.org/>`_ interface.
+    
+    Attention:
+        If the :py:class:`LunaticChallenger` is used without the leaderboard framework
+        the :py:meth:`__call__`  method should be used instead of :py:meth:`run_step`
+        to acquire the next control. 
+    """
     
     sensor_interface: "SensorInterface" #: :meta private:
     

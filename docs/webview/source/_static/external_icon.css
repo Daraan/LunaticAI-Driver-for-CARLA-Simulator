@@ -9,6 +9,17 @@ a.external:after {
     color: #337ab7;
 }
 
+/* theme version */
+a.external:after
+{font-family:FontAwesome;
+ content:"\f08e";
+ color:#337ab7;
+ vertical-align:super;
+ font-size:60%;
+ margin: 0.2em;
+ margin-top: 0.8em;
+}
+
 /* Disables external ref for github icons */
 
 a.fa-github:after {

@@ -11,7 +11,7 @@ class UserInterruption(Exception):
     Allows the scenario runner and leaderboard to exit gracefully, if 
     handled appropriately, e.g. by directly returning.
 
-    Thrown by :py:meth:`LunaticAgent.parse_keyboard_controls <agents.lunatic_agent.LunaticAgent.parse_keyboard_controls>`.
+    Thrown by :py:meth:`LunaticAgent.parse_keyboard_input <agents.lunatic_agent.LunaticAgent.parse_keyboard_input>`.
     
     Note:
         Is not a :py:class:`LunaticAgentException`.

@@ -14,7 +14,7 @@ and the simpler but less flexible {py:class}`agents.leaderboard_agent.LunaticCha
 The {py:class}`.LunaticChallenger` is wrapped around the {py:class}`.LunaticAgent`.
 It can be more easily combined with the [ScenarioRunner](https://scenario-runner.readthedocs.io/en/latest/) and be used with the [Leaderboard 2.0](https://leaderboard.carla.org/get_started/) for which this class is especially designed.
 
-In the simplest way an agent can be used like in the snipplet below. However we recommend that you follow the documentation from the [installation](#/docs/Install) section and [Leaderboard 2.0](https://leaderboard.carla.org/get_started/), afterwards you can test this agent by executing the `run_leaderboard_agent.sh` file.
+In the simplest way an agent can be used like in the snipplet below. However we recommend that you follow the documentation from the [installation](/docs/Install) section and [Leaderboard 2.0](https://leaderboard.carla.org/get_started/), afterwards you can test this agent by executing the `run_leaderboard_agent.sh` file.
 
 ```python
 # examples/minimal_leaderboard.py
@@ -38,9 +38,14 @@ except:
     raise
 ```
 
-```{attention}
-|:warning:| The `LunaticChallenger` is easier to setup, however its usage and customization are, limited as it complies with the `AutonomousAgent` interface from [`leaderboard-2.0`](https://leaderboard.carla.org/get_started/). So far, it only supports a limited amount of features mentioned in the [Configuration](conf/ConfigFiles.md#command-line) section. For example, changing settings over the command line is not supported as the configuration is loaded in `agent.setup` rather than a `@hydra.main` wrapped entry point.
+:::{attention}
+
+```{eval-rst}
+|:warning:|
 ```
+
+ The `LunaticChallenger` is easier to setup, however its usage and customization are, limited as it complies with the `AutonomousAgent` interface from [`leaderboard-2.0`](https://leaderboard.carla.org/get_started/). So far, it only supports a limited amount of features mentioned in the [Configuration](conf/ConfigFiles.md#command-line) section. For example, changing settings over the command line is not supported as the configuration is loaded in `agent.setup` rather than a `@hydra.main` wrapped entry point.
+:::
 
 ### LunaticAgent Class
 
@@ -88,13 +93,11 @@ agent.add_rule(MyRule()) # Be sure that you instantiate your rules.
 
 ## Configuring the Agent
 
-The agent can be configures by passing any attribute supporting Mapping structure, e.g. nested [(data)classes](https://docs.python.org/3/library/dataclasses.html), [attrs](https://www.attrs.org/en/stable/index.html), or [omegaconf's DictConfig](https://omegaconf.readthedocs.io/) which can extend on these two.
+The agent can be configured by passing it any attribute-supporting {term}`Mapping` structure, for example nested [(data)classes](https://docs.python.org/3/library/dataclasses.html), [attrs](https://www.attrs.org/en/stable/index.html), or [omegaconf's DictConfig](https://omegaconf.readthedocs.io/) which extends the aforementioned.
 
 :::{seealso}
 For more info read the [config files documentation](/conf/ConfigFiles.md).
 :::
-
-For more info read the [config files documentation](../conf/ConfigFiles.md).
 
 ## Workflow
 
