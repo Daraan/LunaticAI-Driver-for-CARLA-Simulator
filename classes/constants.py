@@ -98,19 +98,91 @@ class Phase(Flag):
     NONE = 0                       
     
     # These can be combined with any of the other Phases
-    BEGIN = auto()                  #: :meta hide-value:
-    END = auto()                    #: :meta hide-value:
+    BEGIN = auto()
+    """
+    Indicates the beginning of a phase. Should always
+    be combined with another phase.
+    
+    :meta hide-value:
+    """
+    
+    END = auto()
+    """
+    Indicates the end of a phase. Should always
+    be combined with another phase.
+    
+    :meta hide-value:
+    """
 
-    UPDATE_INFORMATION = auto()     #: :meta hide-value:
+    UPDATE_INFORMATION = auto()
+    """
+    Indicates the execution of the agents 
+    :py:meth:`~.LunaticAgent.update_information` method
+    
+    This is the first Phase of the agent and executed every
+    step.
+    
+    :meta hide-value:
+    """
 
-    PLAN_PATH = auto()              #: :meta hide-value:
+    PLAN_PATH = auto()
+    """
+    Indicates that the planning of a new path has started.
+    
+    Attention:
+        If the the path is replanned a :py:exc:`UpdatedPathException` 
+        should be raised.
+        
+    :meta hide-value:
+    """
 
-    DETECT_TRAFFIC_LIGHTS = auto()  #: :meta hide-value:
-    DETECT_PEDESTRIANS = auto()     #: :meta hide-value:
-    DETECT_STATIC_OBSTACLES = auto()#: :meta hide-value:
+    DETECT_TRAFFIC_LIGHTS = auto()
+    """
+    Executed during the agents :py:meth:`~.LunaticAgent.detect_hazard`
+    method. Can add :py:attr:`.Hazard.TRAFFIC_LIGHT_RED` or
+    :py:attr:`.Hazard.TRAFFIC_LIGHT_YELLOW` to the agents 
+    `.LunaticAgent.detected_hazards`:py:attr:.
+    
+    :meta hide-value:
+    """
+    
+    DETECT_PEDESTRIANS = auto()
+    """
+    Executed during the agents :py:meth:`~.LunaticAgent.detect_hazard`
+    method. Can add :py:attr:`.Hazard.PEDESTRIAN` to the agents
+    `.LunaticAgent.detected_hazards`:py:attr:.
+    
+    :meta hide-value:
+    """
+    
+    DETECT_STATIC_OBSTACLES = auto()
+    """
+    | Checks for static obstacles in the agents path with
+    | :py:attr:`.detect_obstacles_in_path` (:py:attr:`.LunaticAgent.static_obstacles_nearby`)
+    
+    :meta hide-value:
+    """
+    # TODO: exchange LunaticAgent -> InformationManager when documented
 
-    DETECT_CARS = auto()            #: :meta hide-value:
-    TAKE_NORMAL_STEP = auto()       #: :meta hide-value:
+    DETECT_CARS = auto()
+    """
+    | Checks for vehicles in the agents path with
+    | :py:attr:`.detect_obstacles_in_path` (:py:attr:`.LunaticAgent.vehicles_nearby`)
+    
+    Note:
+        If a car was detected executes :python:`Phase.CAR_DETECTED | BEGIN`,
+        :python:`Phase.DETECT_CARS | BEGIN` is **only** executed if no car was detected.
+    
+    :meta hide-value:
+    """
+    
+    TAKE_NORMAL_STEP = auto()
+    """
+    During this phase the :external-icon-parse:`:py:class:\`carla.VehicleControl\``
+    is calculated by the local planner.
+    
+    :meta hide-value:
+    """
 
     RSS_EVALUATION = auto()
     """
@@ -139,11 +211,21 @@ class Phase(Flag):
     """
 
     # --- Special situations ---
-    CAR_DETECTED = auto()    #: :meta hide-value:
+    CAR_DETECTED = auto()
+    """
+    The :python:`Phase.CAR_DETECTED | BEGIN` is executed when a car is detected
+    and follows the :python:`Phase.DETECT_CARS | BEGIN` phase. If no car is detected
+    the :python:`Phase.DETECT_CARS | END` phase is executed.
+    
+    :meta hide-value:
+    """
 
     TURNING_AT_JUNCTION = auto()
     """
     Indicates that the agent is turning at a junction.
+    
+    Warning:
+        This Phase might become obsolete.
     
     :meta hide-value:
     """
@@ -155,12 +237,32 @@ class Phase(Flag):
     :meta hide-value:
     """
     
-    EMERGENCY = auto()  #: :meta hide-value:
-    COLLISION = auto()  #: :meta hide-value:
+    EMERGENCY = auto()
+    """
+    Special Phase
+    
+    See Also:
+        - `Emergency Phases`__
+
+    __ docs/Rules.html#emergency-phase
+    """
+    
+    COLLISION = auto()
+    """
+    Special phase that is executed out-of-order when a
+    :external-icon-parse:`:py:class:\`carla.Sensor\`` detects a collision. 
+    
+    See Also:
+        - :external-icon-parse:`:py:class:\`carla.CollisionEvent\``
+        - https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
+    
+    :meta hide-value:
+    """
 
     DONE = auto()
     """
-    Indicates that the agent is at the end of its path. agent.done() is True
+    Indicates that the agent is at the end of its path and
+    :py:meth:`agent.done() <.LunaticAgent.done>` is :python:`True`.
     
     :meta hide-value:
     """

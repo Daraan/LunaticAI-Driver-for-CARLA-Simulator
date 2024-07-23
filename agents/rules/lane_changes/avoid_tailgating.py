@@ -1,7 +1,7 @@
-# ----------- Avoid Beeing tailgated -----------
+"""Rule that avoids a tailgator by changing lanes."""
 
 from classes.constants import RoadOption
-from agents.rules.lane_changes.misc import rule_lane_change
+from agents.rules.lane_changes.other_rules import rule_lane_change
 from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed

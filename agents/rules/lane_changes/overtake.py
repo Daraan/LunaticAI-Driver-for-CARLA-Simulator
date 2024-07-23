@@ -1,3 +1,5 @@
+"""Rules that allow the agent to overtake other vehicles"""
+
 # Credits to https://github.com/carla-simulator/carla/commits?author=jackbart94
 # https://github.com/carla-simulator/carla/commit/4bc53a7f6c71551b466b8abdb48f24c48b295efc
 
@@ -13,7 +15,7 @@ from classes.constants import Phase, RulePriority
 from classes.evaluation_function import ConditionFunction
 from classes.rule import Rule
 
-from agents.rules.lane_changes.misc import rule_lane_change
+from agents.rules.lane_changes.other_rules import rule_lane_change
 
 if TYPE_CHECKING:
     from classes.rule import Context
