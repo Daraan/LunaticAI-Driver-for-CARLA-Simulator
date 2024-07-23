@@ -1,9 +1,15 @@
 """
-Leaderboard 2.0 compatible version of the Lunatic Agent
+Leaderboard_ 2.0 compatible version of the Lunatic Agent
 
 Attention: 
-    Command line overrides are currently not supported for the leaderboard agent,
-    therefore this module defines some global constants to adjust some settings.
+    Command line overrides are currently not supported for this agent,
+    therefore this module allows to define some global constants to 
+    that can adjust settings the settings if they are not set to None (default).
+    
+    These global settings are only used if :py:meth:`LunaticChallenger.setup` 
+    is called with a string pointing to a configuration file. Passing a
+    :py:class:`.LaunchConfig` directly will skip the Hydra_ setup and the global
+    values will not be used.
 """
 import operator
 import os
@@ -15,7 +21,7 @@ from hydra.core.utils import configure_log
 import carla
 import pygame
 
-from agents.tools.misc import draw_route
+from agents.tools.debug_drawing import draw_route
 from classes.exceptions import UserInterruption
 
 try:
@@ -33,7 +39,7 @@ try:
 except ModuleNotFoundError:
     # Leaderboard is not a submodule, cannot use it on readthedocs 
     if "READTHEDOCS" in os.environ and not TYPE_CHECKING:
-        class AutonomousAgent: pass
+        class AutonomousAgent: pass # noqa
     else: raise
 
 from agents.lunatic_agent import LunaticAgent
@@ -72,7 +78,7 @@ ENABLE_DATA_MATRIX = None
 DATA_MATRIX_ASYNC = False
 """Run the DetectionMatrix update in a separate thread; overwrites :py:attr:`LunaticAgentSettings.detection_matrix.sync`."""
 
-DATA_MATRIX_SYNC_INTERVAL = 5
+DATA_MATRIX_SYNC_INTERVAL = None
 """When running synchronously how many ticks should be between two updates; overwrites :py:attr:`LunaticAgentSettings.detection_matrix.sync_interval`"""
 
 USE_OPEN_DRIVE_DATA = False
@@ -97,7 +103,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     `Leaderboard 2.0 <https://leaderboard.carla.org/>`_ interface.
     
     Attention:
-        If the :py:class:`LunaticChallenger` is used without the leaderboard framework
+        If the :py:class:`LunaticChallenger` is used without the Leaderboard 2.0 framework
         the :py:meth:`__call__`  method should be used instead of :py:meth:`run_step`
         to acquire the next control. 
     """
@@ -151,13 +157,25 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                                         config_dir=os.path.abspath(config_dir), 
                                         job_name="LeaderboardAgent")
                 if ENABLE_DATA_MATRIX is not None:
-                    overrides.append("agent.detection_matrix.enabled="+str(ENABLE_DATA_MATRIX).lower())
+                    overrides.append("agent.detection_matrix.enabled=" + str(ENABLE_DATA_MATRIX).lower())
                 overrides.append("agent.detection_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
-                if not ENABLE_RSS:
-                    overrides.append("agent.rss.enabled=false")
+                if ENABLE_RSS is not None:
+                    overrides.append("agent.rss.enabled=" + str(ENABLE_RSS).lower())
                 args = compose(config_name=config_name, return_hydra_config=True, 
                             overrides=overrides # uses conf/agent/leaderboard
                             )
+                args.debug = DEBUG
+                # Let scenario manager decide
+                if args.map:
+                    logger.warning("Map should be set by scenario manager and be None in the config file found map is %s." % args.map)
+                if args.handle_ticks:
+                    logger.warning("When using the leaderboard agent, `handle_ticks` should be False.")
+                    args.handle_ticks = False
+                if args.sync is not None:
+                    logger.warning("When using the leaderboard agent, `sync` should be None.")
+                    args.sync = None
+                
+                # Setup Hydra
                 from hydra.core.hydra_config import HydraConfig
                 if OmegaConf.is_missing(args.hydra.runtime, "output_dir"):
                     args.hydra.runtime.output_dir = args.hydra.run.dir
@@ -165,19 +183,11 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 os.makedirs(args.hydra.runtime.output_dir, exist_ok=True)
                 configure_log(args.hydra.job_logging, logger.name) # Assure that our logger works
                 
-                # Let scenario manager decide
-                if args.map:
-                    logger.warning("Map should be set by scenario manager and be None in the config file found map is %s." % args.map)
-                if args.handle_ticks:
-                    logger.warning("When using the leaderboard agent, handle_ticks should be False.")
-                    args.handle_ticks = False
-                if args.sync is not None:
-                    logger.warning("When using the leaderboard agent, sync should be None.")
-                    args.sync = None
-                args.debug = DEBUG
-                args.agent.detection_matrix.sync = not DATA_MATRIX_ASYNC
-                args.agent.detection_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
-                print(OmegaConf.to_yaml(args))
+                if DATA_MATRIX_ASYNC is not None:
+                    args.agent.detection_matrix.sync = not DATA_MATRIX_ASYNC
+                if DATA_MATRIX_SYNC_INTERVAL is not None:
+                    args.agent.detection_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
+                logger.info(OmegaConf.to_yaml(args))
             else:
                 args = compose(config_name=config_name, return_hydra_config=True, 
                     overrides=overrides)
@@ -188,11 +198,12 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         else:
             self.args = path_to_conf_file
             config = self.args.agent
-        config.planner.dt = 1/20 # TODO: maybe get from somewhere
+        if OmegaConf.is_missing(config.planner, "dt"):
+            config.planner.dt = 1/20 # TODO: maybe get from somewhere else
         
         self.game_framework = GameFramework(self.args, config)
         print("Game framework setup")
-        # TODO: How to make args optioal
+        # TODO: How to make args optional
         self.world_model = WorldModel(config, args=self.args)
         self.game_framework.world_model = self.world_model
         print("World Model setup")

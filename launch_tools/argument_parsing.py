@@ -1,9 +1,16 @@
+"""
+Argument parsers for arguments used by CARLA examples.
+
+.. deprecated::
+    In favor of Hydra_.
+"""
 import argparse
 from functools import wraps
 from typing import Optional
 
 
-# todo later: add some more flexible way to construct a parser. i.e. combine certain subparsers, e.g. one for port& host another one for settings
+# maybe later: add some more flexible way to construct a parser.
+# i.e. combine certain subparsers, e.g. one for port& host another one for settings
 
 def subparser(func) -> argparse.ArgumentParser:
     """This decorator allows to join multiple subparsers in a flexible way."""

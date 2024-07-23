@@ -8,7 +8,7 @@ from classes.constants import RuleResult, Hazard
 class UserInterruption(Exception):
     """
     Terminate the loop if user input is detected.
-    Allows the scenario runner and leaderboard to exit gracefully, if 
+    Allows the scenario runner and Leaderboard_ to exit gracefully, if 
     handled appropriately, e.g. by directly returning.
 
     Thrown by :py:meth:`LunaticAgent.parse_keyboard_input <agents.lunatic_agent.LunaticAgent.parse_keyboard_input>`.

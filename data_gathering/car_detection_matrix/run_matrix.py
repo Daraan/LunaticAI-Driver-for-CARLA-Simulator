@@ -72,7 +72,7 @@ class DetectionMatrix:
         return wrap_matrix_functionalities(self.ego_vehicle, self.world, self.world_map,
                                                          self.road_lane_ids)
     
-    def update(self) -> Dict[int, List[int]] | None:
+    def update(self) -> "Dict[int, List[int]] | None":
         """
         If the matrix is :py:attr:`running`, it will update the matrix and return it,
         otherwise returns :python:`None`.

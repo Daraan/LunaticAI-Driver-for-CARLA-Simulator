@@ -550,7 +550,7 @@ class Rule(_GroupRule):
     phases : FrozenSet["Phase"]
     """
     The phase or phases in which the rule should be evaluated.
-    For instantiation the phases attribute can be any :code:`Iterable` [:any:`Phase`].
+    For instantiation the phases attribute can be any :term:`Iterable` [:py:class:`.Phase`].
     """
     
     phase : "Phase"
@@ -587,7 +587,8 @@ class Rule(_GroupRule):
     Settings that should overwrite the agent's settings for this rule.
     
     Note:
-        The overwrite settings are dict objects, DictConfigs are converted to dict.
+        The overwrite settings are primitive :py:class:`dict` objects, 
+        :py:class:`omegaconf.DictConfig` objects are converted.
     """
     
     self_config : "RuleConfig"
@@ -601,8 +602,8 @@ class Rule(_GroupRule):
         Internally `self.config` and `ctx.config` is the same object, which makes
         interpolations to the agent's settings possible.
         
-    Warning:
-        The `self_config` object is *not* constant it is recreated each time the
+    Attention:
+        The **self_config object is *not* constant** it is recreated each time the
         rule is evaluated to have the current context available.
     """
     
@@ -961,7 +962,7 @@ class Rule(_GroupRule):
     # -----------------------
 
     @_use_temporary_config
-    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, "Literal[Rule.NO_RESULT]"]: # pylint: ignore=unused-argument
+    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, "Literal[RuleResult.NO_RESULT]"]: # pylint: ignore=unused-argument
         """
         Executes the condition function of the rule, should be called from a rule's :py:meth:`__call__` method.
         The decorator automatically takes care of temporarily setting the :py:attr:`overwrite_settings`.
@@ -1029,7 +1030,6 @@ class Rule(_GroupRule):
 
     def __repr__(self) -> str:
         return str(self)
-    
 
     
 
@@ -1439,7 +1439,7 @@ class BlockingRule(metaclass=Rule):
             UnblockRuleException: If the ticks passed are over :py:attr:`MAX_TICKS`
             
         Attention:    
-            The usage with Leaderboard is working but experimental.
+            The usage with Leaderboard_ is working but experimental.
             The scenario expects the agent to return a control object in every step, however as this rule
             takes over the ticks completely an outside ScenarioManager might not work as expected.
         

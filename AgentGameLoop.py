@@ -4,9 +4,8 @@ Example of a game loop for the :py:class:`.LunaticAgent` class.
 """
 from __future__ import print_function  # for python 2.7 compatibility
 
-import argparse
 import random
-from typing import List, Union
+from typing import List
 from pprint import pprint
 
 import hydra
@@ -21,7 +20,7 @@ except ImportError as e:
 import pygame
 from classes import exceptions
 import launch_tools
-    
+
 from launch_tools import CarlaDataProvider
 
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
@@ -32,7 +31,7 @@ from classes.constants import Phase
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 
 from agents.tools.logging import logger
-from agents.tools.misc import debug_drawing
+from agents.tools.debug_drawing import debug_drawing
 
 from agents.lunatic_agent import LunaticAgent
 from agents.rules import create_default_rules
@@ -76,7 +75,7 @@ def game_loop(args: LaunchConfig):
     print("--- Creating settings ---")
     # Validates and creates the agent settings. Sidenote: agent_config a copy of args.agent,
     # you can access args.agent as copy of the original settings
-    # To not validate the config against LunaticAgentSettings, you can use OmegaConf.create(args.agent)
+    # To not validate the config against LunaticAgentSettings use OmegaConf.create(args.agent)
     # to create a copy.
     agent_config = LunaticAgentSettings.create(args.agent)
     
@@ -91,10 +90,11 @@ def game_loop(args: LaunchConfig):
         
         # Spawn Others
         CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3", 
-                                                                      AMOUNT_ACTORS, 
-                                                                      spawn_points=[sp for i, sp in enumerate(spawn_points[:AMOUNT_ACTORS+1]) if i != EGO_SPAWN_IDX], 
-                                                                      autopilot=True, 
-                                                                      tick=False)
+                                                    AMOUNT_ACTORS, 
+                                                    spawn_points=[sp for i, sp in enumerate(spawn_points[:AMOUNT_ACTORS+1]) 
+                                                                     if i != EGO_SPAWN_IDX], 
+                                                    autopilot=True, 
+                                                    tick=False)
         
         # Spawn Ego
         start : carla.libcarla.Transform = spawn_points[EGO_SPAWN_IDX]
@@ -102,7 +102,7 @@ def game_loop(args: LaunchConfig):
         
         logger.info("Creating agent and WorldModel ...")
         agent, world_model, global_planner, controller \
-            = game_framework.init_agent_and_interface(ego=None if args.externalActor else ego, # TEMP # Test external actor, do not pass ego
+            = game_framework.init_agent_and_interface(ego=None if args.externalActor else ego, # Test externalActor
                                                       agent_class=LunaticAgent, 
                                                       config=agent_config)
         logger.debug("Created agent and WorldModel.\n")

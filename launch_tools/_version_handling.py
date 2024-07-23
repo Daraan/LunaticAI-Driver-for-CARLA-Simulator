@@ -1,9 +1,11 @@
-# pylint: disable=unused-import
+# pylint: disable=unused-import, ungrouped-imports
 """
 This submodule provides necessary imports that are not available in all python versions.
 """
 
 __all__ = ['singledispatchmethod', 'Literal', 'ast_parse']
+
+# singledispatchmethod
 
 try:
     from functools import singledispatchmethod # Python 3.8+
@@ -20,7 +22,9 @@ except ImportError:
         wrapper.register = dispatcher.register
         update_wrapper(wrapper, func)
         return wrapper
-    
+
+# Literal
+ 
 try:
     # If installed, note that for python 3.10+ this is identical to the built-in typing.Literal
     from typing_extensions import Literal
@@ -31,15 +35,17 @@ except ImportError:
         from typing import Literal
     except ImportError:
         print("Warning: Literal not found. Literal requires python3.8+ or typing_extensions.")
-        class __LiteralMeta(type):
-            def __getitem__(cls, key):
+        class __LiteralMeta(type): # noqa
+            def __getitem__(cls, _):
                 return cls.__repr__()
             
-            def __repr__(self) -> str:
-                return """'Warning: Literal requires python3.8+ or typing_extensions. This is a dummy substitution.'"""
+            def __repr__(cls) -> str:
+                return "'Warning: Literal requires python3.8+ or typing_extensions. This is a dummy substitution.'"
 
         class Literal(metaclass=__LiteralMeta):
             pass
+       
+# ast_parse       
             
 from ast import parse
 from functools import partial

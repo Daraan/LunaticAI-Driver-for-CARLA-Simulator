@@ -1,3 +1,4 @@
+# pylint: disable=protected-access, no-member
 """
 Provides tools to interact with carla: access the client, world, map,
 spawn actors, destroy actors, and initialize carla.

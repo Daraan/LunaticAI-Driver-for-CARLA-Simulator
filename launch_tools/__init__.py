@@ -30,17 +30,18 @@ from .csv_tools import *
 prepare_blueprints = blueprint_helpers.get_contrasting_blueprints
 
 
+# pylint: disable=too-few-public-methods, invalid-name
 class class_or_instance_method:
     """Decorator to transform a method into both a regular and class method"""
 
     def __init__(self, call):
         self.__wrapped__ = call
-        self._wrapper = lambda x : x # TODO/BUG: functools.partial and functools.wraps shadow the signature and doc, this reveals it again.
+        self._wrapper = lambda x : x # BUG: functools.partial and functools.wraps shadow the signature and doc, this reveals it again.
         call.__doc__ = "*This function can be called as a regular method or as a class method.*\n\n" + call.__doc__
         if "READTHEDOCS" in os.environ:
             # This does not work for type checks
-            from functools import wraps
-            self._wrapper = wraps(call) 
+            from functools import wraps   # noqa
+            self._wrapper = wraps(call)
 
     if "READTHEDOCS" in os.environ or TYPE_CHECKING:
         def __get__(self, instance : Union[None, "AgentConfig"], owner : Type["AgentConfig"]):

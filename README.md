@@ -39,7 +39,7 @@ See the [Installation Guide](docs/Install.md) for more details.
 
 At the core is the [`LunaticAgent`(agents/lunatic_agent.py)](./agents/lunatic_agent.py) which offers full flexibility in terms of rules and actions and how you control it during a custom written game loop.
 
-The [`LunaticChallenger`(agents/leaderboard_agent.py)](./agents/leaderboard_agent.py) is a simplified version wrapped version to be compatible with the [carla/leaderboard-2.0](https://github.com/carla-simulator/leaderboard) interface, i.e. providing only a `setup` and `run_step` method.
+The [`LunaticChallenger`(agents/leaderboard_agent.py)](./agents/leaderboard_agent.py) is a simplified version wrapped version to be compatible with CARLAS's [Leaderboard 2.0](https://github.com/carla-simulator/leaderboard) interface.
 
 You can look at the workflow diagram at the end of this document to see how the agent system is structured.
 
@@ -85,5 +85,4 @@ For more info continue read the [Configuration](conf/ConfigFiles.md) section.
 
 ## Workflow and Component Diagram of the Agent System
 
-[!["Visualization of the agents components and its workflow"](docs/images/AgentLifecycleDiagram.drawio.svg)](docs/images/AgentLifecycleDiagram.drawio.svg)
-(Click on the image to enlarge it)
+[!["Visualization of the agents components and its workflow"](docs/images/AgentLifecycleDiagram.drawio.svg)<p align="center">(Click on the image to enlarge it)</p>](docs/images/AgentLifecycleDiagram.drawio.svg)

@@ -1,32 +1,29 @@
-import re
 from typing import List, Optional, Tuple, TYPE_CHECKING
 
-from launch_tools import CarlaDataProvider
+from launch_tools import CarlaDataProvider, Literal
 
 if TYPE_CHECKING:
     import carla
-    try:
-        from typing import Literal  # python 3.8+
-    except ImportError:
-        try:
-            from typing_extensions import Literal
-        except ImportError:
-            pass
 
-import carla
 
 create_blueprint = CarlaDataProvider.create_blueprint
 
-def get_blueprint_library(world: Optional[carla.World]=None):
+def get_blueprint_library(world: Optional["carla.World"]=None):
+    """
+    Get the blueprint library of the given world.
+    
+    .. deprecated:: 
+        Consider using :py:attr:`.CarlaDataProvider._blueprint_library` 
+        or :py:meth:`.CarlaDataProvider.create_blueprint` instead.
+    """
     if CarlaDataProvider._blueprint_library:
         return CarlaDataProvider._blueprint_library
     elif world is None:
         world = CarlaDataProvider.get_world()
     return world.get_blueprint_library()
 
-
 def get_contrasting_blueprints(world: "carla.World", ego_vehicle="vehicle.lincoln.mkz_2020", ego_color: str="255,0,0") \
-    -> Tuple["carla.ActorBlueprint", carla.ActorBlueprint]:
+    -> Tuple["carla.ActorBlueprint", "carla.ActorBlueprint"]:
     """
     Sets the color of NPC vehicles and marks the ego vehicle red.
 
@@ -58,15 +55,15 @@ def get_contrasting_blueprints(world: "carla.World", ego_vehicle="vehicle.lincol
     return ego_bp, car_blueprint
 
 
-def get_actor_blueprints(world: carla.World, filter: str,
-                         generation: "Literal[1, 2, 'all']") -> List[carla.ActorBlueprint]:
+def get_actor_blueprints(world: "carla.World", filter: str,
+                         generation: "Literal[1, 2, 'all']") -> List["carla.ActorBlueprint"]:
     """
     Returns a list of actor blueprints filtered by the given filter and generation.
 
     Args:
-        world (carla.World): The world to get the blueprints from.
-        filter (str): The filter to apply to the blueprints.
-        generation (str): The generation of the blueprints to return. Can be "all", "1", or "2".
+        world : The world to get the blueprints from.
+        filter : The filter to apply to the blueprints.
+        generation : The generation of the blueprints to return. Can be "all", "1", or "2".
 
     Returns:
         List of carla.ActorBlueprint: The list of actor blueprints that match the given filter and generation.

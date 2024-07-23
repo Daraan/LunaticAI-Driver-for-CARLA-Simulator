@@ -15,6 +15,12 @@ FILE_NAME = 'PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (
             'win-amd64' if os.name == 'nt' else 'linux-x86_64')
 
 def import_carla():
+    """
+    Can import the carla module from the `.egg` file if it
+    is not installed in the python environment. Set the
+    :py:obj:`CARLA_ROOT` environment variable to the root directory
+    of the CARLA installation.
+    """
     if CARLA_ROOT is None:
         # Best guess
         path = os.path.abspath(os.path.join("..","**", FILE_NAME))
@@ -23,10 +29,10 @@ def import_carla():
     try:
         sys.path.append(glob.glob(path)[0])
         print("Appended to sys path:", sys.path[-1])
-        import carla
+        import carla  # pylint: disable=import-outside-toplevel, redefined-outer-name
         return carla
-    except IndexError as e:
+    except IndexError:
         print("ERROR: Cannot find", os.path.abspath(os.path.join("..","**", FILE_NAME)))
-        pass
+        return None
 
 carla = import_carla()

@@ -35,7 +35,8 @@ else:
         import os
         if "READTHEDOCS" not in os.environ: # this module is mocked
             print("=====================================================")
-            print("WARNING: srunner is likely in PYTHONPATH, submodule `scenario_runner` is not used. CarlaDataProvider might be duplicated and not used correctly.")
+            print("WARNING: srunner is likely in PYTHONPATH, submodule `scenario_runner` is not used. "
+                  "CarlaDataProvider might be duplicated and not used correctly.")
             print("=====================================================")
 
 if TYPE_CHECKING:

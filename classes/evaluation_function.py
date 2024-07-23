@@ -239,14 +239,14 @@ class ConditionFunction:
         return s
 
     @classmethod
-    def AND(cls : type["ConditionFunction"], func1 : Callable, func2 : Callable) -> "ConditionFunction":
+    def AND(cls : "type[ConditionFunction]", func1 : Callable, func2 : Callable) -> "ConditionFunction":
         """Combine two functions to return True if both return True."""
         def combined_func(ctx: "Context", *args, **kwargs):
             return func1(ctx, *args, **kwargs) and func2(ctx, *args, **kwargs)
         return cls(combined_func, name=f"{func1.name}_and_{func2.name}")
 
     @classmethod
-    def OR(cls : type["ConditionFunction"], func1, func2) -> "ConditionFunction":
+    def OR(cls : "type[ConditionFunction]", func1, func2) -> "ConditionFunction":
         """Combine two functions to return True if either returns True."""
         def combined_func(ctx: "Context", *args, **kwargs):
             return func1(ctx, *args, **kwargs) or func2(ctx, *args, **kwargs)
@@ -254,7 +254,7 @@ class ConditionFunction:
         return cls(combined_func, name=f"{func1.name}_or_{func2.name}")
 
     @classmethod
-    def NOT(cls : type["ConditionFunction"], func) -> "ConditionFunction":
+    def NOT(cls : "type[ConditionFunction]", func) -> "ConditionFunction":
         """Invert the return value of a function."""
         def combined_func(ctx: "Context", *args, **kwargs):
             return not func(ctx, *args, **kwargs)

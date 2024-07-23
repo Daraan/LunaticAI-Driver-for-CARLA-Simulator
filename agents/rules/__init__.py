@@ -4,7 +4,6 @@ Note:
     All rule should be imported into this module for insatiate to work
 """
 
-from collections.abc import Iterable
 import hydra.errors
 from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate, call
@@ -17,14 +16,15 @@ from agents.rules.stopped_long_trigger import StoppedTooLongTrigger
 
 from agents.tools.logging import logger
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union, Iterable
 
 from classes.constants import Phase
 from classes.rule import Rule
+from typing_extensions import overload
 
 if TYPE_CHECKING:
     from classes.worldmodel import GameFramework
-    from agents.tools.config_creation import RuleCreatingParameters
+    from agents.tools.config_creation import RuleCreatingParameters, CreateRuleFromConfig, CallFunctionFromConfig
 
 def create_default_rules(gameframework: Optional["GameFramework"]=None, random_lane_change: bool = False) -> "Iterable[Rule]":
 
@@ -54,7 +54,15 @@ def create_default_rules(gameframework: Optional["GameFramework"]=None, random_l
         
     return default_rules
 
-def rule_from_config(cfg : Union["RuleCreatingParameters", DictConfig]) -> Union[Rule, "Iterable[Rule]"]:
+@overload
+def rule_from_config(cfg : "CreateRuleFromConfig") -> Rule:
+    ...
+
+@overload
+def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig") -> Union[Rule, Iterable[Rule]]:
+    ...
+    
+def rule_from_config(cfg : "RuleCreatingParameters"):
     """
     Instantiates Rules through Hydra's instantiate function.
     
@@ -92,7 +100,7 @@ def rule_from_config(cfg : Union["RuleCreatingParameters", DictConfig]) -> Union
     
     # Throw out all keys that are not valid for the target, i.e. MISSING
     valid_keys = {k for k in cfg.keys() if not OmegaConf.is_missing(cfg, k)} # _target_ is kept for instantiate
-    clean_cfg = OmegaConf.masked_copy(cfg, valid_keys)
+    clean_cfg : RuleCreatingParameters = OmegaConf.masked_copy(cfg, valid_keys)
     
     if "_args_" in clean_cfg and clean_cfg._args_ is None:
         logger.error("_args_ argument for %s should be a list, not None", cfg._target_)
@@ -114,7 +122,7 @@ def rule_from_config(cfg : Union["RuleCreatingParameters", DictConfig]) -> Union
                     # Alternatively could escape all interpolations as strings and recreate the interpolations afterwards,
                     # however, need to assume that all interpolation like stings are meant as interpolations.
                     from agents.tools.config_creation import LunaticAgentSettings
-                    parent = OmegaConf.create(LunaticAgentSettings(rules=[]), flags={"allow_objects": True})
+                    parent : LunaticAgentSettings = OmegaConf.create(LunaticAgentSettings(rules=[]), flags={"allow_objects": True})
                     for key in parent.live_info.keys():
                         if key == "executed_direction":
                             parent.live_info[key] = "VOID"
