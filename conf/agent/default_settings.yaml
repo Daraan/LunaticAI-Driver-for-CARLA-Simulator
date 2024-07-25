@@ -1,8 +1,19 @@
+# @package agent
+# --------------------
 # LunaticAgentSettings
+# --------------------
+# Config schema definition for the `LunaticAgent` class
+# --------------------
+
+# Nested dictionaries used for the manual initialization of the config.
 overwrites: {}
 
-
+# --------
+# LiveInfo
+# --------
 # Keeps track of information that changes during the simulation.
+# --------
+#  
 live_info:
   # 3D Vector of the current velocity of the vehicle.
   velocity_vector: ???
@@ -42,6 +53,7 @@ live_info:
   last_applied_controls: ???
 
 
+# --------------------------
 # The three situations they adjust their speed; # SEE: `behavior_agent.car_following_manager`
 #  
 # Case A car in front and getting closer : slow down; slower than car in front
@@ -58,6 +70,7 @@ live_info:
 #       `target_speed` = min([
 #                 self._behavior.max_speed,
 #                 self._speed_limit - self._behavior.speed_lim_dist])
+# --------------------------
 speed:
   # This is a reference to live_info.current_speed, which is updated by the agent
   current_speed: ${live_info.current_speed}
@@ -96,12 +109,14 @@ speed:
     ${.intersection_speed_decrease}}}
 
 
+# -----------------------------
 # Collision Avoidance
 # -------------------
 #  
 # Distance in which for vehicles are checked.
 #  
 # Usage: max_distance = max(min_proximity_threshold, self._speed_limit / (2 if <LANE CHANGE> else 3 ) )
+# -----------------------------
 distance:
   # Emergency Stop Distance Trigger
   emergency_braking_distance: 5.0
@@ -113,10 +128,12 @@ distance:
   distance_to_leading_vehicle: ???
 
 
+# ------------------------------
 # Lane Change
 #  
 # Adjust probability that in each timestep the actor will perform a left/right lane change, 
 # dependent on lane change availability. 
+# ------------------------------
 lane_change:
   same_lane_time: 0.0
   other_lane_time: 0.0
@@ -124,11 +141,13 @@ lane_change:
 
 
 # --------------------------
+# --------------------------
 # Agent Level
 # see _affected_by_traffic_light and _affected_by_vehicle in basic_agent.py
 # --------------------------
 # Agents is aware of the vehicles and traffic lights within its distance parameters
 # optionally can always ignore them.
+# --------------------------
 obstacles:
   # Whether the agent should ignore vehicles
   ignore_vehicles: false
@@ -267,7 +286,9 @@ obstacles:
     5.0, 10.0}
 
 
+# ----------------------------
 # Limitations of the controls used one the PIDController Level
+# ----------------------------
 controls:
 
   # Vehicle control how strong the brake is used, 
@@ -284,6 +305,7 @@ controls:
   vehicle_lane_offset: 0.0
 
 
+# -------------------------
 # PID controller using the following semantics:
 #         K_P -- Proportional term
 #         K_D -- Differential term
@@ -297,6 +319,7 @@ controls:
 # `sampling_resolution` is used by the global planner to build a graph of road segments, also to get a path of waypoints from A to B
 #  
 # `sampling_radius` is similar but only used only by the local_planner to compute the next waypoints forward. The distance of those is the sampling_radius.
+# -------------------------
 planner:
 
   # time differential in seconds

@@ -340,10 +340,15 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
                         # Add nested comments
                         add_comments(value, data[key], cls_doc[key], indent=indent+2)
                         comment_txt:str = "\n"+cls_doc[key].get("__doc__", "")
+                        # no @package in subfields
+                        if comment_txt.startswith("\n@package "):
+                            comment_txt = "\n".join(comment_txt.split("\n")[2:])
                     else:
                         comment_txt = lookup.get(key, None)  # type: ignore[arg-type]
                     if comment_txt is None:
                         continue
+                    #if isinstance(comment_txt, dict): # BUG: This can happen (if nested take doc?)
+                    #    breakpoint()
                     comment_txt=comment_txt.replace("\n\n","\n \n")
                     if comment_txt.count("\n") > 0:
                         comment_txt = "\n"+comment_txt
@@ -730,7 +735,11 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
 
 @dataclass
 class LiveInfo(AgentConfig):
-    """Keeps track of information that changes during the simulation."""
+    """
+    @package agent.live_info
+    
+    Keeps track of information that changes during the simulation.
+    """
     
     velocity_vector : carla.Vector3D = MISSING
     """
@@ -1846,6 +1855,8 @@ class BehaviorAgentSettings(AgentConfig):
 @dataclass
 class LunaticAgentSettings(AgentConfig):
     """
+    @package agent
+    
     Config schema definition for the :py:class:`LunaticAgent` class
     """
     
@@ -1945,7 +1956,9 @@ class ContextSettings(LunaticAgentSettings):
 
 @dataclass
 class CameraConfig(AgentConfig):
-    """Camera Settings"""
+    """
+    @package camera
+    """
     
     width: int = 1280
     height: int = 720
@@ -2187,6 +2200,15 @@ def extract_annotations(parent, docs):
                     raise NameError(f"{key} needs to be defined before {target} or globally") from e
                 continue
             doc = inspect.cleandoc(doc)
+            if target == "__doc__":
+                header = ("-" * len(main_body.name)) + "\n" # + main_body.name + "\n" + ("-" * len(main_body.name)) + "\n" + doc
+                footer = "\n" + ("-" * len(main_body.name))
+                if doc.startswith("@package"):
+                    start = doc.find("\n") + 1
+                    header += main_body.name + "\n" + ("-" * len(main_body.name)) + "\n"
+                    doc = doc[:start] + header + doc[start:].lstrip() + footer + "\n\n"
+                else:
+                    doc = header + doc + footer
             # remove rst
             doc = re.sub(r":py:\w+:\\?`[~.!]*(.+?)\\?`", r"`\1`", doc)
             doc = re.sub(r":(?::|\w|-)+?:`+(.+?)`+", r"`\1`", doc)

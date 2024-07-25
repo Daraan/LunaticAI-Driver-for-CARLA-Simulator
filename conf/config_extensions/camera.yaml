@@ -1,3 +1,5 @@
+# @package camera
+
 # Use top-level for compatibility
 width : ${width}
 height : ${height}

@@ -1,4 +1,4 @@
-
+# @package hydra/job_logging
 # Note that this exposes only partially the full hydra configuration. Use python <yourfile>.py --cfg hydra to see the full configuration.
 
 formatters:

@@ -1,4 +1,10 @@
+# @package agent.live_info
+# --------
+# LiveInfo
+# --------
 # Keeps track of information that changes during the simulation.
+# --------
+
 # 3D Vector of the current velocity of the vehicle.
 velocity_vector: ???
 
