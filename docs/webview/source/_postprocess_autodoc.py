@@ -1,6 +1,7 @@
 import re
 import glob
 import os
+from typing_extensions import Literal
 
 _file_contents : dict[str, str] = {}
 
@@ -221,8 +222,12 @@ def patch_challenger():
     _change_contents("agents.rst", content)
         
 def add_imported_members():
-    module = {"classes" : ["CustomSensorInterface"]}
+    module: dict[str, "list[str] | str | Literal['all']"] = {"classes" : ["CustomSensorInterface"],
+                                                             "classes.carla_originals" : "all",
+                                                             }
     for file, members in module.items():
+        if isinstance(members, str) and members != "all":
+            members = [members]
         content = _get_contents(file+".rst")
         start = content.find(".. automodule:: "+file+"\n")
         end = content.find("----", start)
@@ -234,28 +239,56 @@ def add_imported_members():
             subcontent = content[start:end]
             pattern = "\n\n"
             extra = "\n"
-        members = list(filter(lambda member: member not in subcontent, members))
-        if not members:
-            continue
-        subcontent = re.sub(pattern, extra+"   :imported-members: " + ", ".join(members) +extra+"\n", subcontent, count=1)
+        if members != "all":
+            members = list(filter(lambda member: member not in subcontent, members))
+            if not members:
+                continue
+            subcontent = re.sub(pattern, extra+"   :imported-members: " + ", ".join(members) +extra+"\n", subcontent, count=1)
+        else:
+            subcontent = re.sub(pattern, extra+"   :imported-members:" + extra +"\n", subcontent, count=1)
         content = content[:start] + subcontent + content[end:]
         _change_contents(file+".rst", content)
+        
+def remove_submodules():
+    packages = ["classes.carla_originals.rst"]
+    for package in packages:
+        content = _get_contents(package)
+        start = content.find("Submodules\n----------")
+        if start == -1:
+            continue
+        end = content.find("Module contents\n", start)
+        newcontent = content[:start] + content[end:]
+        newcontent = newcontent.strip() + "\n\n"
+        _change_contents(package, newcontent)
             
 #def make_canonical():
 #    pass
 
 def remove_init():
-    module = {"classes" : ["classes.evaluation_function"]}
+    module : "dict[str, list[str | tuple[str, str]]]" = {
+                              "classes" : [("classes.evaluation_function", "__add__, __and__, __or__, __invert__" )],
+                              "classes.carla_originals" : [("classes.carla_originals", None)],
+              }
     for file, members in module.items():
         content = _get_contents(file+".rst")
         for member in members:
+            if not isinstance(member, str) and member is not None:
+                member, include_only = member
+                directive = ":special-members:"
+            if include_only is None:
+                directive = ":no-special-members:"
+                include_only = "<blank>"
+            elif include_only == "all":
+                directive = ":special-members:"
+                include_only = "<blank>"
             start = content.find(".. automodule:: "+member+"\n")
             end = content.find("----", start)
             subcontent = content[start:end]
-            if "__add__, __and__, __or__, __invert__" in subcontent:
+            if include_only in subcontent:
                 continue
+            
             subcontent = re.sub(r":members:", r"\n   ".join([":members:",
-                                                            ":special-members: __add__, __and__, __or__, __invert__",
+                                                            directive + (" " + include_only if include_only != "<blank>" else ""),
                                                             ]),
                                                     string=subcontent,
                                                     count=1)
@@ -333,6 +366,8 @@ def insert_file_references():
             if py_package[-1] != "/":
                 py_package += "/"
             inject = fr".. _{py_package}:\n\n{package} package\n\1"
+            if inject in content:
+                continue
             content = re.sub(rf"{package} package\n(=+)", inject, content, count=1)
             
         modules: "list[tuple[str, str]]" = re_modules.findall(content)
@@ -341,6 +376,8 @@ def insert_file_references():
             # allow file anchors to here
             py_module = module.replace(".", "/").replace("\\", "")  # + ".py"; _ underscores are escaped
             inject = f"\n.. _{py_module}:\n\n{full_match}"
+            if inject in content:
+                continue
             content = content.replace(full_match, inject)
             
         _change_contents(file, content)

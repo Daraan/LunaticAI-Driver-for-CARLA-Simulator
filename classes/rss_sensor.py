@@ -2,6 +2,8 @@
 #
 # Copyright (c) 2020 Intel Corporation
 #
+# Based on CARLA example : https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/rss/rss_visualization.py
+
 import math
 from typing import List, Tuple, cast as assure_type
 

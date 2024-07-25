@@ -16,11 +16,11 @@ import carla
 import pygame
 import numpy.random as random
 from launch_tools import class_or_instance_method
-from classes.exceptions import UserInterruption
-from classes.HUD import HUD
+from classes.hud import HUD, get_actor_display_name
 
 from classes.camera_manager import CameraManager
-from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
+from classes.carla_originals.sensors import (CollisionSensor, LaneInvasionSensor, RadarSensor,
+                                             GnssSensor, IMUSensor) # pylint: disable=unused-import
 
 from classes import exceptions as _exceptions
 from classes.exceptions import AgentDoneException, ContinueLoopException
@@ -35,12 +35,9 @@ if TYPE_CHECKING:
     from classes._sensor_interface import CustomSensorInterface
     from types import ModuleType
 
-from classes.HUD import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
-from launch_tools import carla_service
+from launch_tools import CarlaDataProvider, Literal, carla_service
 from agents.tools.logging import logger
-
-from launch_tools import CarlaDataProvider, Literal
 
 class AccessCarlaMixin:
     """
@@ -84,7 +81,7 @@ class AccessCarlaMixin:
 class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     clock : ClassVar[pygame.time.Clock] = None
     display : ClassVar[pygame.Surface] = None
-    controller: "weakref.proxy[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
+    controller: "weakref.ProxyType[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
     
     traffic_manager : Optional[carla.TrafficManager] = None
     
@@ -412,8 +409,22 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
 class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     """ Class representing the surrounding environment """
 
-    controller : Optional[RSSKeyboardControl] = None# Set when controller is created. Uses weakref.proxy
-    game_framework : Optional[GameFramework] = None # Set when world created via GameFramework. Uses weakref.proxy
+    controller : Optional[Union[RSSKeyboardControl, "weakref.ProxyType[RSSKeyboardControl]"]] = None
+    """
+    Set when controller is created. Uses weakref.proxy as backreference.
+    This is not a :py:mod:`weakref` object, when
+    `with gameframework(agent) <GameFramework.__call__>`:py:meth: is used.
+    """
+    
+    game_framework : Optional["weakref.ProxyType[GameFramework]"] = None
+    """
+    Set when world created via GameFramework. Uses weakref.proxy as backreference
+    
+    Attention:
+        Currently not used and not initialized.
+    
+    :meta private:
+    """
 
     @staticmethod
     def get_blueprint_library():
@@ -485,9 +496,19 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self.recording_frame_num = 0
         self.recording_dir_num = 0
         
-        # From manual controls
+        # From manual controls; used client.start_recording()
+        # Experimental & Untested!
         self.recording_enabled = False
+        """
+        CTRL + R     : toggle recording of simulation (replacing any previous)
+        CTRL + P     : start replaying last recorded simulation
+        """
+        
         self.recording_start = 0
+        """
+        CTRL + +     : increments the start time of the replay by 1 second (+SHIFT = 10 seconds)
+        CTRL + -     : decrements the start time of the replay by 1 second (+SHIFT = 10 seconds)
+        """
         
         if self.external_actor and (player is not None or agent is not None):
             raise ValueError("External actor cannot be used with player or agent.")
@@ -516,7 +537,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self.actors: List[Union[carla.Actor, CustomSensorInterface]] = []
         
         # From interactive:
-        self.constant_velocity_enabled = False
+        self.constant_velocity_enabled = NotImplemented
         self.show_vehicle_telemetry = False
         self.doors_are_open = False
         self.current_map_layer = 0
@@ -766,7 +787,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     #def tick(self, clock):
     #    self.hud.tick(self.player, clock) # RSS example. TODO: Check which has to be used!
 
-    def tick(self, clock):
+    def tick(self, clock: "pygame.time.Clock"):
         """Method for every tick"""
         self.hud.tick(self, clock, InformationManager.obstacles)
 
@@ -854,7 +875,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 logger.error("Could not save image format: `%s` % (self.recording_dir_num, self.recording_frame_num): %s", self.recording_file_format, e)
             self.recording_frame_num += 1
 
-    def render(self, display, finalize=True):
+    def render(self, display : "pygame.surface.Surface", finalize:bool=True):
         """
         Render world
         

@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 FONT_SIZE = 20
 
 
-def get_actor_display_name(actor, truncate=250):
+def get_actor_display_name(actor : carla.Actor, truncate=250):
     """Method to get actor display name"""
     name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
     return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
@@ -162,7 +162,7 @@ class HUD(object):
         """Toggle info on or off"""
         self._show_info = not self._show_info
 
-    def notification(self, text, seconds=2.0):
+    def notification(self, text: str, seconds=2.0):
         """Notification text"""
         self._notifications.set_text(text, seconds=seconds)
 

@@ -1,43 +1,62 @@
+"""
+Sensor classes used by the examples in the CARLA repository.
+These classes are true to the original, however might have slight
+modifications like type hints and the :py:class:`.CustomSensorInterface`
+as base.
+"""
+
 import collections
 import math
 import weakref
 
 import carla
 
-from classes.HUD import get_actor_display_name
+from classes.hud import get_actor_display_name, HUD
 
 from classes._sensor_interface import CustomSensorInterface
+__all__ = [
+    'CollisionSensor',
+    'LaneInvasionSensor',
+    'GnssSensor',
+    'RadarSensor',
+    'IMUSensor'
+]
+
 # ==============================================================================
 # -- CollisionSensor -----------------------------------------------------------
 # ==============================================================================
 
 
 class CollisionSensor(CustomSensorInterface):
-    """ Class for collision sensors"""
+    """
+    Wrapper class for CARLA collision sensors
+    
+    See Also:
+        https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
+    """
 
-    def __init__(self, parent_actor, hud):
+    def __init__(self, parent_actor : carla.Actor, hud : HUD):
         """Constructor method"""
-        self.sensor = None
-        self.history = []
+        self.history: "list[tuple[int, float]]" = []
         self._parent = parent_actor
-        self.hud = hud
+        self.hud: HUD = hud
         world = self._parent.get_world()
         blueprint = world.get_blueprint_library().find('sensor.other.collision')
-        self.sensor = world.spawn_actor(blueprint, carla.Transform(), attach_to=self._parent)
+        self.sensor = world.spawn_actor(blueprint, carla.Transform(), attach_to=self._parent) # type: ignore
         # We need to pass the lambda a weak reference to
         # self to avoid circular reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event))
+        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event)) # pyright: ignore[reportArgumentType]
 
     def get_collision_history(self):
         """Gets the history of collisions"""
-        history = collections.defaultdict(int)
+        history : dict[int, float] = collections.defaultdict(float)
         for frame, intensity in self.history:
             history[frame] += intensity
         return history
 
     @staticmethod
-    def _on_collision(weak_self, event: carla.CollisionEvent):
+    def _on_collision(weak_self : "weakref.ref[CollisionSensor]" , event: carla.CollisionEvent):
         """On collision method"""
         self = weak_self()
         if not self:
@@ -57,23 +76,27 @@ class CollisionSensor(CustomSensorInterface):
 
 
 class LaneInvasionSensor(CustomSensorInterface):
-    """Class for lane invasion sensors"""
+    """
+    Wrapper class for CARLA lane invasion sensors
+    
+    See Also:
+        https://carla.readthedocs.io/en/latest/ref_sensors/#lane-invasion-detector
+    """
 
-    def __init__(self, parent_actor, hud):
+    def __init__(self, parent_actor : carla.Actor, hud : "HUD"):
         """Constructor method"""
-        self.sensor = None
         self._parent = parent_actor
         self.hud = hud
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find('sensor.other.lane_invasion')
-        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
+        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent) # type: ignore
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda event: LaneInvasionSensor._on_invasion(weak_self, event))
+        self.sensor.listen(lambda event: LaneInvasionSensor._on_invasion(weak_self, event)) # pyright: ignore[reportArgumentType]
 
     @staticmethod
-    def _on_invasion(weak_self, event):
+    def _on_invasion(weak_self : "weakref.ref[LaneInvasionSensor]" , event : carla.LaneInvasionEvent):
         """On invasion method"""
         self = weak_self()
         if not self:
@@ -89,25 +112,29 @@ class LaneInvasionSensor(CustomSensorInterface):
 
 
 class GnssSensor(CustomSensorInterface):
-    """ Class for GNSS sensors"""
+    """
+    Wrapper class for CARLA GNSS sensors
+    
+    See Also:
+        https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
+    """
 
-    def __init__(self, parent_actor):
+    def __init__(self, parent_actor : carla.Actor):
         """Constructor method"""
-        self.sensor = None
         self._parent = parent_actor
         self.lat = 0.0
         self.lon = 0.0
         world = self._parent.get_world()
         blueprint = world.get_blueprint_library().find('sensor.other.gnss')
-        self.sensor = world.spawn_actor(blueprint, carla.Transform(carla.Location(x=1.0, z=2.8)),
+        self.sensor = world.spawn_actor(blueprint, carla.Transform(carla.Location(x=1.0, z=2.8)), # type: ignore
                                         attach_to=self._parent)
         # We need to pass the lambda a weak reference to
         # self to avoid circular reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda event: GnssSensor._on_gnss_event(weak_self, event))
+        self.sensor.listen(lambda event: GnssSensor._on_gnss_event(weak_self, event)) # pyright: ignore[reportArgumentType]
 
     @staticmethod
-    def _on_gnss_event(weak_self, event):
+    def _on_gnss_event(weak_self : "weakref.ref[GnssSensor]", event : carla.GnssMeasurement):
         """GNSS method"""
         self = weak_self()
         if not self:
@@ -121,8 +148,14 @@ class GnssSensor(CustomSensorInterface):
 
 
 class RadarSensor(CustomSensorInterface):
-    def __init__(self, parent_actor):
-        self.sensor = None
+    """
+    Wrapper class for CARLA radar sensors
+    
+    See Also:
+        https://carla.readthedocs.io/en/latest/ref_sensors/#radar-sensor
+    """
+    
+    def __init__(self, parent_actor : carla.Actor):
         self._parent = parent_actor
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
@@ -134,7 +167,7 @@ class RadarSensor(CustomSensorInterface):
         bp = world.get_blueprint_library().find('sensor.other.radar')
         bp.set_attribute('horizontal_fov', str(35))
         bp.set_attribute('vertical_fov', str(20))
-        self.sensor = world.spawn_actor(
+        self.sensor = world.spawn_actor(  # type: ignore
             bp,
             carla.Transform(
                 carla.Location(x=bound_x + 0.05, z=bound_z+0.05),
@@ -143,10 +176,10 @@ class RadarSensor(CustomSensorInterface):
         # We need a weak reference to self to avoid circular reference.
         weak_self = weakref.ref(self)
         self.sensor.listen(
-            lambda radar_data: RadarSensor._Radar_callback(weak_self, radar_data))
+            lambda radar_data: RadarSensor._Radar_callback(weak_self, radar_data))  # pyright: ignore[reportArgumentType]
 
     @staticmethod
-    def _Radar_callback(weak_self, radar_data):
+    def _Radar_callback(weak_self : "weakref.ref[RadarSensor]", radar_data : carla.RadarMeasurement):
         self = weak_self()
         if not self:
             return
@@ -176,7 +209,7 @@ class RadarSensor(CustomSensorInterface):
             g = int(clamp(0.0, 1.0, 1.0 - abs(norm_velocity)) * 255.0)
             b = int(abs(clamp(- 1.0, 0.0, - 1.0 - norm_velocity)) * 255.0)
             self.debug.draw_point(
-                radar_data.transform.location + fw_vec,
+                radar_data.transform.location + fw_vec, # pyright: ignore[reportArgumentType]
                 size=0.075,
                 life_time=0.06,
                 persistent_lines=False,
@@ -188,24 +221,30 @@ class RadarSensor(CustomSensorInterface):
 # ==============================================================================
 
 class IMUSensor(CustomSensorInterface):
-    def __init__(self, parent_actor):
-        self.sensor = None
+    """
+    Wrapper class for CARLA IMU sensors
+    
+    See Also:
+        https://carla.readthedocs.io/en/latest/ref_sensors/#imu-sensor
+    """
+    
+    def __init__(self, parent_actor : carla.Actor):
         self._parent = parent_actor
         self.accelerometer = (0.0, 0.0, 0.0)
         self.gyroscope = (0.0, 0.0, 0.0)
         self.compass = 0.0
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find('sensor.other.imu')
-        self.sensor = world.spawn_actor(
+        self.sensor = world.spawn_actor(                                             # type: ignore
             bp, carla.Transform(), attach_to=self._parent)
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
         weak_self = weakref.ref(self)
         self.sensor.listen(
-            lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data))
+            lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data)) # pyright: ignore[reportArgumentType]
 
     @staticmethod
-    def _IMU_callback(weak_self, sensor_data):
+    def _IMU_callback(weak_self : "weakref.ref[IMUSensor]", sensor_data : carla.IMUMeasurement):
         self = weak_self()
         if not self:
             return

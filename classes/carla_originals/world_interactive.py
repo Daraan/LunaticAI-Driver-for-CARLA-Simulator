@@ -1,6 +1,19 @@
-# TODO: Merge with world.py; decide which functions are most useful for us 
+# noqa
+# type: ignore
+"""
+World class of on on the CARLA examples, has some properties and methods that we might use in the future.
+
+:meta private:
+"""
+# TODO low prio: Merge with world.py; decide which functions are most useful for us 
+
+
+__all__ = []
 
 class World(object):
+    """
+    :meta private:
+    """
     def __init__(self, carla_world, hud, args):
         self.world = carla_world
         self.sync = args.sync
@@ -107,46 +120,6 @@ class World(object):
         else:
             self.world.wait_for_tick()
 
-    def next_weather(self, reverse=False):
-        self._weather_index += -1 if reverse else 1
-        self._weather_index %= len(self._weather_presets)
-        preset = self._weather_presets[self._weather_index]
-        self.hud.notification('Weather: %s' % preset[1])
-        self.player.get_world().set_weather(preset[0])
-
-    def next_map_layer(self, reverse=False):
-        self.current_map_layer += -1 if reverse else 1
-        self.current_map_layer %= len(self.map_layer_names)
-        selected = self.map_layer_names[self.current_map_layer]
-        self.hud.notification('LayerMap selected: %s' % selected)
-
-    def load_map_layer(self, unload=False):
-        selected = self.map_layer_names[self.current_map_layer]
-        if unload:
-            self.hud.notification('Unloading map layer: %s' % selected)
-            self.world.unload_map_layer(selected)
-        else:
-            self.hud.notification('Loading map layer: %s' % selected)
-            self.world.load_map_layer(selected)
-
-    def toggle_radar(self):
-        if self.radar_sensor is None:
-            self.radar_sensor = RadarSensor(self.player)
-        elif self.radar_sensor.sensor is not None:
-            self.radar_sensor.sensor.destroy()
-            self.radar_sensor = None
-
-    def modify_vehicle_physics(self, actor):
-        # If actor is not a vehicle, we cannot use the physics control
-        try:
-            physics_control = actor.get_physics_control()
-            physics_control.use_sweep_wheel_collision = True
-            actor.apply_physics_control(physics_control)
-        except Exception:
-            pass
-
-    def tick(self, clock):
-        self.hud.tick(self, clock)
 
     def render(self, display):
         self.camera_manager.render(display)

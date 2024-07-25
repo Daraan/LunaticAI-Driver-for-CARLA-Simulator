@@ -9,6 +9,14 @@ classes package
    :show-inheritance:
    :imported-members: CustomSensorInterface
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 2
+
+   classes.carla_originals
+
 Submodules
 ----------
 
@@ -47,6 +55,17 @@ classes.exceptions module
    :undoc-members:
    :show-inheritance:
    :no-inherited-members:
+
+
+.. _classes/hud:
+
+classes.hud module
+------------------
+
+.. automodule:: classes.hud
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 
 .. _classes/rule:

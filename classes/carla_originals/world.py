@@ -1,5 +1,10 @@
-# Official Example from examples/automatic-control.py
-# NOTE it might has to use synchonous_mode
+"""
+Official Example from examples/automatic-control.py
+
+Kept here for reference; until all functionalities are included.
+
+:meta private:
+"""
 import re
 import sys
 from typing import Optional
@@ -9,9 +14,10 @@ import numpy.random as random
 
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, LaneInvasionSensor
-from classes.HUD import get_actor_display_name
+from classes.hud import get_actor_display_name
 from launch_tools.blueprint_helpers import get_actor_blueprints
 
+__all__ = []
 
 # ==============================================================================
 # -- World ---------------------------------------------------------------

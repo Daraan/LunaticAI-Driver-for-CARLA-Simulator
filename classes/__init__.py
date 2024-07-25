@@ -12,6 +12,5 @@ ones provided in the examples from the CARLA PythonAPI.
 """
 
 from . import carla_originals
-from .carla_originals import *
 
 from ._sensor_interface import CustomSensorInterface
