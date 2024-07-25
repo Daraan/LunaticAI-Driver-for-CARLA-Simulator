@@ -7,7 +7,7 @@ import carla
 
 
 from classes.constants import Phase
-from classes.rule import Rule, ConditionFunction, TruthyConditionFunction, Context, always_execute
+from classes.rule import Rule, ConditionFunction, Context, always_execute
 from agents.tools.logging import logger
 
 from typing import TYPE_CHECKING, List

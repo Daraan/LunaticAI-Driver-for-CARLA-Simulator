@@ -1,5 +1,6 @@
 """Helper module that contains all the custom exceptions used in the project"""
 
+
 from typing import Any
 import carla
 
@@ -50,7 +51,7 @@ class SkipInnerLoopException(LunaticAgentException):
 
     planned_control : carla.VehicleControl
 
-    def __init__(self, planned_control : carla.VehicleControl, *args) -> None:
+    def __init__(self, planned_control : carla.VehicleControl, *args: object) -> None:
         if not isinstance(planned_control, carla.VehicleControl):
             raise TypeError("Must provide a carla.VehicleControl instance to raise a SkipInnerLoopException")
         super().__init__(*args)
@@ -82,8 +83,8 @@ class _RuleResultException(LunaticAgentException):
     
     result : Any = RuleResult.NO_RESULT
     
-    def __init__(self, result: Any=RuleResult.NO_RESULT, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, result: Any=RuleResult.NO_RESULT, *args : object):
+        super().__init__(*args)
         self.result = result
 
 class NoFurtherRulesException(_RuleResultException):

@@ -409,7 +409,10 @@ def generate_lane_change_path(waypoint : carla.Waypoint, direction:"Literal['lef
     return plan
 
     
-def create_agent_config(self: "LunaticAgent", behavior: Union[AgentConfig, DictConfig, str, None]=None, world_model: Optional["WorldModel"]=None, overwrite_options: Optional[Dict[str, Any]]=None):
+def create_agent_config(self: "LunaticAgent", 
+                        behavior: Union[AgentConfig, DictConfig, str, None, "type[AgentConfig]"]=None, 
+                        world_model: Optional["WorldModel"]=None, 
+                        overwrite_options: Optional[Dict[str, Any]]=None):
     """
     Method to create the agent config from different input types.
     """
@@ -420,16 +423,16 @@ def create_agent_config(self: "LunaticAgent", behavior: Union[AgentConfig, DictC
         raise ValueError("Must pass a valid config as behavior or a world model with a set config.")
     elif isinstance(behavior, str): # Assuming Path
         logger.debug("Creating config from yaml file")
-        opt_dict : "LunaticAgentSettings" = self.BASE_SETTINGS.from_yaml(behavior)
+        opt_dict = self.BASE_SETTINGS.from_yaml(behavior)
     elif isinstance(behavior, AgentConfig) or isclass(behavior) and issubclass(behavior, AgentConfig):
         logger.info("Config is a dataclass / AgentConfig")
-        _cfg : DictConfig = behavior.to_dict_config()  # base options from templates
+        _cfg = behavior.to_dict_config()
         _cfg.merge_with(overwrite_options) # Note uses DictConfig.update
         opt_dict = assure_type(behavior.__class__, _cfg)
     elif isinstance(behavior, DictConfig):
         logger.info("Config is a DictConfig")
         behavior.merge_with(overwrite_options)
-        opt_dict : self.BASE_SETTINGS = behavior
+        opt_dict = self.BASE_SETTINGS.cast(behavior)
     elif isclass(behavior):
         logger.info("Config is a class using, instance of it")
         opt_dict  = assure_type(behavior, behavior(**overwrite_options))
@@ -443,5 +446,5 @@ def create_agent_config(self: "LunaticAgent", behavior: Union[AgentConfig, DictC
     if isinstance(opt_dict, DictConfig):
         opt_dict._set_flag("allow_objects", True)
         opt_dict.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
-    cfg = assure_type(self.BASE_SETTINGS, opt_dict)
-    return cfg
+    cfg = opt_dict
+    return self.BASE_SETTINGS.cast(cfg)

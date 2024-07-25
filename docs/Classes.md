@@ -1,4 +1,4 @@
-# Classes
+# Classes Overview
 
 ```{eval-rst}
 .. Note this is a MyST Markdown file to be used with Sphinx and will not render completely on GitHub. Build the documentation or refer to the online documentation at Read The Docs.

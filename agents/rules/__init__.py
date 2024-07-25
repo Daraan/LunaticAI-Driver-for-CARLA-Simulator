@@ -62,7 +62,7 @@ def rule_from_config(cfg : "CreateRuleFromConfig") -> Rule:
 def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig") -> Union[Rule, Iterable[Rule]]:
     ...
     
-def rule_from_config(cfg : "RuleCreatingParameters"):
+def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFromConfig") -> Union[Rule, Iterable[Rule]]:
     """
     Instantiates Rules through Hydra's instantiate function.
     

@@ -14,9 +14,8 @@ from __future__ import annotations
 
 import sys
 from copy import deepcopy
-from dataclasses import is_dataclass
-from inspect import isclass
-from typing import Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Set, Tuple, Union, TYPE_CHECKING, cast as assure_type
+from typing import (Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Set, Tuple, Union, 
+                    TYPE_CHECKING, cast as assure_type)
 
 from agents.rules import rule_from_config
 
@@ -31,7 +30,7 @@ from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
 import agents.tools
-from agents.tools.lunatic_agent_tools import detect_vehicles, must_clear_hazard, phase_callback
+from agents.tools.lunatic_agent_tools import detect_vehicles, must_clear_hazard, phase_callback # type: ignore[unused-import]
 from agents.tools.misc import (is_within_distance,
                                compute_distance, lanes_have_same_direction)
 import agents.tools.lunatic_agent_tools
@@ -44,17 +43,17 @@ from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, D
 from classes.constants import AgentState, HazardSeverity, Phase, Hazard, RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import BlockingRule, Context, Rule
-from agents.tools.config_creation import AgentConfig, CallFunctionFromConfig, LaunchConfig, LiveInfo, LunaticAgentSettings, CreateRuleFromConfig, RuleCreatingParameters
+from agents.tools.config_creation import (AgentConfig, LaunchConfig, LiveInfo, LunaticAgentSettings, 
+                                          RuleCreatingParameters)
 
 
 from classes.worldmodel import WorldModel, CarlaDataProvider
-from classes.keyboard_controls import RSSKeyboardControl
 from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from typing import Literal # for Python 3.8
     import pygame
-    
+
 
 class LunaticAgent(BehaviorAgent):
     """
@@ -932,8 +931,8 @@ class LunaticAgent(BehaviorAgent):
     # ------------------ Hazard Detection & Reaction ------------------ #
 
     from agents.substep_managers import detect_traffic_light # -> TrafficLightDetectionResult
-    traffic_light_manager = detect_traffic_light # alias, to override Behavior Agent
-    """Alias of `detect_traffic_light`"""
+    traffic_light_manager = detect_traffic_light 
+    """Alias of :py:meth:`detect_traffic_light`"""
 
     def detect_hazard(self) -> Set[Hazard]:
         # Red lights and stops behavior

@@ -62,7 +62,7 @@ generation: 2
 #     This disables the usage of the LunaticAgent, however needs to be 
 #     enabled in the main script by the user to work.
 autopilot: false
-# The Settings of the agent
+# The settings of the agent
 agent: ???
 # The camera settings
 camera:

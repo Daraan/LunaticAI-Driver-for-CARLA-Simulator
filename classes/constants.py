@@ -17,6 +17,7 @@ except ImportError:
 
 if TYPE_CHECKING:
     from agents.tools.hints import TrafficLightDetectionResult
+    from classes.rule import Rule, Context # pylint: disable=unused-import # both are explicitly set
     
 class RuleResult(Enum):
     """Special :python:`objects` that indicate special return values"""
@@ -413,6 +414,7 @@ class Phase(Flag):
 
     @classmethod
     def get_phases(cls):
+        """Get all BEGIN and END phases combination."""
         return cls.get_main_phases() + cls.get_exceptions() + [p for phase in cls.get_user_controlled_phases() for p in (phase | cls.BEGIN, phase | cls.END)] + [cls.TERMINATING | cls.BEGIN, cls.TERMINATING | cls.END]
 
     @classmethod
@@ -454,7 +456,6 @@ class Phase(Flag):
         NOTE:
             Only supports the operator :code:`|`. :code:`NAME` must be a valid Phase name.
         """
-        
         elements = string.split("|") # Phase.NAME
         elements = [cls[e.split(".")[-1].strip()] for e in elements]
         phase = reduce(lambda x, y: x | y, elements) # build union
@@ -462,6 +463,11 @@ class Phase(Flag):
 
 
 class Hazard(Flag):
+    """
+    Values currently stored in the agent's :py:attr:`~.LunaticAgent.detected_hazards`.
+    attribute.
+    """
+    
     # Type
     TRAFFIC_LIGHT_RED = auto()      #: :meta hide-value:
     TRAFFIC_LIGHT_YELLOW = auto()   #: :meta hide-value:
@@ -600,7 +606,7 @@ class RoadOption(IntEnum):
     """
 
 
-class __ItemAccess(type):
+class __ItemAccess(type): # noqa
     def __getitem__(cls, key) -> carla.Color:
         return getattr(cls, key)
     
