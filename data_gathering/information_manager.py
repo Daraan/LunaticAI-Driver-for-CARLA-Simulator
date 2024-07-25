@@ -7,7 +7,7 @@ i.e. distill the information from the data and return high level information
 
 from fnmatch import fnmatch
 from functools import wraps
-from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple, Union, Dict, List
+from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple, Optional, Union, Dict, List
 from cachetools import cached
 import carla
 
@@ -25,27 +25,53 @@ DRIVING_SPEED_THRESHOLD = 0.05 # m/s >= check
 STOPPED_SPEED_THRESHOLD = 0.05 # m/s < check
 
 class InformationManager:
+    """
+    Tracks global information, e.g. all actors, traffic lights, etc. as well as
+    agent specific information, e.g. current speed, current location, and nearby actors in
+    relation to the agent.
     
-    _tick = 0
+    Tip:
+        global information is attributed by :py:obj:`ClassVar` and :py:obj:`staticmethod` and is
+        shared across all instances, this information is constant for the current tick.
+    """
+    
+    _tick : ClassVar[int] = 0
+    """Current tick to not double class :py:meth:`global_tick`"""
     
     # Instance Variables
     relevant_traffic_light : Union[float, carla.TrafficLight] = None
+    """Result of :py:meth:`.CarlaDataProvider.get_next_traffic_light`"""
+    
     relevant_traffic_light_distance : Union[float, None] = None
+    """Distance to the :py:attr:`relevant_traffic_light`"""
+    
     _relevant_traffic_light_location : carla.Location = None
     
     state_counter: Dict[AgentState, int]
+    """
+    Tracks different :py:class:`AgentState` and the amount of ticks the agent is in this state.
+    """
+    
     _vehicle_speed : float # m/s
     
     gathered_information : Dict[str, Any]
+    """:py:class:`.InformationManager.Information` gathered during :py:meth:`tick`"""
     
     # Class & Global Variables
     vehicles : ClassVar["list[carla.Vehicle]"]
+    """List of all tracked vehicles"""
+    
     walkers : ClassVar["list[carla.Walker]"]
+    """List of all tracked pedestrians"""
+    
     static_obstacles : ClassVar["list[carla.Actor]"]
+    """List of all tracked static obstacles"""
+    
     obstacles : ClassVar["list[carla.Actor]"]
-    """Union of vehicles, walkers and static_obstacles"""
+    """Union of :py:attr:`vehicles`, py:attr:`walkers` and py:attr:`static_obstacles`"""
     
     lights_map : ClassVar["Dict[int, carla.Waypoint]"] = {}
+    """Map of traffic lights to their trigger waypoints"""
     
     frame: ClassVar["int | None"] = None
     """
@@ -73,7 +99,10 @@ class InformationManager:
     
     # AgentState detection
     
-    def _check_state(state):
+    def _check_state(state : AgentState):
+        """
+        Updates the state counter and the state checked dict when the function is called
+        """
         def wrapper(func):
             @wraps(func)
             def inner(self: "InformationManager", *args, **kwargs):
@@ -90,16 +119,30 @@ class InformationManager:
     
     @_check_state(AgentState.DRIVING)
     def detect_driving_state(self):
+        """
+        Increased the :py:attr:`AgentState.DRIVING` counter if the vehicle is driving.
+        
+        :meta private:
+        """
         return self._vehicle_speed >= DRIVING_SPEED_THRESHOLD
     
     @_check_state(AgentState.STOPPED)
     def detect_stopped_state(self):
+        """
+        Increased the :py:attr:`AgentState.STOPPED` counter if the vehicle is stopped.
+        
+        :meta private:
+        """
         return self._vehicle_speed < STOPPED_SPEED_THRESHOLD
     
     @_check_state(AgentState.REVERSE)
     def detect_reverse_state(self):
         """
         Determines if in the last tick the VehicleControl.reverse flag was set.
+        
+        Increases the :py:attr:`AgentState.REVERSE` counter if the vehicle is driving in reverse.
+        
+        :meta private:
         """
         # TODO: can this be detected differently e.g. through the vehicle
         return self.live_info.last_applied_controls.reverse
@@ -108,6 +151,9 @@ class InformationManager:
     
     @_check_state(AgentState.AGAINST_LANE_DIRECTION)
     def detect_driving_against_lane_direction(self):
+        """
+        :meta private:
+        """
         self._agent._current_waypoint.lane_id # positive or negative
         # TODO: How detect if the heading is against this direction?
         # Need to also account for reverse state.
@@ -115,9 +161,17 @@ class InformationManager:
     
     @_check_state(AgentState.OVERTAKING)
     def detect_overtaking_state(self):
+        """
+        :meta private:
+        """
         NotImplemented # Can probably not be done easily, and must be done from outside
     
     def check_states(self):
+        """
+        Updates all states. Called in :py:meth:`tick`.
+        
+        :meta private:
+        """
         # Updates are handles trough the decorators
         self.detect_driving_state()
         self.detect_stopped_state()
@@ -136,11 +190,14 @@ class InformationManager:
             self._relevant_traffic_light_location = None
             self.relevant_traffic_light_distance = None
     
-    
     def detect_next_traffic_light(self):
         """
-        Next relevant traffic light
-        NOTE: Does not check for planned path but current route along waypoints, might not be exact.
+        Set the :py:attr:`relevant_traffic_light` and :py:attr:`relevant_traffic_light_distance` if not set.
+        
+        Note: 
+            Does not check for planned path but current route along waypoints, might not be exact.
+            
+            **This function is automatically called in :py:meth:`tick`**
         """
         if self.relevant_traffic_light_distance:
             tlight_distance = self._relevant_traffic_light_location.distance(self.live_info.current_location)
@@ -160,6 +217,9 @@ class InformationManager:
     # ---- Tick ----
         
     def tick(self):
+        """
+        Tick the information manager and update the information for the corresponding agent.
+        """
         snapshot = CarlaDataProvider.get_world().get_snapshot()
         self.global_tick(snapshot.frame)
         
@@ -231,6 +291,8 @@ class InformationManager:
         self.traffic_lights_nearby = [tl for tl, trans in InformationManager.get_traffic_lights().items() if dist(tl) < self._agent.config.obstacles.nearby_tlights_max_distance]
         self.traffic_lights_nearby = sorted(self.traffic_lights_nearby, key=dist)
         
+        self.check_states()
+        
         # ----- Return Summary -----
         
         # TODO: Extend distances with carla lights
@@ -260,6 +322,8 @@ class InformationManager:
     # Helper subclass
 
     class Information(NamedTuple):
+        """Data gathered by the InformationManager which is passed to the agent."""
+        
         current_waypoint: carla.Waypoint
         current_speed: float
         current_states : Dict[AgentState, int]
@@ -282,18 +346,18 @@ class InformationManager:
         traffic_lights_nearby : List[carla.TrafficLight]
         
         distances: Dict[carla.Actor, float]
-        """Distances to all actors in `obstacles`"""
+        """Distances to all actors in :py:attr:`obstacles`"""
 
     # ---- Global Information ----
     
-    OBSTACLE_FILTER = "static.prop.[cistmw]*"
+    OBSTACLE_FILTER : str  = "static.prop.[cistmw]*"
     """
     fnmatch for obstacles that the agent will consider in its path.
     https://carla.readthedocs.io/en/latest/bp_library/#static 
     """
     
     @staticmethod
-    def get_traffic_lights():
+    def get_traffic_lights() -> Dict[carla.TrafficLight, carla.Transform]:
         return CarlaDataProvider._traffic_light_map
     
     @staticmethod
@@ -309,7 +373,22 @@ class InformationManager:
         return trigger_wp
 
     @staticmethod
-    def global_tick(frame=None):
+    def global_tick(frame: Optional[int]=None) -> None:
+        """
+        Update global information that is constant for the current tick and not agent specific.
+        
+        Updates:
+            - :py:attr:`vehicles`
+            - :py:attr:`walkers`
+            - :py:attr:`static_obstacles`
+            - :py:attr:`obstacles`
+            - :py:attr:`frame`
+        
+        Parameters:
+            frame: The id of the current frame. If None retrieves the id from the current 
+                :py:class:`carla.WorldSnapshot`. Multiple calls with the same frame are ignored.
+                (default: None)
+        """
         # Assure to call this only once
         if frame is None:
             frame = CarlaDataProvider.get_world().get_snapshot().frame
@@ -354,16 +433,16 @@ class InformationManager:
         InformationManager.obstacles = InformationManager.walkers + InformationManager.static_obstacles + InformationManager.vehicles
         
     @staticmethod
-    def get_vehicles():
+    def get_vehicles() -> List[carla.Vehicle]:
         return InformationManager.vehicles
     
     @staticmethod
-    def get_walkers():
+    def get_walkers() -> List[carla.Walker]:
         return InformationManager.walkers
 
-
     @staticmethod
-    def cleanup():
+    def cleanup() -> None:
+        """Resets the global information."""
         InformationManager.vehicles.clear()
         InformationManager.walkers.clear()
         InformationManager.static_obstacles.clear()
