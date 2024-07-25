@@ -1,4 +1,5 @@
 import carla
+import inspect
 
 import weakref
 import pygame
@@ -29,6 +30,8 @@ from pygame.locals import K_p
 from pygame.locals import K_q
 from pygame.locals import K_r
 from pygame.locals import K_s
+from pygame.locals import K_t
+from pygame.locals import K_o
 from pygame.locals import K_w
 from pygame.locals import K_l
 from pygame.locals import K_i
@@ -36,9 +39,11 @@ from pygame.locals import K_z
 from pygame.locals import K_x
 from pygame.locals import MOUSEBUTTONDOWN
 from pygame.locals import MOUSEBUTTONUP
+from pygame.locals import K_MINUS, K_EQUALS
 
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union, Any
+from typing_extensions import Literal
 if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
 
@@ -49,10 +54,77 @@ if TYPE_CHECKING:
 # ==============================================================================
 
 
-class PassiveKeyboardControl(object):
+class KeyboardControl:
+    """
+    Primitive base for keyboard control classes.
+    
+        H/?          : toggle help
+    """
+    
+    _world_model : "WorldModel"
+    """Reference to the world model that controls the interface."""
+    
     # COMMENT I think this only allows to end the script
-    def __init__(self, world : "WorldModel"):
-        world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
+    def __init__(self, world : "WorldModel", help_notice=True):
+        """
+        Parameters:
+            world : WorldModel 
+            help_notice : bool
+                Show a notice about the help keys.
+        """
+        self._world_model = world
+        if  world.hud.help.surface is None:
+            world.hud.help.create_surface(self.get_docstring())
+        if help_notice:
+            world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
+    
+    @classmethod
+    def get_docstring(cls):
+        """Return the docstring of the class"""
+        
+        doc = cls.__doc__
+        # Get doc from parent
+        if doc is None:
+            doc = inspect.getdoc(cls)
+            if doc is not None and doc != object.__doc__:
+                cls.__doc__ = doc
+            else:
+                cls.__doc__ = doc = "No docstring available"
+        if doc == "No docstring available":
+            return "No docstring available"
+        return "======== Controls ===========\n" + doc + "\n============================\n"
+
+    def parse_events(self, events=None) -> Union[Literal[True], Any]:
+        """
+        Parse the input events and return True if the loop should end.
+        """
+        events = events if events is None else pygame.event.get()
+        for event in events: # pylint: disable=unused-variable
+            self._check_help_event(event)
+    
+    @staticmethod
+    def _is_quit_shortcut(key : int):
+        """Shortcut for quitting"""
+        return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
+
+    
+    def _check_help_event(self, event : pygame.event.Event):
+        """Check if the event is a help event"""
+        if not hasattr(event, 'unicode'): # No KEYUP/DOWN event
+            return None
+        if event.unicode.lower() in ('h', '?'): # type: ignore[attr-defined]
+            self._world_model.hud.help.toggle()
+            return True
+        return False
+
+class PassiveKeyboardControl(KeyboardControl):
+    """
+    Does not allow to control the vehicle. Only allows to 
+    quit the simulation.
+
+        ESC          : quit
+        H/?          : toggle help
+    """
 
     def parse_events(self):
         for event in pygame.event.get():
@@ -61,17 +133,12 @@ class PassiveKeyboardControl(object):
             if event.type == pygame.KEYUP:
                 if self._is_quit_shortcut(event.key):
                     return True
+                if self._check_help_event(event):
+                    pass
 
-    @staticmethod
-    def _is_quit_shortcut(key):
-        """Shortcut for quitting"""
-        return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
-
-
-
-class RSSKeyboardControl(object):
+class RSSKeyboardControl(KeyboardControl):
     """
-    Use ARROWS or WASD keys for control.
+    Use ARROWS, WASD keys or mouse click and drag for control.
 
         W            : throttle
         S            : brake
@@ -81,7 +148,7 @@ class RSSKeyboardControl(object):
         P            : toggle autopilot (depends on setup)
 
         TAB          : change view
-        Backspace    : change vehicle
+        Backspace    : change vehicle (will unset externalActor; experimental)
 
         R            : toggle recording images to disk
 
@@ -92,31 +159,46 @@ class RSSKeyboardControl(object):
         F6           : decrease map log level
         B            : toggle RSS Road Boundaries Mode
         G            : RSS check drop current route (experimental)
-        T            : toggle RSS (NotImplemented)
-        N            : pause simulation (only slow down)
+        S            : toggle RSS (NotImplemented)
+        T            : toggle vehicle's telemetry visualization
+        O            : open/close vehicle's doors
+        N            : pause simulation (not in sync mode)
+
+        -- Experimental, recording --
+        
+        CTRL + R     : toggle recording of simulation (replacing any previous)
+        CTRL + P     : start replaying last recorded simulation (untested)
+        CTRL + +     : increments the start time of the replay by 1 second (+SHIFT = 10 seconds)
+        CTRL + -     : decrements the start time of the replay by 1 second (+SHIFT = 10 seconds)
 
         F1           : toggle HUD
         H/?          : toggle help
         ESC          : quit
     """
-    @classmethod
-    def get_docstring(cls):
-        return "======== Controls ===========\n"+cls.__doc__+"\n============================\n"
+
+    MOUSE_STEERING_RANGE = 150
+    """
+    Controls the size of steering area when using the mouse.
+    """
     
-    MOUSE_STEERING_RANGE = 200
     signal_received = False
+    """
+    Got a signal to stop the simulation. No more events will be parsed if True.
+    
+    :meta private:
+    """
 
     # TODO: should be a toggle between None, Autopilot, Agent
 
     def __init__(self, world_model : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True, clock:pygame.time.Clock=None, config=None):
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
+        super().__init__(world_model)
+        
+        self._world_model = world_model
         self._config = config
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
-        self._world_model = world_model
-        if self._world_model.hud.help.surface is None:
-            self._world_model.hud.help.create_surface(self.__doc__)
         world_model.controller = weakref.proxy(self)
         self._control : carla.VehicleControl = None
         #self._control = carla.VehicleControl()
@@ -170,6 +252,12 @@ class RSSKeyboardControl(object):
 
     @staticmethod
     def signal_handler(signum, _):
+        """
+        Signal handler for stopping the simulation, e.g. when pressing Ctrl+C
+        in the terminal.
+        
+        :meta private:
+        """
         if RSSKeyboardControl.signal_received == False:
             print('\nReceived signal {}. Trigger stopping... In case the program freezes trigger twice more.'.format(signum))
             RSSKeyboardControl.signal_received = True
@@ -196,7 +284,9 @@ class RSSKeyboardControl(object):
             elif event.type == pygame.KEYUP:
                 if self._is_quit_shortcut(event.key):
                     return True
-                elif event.key == K_BACKSPACE:
+                
+                if event.key == K_BACKSPACE:
+                    self._world_model.external_actor = None
                     if self._autopilot_enabled:
                         self._world_model.player.set_autopilot(False)
                         self._world_model.restart()
@@ -205,8 +295,8 @@ class RSSKeyboardControl(object):
                         self._world_model.restart()
                 elif event.key == K_F1:
                     self._world_model.hud.toggle_info()
-                elif event.key == K_h or (event.key == K_SLASH and pygame.key.get_mods() & KMOD_SHIFT):
-                    self._world_model.hud.help.toggle()
+                elif self._check_help_event(event):
+                    pass
                 elif event.key == K_TAB:
                     self._world_model.rss_unstructured_scene_visualizer.toggle_camera()
                 elif event.key == K_n:
@@ -244,6 +334,72 @@ class RSSKeyboardControl(object):
                 elif event.key == K_g:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.drop_route()
+                # --- Experimental, copied from other locations ---
+                elif event.key == K_t:
+                    if self._world_model.show_vehicle_telemetry:
+                        self._world_model.player.show_debug_telemetry(False)
+                        self._world_model.show_vehicle_telemetry = False
+                        self._world_model.hud.notification("Disabled Vehicle Telemetry")
+                    else:
+                        try:
+                            self._world_model.player.show_debug_telemetry(True)
+                            self._world_model.show_vehicle_telemetry = True
+                            self._world_model.hud.notification("Enabled Vehicle Telemetry")
+                        except Exception:
+                            pass
+                elif event.key == K_o:
+                    try:
+                        # TODO: Should be set on the agent
+                        if self._world_model.doors_are_open:
+                            self._world_model.hud.notification("Closing Doors")
+                            self._world_model.doors_are_open = False
+                            self._world_model.player.close_door(carla.VehicleDoor.All)
+                        else:
+                            self._world_model.hud.notification("Opening doors")
+                            self._world_model.doors_are_open = True
+                            self._world_model.player.open_door(carla.VehicleDoor.All)
+                    except Exception:
+                        pass
+                # --- Experimental, recording ----
+                elif event.key == K_r and (pygame.key.get_mods() & KMOD_CTRL):
+                    if (self._world_model.recording_enabled):
+                        self._world_model.get_client().stop_recorder()
+                        self._world_model.recording_enabled = False
+                        self._world_model.hud.notification("Recorder is OFF")
+                    else:
+                        self._world_model.get_client().start_recorder("manual_recording.rec")
+                        self._world_model.recording_enabled = True
+                        self._world_model.hud.notification("Recorder is ON")
+                elif event.key == K_p and (pygame.key.get_mods() & KMOD_CTRL):
+                    # stop recorder
+                    self._world_model.get_client().stop_recorder()
+                    self._world_model.recording_enabled = False
+                    # work around to fix camera at start of replaying
+                    current_index = self._world_model.camera_manager.index
+                    self._world_model.destroy_sensors()
+                    # disable autopilot
+                    self._autopilot_enabled = False
+                    self._world_model.player.set_autopilot(self._autopilot_enabled)
+                    self._world_model.hud.notification("Replaying file 'manual_recording.rec'")
+                    # replayer
+                    # TODO: This likely needs more cleanup!
+                    self._world_model.get_client().replay_file("manual_recording.rec", self._world_model.recording_start, 0, 0)
+                    self._world_model.camera_manager.set_sensor(current_index)
+                elif event.key == K_MINUS and (pygame.key.get_mods() & KMOD_CTRL):
+                    if pygame.key.get_mods() & KMOD_SHIFT:
+                        self._world_model.recording_start -= 10
+                    else:
+                        self._world_model.recording_start -= 1
+                    self._world_model.hud.notification("Recording start time is %d" % (self._world_model.recording_start))
+                elif event.key == K_EQUALS and (pygame.key.get_mods() & KMOD_CTRL):
+                    if pygame.key.get_mods() & KMOD_SHIFT:
+                        self._world_model.recording_start += 10
+                    else:
+                        self._world_model.recording_start += 1
+                    self._world_model.hud.notification("Recording start time is %d" % (self._world_model.recording_start))
+                
+                
+                # Modify controls
                 if isinstance(self._control, carla.VehicleControl):
                     if event.key == K_q:
                         self._control.gear = 1 if self._control.reverse else -1
@@ -287,6 +443,7 @@ class RSSKeyboardControl(object):
             elif event.type == MOUSEBUTTONUP:
                 if event.button == 1:
                     self._mouse_steering_center = None
+        
         if not self._autopilot_enabled:
             prev_steer_cache = self._steer_cache
             self._parse_vehicle_keys(pygame.key.get_pressed(), self._clock.get_time())
@@ -356,6 +513,7 @@ class RSSKeyboardControl(object):
         self._control.hand_brake = keys[K_SPACE]
 
     def _parse_mouse(self, pos):
+        """Handles steering and throttle/break control via mouse."""
         if not self._mouse_steering_center:
             return
 
@@ -372,10 +530,7 @@ class RSSKeyboardControl(object):
             self._control.throttle = 0.0
             self._control.brake = longitudinal / max_val
 
-    @staticmethod
-    def _is_quit_shortcut(key):
-        return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
-
+    
 # Stops RSS and allows hard kills if the script is stuck
 import signal
 signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)
