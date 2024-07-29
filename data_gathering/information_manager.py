@@ -396,7 +396,7 @@ class InformationManager:
             # DEBUG; TEMP
             snap_frame = CarlaDataProvider.get_world().get_snapshot().frame
             if frame != snap_frame:
-                logger.error(f"Frame {frame} does not match snapshot frame {snap_frame}")
+                logger.warning(f"Frame {frame} does not match snapshot frame {snap_frame}")
         if frame == InformationManager.frame:
             return
         InformationManager.frame = frame

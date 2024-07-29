@@ -44,7 +44,7 @@ from classes.constants import AgentState, HazardSeverity, Phase, Hazard, RoadOpt
 from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rule import BlockingRule, Context, Rule
 from agents.tools.config_creation import (AgentConfig, LaunchConfig, LiveInfo, LunaticAgentSettings, 
-                                          RuleCreatingParameters)
+                                          CameraConfig, RuleCreatingParameters)
 
 
 from classes.worldmodel import WorldModel, CarlaDataProvider
@@ -92,7 +92,7 @@ class LunaticAgent(BehaviorAgent):
     current_states: Dict[AgentState, int]
     """The current states of the agent. The count of the steps being each state is stored as value."""
     
-    _world_model : WorldModel = None # TODO: maybe as weakref
+    _world_model : WorldModel # TODO: maybe as weakref
     
     _validate_phases = False
     """A flag to sanity check if the agent passes trough the phases in the correct order"""
@@ -117,11 +117,12 @@ class LunaticAgent(BehaviorAgent):
                 agent_config = settings_archetype
             elif settings_archetype is not None:
                 logger.debug("Creating config from settings_archetype")
-                behavior = settings_archetype(overwrites)
-                agent_config = behavior.to_dict_config()
+                behavior = settings_archetype(overwrites) # type: ignore
+                agent_config = cls.BASE_SETTINGS.cast(behavior.to_dict_config())
             else:
                 logger.debug("Using %s._base_settings %s to create config.", cls.__name__, cls.BASE_SETTINGS)
-                agent_config = cls.BASE_SETTINGS.to_dict_config()
+                agent_config = cls.BASE_SETTINGS.cast(cls.BASE_SETTINGS.to_dict_config())
+            assert agent_config is not None
         else:
             logger.debug("A config was passed, using it as is.")
         
@@ -168,12 +169,11 @@ class LunaticAgent(BehaviorAgent):
         self._world : carla.World = world_model.world
         
         # Register Vehicle
-        # Local Planner
-        # Data Matrix
+        assert world_model.player is not None
         self.set_vehicle(world_model.player)
         
         self.current_phase : Phase = Phase.NONE # current phase of the agent inside the loop
-        self.ctx = None
+        self.ctx = None                         # type: ignore
 
         self._last_traffic_light : Union[carla.TrafficLight, None] = None  # Current red traffic light
 
@@ -200,7 +200,6 @@ class LunaticAgent(BehaviorAgent):
         self._vehicle_lights = carla.VehicleLightState.NONE
 
         # Collision Sensor # NOTE: another in the WorldModel for the HUD
-        self._collision_sensor: carla.Sensor = None
         self._set_collision_sensor()
 
         #Rule Framework
@@ -512,37 +511,7 @@ class LunaticAgent(BehaviorAgent):
                 self.rules[p].sort(key=lambda r: r.priority, reverse=True)
             else:
                 self.rules[p].insert(position, rule)
-    
-    def add_rules(self, rules : List[Rule]):
-        """Add a list of rules and sort the agents rules by priority."""
-        if isinstance(rules, Rule):
-            rules = [rules]
-        for rule in rules:
-            for phase in rule.phases:
-                self.rules[phase].append(rule)
-        for phase in self.rules.keys():
-            self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
-            
-    def add_config_rules(self, config: Optional[Union[LunaticAgentSettings, List[RuleCreatingParameters]]]=None):
-        """
-        Adds rules 
-        """
-        if config is None:
-            config = self.config
-        rule_list : List[RuleCreatingParameters]
-        if "rules" in config.keys():
-            try:
-                rule_list = config.rules
-            except omegaconf.MissingMandatoryValue:
-                logger.debug("`rules` key was missing, skipping rule addition.")
-                return
-        else:
-            rule_list = config
-        logger.debug("Adding rules from config:\n%s", OmegaConf.to_yaml(rule_list))
-        for rule in rule_list:
-            self.add_rules(rule_from_config(rule)) # each call could produce one or more rules
-    
-    
+        
     def add_rule(self, rule : Rule, position:Union[int, None]=None):
         """
         Add a rule to the agent. The rule will be inserted at the given position.
@@ -564,7 +533,7 @@ class LunaticAgent(BehaviorAgent):
             else:
                 self.rules[p].insert(position, rule)
     
-    def add_rules(self, rules : List[Rule]):
+    def add_rules(self, rules : "Rule | Iterable[Rule]"):
         """Add a list of rules and sort the agents rules by priority."""
         if isinstance(rules, Rule):
             rules = [rules]
@@ -581,21 +550,26 @@ class LunaticAgent(BehaviorAgent):
         if config is None:
             config = self.config
         rule_list : List[RuleCreatingParameters]
-        if "rules" in config.keys():
+        if isinstance(config, (AgentConfig, DictConfig)) and "rules" in config.keys():
             try:
                 rule_list = config.rules
             except omegaconf.MissingMandatoryValue:
                 logger.debug("`rules` key was missing, skipping rule addition.")
                 return
         else:
-            rule_list = config
+            rule_list : List[RuleCreatingParameters] = config # type: ignore
         logger.debug("Adding rules from config:\n%s", OmegaConf.to_yaml(rule_list))
         for rule in rule_list:
-            self.add_rules(rule_from_config(rule)) # each call could produce one or more rules
+            self.add_rules(rule_from_config(rule))
     
-    def execute_phase(self, phase : Phase, *, prior_results, update_controls:carla.VehicleControl=None) -> Context:
+    def execute_phase(self, phase : Phase, *, prior_results: Any, update_controls:Optional[carla.VehicleControl]=None) -> Context:
         """
         Sets the current phase of the agent and executes all rules that are associated with it.
+        
+        Parameters:
+            phase : The phase to execute.
+            prior_results : The results of the previous phase, e.g. :py:attr:`detected_hazards`.
+            update_controls : Optionally controls that should be used from now onward.
         """
         normal_next = self.current_phase.next_phase() # sanity checking if everything is correct
         if self._validate_phases:
@@ -725,10 +699,12 @@ class LunaticAgent(BehaviorAgent):
                     raise RecursionError("UpdatedPathException was raised more than 50 times. Assuming an infinite loop and terminating")
                 else:
                     logger.warning("UpdatedPathException was raised in the inner step, this should be done in Phase.PLAN_PATH ", e)
-                return self.run_step(second_pass=int(second_pass)+1) 
+                return self.run_step(second_pass=int(second_pass)+1) # type: ignore
             except LunaticAgentException as e:
                 if self.ctx.control is None:
                     raise ValueError("A VehicleControl object must be set on the agent when %s is raised during `._inner_step`" % type(e).__name__) from e
+   
+            
             
             # ----------------------------
             # No known Phase multiple exit points
@@ -848,7 +824,7 @@ class LunaticAgent(BehaviorAgent):
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, prior_results=None)
             control = self._calculate_control(debug=debug)
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, update_controls=control, prior_results=None)
-            return self.get_control()
+            return self.get_control() # type: ignore[return-value]
 
         # ----------------------------
         # Phase 4 - Plan Path normally
@@ -860,7 +836,7 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.END, prior_results=None, update_controls=control)
 
         # Leave loop and apply controls outside 
-        return self.get_control()
+        return self.get_control() # type: ignore[return-value]
     
     def _calculate_control(self, debug=False):
         """
@@ -1149,12 +1125,13 @@ class LunaticAgent(BehaviorAgent):
         if current_lights != self._vehicle_lights:  # Change the light state only if necessary
             self._vehicle_lights = current_lights
             self._vehicle.set_light_state(carla.VehicleLightState(self._vehicle_lights))
-            
-    def _render_detection_matrix(self, display:"pygame.Surface", options:Dict[str, Any]={}):
+
+    def _render_detection_matrix(self, display:"pygame.Surface", options:Dict[str,Any]={}):
         if self._detection_matrix:
+            # options should align with CameraConfig.DetectionMatrixHudConfig
             self._detection_matrix.render(display, **options)
             
-    def verify_settings(self, config: LunaticAgentSettings = None, *, verify_dataclass: Union["type[AgentConfig]", bool] = True, strictness=0):
+    def verify_settings(self, config: Optional[LunaticAgentSettings] =None, *, verify_dataclass: Union["type[AgentConfig]", bool] =True, strictness=0):
         """
         Verifies the settings of the LunaticAgent.
         Foremost this checks if the planner.dt value has been set to the speed of the world ticks in synchronous mode.
@@ -1198,8 +1175,8 @@ class LunaticAgent(BehaviorAgent):
         # NOTE: Below is experimental and might fail as the config at this point has already beeen setup
     
         from agents.tools import config_creation
-        _old = config_creation.WARN_LIVE_INFO
-        config_creation.WARN_LIVE_INFO = False
+        _old = config_creation._WARN_LIVE_INFO
+        config_creation._WARN_LIVE_INFO = False
 
         if verify_dataclass:
             if verify_dataclass == True:
@@ -1210,7 +1187,7 @@ class LunaticAgent(BehaviorAgent):
                 raise TypeError("`verify_dataclass` must be a `AgentConfig` or `True` to select the BASE_SETTINGS ")
             dataclass.check_config(config, dataclass.get("strict_config", strictness), as_dict_config=True)
 
-        config_creation.WARN_LIVE_INFO = _old
+        config_creation._WARN_LIVE_INFO = _old
 
     # ------------------ Getter Function ------------------ #
     
@@ -1244,9 +1221,9 @@ class LunaticAgent(BehaviorAgent):
             self._detection_matrix = None
         self._road_matrix_counter = 0
     
-    def set_vehicle(self, vehicle:carla.Vehicle):
+    def set_vehicle(self, vehicle:carla.Actor):
         """Set the vehicle for the agent (experimental if applied a second time)"""
-        self._vehicle = vehicle
+        self._vehicle = assure_type(carla.Vehicle, vehicle)
         if all(actor.id != vehicle.id for actor in CarlaDataProvider._actor_velocity_map): # do not register same id twice
             try:
                 CarlaDataProvider.register_actor(vehicle, vehicle.get_transform())

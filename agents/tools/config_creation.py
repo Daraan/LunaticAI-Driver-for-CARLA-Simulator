@@ -1,10 +1,3 @@
-# DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
-
-# pyright: reportInvalidStringEscapeSequence=false
-# pyright: reportPrivateUsage=false
-# pyright: reportSelfClsParameterName=false
-# pyright: reportCallIssue=information
-# pyright: reportAttributeAccessIssue=warning
 """
 This module creates type-hint schemas for the Hydra and OmegaConf backend.
 
@@ -13,53 +6,7 @@ Note:
     when this file runs.
 """
 
-import ast
-import inspect
-import os
-import sys
-import logging
-
-import carla
-
-from collections.abc import Mapping
-from copy import deepcopy
-
-from launch_tools import class_or_instance_method, ast_parse, Literal
-from classes.constants import Phase, RulePriority, RoadOption
-from classes.camera_manager import CameraBlueprint
-from classes.rss_sensor import AD_RSS_AVAILABLE
-from classes.rss_visualization import RssDebugVisualizationMode
-
-from enum import IntEnum
-from functools import partial
-from dataclasses import dataclass, field, asdict, is_dataclass
-
-# SI and II are for type-hinting interpolation strings
-# II : Equivalent to ${interpolation}
-# SI [StringInterpolation] : Use this for String interpolation, for example "http://${host}:${port}"
-from omegaconf import DictConfig, MISSING, SI, II, ListConfig, OmegaConf, SCMode, open_dict
-from omegaconf.errors import InterpolationToMissingValueError, InterpolationKeyError
-
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast, get_type_hints, Type
-from typing_extensions import TypeAlias, Never, overload, Literal, TypeVar, Self # later python features
-
-
-ConfigType = TypeVar("ConfigType", DictConfig, "AgentConfig", covariant=True)
-"""
-Describes an object that is a :py:class:`omegaconf.DictConfig` 
-or a subclass of :py:class:`AgentConfig`.
-"""
-
-_M = TypeVar("_M", Dict[str, Any], DictConfig)
-"""A generic type variable for a mapping type."""
-
-if TYPE_CHECKING:
-    from classes.rule import Rule
-    DictConfigAlias : TypeAlias = Union[DictConfig, dict]
-    OverwriteDictTypes : TypeAlias = Dict[str, Union[Dict[str, Any], "AgentConfig"]]
-else:
-    DictConfigAlias : TypeAlias = Dict[str, Any] # primitive type at runtime
-    OverwriteDictTypes : TypeAlias = Dict[str, Dict[str, Any]] # primitive type at runtime
+# DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
 
 __all__ = [
            "AgentConfig", 
@@ -75,76 +22,76 @@ __all__ = [
            "LaunchConfig",
         ]
 
-_class_annotations = None
-_file_path = __file__
+ 
+# pyright: reportAttributeAccessIssue=warning
+# pyright: reportCallIssue=warning
+# pyright: reportInvalidStringEscapeSequence=false
+# pyright: reportPrivateUsage=false
+# pyright: reportSelfClsParameterName=false
+# pyright: reportAbstractUsage=false
 
-_NOTSET = object()
+import inspect
+import os
+import logging
 
-# disable warnings - needed for rule creation for config
-WARN_LIVE_INFO = True
+import carla
+
+from copy import deepcopy
+from dataclasses import dataclass, field, asdict, is_dataclass
+from functools import partial
+
+from launch_tools import class_or_instance_method, ast_parse, Literal
+from agents.tools._config_tools import (extract_annotations, 
+                                        set_readonly_interpolations, set_readonly_keys,
+                                        RssLogLevelAlias, RssRoadBoundariesModeAlias, RssLogLevelStub, RssRoadBoundariesModeStub,)
+from classes.constants import Phase, RulePriority, RoadOption
+from classes.camera_manager import CameraBlueprint
+from classes.rss_sensor import AD_RSS_AVAILABLE
+from classes.rss_visualization import RssDebugVisualizationMode
+
+from omegaconf import DictConfig, MISSING, ListConfig, OmegaConf, SCMode, open_dict
+from omegaconf.errors import InterpolationToMissingValueError, InterpolationKeyError
+
+# ---- Typing ----
+
+# SI and II are for type-hinting interpolation strings
+# II : Equivalent to ${interpolation}
+# SI [StringInterpolation] : Use this for String interpolation, for example "http://${host}:${port}"
+from omegaconf import SI, II
+
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast, get_type_hints, Type
+from typing_extensions import TypeAlias, Never, overload, Literal, Self
+
+from agents.tools._config_tools import (_T, _M, _NestedStrDict, _NestedConfigDict, ConfigType,
+                                        OverwriteDictTypes, DictConfigAlias, _DictConfigLike)
+
+if TYPE_CHECKING:
+    from classes.rule import Rule
+
+# ---------- Globals --------------
+
+from agents.tools._config_tools import _NOTSET # type: ignore
+
+_class_annotations : Optional[Dict[str, _NestedStrDict]] = None
+"""Nested documentation strings for classes; used for YAML comments."""
+
+_WARN_LIVE_INFO = True
+"""Warn about a possibly malformed live_info in the config."""
 
 READTHEDOCS = os.environ.get("READTHEDOCS", False)
+"""Whether the code is currently running on readthedocs."""
 
-# ---------------------
-# Helper methods
-# ---------------------
-
-def look_ahead_time(speed, time_to_collision, plus=0) -> float:
-    """
-    Convert the current speed in km /h and a time to collision in seconds to a distance in meters 
-    and adds a slight buffer on top.
-    
-    Use as ${look_ahead_time: ${live_info.current_speed}, time, }
-    """
-    return speed / 3.6 * time_to_collision + plus # km / h * s = m
-
-# need this check for readthedocs
-if os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
-    import random
-    OmegaConf.register_new_resolver("sum", lambda x, y: x + y)
-    OmegaConf.register_new_resolver("subtract", lambda x, y: x - y)
-    OmegaConf.register_new_resolver("multiply", lambda x, y: x * y)
-    OmegaConf.register_new_resolver("divide", lambda x, y: x / y)
-    OmegaConf.register_new_resolver("min", lambda *els: min(els))
-    OmegaConf.register_new_resolver("max", lambda *els: max(els))
-    OmegaConf.register_new_resolver("randint", random.randint)
-    OmegaConf.register_new_resolver("randuniform", random.uniform)
-    OmegaConf.register_new_resolver("look_ahead_time", look_ahead_time)
-    os.environ["_OMEGACONF_RESOLVERS_REGISTERED"] = "1"
-
-def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
-    """
-    Sets all interpolations to readonly.
-    
-    See: https://github.com/omry/omegaconf/issues/1161
-    """
-    if conf._is_interpolation():
-        OmegaConf.set_readonly(conf, True)
-    elif isinstance(conf, DictConfig):
-        for key in conf:
-            set_readonly_interpolations(conf._get_node(key)) # pyright: ignore[reportArgumentType]
-    elif isinstance(conf, ListConfig):
-        for key in range(len(conf)):
-            set_readonly_interpolations(conf._get_node(key)) # pyright: ignore[reportArgumentType]
-    else:
-        print("WARNING: Could not set readonly for", type(conf))
-            
-def set_readonly_keys(conf : Union[DictConfig, ListConfig], keys : List[str]):
-    """
-    Sets nodes to readonly.
-    
-    See: https://github.com/omry/omegaconf/issues/1161
-    """
-    if isinstance(keys, str):
-        keys = [keys]
-    for key in keys:
-        OmegaConf.set_readonly(conf._get_node(key), True) # pyright: ignore[reportArgumentType]
+_file_path = __file__
+"""
+__file__ alias of this module. used for YAML comments.
+Modify this variable if a config from a different file should be parsed.
+"""
 
 # ---------------------
 # Base Classes
 # ---------------------
 
-class AgentConfig(DictConfig if TYPE_CHECKING else object):
+class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
     """
     Base interface for the agent settings. 
     
@@ -152,48 +99,63 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
     from the overwrites options.
     """
     
-    overwrites: "Optional[Dict[str, Union[dict, AgentConfig]]]" = None
+    overwrites: "Optional[_NestedConfigDict]" = None
     """Overwrites of nested dictionaries for used for the initialization of the config."""
     
     @classmethod
     def get_defaults(cls) -> "AgentConfig":
         """Returns the global default options."""
-        return cls()                                # pyright: ignore[reportCallIssue], from DictConfig parent
+        return cls()    # type: ignore                            
     
     @class_or_instance_method
-    def export_options(cls_or_self : Union[Type[Self], Self],
-                       path : Union[str, os.PathLike], 
-                       category: Optional[str]=None, 
-                       resolve: bool=False, 
-                       with_comments: bool=False, 
-                       detailed_rules:bool=False) -> None:
-        """Exports the options to a YAML file."""
+    def export_options(cls_or_self: Union[Type[Self], Self],
+                       path: Union[str, "os.PathLike[str]"],
+                       category: Optional[str] = None,
+                       *,
+                       resolve: bool = False,
+                       with_comments: bool = False,
+                       detailed_rules: bool = False,
+                       include_private: bool = False) -> None:
+        """
+        Exports the options to a YAML file. With the :py:meth:`to_yaml` method.
+
+        Args:
+            path : The path for the exported YAML file.
+            category : Subcategory to export only.
+            resolve : Whether to resolve the options before exporting. Defaults to False.
+            with_comments : Whether to include comments in the exported YAML file. Defaults to False.
+            detailed_rules : Whether to include detailed rules in the exported YAML file. Defaults to False.
+            include_private : Whether to include private fields in the exported YAML file. Defaults to False.
+
+        Returns:
+            None
+        """
         if inspect.isclass(cls_or_self):
-            cls_or_self = cls_or_self() # type: ignore[call-arg]
+            cls_or_self = cls_or_self()  # type: ignore[call-arg]
         if category is None:
             options = cls_or_self
         else:
             options = cls_or_self[category]
         if with_comments:
-            string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True, detailed_rules=detailed_rules)
+            string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True, detailed_rules=detailed_rules,
+                                        include_private=include_private)
             os.makedirs(os.path.split(path)[0], exist_ok=True)
             with open(path, "w") as f:
                 f.write(string)
             return
-        if not isinstance(options, DictConfig): 
+        if not isinstance(options, DictConfig):
             # TODO: look how we can do this directly from dataclass
-            options = OmegaConf.create(options, flags={"allow_objects": True})
-        OmegaConf.save(options, path, resolve=resolve) # NOTE: This might raise if options is structured, for export structured this is actually not necessary. # pyright: ignore[reportArgumentType]
+            options = OmegaConf.create(options, flags={"allow_objects": True})  # type: ignore
+        OmegaConf.save(options, path, resolve=resolve)  # NOTE: This might raise if options is structured, for export structured this is actually not necessary. # type: ignore[argument-type]
     
-    if READTHEDOCS or TYPE_CHECKING:
-        @overload
-        @classmethod
-        def simplify_options(cls, category: Optional[str]=None, *, resolve:bool, to_yaml:Literal[True], yaml_commented:bool=True, detailed_rules:bool=False, **kwargs) -> str: ...
-        
-        @overload
-        @classmethod
-        def simplify_options(cls, category: Optional[str]=None, *, resolve:bool, to_yaml:Literal[False]=False, yaml_commented:bool=True, detailed_rules:bool=False, **kwargs) -> dict: ...
+    @overload
+    @classmethod
+    def simplify_options(cls_or_self, category: Optional[str]=None, *, resolve:bool, to_yaml:Literal[True], yaml_commented:bool=True, detailed_rules:bool=False, **kwargs) -> str: ...
     
+    @overload
+    @classmethod
+    def simplify_options(cls_or_self, category: Optional[str]=None, *, resolve:bool, to_yaml:Literal[False]=False, yaml_commented:bool=True, detailed_rules:bool=False, **kwargs) -> Dict[str, Any]: ...
+
     @class_or_instance_method
     def simplify_options(cls_or_self : Union[Type[Self], Self], category: Optional[str]=None, *, resolve:bool, to_yaml:bool=False, yaml_commented:bool=True, detailed_rules:bool=False, **kwargs):
         """
@@ -206,6 +168,9 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         
         :return: The dictionary or str of options.
         
+        .. deprecated:: 
+            About to be removed
+        
         :meta private:
         """
         if inspect.isclass(cls_or_self):
@@ -215,156 +180,91 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         else:
             options = getattr(cls_or_self, category)
         if not isinstance(options, DictConfig) and not resolve and not to_yaml:
-            return asdict(options)
+            return asdict(options) # should be dataclass # type: ignore
         if not isinstance(options, DictConfig):
             #options = OmegaConf.structured(options, flags={"allow_objects": True})
             pass
         
         if to_yaml:
-            # Simple YAML
-            import yaml
-            
-            """
-            from omegaconf._utils import get_omega_conf_dumper
-            Dumper = get_omega_conf_dumper()
-            org_func = Dumper.str_representor
-            def str_representor(dumper, data: str):
-                result = org_func(dumper, data)
-                return result
-            
-            Dumper.add_representor(str, str_representor)
-            string = yaml.dump(  # type: ignore
-                container,
-                default_flow_style=False,
-                allow_unicode=True,
-                sort_keys=kwargs.get("sort_keys", False),
-                Dumper=Dumper,
-            )
-            """
-            from omegaconf._utils import get_omega_conf_dumper
-            cfg = OmegaConf.create(cls_or_self, flags={"allow_objects": True})
-
-            if isinstance(cls_or_self, LunaticAgentSettings) or inspect.isclass(cls_or_self) and issubclass(cls_or_self, LunaticAgentSettings):
-                with open_dict(cfg):
-                    del cfg["self"]
-                    del cfg["current_rule"]
-            if "rules" in cfg:
-                # Validate and remove missing keys for the yaml export
-                rules :  List[RuleCreatingParameters] = cfg.rules
-                masked_rules = []
-                for rule in rules:
-                    if "phases" in rule.keys():
-                        # > CreateRuleFromConfig
-                        if detailed_rules:
-                            # Circular import can only call this after agents.rules
-                            try:
-                                from agents.rules import rule_from_config
-                            except ImportError:
-                                print("Could not import agents.rules.rule_from_config. Set detailed_rules=False to avoid this error. Call this function somewhere else.")
-                                raise
-                            self_config : RuleConfig = rule_from_config(rule).self_config # type: ignore[attr-defined]
-                            if OmegaConf.is_missing(rule, "phases"):
-                                rule.phases = list(self_config.instance.phases)[0] # only support one atm
-                            with open_dict(self_config):
-                                del self_config["instance"]
-                            if OmegaConf.is_missing(rule, "self_config"):
-                                rule.self_config = OmegaConf.to_container(self_config, enum_to_str=True) # type: ignore
-                            else:
-                                try:
-                                    rule.self_config.update(self_config)
-                                except:
-                                    with open_dict(rule):
-                                        rule.self_config = OmegaConf.to_container(OmegaConf.merge(self_config, rule.self_config), enum_to_str=True) # type: ignore
-                        
-                        if "phases" in rule and not isinstance(rule.phases, str):
-                            assert isinstance(rule.phases, Phase), "Currently only supports a Phase as string or Phase object."
-                            rule.phases = str(rule.phases)
-                        
-                        if detailed_rules:
-                            assert not OmegaConf.is_missing(rule, "phases")
-                        
-                    # NOTE: For some reason "_args_" in rule does NOT WORK
-                    elif "_args_" in rule.keys() and OmegaConf.is_missing(rule, key="_args_"):
-                        # check > CallFunctionFromConfig
-                        raise ValueError("%s has no phase or (positional) `_args_` key. Did you forget to add a phase?"
-                                         "If the _target_ is a function, still prove an empty `_args_ = []` key." % str(rule))
-                    missing_keys = {k for k in rule.keys() if OmegaConf.is_missing(rule, k)}
-                    clean_rule = OmegaConf.masked_copy(rule, set(rule.keys()) - missing_keys)  # pyright: ignore[reportArgumentType]
-                    masked_rules.append(clean_rule)
-                cfg.rules = masked_rules
-                
-            container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
-            string = yaml.dump(
-                container,
-                default_flow_style=False,
-                allow_unicode=True,
-                sort_keys=False,
-                Dumper=get_omega_conf_dumper(),
-            )
-            if not yaml_commented:
-                return string
-            # Extend 
-            
-            # Get documentations
-            global _class_annotations
-            if _class_annotations is None:
-                with open(_file_path, "r") as f:
-                    tree = ast_parse(f.read())
-                    _class_annotations = {}
-                    extract_annotations(tree, docs=_class_annotations)
-            
-            if inspect.isclass(cls_or_self):
-                cls = cls_or_self
-            else:
-                cls = cls_or_self.__class__
-            
-            from ruamel.yaml import YAML
-            from ruamel.yaml.comments import CommentedMap
-            yaml2 = YAML(typ='rt')
-            #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
-            data: CommentedMap = yaml2.load(string)
-            
-            cls_doc = _class_annotations[cls.__name__]
-            
-            # First line
-            data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
-            
-            # add comments to all other attributes
-            def add_comments(container : "DictConfig | dict", data: CommentedMap, lookup : AgentConfig, indent=0):
-                if isinstance(container, DictConfig):
-                    containeritems = container.items_ex(resolve=False)
-                else:
-                    containeritems = container.items()
-                for key, value in containeritems:
-                    if isinstance(value, dict) and isinstance(cls_doc.get(key, None), dict):
-                        # Add nested comments
-                        add_comments(value, data[key], cls_doc[key], indent=indent+2)
-                        comment_txt:str = "\n"+cls_doc[key].get("__doc__", "")
-                        # no @package in subfields
-                        if comment_txt.startswith("\n@package "):
-                            comment_txt = "\n".join(comment_txt.split("\n")[2:])
-                    else:
-                        comment_txt = lookup.get(key, None)  # type: ignore[arg-type]
-                    if comment_txt is None:
-                        continue
-                    #if isinstance(comment_txt, dict): # BUG: This can happen (if nested take doc?)
-                    #    breakpoint()
-                    comment_txt=comment_txt.replace("\n\n","\n \n")
-                    if comment_txt.count("\n") > 0:
-                        comment_txt = "\n"+comment_txt
-                    data.yaml_set_comment_before_after_key(key, comment_txt, indent=indent)
-            add_comments(container, data, cls_doc)  # pyright: ignore[reportArgumentType]
-            # data.yaml_add_eol_comment(comment_txt, key = key)
-
-            import io
-            stream = io.StringIO()
-            yaml2.dump(data, stream)
-            stream.seek(0)
-            return stream.read()
-        return OmegaConf.to_container(options, resolve=resolve, **kwargs)
+            return cls_or_self.to_yaml()
+        return OmegaConf.to_container(options, resolve=resolve, **kwargs) # type: ignore
     
     @class_or_instance_method
-    def to_yaml(cls_or_self : Union[Type[Self], Self], resolve:bool=False, yaml_commented:bool=True, detailed_rules:bool=False) -> str:
+    def _get_commented_yaml(cls_or_self : Union[Type[Self], Self], string:str, container: "DictConfig | _NestedConfigDict",
+                            *, include_private:bool=False) -> str:
+        # Get documentations and store globally
+        global _class_annotations
+        if _class_annotations is None:
+            with open(_file_path, "r") as f: # NOTE: This file only!
+                tree = ast_parse(f.read())
+                _class_annotations = {}
+                extract_annotations(tree, docs=_class_annotations, global_annotations=_class_annotations)
+        
+        if inspect.isclass(cls_or_self):
+            cls = cls_or_self
+        else:
+            cls = cls_or_self.__class__
+        
+        from ruamel.yaml import YAML
+        from ruamel.yaml.comments import CommentedMap
+        yaml2 = YAML(typ='rt')
+        #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
+        data : CommentedMap = yaml2.load(string)
+        
+        cls_doc = _class_annotations[cls.__name__]
+
+        # First line
+        data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
+        
+        # add comments to all other attributes
+        def add_comments(container : "DictConfig | _NestedConfigDict", data: CommentedMap, lookup : Union[AgentConfig, _NestedStrDict], indent:int=0):
+            """
+            
+            Args:
+                container: The current dict to be commented
+            """
+            if isinstance(container, DictConfig):
+                containeritems = container.items_ex(resolve=False)
+            else:
+                containeritems = container.items()
+            for key, value in containeritems:
+                if TYPE_CHECKING:
+                    assert isinstance(key, str)
+                if isinstance(value, dict) and isinstance(cls_doc.get(key, None), dict):
+                    # Add nested comments
+                    add_comments(value, data[key], cls_doc[key], indent=indent+2) # type: ignore[arg-type]
+                    comment_txt = "\n" + cls_doc[key].get("__doc__", "")                     # type: ignore
+                    assert isinstance(comment_txt, str)
+                    # no @package in subfields
+                    if comment_txt.startswith("\n@package "):
+                        comment_txt = "\n".join(comment_txt.split("\n")[2:]).strip()
+                else:
+                    comment_txt = lookup.get(key, None) 
+                if comment_txt is None:
+                    continue
+                if isinstance(comment_txt, dict):
+                    add_comments(comment_txt, data[key], comment_txt, indent=indent+2)
+                    continue
+                if not include_private and ":meta private:" in comment_txt:
+                    # TODO: does nor remove the key
+                    data.pop(key)
+                    continue # Skip private fields; todo does not skip "_named" fields
+                comment_txt = comment_txt.replace("\n\n","\n \n")
+                if comment_txt.count("\n") > 0:
+                    comment_txt = "\n"+comment_txt
+                data.yaml_set_comment_before_after_key(key, comment_txt, indent=indent)
+        add_comments(container, data, cls_doc)  # pyright: ignore[reportArgumentType]
+        # data.yaml_add_eol_comment(comment_txt, key = key)
+
+        import io
+        stream = io.StringIO()
+        yaml2.dump(data, stream)
+        stream.seek(0)
+        return stream.read()
+
+    @class_or_instance_method
+    def to_yaml(cls_or_self : Union[Type[Self], Self], resolve:bool=False, yaml_commented:bool=True, 
+                detailed_rules:bool=False, *, include_private:bool = False) -> str:
         """
         Convert the options to a YAML string representation.
 
@@ -372,14 +272,118 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             resolve : Whether to resolve interpolations. Defaults to False.
             yaml_commented : Whether to include comments in the YAML output. Defaults to True.
             detailed_rules : Whether to include detailed rules in the YAML output. Defaults to False.
+            include_private : Whether to include fields that are marked as private. Defaults to False.
 
         Returns:
             str: The YAML string representation of the options.
         """
-        return cls_or_self.simplify_options(resolve=resolve, to_yaml=True, yaml_commented=yaml_commented, detailed_rules=detailed_rules) # type: ignore
+        
+        """
+        # Draft a dumper
+        from omegaconf._utils import get_omega_conf_dumper
+        Dumper = get_omega_conf_dumper()
+        org_func = Dumper.str_representor
+        def str_representor(dumper, data: str):
+            result = org_func(dumper, data)
+            return result
+        
+        Dumper.add_representor(str, str_representor)
+        string = yaml.dump(  # type: ignore
+            container,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=kwargs.get("sort_keys", False),
+            Dumper=Dumper,
+        )
+        """
+        import yaml
+        from omegaconf._utils import get_omega_conf_dumper
+        cfg : DictConfig = OmegaConf.structured(cls_or_self, flags={"allow_objects": True})
+
+        if isinstance(cls_or_self, LunaticAgentSettings) or inspect.isclass(cls_or_self) and issubclass(cls_or_self, LunaticAgentSettings):
+            with open_dict(cfg):
+                del cfg["self"]
+                del cfg["current_rule"]
+        if "rules" in cfg:
+            # Validate and remove missing keys for the yaml export
+            if TYPE_CHECKING:
+                assert isinstance(cfg, LunaticAgentSettings)
+            rules :  List[RuleCreatingParameters] = cfg.rules
+            masked_rules : list[DictConfig] = []
+            for rule_cfg in rules:
+                if "phases" in rule_cfg.keys():
+                    if TYPE_CHECKING:
+                        assert isinstance(rule_cfg, CreateRuleFromConfig)
+                    # > CreateRuleFromConfig
+                    if detailed_rules:
+                        # Circular import can only call this after agents.rules
+                        try:
+                            from agents.rules import rule_from_config
+                        except ImportError:
+                            print("Could not import agents.rules.rule_from_config. Set detailed_rules=False to avoid this error. Call this function somewhere else.")
+                            raise
+                        rule : Rule = rule_from_config(rule_cfg) 
+                        self_config : RuleConfig = rule.self_config 
+                        if OmegaConf.is_missing(rule_cfg, "phases"):
+                            rule_cfg.phases = list(self_config.instance.phases)[0] # only support one atm
+                        with open_dict(self_config):
+                            del self_config["instance"]
+                        if OmegaConf.is_missing(rule_cfg, "self_config"):
+                            rule_cfg.self_config = OmegaConf.to_container(self_config, enum_to_str=True) # type: ignore
+                        else:
+                            try:
+                                rule_cfg.self_config.update(self_config)
+                            except:
+                                with open_dict(rule_cfg):
+                                    rule_cfg.self_config = OmegaConf.to_container(OmegaConf.merge(self_config, rule_cfg.self_config), enum_to_str=True) # type: ignore
+                    
+                    if "phases" in rule_cfg and not isinstance(rule_cfg.phases, str):
+                        assert isinstance(rule_cfg.phases, Phase), "Currently only supports a Phase as string or Phase object."
+                        rule_cfg.phases = str(rule_cfg.phases)
+                    
+                    if detailed_rules:
+                        assert not OmegaConf.is_missing(rule_cfg, "phases")
+                    
+                # NOTE: For some reason "_args_" in rule does NOT WORK
+                elif "_args_" in rule_cfg.keys() and OmegaConf.is_missing(rule_cfg, key="_args_"):
+                    # check > CallFunctionFromConfig
+                    raise ValueError("%s has no phase or (positional) `_args_` key. Did you forget to add a phase?"
+                                        "If the _target_ is a function, still prove an empty `_args_ = []` key." % str(rule_cfg))
+                missing_keys = {k for k in rule_cfg.keys() if OmegaConf.is_missing(rule_cfg, k)}
+                clean_rule = OmegaConf.masked_copy(rule_cfg, set(rule_cfg.keys()) - missing_keys)  # pyright: ignore[reportArgumentType]
+                masked_rules.append(clean_rule)
+            cfg.rules = masked_rules # type: ignore[attr-defined]
+            
+        container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
+        if AD_RSS_AVAILABLE:
+            def replace_carla_enum(content: _T) -> _T:
+                if isinstance(content, carla.RssLogLevel):
+                    return RssLogLevelStub(content).name
+                if isinstance(content, carla.RssRoadBoundariesMode):
+                    return RssRoadBoundariesModeStub(content).name
+                return content
+            
+            def recursive_replace(content: _T) -> _T:
+                if isinstance(content, dict):
+                    return {k: recursive_replace(v) for k, v in content.items()} # type: ignore
+                if isinstance(content, list):
+                    return [recursive_replace(v) for v in content]               # type: ignore
+                return replace_carla_enum(content)
+            container = recursive_replace(container)
+        string = yaml.dump(
+            container,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+            Dumper=get_omega_conf_dumper(),
+        )
+        if not yaml_commented:
+            return string
+        # Extend 
+        return cls_or_self._get_commented_yaml(string, container) # type: ignore[arg-type]
         
     @classmethod
-    def from_yaml(cls, path: str, *, merge=True) -> Self:
+    def from_yaml(cls, path: str, *, merge:bool=True) -> Self:
         """
         Loads the options from a yaml file.
         
@@ -399,13 +403,13 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         return cast(cls, options)
 
     @classmethod
-    def create(cls, settings:"Union[os.PathLike, str, dict[str, Any], DictConfig, Mapping[str, Any]]", 
-                    overwrites:"Optional[Mapping]"=None, 
+    def create(cls, settings:"Union[os.PathLike[str], str, DictConfig, _NestedConfigDict | AgentConfig]", 
+                    overwrites:"Optional[_NestedConfigDict]"=None, 
                     *,
                     assure_copy : bool = True,
                     as_dictconfig:Optional["bool | SCMode"]=True,
                     dict_config_no_parent:bool = True,
-                    ):
+                    ) -> Self:
         """
         Creates the agent settings based on the provided arguments.
         
@@ -434,10 +438,10 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         behavior : cls
         if isinstance(settings, dict):
             logger.debug("Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a dict config. Interpolations not available.")
-            behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
+            behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings) # type: ignore[attr-type]
         elif isinstance(settings, (str, os.PathLike)):
             logger.info("Using agent settings from file `%s`", settings)
-            behavior = cls.from_yaml(settings) # DictConfig
+            behavior = cls.from_yaml(settings) # DictConfig  # type: ignore[attr-type]
         elif is_dataclass(settings) or isinstance(settings, DictConfig):
             logger.debug("Using agent settings as is, as it is a dataclass or DictConfig.")
             if assure_copy:
@@ -447,7 +451,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             else:
                 # instantiate class to check keys but use original type
                 cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)# convert to class to check keys
-                behavior = settings   # stays DictConfig # type: ignore
+                behavior = settings   # stays duck-typed DictConfig # type: ignore
         else:
             if as_dictconfig is None or as_dictconfig == SCMode.DICT:
                 logger.warning("Type `%s` of launch argument type `agent_settings` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(settings))
@@ -458,7 +462,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             else:
                 # instantiate to class to check keys but use original type
                 cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
-                behavior = settings   # stays Unknown type
+                behavior = settings   # has Unknown type but keys are present # type: ignore
         
         if overwrites:
             if isinstance(behavior, DictConfig):
@@ -472,9 +476,9 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
                     logger.error("Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. Passing config_mode=True might help.")
                     raise
         if as_dictconfig and not isinstance(behavior, DictConfig):
-            behavior = OmegaConf.create(behavior, flags={"allow_objects": True})  
+            behavior = OmegaConf.structured(behavior, flags={"allow_objects": True})  
         elif as_dictconfig == False and isinstance(behavior, DictConfig):
-            return cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
+            return cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings) # pyright: ignore[reportCallIssue]
         elif as_dictconfig is None:
             logger.debug("A clear return type of %s.create_from_args has not set as config_mode is None. Returning as %s", cls.__name__, type(behavior))
         
@@ -497,10 +501,10 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
     
     @overload
     @classmethod
-    def check_config(cls, config, strictness: int, as_dict_config: "Literal[True]") -> Self: ... 
+    def check_config(cls, config: _M, strictness: int, as_dict_config: "Literal[True]") -> Self: ... 
     
     @classmethod
-    def check_config(cls, config : "ConfigType | _M", strictness: int = 1, as_dict_config : bool=True) -> "Self | ConfigType | _M":
+    def check_config(cls, config : "ConfigType | _M | _NestedConfigDict", strictness: int = 1, as_dict_config : bool=True) -> "Self | ConfigType | _M":
         """
         - strictness == 1: Will cast the config to this class, assuring all keys are present.
             However the type and correctness of the field-contents are not checked.
@@ -511,14 +515,12 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         """
         if 'experiments' in config and not hasattr(cls, 'experiments'): # For LaunchConfig
             print("\nWARNING: There is key 'experiments' in the config. Did you forget a '# @package _global_' in the first line? Keys in experiments: %s", config["experiments"].keys())
-        if strictness < 0:
-            return config
-        if strictness == 0:
+        if strictness <= 0:
             if as_dict_config and not isinstance(config, DictConfig):
-                roo :_M = OmegaConf.create(config, flags={"allow_objects": True}) # type: ignore
-                return roo
+                new_config0 :_M = OmegaConf.structured(config, flags={"allow_objects": True})
+                return new_config0
             else:
-                return config
+                return cast(_M, config)
         if strictness == 1:
             new_config = cls(**config)
             if as_dict_config and not isinstance(config, DictConfig):
@@ -528,7 +530,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         new_config = cls.create(config, as_dictconfig=SCMode.DICT_CONFIG, assure_copy=False)
         if strictness == 2:
             if as_dict_config and not isinstance(new_config, DictConfig):
-                return cast(cls, OmegaConf.create(new_config, flags={"allow_objects": True}))
+                return cast(cls, OmegaConf.structured(new_config, flags={"allow_objects": True}))
             return new_config
         new_config: cls = OmegaConf.structured(new_config, flags={"allow_objects": True}) # include flag, yes no?
         return new_config
@@ -566,17 +568,21 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
     def copy(self):
         """Returns a deep copy of this object."""
         return deepcopy(self)
-    
 
     @class_or_instance_method
-    def get(cls_or_self : Union[Type[Self], Self], key:str, default:Any=_NOTSET):
-        """Analog of :py:func:`.getattr`"""
+    def get(cls_or_self : Union[Type[Self], Self], key:str, default:_T=_NOTSET) -> "Any | _T":
+        """
+        Analog of :py:func:`.getattr`.
+        
+        Raises:
+            AttributeError: If the **key** is not found and no **default** is provided.
+        """
         if default is _NOTSET:
             return getattr(cls_or_self, key)
         return getattr(cls_or_self, key, default)
     
     @staticmethod
-    def _flatten_dict(source : Union[DictConfig, dict], target, resolve=False):
+    def _flatten_dict(source : Union[DictConfig, _NestedConfigDict], target : _NestedConfigDict, resolve : bool=False):
         if isinstance(source, DictConfig):
             items = source.items_ex(resolve=resolve)
         else:
@@ -585,10 +591,10 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             if isinstance(v, dict):
                 AgentConfig._flatten_dict(v, target)
             else:
-                target[k] = v
+                target[k] = v  # type: ignore[arg-type]
     
     @class_or_instance_method
-    def get_flat_options(cls_or_self : Union[Type[Self], Self], *, resolve:bool=True) -> dict:
+    def get_flat_options(cls_or_self : Union[Type[Self], Self], *, resolve:bool=True) -> _NestedConfigDict:
         """
         Note these return a copy of the data but in a flat hierarchy.
         Also note interpolations are replaced by default.
@@ -596,8 +602,9 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         
         :meta private:
         """
+        
         try:
-            resolved = cast(dict, OmegaConf.to_container(OmegaConf.structured(cls_or_self, flags={"allow_objects" : True}), 
+            resolved = cast(_NestedConfigDict, OmegaConf.to_container(OmegaConf.structured(cls_or_self, flags={"allow_objects" : True}), 
                                                          resolve=resolve, 
                                                          throw_on_missing=False))
         except InterpolationToMissingValueError:
@@ -606,10 +613,10 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             # NOTE: alternatively call again with resolve=False
             raise
         options = {}
-        cls_or_self._flatten_dict(resolved, options)
-        return options
+        cls_or_self._flatten_dict(resolved, options) # pyright: ignore[reportUnknownArgumentType]
+        return options # pyright: ignore[reportUnknownVariableType]
     
-    def update(self, options : "Union[dict, AgentConfig]", clean:bool=True):
+    def update(self, options : "Union[_NestedConfigDict, DictConfig, AgentConfig]", clean:bool=True):
         """
         Updates the options with a new dictionary.
         
@@ -619,6 +626,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         """
         try:
             if isinstance(options, AgentConfig):
+                assert is_dataclass(options)
                 key_values = options.__dataclass_fields__.items()
             elif isinstance(options, DictConfig):
                 key_values = options.items_ex(resolve=False) # Calling this with missing keys will raise an error 
@@ -666,11 +674,12 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
         self._clean_options()
         if self.overwrites is None:
             return
+        assert is_dataclass(self)
         #if isinstance(self.overwrites, DictConfig):
         #    self.overwrites = OmegaConf.to_container(self.overwrites, throw_on_missing=False) # convert to dict
         # Merge the overwrite dict into the correct ones.
         try:
-            value : Union[dict, AgentConfig, DictConfig, str, bool, float, int, list, ListConfig, None]
+            value : Union[_NestedConfigDict, AgentConfig, DictConfig, str, bool, float, int, list[Any], ListConfig, None, Literal["None"]]
             annotations = get_type_hints(self.__class__)
             for key in self.overwrites.keys():
                 if key in annotations: # This is "overwrites" -> to "self"
@@ -698,10 +707,13 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
                     elif key == "rules":
                         setattr(self, key, value) # value is a list
                     elif key == "live_info":
+                        if TYPE_CHECKING:
+                            assert isinstance(value, LiveInfo)
                         live_info_dict : LiveInfo = self.live_info # type: ignore[attr-defined]
                         for live_info_key in value.keys():
-                            if WARN_LIVE_INFO and not OmegaConf.is_missing(value, live_info_key):
-                                logging.warning("WARNING: live_info should only consist of missing values. Setting", live_info_key, "to", value[live_info_key])
+                            if _WARN_LIVE_INFO and not OmegaConf.is_missing(value, live_info_key):
+                                logging.warning("WARNING: live_info should only consist of missing values. "
+                                                "Setting %s to %s", live_info_key, value[live_info_key])
                                 setattr(live_info_dict, live_info_key, value[live_info_key]) # type: ignore[attr]
                     # Delegate False to a subfield
                     elif value in (False, None, "None") and self.__dataclass_fields__[key].metadata.get("can_be_false", False):
@@ -722,7 +734,7 @@ class AgentConfig(DictConfig if TYPE_CHECKING else object):
             raise
         except Exception as e:
             logging.exception(e)
-            print("\n\nError updating", self.__class__.__name__, "key:", key, "value:", value, "Error:", e)
+            print("\n\nError updating", self.__class__.__name__, "key:", key, "value:", value, "Error:", e) # type: ignore
             #breakpoint()
             raise
 
@@ -803,7 +815,7 @@ class LiveInfo(AgentConfig):
     
     last_applied_controls: carla.VehicleControl = MISSING
     """
-    VehicleControls 
+    :py:class:`carla.VehicleControl` that was applied in the last step.
     """
     
     # NOTE: Not ported to OmegaConf
@@ -1042,7 +1054,8 @@ class BasicAgentObstacleSettings(AgentConfig):
     """
     --------------------------
     Agent Level
-    see _affected_by_traffic_light and _affected_by_vehicle in basic_agent.py
+    see :py:meth:`_affected_by_traffic_light` and :py:meth:`_affected_by_vehicle`
+    in :py:mod:`basic_agent.py <agents.navigation.basic_agent>`
     --------------------------
     Agents is aware of the vehicles and traffic lights within its distance parameters
     optionally can always ignore them.
@@ -1064,6 +1077,8 @@ class BasicAgentObstacleSettings(AgentConfig):
     Idea:
         Nearby landmarks from waypoints need to be retrieved
         and checked for stop signs.
+        
+    :meta private:
     """
     
     use_bbs_detection : bool = True
@@ -1236,7 +1251,7 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     #NOTE: Currently only applied to traffic lights
     """
     
-    detection_angles: LunaticAgentObstacleDetectionAngles = field(default_factory=LunaticAgentObstacleDetectionAngles)
+    detection_angles: LunaticAgentObstacleDetectionAngles = field(default_factory=LunaticAgentObstacleDetectionAngles) # pyright: ignore[ reportIncompatibleVariableOverride]
     
     nearby_statics_max_distance: float = 150
     """For performance filters out statics that are further away than this distance in meters"""
@@ -1355,11 +1370,11 @@ class BasicAgentPlannerSettings(AgentConfig):
     
     # NOTE: two variables because originally used with two different names in different places
     #lateral_control_dict : PIDControllerDict = field(default_factory=partial(PIDControllerDict, **{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2}))
-    lateral_control_dict : PIDControllerDict = field(default_factory=lambda:PIDControllerDict(**{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2}))
+    lateral_control_dict : PIDControllerDict = field(default_factory=lambda:PIDControllerDict(**{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2})) # pyright: ignore[reportAbstractUsage]
     """values of the lateral PID controller"""
 
     # NOTE: two variables because originally used with two different names in different places
-    longitudinal_control_dict : PIDControllerDict  = field(default_factory=lambda:PIDControllerDict(**{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0}))
+    longitudinal_control_dict : PIDControllerDict  = field(default_factory=lambda:PIDControllerDict(**{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0})) # pyright: ignore[reportAbstractUsage]
     """values of the longitudinal PID controller"""
     
     offset : float = 0.0
@@ -1473,26 +1488,6 @@ class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
 # RSS
 # --------------------- 
 
-# Boost.Python.enum cannot be used as annotations for omegaconf, replacing them by real enums,
-# Functional API is easier to create but cannot be used as type hints
-if AD_RSS_AVAILABLE:
-    RssRoadBoundariesModeAlias = IntEnum("RssRoadBoundariesModeAlias", {str(name):value for value, name in carla.RssRoadBoundariesMode.values.items()}, module=__name__) # pyright: ignore[reportRedeclaration]
-    RssLogLevelAlias = IntEnum("RssLogLevelAlias", {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)                               # pyright: ignore[reportRedeclaration]
-
-    for value, name in carla.RssRoadBoundariesMode.values.items():
-        assert RssRoadBoundariesModeAlias[str(name)] == value   # pyright: ignore[ reportIndexIssue]
-        
-    for value, name in carla.RssLogLevel.values.items():
-        assert RssLogLevelAlias[str(name)] == value             # pyright: ignore[ reportIndexIssue]
-
-elif TYPE_CHECKING and sys.version_info >= (3, 10):
-    from typing import TypeAlias
-    RssLogLevelAlias : TypeAlias = Union[int, str]
-    RssRoadBoundariesModeAlias : TypeAlias = Union[int, str, bool]
-else:
-    RssLogLevelAlias = Union[int, str]
-    RssRoadBoundariesModeAlias = Union[int, str, bool]
-    
 @dataclass
 class RssSettings(AgentConfig):
     
@@ -1505,18 +1500,18 @@ class RssSettings(AgentConfig):
     """
     
     if AD_RSS_AVAILABLE:
-        use_stay_on_road_feature : carla.RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On           # pyright: ignore[reportRedeclaration]
-        """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
+        use_stay_on_road_feature : carla.RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On     # pyright: ignore[reportRedeclaration]
+        """Use the RssRoadBoundariesMode. NOTE: A call to :py:meth:`.rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : carla.RssLogLevel = carla.RssLogLevel.err                                             # pyright: ignore[reportRedeclaration]
+        log_level : carla.RssLogLevel = carla.RssLogLevel.err                                       # pyright: ignore[reportRedeclaration]
         """Set the initial log level of the RSSSensor"""
     else:
         enabled = False
         
-        use_stay_on_road_feature : "RssRoadBoundariesModeAlias" = "On"  # type: ignore
-        """Use the RssRoadBoundariesMode. NOTE: A call to `rss_set_road_boundaries_mode` is necessary"""
+        use_stay_on_road_feature : RssRoadBoundariesModeAlias = RssRoadBoundariesModeStub.On      # pyright: ignore[reportRedeclaration]
+        """Use the RssRoadBoundariesMode. NOTE: A call to :py:meth:`.rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : "RssLogLevelAlias" = "err" # type: ignore
+        log_level : RssLogLevelAlias = RssLogLevelStub.err                                        # pyright: ignore[reportRedeclaration]
         """Set the initial log level of the RSSSensor"""
         
     debug_visualization_mode: RssDebugVisualizationMode = RssDebugVisualizationMode.RouteOnly
@@ -1530,16 +1525,31 @@ class RssSettings(AgentConfig):
     
     # ------
     
-    def _clean_options(self):
+    def _clean_options(self) -> None:
         if AD_RSS_AVAILABLE:
-            if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesModeAlias):   # pyright: ignore[reportArgumentType]
-                self.use_stay_on_road_feature = int(self.use_stay_on_road_feature)
-            if not isinstance(self.log_level, RssLogLevelAlias):                            # pyright: ignore[reportArgumentType]
-                self.log_level = int(self.log_level)
+            if not isinstance(self.log_level, RssLogLevelAlias):         # pyright: ignore[reportUnnecessaryIsInstance]
+                if isinstance(self.log_level, str):
+                    self.log_level = getattr(carla.RssLogLevel, self.log_level)
+                else:
+                    self.log_level = carla.RssLogLevel.values[self.log_level]
+            if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesModeAlias):   # pyright: ignore[reportUnnecessaryIsInstance]     
+                if isinstance(self.use_stay_on_road_feature, str):
+                    self.use_stay_on_road_feature = getattr(carla.RssRoadBoundariesMode, self.use_stay_on_road_feature)
+                else:
+                    self.use_stay_on_road_feature = carla.RssRoadBoundariesMode.values[bool(self.use_stay_on_road_feature)]
         else:
-            if not isinstance(self.use_stay_on_road_feature, (bool, str)):
-                self.use_stay_on_road_feature = bool(self.use_stay_on_road_feature)
-                
+            if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesModeAlias):   # pyright: ignore[reportUnnecessaryIsInstance]  
+                if isinstance(self.use_stay_on_road_feature, str):
+                    self.use_stay_on_road_feature = RssRoadBoundariesModeStub[self.use_stay_on_road_feature]
+                else:
+                    self.use_stay_on_road_feature = RssRoadBoundariesModeStub(bool(self.use_stay_on_road_feature))
+            # other not accessed
+            if not isinstance(self.log_level, RssLogLevelAlias):  # pyright: ignore[reportUnnecessaryIsInstance]  
+                if isinstance(self.log_level, str):
+                    self.log_level = RssLogLevelStub[self.log_level]
+                else:
+                    self.log_level = RssLogLevelStub(self.log_level)
+
 
 @dataclass
 class DetectionMatrixSettings(AgentConfig):
@@ -1598,7 +1608,7 @@ class RuleConfig(AgentConfig):
 
 
 @dataclass
-class CallFunctionFromConfig(DictConfig if TYPE_CHECKING else object):
+class CallFunctionFromConfig(_DictConfigLike if TYPE_CHECKING else object):
     _target_ : str
     """
     The name of the function to call for generating one or more rules
@@ -1620,7 +1630,7 @@ class CallFunctionFromConfig(DictConfig if TYPE_CHECKING else object):
     """For :py:func:`.create_default_rules`; Should the :py:class:`.RandomLaneChangeRule` be added"""
 
 @dataclass
-class CreateRuleFromConfig(DictConfig if TYPE_CHECKING else object):
+class CreateRuleFromConfig(_DictConfigLike if TYPE_CHECKING else object):
     """
     Keywords to instantiate Rule classes
     
@@ -1695,7 +1705,7 @@ class CreateRuleFromConfig(DictConfig if TYPE_CHECKING else object):
         if isinstance(self.phases, str):
             if self.phases == MISSING:
                 return
-            phases = []
+            phases: list[Phase] = []
             phase_strings = self.phases.strip().split(",")
             assert len(phase_strings) == 1, "Only one phase is allowed currently"
             for phase_string in phase_strings:
@@ -1887,7 +1897,7 @@ class LunaticAgentSettings(AgentConfig):
     """.. <take doc|DetectionMatrixSettings>"""
     
     # TODO: This attribute can be removed after the rules have been initialized for performance
-    rules : list = field(default_factory=_from_config_default_rules)   # pyright: ignore[reportRedeclaration]
+    rules : list = field(default_factory=_from_config_default_rules)   # pyright: ignore[reportRedeclaration,reportMissingTypeArgument,reportArgumentType]
     """
     A list of Rule parameters that allow the instantiation of Rules,
     with the Hydra instantiate feature.
@@ -1899,8 +1909,9 @@ class LunaticAgentSettings(AgentConfig):
     """
     
     if READTHEDOCS or TYPE_CHECKING:
-        rules : List[RuleCreatingParameters] = field(default_factory=_from_config_default_rules)
-
+        # variant needs to be first.
+        rules : List[RuleCreatingParameters] = field(default_factory=_from_config_default_rules) # pyright: ignore[reportArgumentType]
+        
     # ---- Special Attributes for Context and Rule overwrites ----
     # These attributes are not usable by the agent
     
@@ -1929,7 +1940,7 @@ class ContextSettings(LunaticAgentSettings):
     to accesses the :py:attr:`.Rule.self_config` attribute from the context.
     """
     
-    current_rule : RuleConfig = field(default=II("self"), init=False)
+    current_rule : RuleConfig = field(default=II("self"), init=False)  # pyright: ignore[reportIncompatibleVariableOverride]
     """
     Special settings of the current rule. Only available from :py:class:`.Context` within rules :code:`ctx.config.current_rule`
     
@@ -1941,7 +1952,7 @@ class ContextSettings(LunaticAgentSettings):
         - :py:attr:`.RuleConfig.self_config`
     """
     
-    self : RuleConfig = field(default=MISSING, init=False)
+    self : RuleConfig = field(default=MISSING, init=False)                      # pyright: ignore[reportIncompatibleVariableOverride]
     """
     Describes the :py:attr:`.Rule.self_config` attribute of the current rule,
     which is the same as the :py:attr:`.Context.config.current_rule` attribute.
@@ -1973,8 +1984,10 @@ class CameraConfig(AgentConfig):
         # In structured mode named tuples and carla Types are problematic
         camera_blueprints : list = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
     
-    hud : dict = MISSING
-    """HUD settings: Not implemented"""
+    hud : Dict[str, Any] = MISSING
+    """
+    HUD settings: Not yet implemented. Future settings for the HUD.
+    """
     
     @dataclass
     class RecorderSettings(AgentConfig):
@@ -1987,6 +2000,8 @@ class CameraConfig(AgentConfig):
         Whether the recorder is enabled
         
         Set at WorldModel level
+        
+        :meta private:
         """
         
         output_path : str = '${hydra:runtime.output_dir}/recorder/session%03d/%08d.bmp'
@@ -2010,21 +2025,24 @@ class CameraConfig(AgentConfig):
     class DetectionMatrixHudConfig(AgentConfig):
         """
         DetectionMatrix settings for the HUD
+        
+        Attention:
+            Keys must match keywords of :py:meth:`.DetectionMatrix.render`
         """
         
         draw : bool = True
         """Whether to draw the detection matrix"""
         
-        values : bool = True
+        draw_values : bool = True
         """Whether to draw the numerical values as text"""
         
         vertical : bool = True
         """Orient vertical (lanes are left to right) instead of horizontal."""
         
-        imshow_settings : dict = field(default_factory=lambda: {'cmap': 'jet'})
+        imshow_settings : Dict[str, Any] = field(default_factory=lambda: {'cmap': 'jet'})
         """Settings for the pyplot.imshow function"""
         
-        text_settings : dict = field(default_factory=lambda: {'color': 'orange'})
+        text_settings : Dict[str, Any] = field(default_factory=lambda: {'color': 'orange'})
         """Settings for the text of pyplot.text when drawing the numerical values"""
 
     detection_matrix : DetectionMatrixHudConfig = field(default_factory=DetectionMatrixHudConfig)
@@ -2128,96 +2146,23 @@ class LaunchConfig(AgentConfig):          # pyright: ignore[reportRedeclaration]
     """The settings of the agent"""
     
     camera : CameraConfig = field(default_factory=CameraConfig)
-    """The camera settings"""
-
+    """.. <take doc|CameraConfig>"""
 
 
 if READTHEDOCS or TYPE_CHECKING:
+    # Some patching for documentation and type checking
     from hydra.conf import HydraConf
     from typing_extensions import NotRequired
     if TYPE_CHECKING:
-        class LaunchConfig(LaunchConfig, DictConfig):
+        class LaunchConfig(LaunchConfig):
             hydra : NotRequired[HydraConf]              # pyright: ignore # NotRequired only for TypedDict
             leaderboard : NotRequired[DictConfig]       # pyright: ignore
     else:
+        # For documentation
         LaunchConfig.__annotations__["hydra"] = NotRequired[HydraConf]
         LaunchConfig.__annotations__["leaderboard"] = NotRequired[DictConfig]
 
-def extract_annotations(parent, docs):
-    import re
-    for main_body in parent.body:
-        # Skip non-classes
-        if not isinstance(main_body, ast.ClassDef):
-            continue
-        if main_body.name in ("AgentConfig", "SimpleConfig", "class_or_instance_method", "_from_config_default_rules"):
-            continue
-        docs[main_body.name] = {}
-        for base in reversed(main_body.bases):
-            # Fill in parent information
-            try:
-                if isinstance(base, ast.IfExp) and base.test.id == "TYPE_CHECKING": # (DictConfig if TYPE_CHECKING else object):
-                    continue
-                docs[main_body.name].update(docs.get(base.id, {}))  
-            except Exception:
-                logging.exception(f"Error in {main_body.name}")
-                
-        for i, body in enumerate(main_body.body):
-            if isinstance(body, ast.ClassDef):
-                # Nested classes, extract recursive
-                extract_annotations(ast.Module([body], type_ignores=[]), docs[main_body.name])
-                continue
-            elif isinstance(body, ast.AnnAssign):
-                target = body.target.id
-                continue
-            elif isinstance(body, ast.Assign):
-                target = body.targets[0].id
-                continue
-            elif isinstance(body, ast.Expr):
-                try:
-                    # NOTE: This is different for <Python3.8; this is ast.Str
-                    doc: str = body.value.value # type: ignore
-                except AttributeError:
-                    # Try < 3.8 code
-                    doc = body.value.s          # type: ignore
-                assert isinstance(doc, str)
-                if i == 0: # Docstring of class
-                    target = "__doc__"                
-            else:
-                continue
-            
-            if doc.startswith(".. <take doc|") and doc.endswith(">"):
-                key = doc[len(".. <take doc|"):-1]
-                try:
-                    docs[main_body.name][target] = docs[main_body.name][key]
-                except KeyError as e:
-                    try:
-                        # Do global look up, docs is here _class_annotations
-                        # Move fitting sub-class to key
-                        docs[main_body.name][target] = _class_annotations[key] # pyright: ignore[reportOptionalSubscript]
-                        continue
-                    except:
-                        pass
-                    raise NameError(f"{key} needs to be defined before {target} or globally") from e
-                continue
-            doc = inspect.cleandoc(doc)
-            if target == "__doc__":
-                header = ("-" * len(main_body.name)) + "\n" # + main_body.name + "\n" + ("-" * len(main_body.name)) + "\n" + doc
-                footer = "\n" + ("-" * len(main_body.name))
-                if doc.startswith("@package"):
-                    start = doc.find("\n") + 1
-                    header += main_body.name + "\n" + ("-" * len(main_body.name)) + "\n"
-                    doc = doc[:start] + header + doc[start:].lstrip() + footer + "\n\n"
-                else:
-                    doc = header + doc + footer
-            # remove rst
-            doc = re.sub(r":py:\w+:\\?`[~.!]*(.+?)\\?`", r"`\1`", doc)
-            doc = re.sub(r":(?::|\w|-)+?:`+(.+?)`+", r"`\1`", doc)
-            docs[main_body.name][target] = doc
-            del target # delete to get better errors
-            del doc
-
-
-def export_schemas(detailed_rules:bool =False):
+def export_schemas(detailed_rules:bool=False):
     """
     Exports the schemas as YAML files to the `conf/` folder with comment annotations.
     
@@ -2236,13 +2181,15 @@ def export_schemas(detailed_rules:bool =False):
     __lc = LaunchConfig()
     __lc.camera.camera_blueprints = ["NotImplemented"] # type: ignore
     __lc.export_options("conf/launch_config_default.yaml", with_comments=True, detailed_rules=detailed_rules)
+    __lc.camera.export_options("conf/config_extensions/camera_default.yaml", with_comments=True, detailed_rules=detailed_rules)
     del __lc
     LiveInfo.export_options("conf/agent/live_info.yaml", with_comments=True, detailed_rules=detailed_rules)
+    
 
 # Always want the schemas to be up to date
 # Cannot extract rules because of circular imports; a second call is done in rules/__init__.py
 if not READTHEDOCS:
     try:
         export_schemas(detailed_rules=False)
-    except:
+    except Exception:
         logging.exception("Error exporting schemas")

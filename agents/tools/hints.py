@@ -38,13 +38,13 @@ else:
 
 # Modern Python 3.6+ syntax for better type hinting
 
-from typing import NamedTuple, Union
+from typing import NamedTuple, Optional, Union
 from launch_tools import Literal
 import carla
 
 class TrafficLightDetectionResult(NamedTuple):
     traffic_light_was_found : bool
-    traffic_light : carla.TrafficLight
+    traffic_light : Optional[carla.TrafficLight]
     
     def __bool__(self):
         return self.traffic_light_was_found
@@ -52,7 +52,7 @@ class TrafficLightDetectionResult(NamedTuple):
 # Use proper NamedTuples (Python 3.6+) and not the compatibility version from carla
 class ObstacleDetectionResult(NamedTuple):
     obstacle_was_found : bool
-    obstacle : carla.Actor
+    obstacle : Optional[carla.Actor]
     distance : Union[float, Literal[-1]]
     
     def __bool__(self):

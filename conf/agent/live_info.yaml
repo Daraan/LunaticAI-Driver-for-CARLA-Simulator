@@ -39,5 +39,5 @@ is_changing_lane: ???
 next_traffic_light: ???
 # Distance to the assumed next traffic light.
 next_traffic_light_distance: ???
-# VehicleControls 
+# `carla.VehicleControl` that was applied in the last step.
 last_applied_controls: ???

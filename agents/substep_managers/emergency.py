@@ -3,11 +3,13 @@ import random
 from agents.tools.logging import logger
 
 from typing import TYPE_CHECKING, Optional
+
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
+    from classes.constants import Hazard
 
-def emergency_manager(self : "LunaticAgent", *, reasons:"set[str]", control : Optional["carla.VehicleControl"]=None, force=False) -> "carla.VehicleControl":
+def emergency_manager(self : "LunaticAgent", *, reasons:"set[Hazard]", control : Optional["carla.VehicleControl"]=None, force=False) -> "carla.VehicleControl":
     """
     Modifies the control values to perform an emergency stop.
     The steering remains unchanged to avoid going out of the lane during turns.

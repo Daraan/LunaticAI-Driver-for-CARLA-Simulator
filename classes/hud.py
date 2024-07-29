@@ -74,16 +74,18 @@ class HUD(object):
         self.frame = timestamp.frame
         self.simulation_time = timestamp.elapsed_seconds
 
-    def tick(self, world : "WorldModel", clock, obstacles=None):
+    def tick(self, world : "WorldModel", clock: pygame.time.Clock, obstacles: Optional["list[carla.Actor]"]=None):
         """
         HUD method for every tick
         
-        If obsta
+        If obstacles is passed these will be displayed in the HUD,
+        if not the closest vehicles will be displayed.
         """
         self._notifications.tick(clock)
         if not self._show_info:
             return
-        player = world.player
+        player : carla.Vehicle = world.player
+        
         transform = player.get_transform()
         location = transform.location
         vel = player.get_velocity()
@@ -96,7 +98,7 @@ class HUD(object):
         collision = [colhist[x + self.frame - 200] for x in range(0, 200)]
         max_col = max(1.0, max(collision))
         collision = [x / max_col for x in collision]
-        obstacles : "list[carla.Actor]" = obstacles or world.world.get_actors().filter('vehicle.*')
+        obstacles : "list[carla.Actor] | carla.ActorList" = obstacles or world.world.get_actors().filter('vehicle.*')
         
         # TODO: could also get ready distances from InformationManager, needs access to agent instance
         # cached info would also prevent x from being destroyed in a different thread

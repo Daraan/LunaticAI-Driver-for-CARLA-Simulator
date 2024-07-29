@@ -196,7 +196,7 @@ class RSSKeyboardControl(KeyboardControl):
         super().__init__(world_model)
         
         self._world_model = world_model
-        self._config = config
+        self._config = config # Note: currently unused
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         world_model.controller = weakref.proxy(self)
@@ -213,6 +213,7 @@ class RSSKeyboardControl(KeyboardControl):
         self._surface = pygame.Surface((self.MOUSE_STEERING_RANGE * 2, self.MOUSE_STEERING_RANGE * 2))
         self._surface.set_colorkey(pygame.Color('black'))
         self._surface.set_alpha(60)
+        assert clock is not None, "Clock must be provided."
         self._clock = clock
 
         line_width = 2
@@ -451,29 +452,8 @@ class RSSKeyboardControl(KeyboardControl):
                 self._parse_mouse(pygame.mouse.get_pos())
             self._control.reverse = self._control.gear < 0
             return
-            vehicle_control = self._control
-            #self._world_model.hud.original_vehicle_control = vehicle_control
-            #self._world_model.hud.restricted_vehicle_control = vehicle_control
-
-            # limit speed to 30kmh
-            #v = self._world_model.player.get_velocity()
-            #if (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)) > 30.0:
-            #    self._control.throttle = 0
-
-            # if self._world.rss_sensor and self._world.rss_sensor.ego_dynamics_on_route and not self._world.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
-            #    print ("Not on route!" +  str(self._world.rss_sensor.ego_dynamics_on_route))
-            if self._restrictor:
-                rss_proper_response = self._world_model.rss_sensor.proper_response if self._world_model.rss_sensor and self._world_model.rss_sensor.response_valid else None
-                if rss_proper_response:
-                    if not (pygame.key.get_mods() & KMOD_CTRL):
-                        vehicle_control = self._restrictor.restrict_vehicle_control(
-                            vehicle_control, rss_proper_response, self._world_model.rss_sensor.ego_dynamics_on_route, self._vehicle_physics)
-                    self._world_model.hud.restricted_vehicle_control = vehicle_control
-                    self._world_model.hud.allowed_steering_ranges = self._world_model.rss_sensor.get_steering_ranges()
-                    if self._world_model.hud.original_vehicle_control.steer != self._world_model.hud.restricted_vehicle_control.steer:
-                        self._steer_cache = prev_steer_cache
-
-            #self._world_model.player.apply_control(vehicle_control)
+            # Moved Code from Carla example to WorldModel
+ 
 
     def _parse_vehicle_keys(self, keys, milliseconds):
         """Handles manual vehicle controls via keyboard."""

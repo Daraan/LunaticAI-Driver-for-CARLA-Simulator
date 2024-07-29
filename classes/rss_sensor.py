@@ -9,12 +9,13 @@ from typing import List, Tuple, cast as assure_type
 
 import inspect
 import carla
+
 try:
     from carla import ad
-    AD_RSS_AVAILABLE = True
+    AD_RSS_AVAILABLE : bool = True
 except ImportError:
     AD_RSS_AVAILABLE = False
-    
+
 from launch_tools import CarlaDataProvider 
 from classes._sensor_interface import CustomSensorInterface
 from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisualizer, RssUnstructuredSceneVisualizer # pylint: disable=relative-import

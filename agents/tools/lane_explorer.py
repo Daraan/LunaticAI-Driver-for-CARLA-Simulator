@@ -26,13 +26,13 @@ white = carla.Color(255, 255, 255)
 trail_life_time = 10
 waypoint_separation = 4
 
-def draw_transform(debug, trans, col=carla.Color(255, 0, 0), lt=-1):
+def draw_transform(debug : carla.DebugHelper, trans, col=carla.Color(255, 0, 0), lt:float=-1):
     debug.draw_arrow(
         trans.location, trans.location + trans.get_forward_vector(),
         thickness=0.05, arrow_size=0.1, color=col, life_time=lt)
 
 
-def draw_waypoint_union(debug, w0, w1, color=carla.Color(255, 0, 0), lt=5):
+def draw_waypoint_union(debug, w0, w1, color=carla.Color(255, 0, 0), lt:float=5):
     debug.draw_line(
         w0.transform.location + carla.Location(z=0.25),
         w1.transform.location + carla.Location(z=0.25),
@@ -40,13 +40,13 @@ def draw_waypoint_union(debug, w0, w1, color=carla.Color(255, 0, 0), lt=5):
     debug.draw_point(w1.transform.location + carla.Location(z=0.25), 0.1, color, lt, False)
 
 
-def draw_waypoint_info(debug: carla.DebugHelper, w, lt=5):
+def draw_waypoint_info(debug: carla.DebugHelper, w, lt:float=5):
     w_loc = w.transform.location
     debug.draw_string(w_loc + carla.Location(z=0.5), "lane: " + str(w.lane_id), False, yellow, lt)
     debug.draw_string(w_loc + carla.Location(z=1.0), "road: " + str(w.road_id), False, blue, lt)
     debug.draw_string(w_loc + carla.Location(z=-.5), str(w.lane_change), False, red, lt)
 
-def draw_junction(debug, junction, l_time=10):
+def draw_junction(debug, junction : carla.Junction, l_time:float=10):
     """Draws a junction bounding box and the initial and final waypoint of every lane."""
     # draw bounding box
     box = junction.bounding_box
@@ -80,7 +80,7 @@ def draw_junction(debug, junction, l_time=10):
             pair_w[1].transform.location + carla.Location(z=0.75), 0.1, white, l_time, False)
 
 
-def lane_explorer(debug : carla.DebugHelper, current_w: carla.Waypoint, draw_info=True, waypoint_separation=waypoint_separation, trail_life_time=0.1):
+def lane_explorer(debug : carla.DebugHelper, current_w: carla.Waypoint, draw_info=True, waypoint_separation=waypoint_separation, trail_life_time:float=0.1):
 
     # list of potential next waypoints
     potential_w = list(current_w.next(waypoint_separation))

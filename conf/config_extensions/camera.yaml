@@ -32,16 +32,15 @@ recorder:
 hud :
   data_matrix :
       # NOTE: Keywords must match DetectionMatrix.render
-      # Whether to draw the camera
-      draw : true
-      # Draw the numerical values of the matrix
-      values : true
+      # Whether to draw the detection matrix
+      draw: true
+      # Whether to draw the numerical values as text
+      draw_values: true
       # Orient vertical (lanes are left to right) instead of horizontal.
-      vertical : true
-      # Settings for the imshow function
-      imshow_settings :
-        cmap : jet
-      # Settings for the text
+      vertical: true
+      # Settings for the pyplot.imshow function
+      imshow_settings:
+        cmap: jet
+      # Settings for the text of pyplot.text when drawing the numerical values
       text_settings:
-        color : orange
-      # TODO: options for position
+        color: orange

@@ -15,7 +15,7 @@ from agents.tools.logging import logger
 from classes.constants import Phase
 from classes.exceptions import EmergencyStopException, LunaticAgentException, SkipInnerLoopException
 from launch_tools import CarlaDataProvider, Literal
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, cast as assure_type
+from typing import TYPE_CHECKING, Any, Callable, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
@@ -148,7 +148,9 @@ def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal[
                self.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
 
 
-def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: Optional[Union[Literal['all'], List[carla.Actor]]]) -> ObstacleDetectionResult:
+def detect_obstacles_in_path(self : "LunaticAgent", 
+                             obstacle_list: Optional[Union[Literal['all'],
+                                                           Sequence[carla.Actor]]]) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     and managing possible tailgating chances.
@@ -195,12 +197,17 @@ def detect_obstacles_in_path(self : "LunaticAgent", obstacle_list: Optional[Unio
     return detection_result
 
 
-def detect_vehicles(self: "LunaticAgent", vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0,
-                                lane_offset=0):
+def detect_vehicles(self: "LunaticAgent", 
+                    vehicle_list:Optional[Sequence[carla.Actor]]=None,
+                    max_distance:Optional[float]=None, 
+                    up_angle_th:float=90, 
+                    low_angle_th:float=0,
+                    *, 
+                    lane_offset:int=0):
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
 
-        :param vehicle_list (list of carla.Vehicle): list containing vehicle objects.
+        :param vehicle_list list containing vehicle objects.
             If None, all vehicle in the scene are used
         :param max_distance: max free-space to check for obstacles.
             If None, the base threshold value is used
@@ -317,7 +324,10 @@ def detect_vehicles(self: "LunaticAgent", vehicle_list=None, max_distance=None, 
 
             if is_within_distance(target_rear_transform, ego_front_transform, max_distance,
                                     [low_angle_th, up_angle_th]):
-                return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_rear_transform.location, ego_front_transform.location))
+                return ObstacleDetectionResult(True, 
+                                               target_vehicle, 
+                                               compute_distance(target_rear_transform.location,
+                                                                ego_front_transform.location)) # type: ignore[arg-type]
 
     return ObstacleDetectionResult(False, None, -1)
 

@@ -4,7 +4,7 @@ from collections.abc import Mapping
 import os
 import sys
 import weakref
-from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING
+from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING, TypeVar
 
 import numpy as np
 import hydra
@@ -26,18 +26,21 @@ from classes import exceptions as _exceptions
 from classes.exceptions import AgentDoneException, ContinueLoopException
 from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
 from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
-from classes.keyboard_controls import RSSKeyboardControl
+from classes.keyboard_controls import KeyboardControl, RSSKeyboardControl
 from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
-    from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig
+    from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig, CameraConfig
     from classes._sensor_interface import CustomSensorInterface
     from types import ModuleType
 
 from launch_tools.blueprint_helpers import get_actor_blueprints
 from launch_tools import CarlaDataProvider, Literal, carla_service
 from agents.tools.logging import logger
+
+
+_ControllerClass = TypeVar("_ControllerClass", bound=KeyboardControl)
 
 class AccessCarlaMixin:
     """
@@ -223,9 +226,17 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_model.game_framework = weakref.proxy(self)
         return self.world_model
     
-    def make_controller(self, world_model, controller_class=RSSKeyboardControl, **kwargs):
+    def make_controller(self, world_model, controller_class : "type[_ControllerClass]"=RSSKeyboardControl, **kwargs):
+        """
+        Creates a keyboard controller and attaches it to the world model.
+        
+        Args:
+            world_model: The world model to attach the controller to.
+            controller_class: The controller class to instantiate. Defaults to :py:class:`.RSSKeyboardControl`.
+            **kwargs: Additional arguments to pass to the controller.
+        """
         controller = controller_class(world_model, config=self.config, clock=self.clock, **kwargs)
-        self.controller: controller_class = weakref.proxy(controller) # note type not correct. TODO: proxy a good idea?
+        self.controller : "weakref.ProxyType[controller_class]"  = weakref.proxy(controller)
         return controller # NOTE: does not return the proxy object.
     
     @staticmethod
@@ -264,7 +275,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_model.tick(self.clock) # NOTE: Ticks WorldMODEL not CARLA WORLD!
         self.world_model.render(self.display, finalize=False)
         self.controller.render(self.display)
-        dm_render_conf = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
+        dm_render_conf : CameraConfig.DetectionMatrixHudConfig = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
         if dm_render_conf and self.agent:
             self.agent._render_detection_matrix(self.display, dm_render_conf)
         self.world_model.finalize_render(self.display)
@@ -301,13 +312,13 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_model = agent._world_model
         try:
             if self.world_model.controller: # weakref.proxy
-                self.controller = self.world_model.controller
+                self.controller = self.world_model.controller # type: ignore
         except ReferenceError:
-            self.controller = None
+            self.controller = None                            # type: ignore
         if not self.controller:
             logger.debug("Creating new controller.")
-            self.controller = self.make_controller(self.world_model, start_in_autopilot=self._args.autopilot) # hard reference
-            self.world_model.controller = self.controller # hard instead of weak reference
+            self.controller = self.make_controller(self.world_model, start_in_autopilot=self._args.autopilot) # hard reference # type: ignore
+            self.world_model.controller = self.controller  # hard instead of weak reference 
         self.agent._validate_phases = False
         return self
 
@@ -426,11 +437,23 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     :meta private:
     """
 
+    player : carla.Vehicle
+    """
+    The linked actor. If :py:attr:`.external_actor` is set this will be the first actor found 
+    with that role name.
+    """
+
     @staticmethod
     def get_blueprint_library():
         return CarlaDataProvider._blueprint_library
 
-    def __init__(self, config : "LunaticAgentSettings", args:"Union[LaunchConfig, Mapping, os.PathLike]"="./conf/launch_config.yaml", agent:"LunaticAgent" = None, *, carla_world: Optional[carla.World]=None, player: Optional[carla.Vehicle] = None, map_inst:Optional[carla.Map]=None):
+    def __init__(self, config: "LunaticAgentSettings", 
+                 args: Union["LaunchConfig", "Mapping[str, Any]", "os.PathLike[str]", str]="./conf/launch_config.yaml", 
+                 agent:Optional["LunaticAgent"] = None, 
+                 *, 
+                 carla_world: Optional[carla.World] =None, 
+                 player: Optional[carla.Vehicle] =None, 
+                 map_inst: Optional[carla.Map] =None):
         """Constructor method"""
         # Set World
         if self.get_world() is None:
@@ -463,7 +486,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
-        from agents.tools.config_creation import LaunchConfig # circular import
+        from agents.tools.config_creation import LaunchConfig         # circular import
         if not isinstance(args, (Mapping, DictConfig, LaunchConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
@@ -478,16 +501,16 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 print("Problem with", type(args), args) 
                 raise e
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
-        self._args : "LaunchConfig" = args
+        self._args : LaunchConfig = assure_type(LaunchConfig, args)
         
-        self.hud = HUD(args.width, args.height, self.world)
-        self.sync : bool = args.sync
-        self.dim = (args.width, args.height)
-        self.external_actor : bool = args.externalActor
-        self.actor_role_name : Optional[str] = args.rolename
-        self._actor_filter = args.filter
-        self._actor_generation = args.generation
-        self._gamma = args.camera.gamma
+        self.hud = HUD(self._args.width, self._args.height, self.world)
+        self.sync : Optional[bool] = self._args.sync
+        self.dim = (self._args.width, self._args.height)
+        self.external_actor : bool = self._args.externalActor
+        self.actor_role_name : Optional[str] = self._args.rolename
+        self._actor_filter = self._args.filter
+        self._actor_generation = self._args.generation
+        self._gamma = self._args.camera.gamma
 
         # TODO: Unify with CameraManager
         self.recording = False
@@ -572,6 +595,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
 
             logger.info("Calling WorldModel.restart()")
         self.restart()
+        assert self.player is not None
         self._vehicle_physics = self.player.get_physics_control()
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
         
@@ -924,9 +948,9 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         real_actors: List[carla.Actor] = [actor for actor in self.actors if isinstance(actor, carla.Actor)]
         GameFramework.destroy_actors(real_actors)
         
-        self.actors: List[CustomSensorInterface] = [actor for actor in self.actors if not isinstance(actor, carla.Actor)]
-        while self.actors:
-            actor = self.actors.pop(0)
+        other_actors = [actor for actor in self.actors if not isinstance(actor, carla.Actor)]
+        while other_actors:
+            actor = other_actors.pop(0)
             if actor is not None:
                 print("destroying actor: " + str(actor), end=" destroyed=")
                 try:
@@ -938,6 +962,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     print(x)
                 except RuntimeError:
                     logger.warning("Could not destroy actor: " + str(actor))
+        self.actors.clear()
         if self._args.handle_ticks and self.get_world():
             self.get_world().tick()
             

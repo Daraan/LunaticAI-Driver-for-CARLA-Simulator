@@ -115,7 +115,7 @@ class DetectionMatrix:
     def render(self, display : pygame.Surface, 
                imshow_settings:dict={'cmap':'jet'},
                vertical:bool=True, 
-               values:bool=True,
+               draw_values:bool=True,
                text_settings:dict={'color':'orange'},
                *,
                draw:bool=True):
@@ -132,7 +132,7 @@ class DetectionMatrix:
         if vertical:
             matrix = np.rot90(matrix) # 1st/3rd perspective
         ax.imshow(matrix, **imshow_settings)
-        if values:
+        if draw_values:
             for (i, j), val in np.ndenumerate(matrix):
                 ax.text(j, i, val, ha='center', va='center', **text_settings)
         ax.axis('off')
