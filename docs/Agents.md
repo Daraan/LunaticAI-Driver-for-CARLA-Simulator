@@ -9,6 +9,43 @@ and the simpler but less flexible {py:class}`agents.leaderboard_agent.LunaticCha
 
 ## Agent Classes
 
+
+### LunaticAgent Class
+
+The [](#agents.lunatic_agent.LunaticAgent) can be initialized in different ways and supports all features from the [Configuration](conf/ConfigFiles.md#configuration) section:
+
+```python
+from agents.lunatic_agent import LunaticAgent
+from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
+from classes.worldmodel import GameFramework
+
+# ... setup carla and choose a blueprint
+ego_bp.set_attribute('role_name', 'hero')
+
+# Load or setup the configuration
+config = LaunchConfig()
+config.agent = LunaticAgentSettings()
+
+# The game framework allows to handle the loop and manages the cooldowns of all rules
+game_framework = GameFramework(config)
+ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)
+
+# This creates the agent as well as other instances, from a custom configuration
+behavior = LunaticAgentSettings(config.agent)
+agent = LunaticAgent(behavior, vehicle=ego)
+
+# Certain internal events allow to stop the loop that is managed by the game_framework
+while game_framework.continue_loop:
+    with game_framework:
+        agent.run_step()
+```
+
+The agent can be initialized quicker and directly with the {py:class}`.GameFramework`, which also provides other useful instances at the same time.
+
+```python
+agent, world_model, global_planner, keyboard_controller = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, config=behavior)
+```
+
 ### LunaticChallenger Class
 
 The {py:class}`.LunaticChallenger` is wrapped around the {py:class}`.LunaticAgent`.
@@ -46,37 +83,6 @@ except:
 
  The `LunaticChallenger` is easier to setup, however its usage and customization are, limited as it complies with the `AutonomousAgent` interface from [`leaderboard-2.0`](https://leaderboard.carla.org/get_started/). So far, it only supports a limited amount of features mentioned in the [Configuration](conf/ConfigFiles.md#command-line) section. For example, changing settings over the command line is not supported as the configuration is loaded in `agent.setup` rather than a `@hydra.main` wrapped entry point.
 :::
-
-### LunaticAgent Class
-
-The [](#agents.lunatic_agent.LunaticAgent) can be initialized in multiple ways and supports all features from the [Configuration](conf/ConfigFiles.md#configuration) section:
-
-```python
-from agents.lunatic_agent import LunaticAgent
-from classes.worldmodel import GameFramework,
-
-# ... setup carla
-
-ego_bp.set_attribute('role_name', 'hero') # again choose a blueprint
-
-ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)
-# This creates the agent as well as other instances, from a custom configuration
-behavior = LunaticAgentSettings(config.agent)
-agent = LunaticAgent(behavior, vehicle=ego)
-
-# The game framework allows to handle the loop and manages the cooldowns of all rules
-game_framework = GameFramework(config)
-# Certain internal events allow to stop the loop that is managed by the game_framework
-while game_framework.continue_loop:
-    with game_framework:
-        agent.run_step()
-```
-
-The agent can be initialized quicker and directly with the {py:class}`.GameFramework`, which also provides other useful instances at the same time.
-
-```python
-agent, world_model, global_planner, keyboard_controller = game_framework.init_agent_and_interface(ego, agent_class=LunaticAgent, config=behavior)
-```
 
 ## Adding Rules
 

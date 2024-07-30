@@ -6,13 +6,17 @@
 
 ## GameFramework
 
-The {py:class}`.GameFramework` is a helper-class class for a quicker setup, it can manage the game loop of the agent and take care of:
+The {py:class}`.GameFramework` is a helper-class class for a quicker setup.
+It manages the game loop of the agent and takes care of:
 
 - Initialization of:
-  - carla
-  - pygame
-  - traffic manager
-  - agent, {py:class}`.WorldModel`, [CARLAS's GlobalRoutePlanner](gh:https://github.com/carla-simulator/carla/blob/master/PythonAPI/carla/agents/navigation/global_route_planner.py), {py:class}`.KeyboardController <RSSKeyboardControl>`
+  - :external_py_class:`carla.Client`, :external_py_class:`carla.World` and :external_py_class:`carla.Map`
+  - :external_py_mod:`pygame` interface
+  - :external_py_class:`carla.TrafficManager` for other actors
+  - The [agent](/docs/Agents.md)
+  - {py:class}`.WorldModel`
+  - [CARLAS's GlobalRoutePlanner](gh:https://github.com/carla-simulator/carla/blob/master/PythonAPI/carla/agents/navigation/global_route_planner.py)
+  - {py:class}`.KeyboardController <RSSKeyboardControl>`
 - Cooldowns of rules
 - Load the [LaunchConfig](conf/ConfigFiles.md) via [Hydra's compose API](https://hydra.cc/docs/advanced/compose_api/){.external-icon}
 - Interface to the [CarlaDataProvider](gh:https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenariomanager/carla_data_provider.py) from the [scenario_runner](gh:https://github.com/carla-simulator/scenario_runner) package.
@@ -21,20 +25,28 @@ The {py:class}`.GameFramework` is a helper-class class for a quicker setup, it c
 
 ## WorldModel
 
-The {py:class}`.WorldModel` is a helper-class similar to the `World` classes used in the [examples from CARLA](https://github.com/carla-simulator/carla/tree/dev/PythonAPI/examples){.external-icon}.
+The {py:class}`.WorldModel` is a helper-class serving as a interface between the agent,
+the simulator and the user. It handles the world ticks of the simulator and rendering of the pygame interface.
+
+It is based on the `World` classes used in the [examples from CARLA](https://github.com/carla-simulator/carla/tree/dev/PythonAPI/examples){.external-icon}.
 It is a extension of the [{external:class}`carla.World`]{.external-icon} class and provides the following functionalities:
 
+- Spawning of the ego actor (optional)
+  - Or waits until an external script provides it. Command line argument `external_actor="<actor name, default 'hero'>"`.
+- Ticking (`sync=True`) or waiting for the tick (`sync=False`) of the [{external:class}`carla.World`]{.external-icon}
 - HUD management
   - Camera setup and management
   - Some sensors for the pygame user interface, displayed on the HUD
   - Toggling of [{external:class}`carla.MapLayer`]{.external-icon}
+  - rendering 
+    :::{note}
+    {py:meth}`.GameFramework.render_everything` extends the rendering of the {py:class}`.WorldModel` 
+    and is the preferred function to call for rendering.
+    :::
 - [RSS](https://carla.readthedocs.io/en/latest/adv_rss/){.external-icon} features
 - Weather change
-- Spawning of the ego actor (optional)
-  - Or wait until an external script provides it. Command line argument `external_actor="<actor name, default 'hero'>"`.
-- Ticking (`sync=True`) or waiting for the tick (`sync=False`) of the [{external:class}`carla.World`]{.external-icon}
-- Some cleanup tasks when the script ends
-- HUD rendering. Note that {py:meth}`.GameFramework.render_everything` extends this function and is the preferred way to render.
+- Some cleanup tasks when the program ends
+
 
 ## HUD and Camera Manager
 

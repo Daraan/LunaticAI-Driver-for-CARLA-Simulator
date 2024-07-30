@@ -57,13 +57,13 @@ author = ""
 
 
 if RTD_ONLINE:
-    GIT_BRANCH = os.environ.get("READTHEDOCS_GIT_IDENTIFIER")
+    GIT_BRANCH : str  = os.environ.get("READTHEDOCS_GIT_IDENTIFIER", "unknown")
 else:
     import subprocess
     GIT_BRANCH = subprocess.check_output("git rev-parse --abbrev-ref HEAD", shell=True, text=True).strip()
     
 if RTD_ONLINE:
-    GIT_URL = os.environ.get("READTHEDOCS_GIT_CLONE_URL")
+    GIT_URL = os.environ.get("READTHEDOCS_GIT_CLONE_URL", "unknown")
     if not GIT_URL.startswith("https://"):
         GIT_URL = REMOTE_URL
 else:
@@ -216,7 +216,7 @@ reStructuredText code or None to fall back to the default formatter.
 if "sphinx_autodoc_typehints" in extensions:
     config_clone = None 
     from sphinx.config import Config
-    from sphinx_autodoc_typehints import get_annotation_module, format_annotation
+    from sphinx_autodoc_typehints import get_annotation_module, format_annotation # type: ignore
 
     def typehints_formatter(annotation, config : Config):
         # Default see: https://github.com/tox-dev/sphinx-autodoc-typehints/blob/df669800eef5da7e952a24b84501846694b27101/src/sphinx_autodoc_typehints/__init__.py#L180
@@ -468,7 +468,9 @@ if os.environ['READTHEDOCS'] == 'local':
 comboroles_roles : dict[str, list[str] | tuple[list[str], bool]] = {
     'strong_literal': ['strong', 'literal'],
     'external_py_class' : ['external-icon-role', 'py:class'],
+    'external_py_meth' : ['external-icon-role', 'py:meth'],
     'external_py_mod' : ['external-icon-role', 'py:mod'],
+    'external_py' : ['external-icon-role', 'py:obj'],
 }
 """
 The value can be list[str] with an optional bool. The list[str] is a list of existing role name to be composited, see Composite Roles for more details.

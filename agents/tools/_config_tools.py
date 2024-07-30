@@ -15,8 +15,8 @@ import logging
 from enum import IntEnum
 
 from omegaconf import DictConfig, ListConfig, OmegaConf
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Union
-from typing_extensions import TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Tuple, Union
+from typing_extensions import TypeAlias, TypeVar, Self
 
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
@@ -152,8 +152,8 @@ class __CarlaIntEnum(IntEnum):
     This abstract class adds this method.
     """
         
-    values : ClassVar[Dict[int, "__CarlaEnum"]] # type: ignore[redefinition]
-    names  : ClassVar[Dict[str, "__CarlaEnum"]] # type: ignore[redefinition]
+    values : ClassVar[Dict[int, Self]]
+    names  : ClassVar[Dict[str, Self]]
     
     def __init_subclass__(cls):
         cls.values : dict[int, cls]
@@ -197,7 +197,16 @@ else:
     RssLogLevelAlias = RssLogLevelStub
     RssRoadBoundariesModeAlias = RssRoadBoundariesModeStub
 
-    
+# Non type variant
+if AD_RSS_AVAILABLE:
+    RssLogLevel = carla.RssLogLevel
+    RssRoadBoundariesMode = carla.RssRoadBoundariesMode
+else:
+    RssLogLevel = RssLogLevelStub
+    RssRoadBoundariesMode = RssRoadBoundariesModeStub
+
+
+
 # --------------- YAML Export -----------------
 
 def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict], global_annotations : Dict[str, _NestedStrDict]):

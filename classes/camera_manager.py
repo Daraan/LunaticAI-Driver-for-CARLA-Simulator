@@ -5,7 +5,7 @@ import numpy as np
 import pygame
 from carla import ColorConverter as cc
 
-from typing import TYPE_CHECKING, ClassVar, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, ClassVar, List, NamedTuple, Optional, cast
 
 from classes._sensor_interface import CustomSensorInterface
 from launch_tools import CarlaDataProvider
@@ -28,7 +28,7 @@ class CameraBlueprint(NamedTuple):
     actual_blueprint : Optional[carla.ActorBlueprint] = None
     """The actual blueprint object; filled in later"""
 
-# TODO maybe use camera.yaml
+# TODO integrate into camera.yaml
 CameraBlueprints = {
     'Camera RGB' : CameraBlueprint('sensor.camera.rgb', cc.Raw, 'Camera RGB'),
     'Camera Depth (Raw)' : CameraBlueprint('sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'),
@@ -103,18 +103,19 @@ class CameraManager(CustomSensorInterface):
             elif item[0].startswith('sensor.lidar'):
                 blp.set_attribute('range', '50')
             try:
+                # Named tuple
                 self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
             except AttributeError:
-                self.sensors[i] = (item[0], item[1], item[2], blp)
-        self.index = None
+                self.sensors[i] = CameraBlueprint(item[0], item[1], item[2], blp)
+        self.index : int = None # set_sensor should be called after init
 
     def toggle_camera(self):
         """Activate a camera"""
         self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
         self.set_sensor(self.index, notify=False, force_respawn=True)
 
-    def set_sensor(self, index, notify=True, force_respawn=False):
-        """Set a sensor"""
+    def set_sensor(self, index : int, notify=True, force_respawn=False):
+        """Set the sensor that should be used for the camera output"""
         index = index % len(self.sensors)
         needs_respawn = True if self.index is None else (
                 force_respawn or (self.sensors[index][0] != self.sensors[self.index][0]))
@@ -122,11 +123,11 @@ class CameraManager(CustomSensorInterface):
             if self.sensor is not None:
                 self.destroy()
                 self.surface = None
-            self.sensor = CarlaDataProvider.get_world().spawn_actor(
-                self.sensors[index][-1],
+            self.sensor = cast(carla.Sensor, CarlaDataProvider.get_world().spawn_actor(
+                self.sensors[index][-1], # type: ignore
                 self._camera_transforms[self.transform_index][0],
                 attach_to=self._parent,
-                attachment_type=self._camera_transforms[self.transform_index][1])
+                attachment=self._camera_transforms[self.transform_index][1]))
 
             # We need to pass the lambda a weak reference to
             # self to avoid circular reference.
@@ -136,19 +137,19 @@ class CameraManager(CustomSensorInterface):
             self.hud.notification(self.sensors[index][2])
         self.index = index
 
-    def next_sensor(self):
+    def next_sensor(self) -> None:
         """Get the next sensor"""
         self.set_sensor(self.index + 1)
 
-    def toggle_recording(self):
+    def toggle_recording(self) -> None:
         """Toggle recording on or off"""
         self.recording = not self.recording
         self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
 
     def destroy(self):
         super().destroy()
-        self.index = None
-        self.surface = None
+        self.index = None   # type: ignore
+        self.surface = None # type: ignore
 
     def render(self, display):
         """Render method"""
