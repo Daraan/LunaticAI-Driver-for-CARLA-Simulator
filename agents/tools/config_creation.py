@@ -148,47 +148,6 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
             options = OmegaConf.create(options, flags={"allow_objects": True})  # type: ignore
         OmegaConf.save(options, path, resolve=resolve)  # NOTE: This might raise if options is structured, for export structured this is actually not necessary. # type: ignore[argument-type]
     
-    @overload
-    @classmethod
-    def simplify_options(cls_or_self, category: Optional[str]=None, *, resolve:bool, to_yaml:Literal[True], yaml_commented:bool=True, detailed_rules:bool=False, **kwargs) -> str: ...
-    
-    @overload
-    @classmethod
-    def simplify_options(cls_or_self, category: Optional[str]=None, *, resolve:bool, to_yaml:Literal[False]=False, yaml_commented:bool=True, detailed_rules:bool=False, **kwargs) -> Dict[str, Any]: ...
-
-    @class_or_instance_method
-    def simplify_options(cls_or_self : Union[Type[Self], Self], category: Optional[str]=None, *, resolve:bool, to_yaml:bool=False, yaml_commented:bool=True, detailed_rules:bool=False, **kwargs):
-        """
-        Returns a dictionary of all options or a string in yaml format.
-        
-        :param category: The category of options to retrieve. If None, retrieves all options.
-        :param resolve: Whether to resolve and interpolate values.
-        :param yaml: Whether to return the options as YAML formatted string
-        :param kwargs: Additional keyword arguments to pass to OmegaConf.to_container or OmegaConf.to_yaml.
-        
-        :return: The dictionary or str of options.
-        
-        .. deprecated:: 
-            About to be removed
-        
-        :meta private:
-        """
-        if inspect.isclass(cls_or_self):
-            cls_or_self = cls_or_self() # type: ignore[call-arg]
-        if category is None:
-            options = cls_or_self
-        else:
-            options = getattr(cls_or_self, category)
-        if not isinstance(options, DictConfig) and not resolve and not to_yaml:
-            return asdict(options) # should be dataclass # type: ignore
-        if not isinstance(options, DictConfig):
-            #options = OmegaConf.structured(options, flags={"allow_objects": True})
-            pass
-        
-        if to_yaml:
-            return cls_or_self.to_yaml()
-        return OmegaConf.to_container(options, resolve=resolve, **kwargs) # type: ignore
-    
     @class_or_instance_method
     def _get_commented_yaml(cls_or_self : Union[Type[Self], Self], string:str, container: "DictConfig | _NestedConfigDict",
                             *, include_private:bool=False) -> str:
