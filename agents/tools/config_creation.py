@@ -110,7 +110,6 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
     @class_or_instance_method
     def export_options(cls_or_self: Union[Type[Self], Self],
                        path: Union[str, "os.PathLike[str]"],
-                       category: Optional[str] = None,
                        *,
                        resolve: bool = False,
                        with_comments: bool = False,
@@ -121,7 +120,6 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
 
         Args:
             path : The path for the exported YAML file.
-            category : Subcategory to export only.
             resolve : Whether to resolve the options before exporting. Defaults to False.
             with_comments : Whether to include comments in the exported YAML file. Defaults to False.
             detailed_rules : Whether to include detailed rules in the exported YAML file. Defaults to False.
@@ -131,11 +129,9 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
             None
         """
         if inspect.isclass(cls_or_self):
-            cls_or_self = cls_or_self()  # type: ignore[call-arg]
-        if category is None:
-            options = cls_or_self
+            options = cls_or_self()  # type: ignore[call-arg]
         else:
-            options = cls_or_self[category]
+            options = cls_or_self
         if with_comments:
             string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True, detailed_rules=detailed_rules,
                                         include_private=include_private)
@@ -495,7 +491,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         return new_config
         
     @class_or_instance_method
-    def to_dict_config(cls_or_self : Union[Type[Self], Self], category:Optional[str]=None, *, lock_interpolations:bool=True, lock_fields:Optional[List[str]]=None) -> DictConfig:
+    def to_dict_config(cls_or_self : Union[Type[Self], Self], *, lock_interpolations:bool=True, lock_fields:Optional[List[str]]=None) -> DictConfig:
         """
         Returns a :external-icon-parse:`:py:class:\`omegaconf.DictConfig\`` from the current options.
         
@@ -503,7 +499,6 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         E.g. :code:`speed.current_speed` cannot diverge from :code:`live_info.current_speed`.
         
         Parameters:
-            category: The sub-category/key of the options to retrieve. If :python:`None`, retrieves all options.
             lock_interpolations: Whether to set interpolations to readonly. Defaults to :python:`True`.
             lock_fields: A list of fields to set to readonly. Defaults to :python:`None`.
             
@@ -511,10 +506,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
             :py:class:`AgentConfig` (duck-typed); actually :external-icon-parse:`:py:class:\`omegaconf.DictConfig\``) : The options as a :py:class:`DictConfig`.
         """
         """A DictConfig duck-typed as this class."""
-        if category is None:
-            options = cls_or_self
-        else:
-            options = getattr(cls_or_self, category)
+        options = cls_or_self
         conf = OmegaConf.structured(options, flags={"allow_objects": True})
         # This pre
         if lock_interpolations:
