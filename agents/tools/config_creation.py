@@ -532,41 +532,6 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
             return getattr(cls_or_self, key)
         return getattr(cls_or_self, key, default)
     
-    @staticmethod
-    def _flatten_dict(source : Union[DictConfig, _NestedConfigDict], target : _NestedConfigDict, resolve : bool=False):
-        if isinstance(source, DictConfig):
-            items = source.items_ex(resolve=resolve)
-        else:
-            items = source.items()
-        for k, v in items:
-            if isinstance(v, dict):
-                AgentConfig._flatten_dict(v, target)
-            else:
-                target[k] = v  # type: ignore[arg-type]
-    
-    @class_or_instance_method
-    def get_flat_options(cls_or_self : Union[Type[Self], Self], *, resolve:bool=True) -> _NestedConfigDict:
-        """
-        Note these return a copy of the data but in a flat hierarchy.
-        Also note interpolations are replaced by default.
-        E.g. :py:attr:`target_speed` and :py:attr:`max_speed` are two *different* references.
-        
-        :meta private:
-        """
-        
-        try:
-            resolved = cast(_NestedConfigDict, OmegaConf.to_container(OmegaConf.structured(cls_or_self, flags={"allow_objects" : True}), 
-                                                         resolve=resolve, 
-                                                         throw_on_missing=False))
-        except InterpolationToMissingValueError:
-            print("Resolving has failed because a missing value has been accessed. "
-                  "Fill all missing values before calling this function or use `resolve=False`.")
-            # NOTE: alternatively call again with resolve=False
-            raise
-        options = {}
-        cls_or_self._flatten_dict(resolved, options) # pyright: ignore[reportUnknownArgumentType]
-        return options # pyright: ignore[reportUnknownVariableType]
-    
     def update(self, options : "Union[_NestedConfigDict, DictConfig, AgentConfig]", clean:bool=True):
         """
         Updates the options with a new dictionary.

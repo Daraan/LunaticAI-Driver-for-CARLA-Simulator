@@ -14,8 +14,9 @@ import logging
 
 from enum import IntEnum
 
-from omegaconf import DictConfig, ListConfig, OmegaConf
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Tuple, Union
+import omegaconf.errors
+from omegaconf import DictConfig, ListConfig, OmegaConf, SCMode
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Union, cast
 from typing_extensions import TypeAlias, TypeVar, Self
 
 from classes.rss_sensor import AD_RSS_AVAILABLE
@@ -292,3 +293,42 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
             docs[main_body.name][target] = doc
             del target # delete to get better errors
             del doc
+            
+# --------------- Other Tools -----------------
+            
+def _flatten_dict(source : _NestedConfigDict, target : _NestedConfigDict, resolve : bool=False):
+    if isinstance(source, DictConfig):
+        items = source.items_ex(resolve=resolve)
+    else:
+        items = source.items() # normal case after to_container
+    for k, v in items:
+        if isinstance(v, dict):
+            _flatten_dict(v, target)
+        else:
+            if k in target:
+                print(f"Warning: Key '{k}'={target[k]} already exists in target. Overwriting with {v}.")
+            target[k] = v  # type: ignore[arg-type]
+            
+def flatten_config(config : "type[AgentConfig] | AgentConfig", *, resolve: bool = True) -> Dict[str, Any]:
+    """
+    Returns the data as a flat hierarchy.
+    
+    Note:
+        Interpolations are replaced by default.
+        For example :py:attr:`target_speed` and :py:attr:`max_speed` are two *different* references.
+        Also with **resolve=False** the interpolation will be just a string value, as the return
+        type is a normal dictionary.
+    """
+    try:
+        resolved = cast(_NestedConfigDict, OmegaConf.to_container(OmegaConf.structured(config, flags={"allow_objects" : True}), 
+                                                        resolve=resolve, 
+                                                        throw_on_missing=False,
+                                                        structured_config_mode=SCMode.DICT))
+    except omegaconf.errors.InterpolationToMissingValueError:
+        print("Resolving has failed because a missing value has been accessed. "
+                "Fill all missing values before calling this function or use `resolve=False`.")
+        # NOTE: alternatively call again with resolve=False
+        raise
+    options: Dict[str, Any] = {}
+    _flatten_dict(resolved, options, resolve=resolve) 
+    return options
