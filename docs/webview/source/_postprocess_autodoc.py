@@ -265,7 +265,7 @@ def remove_submodules():
 #    pass
 
 def remove_init():
-    module : "dict[str, list[str | tuple[str, str]]]" = {
+    module : "dict[str, list[str | tuple[str, str | None]]]" = {
                               "classes" : [("classes.evaluation_function", "__add__, __and__, __or__, __invert__" )],
                               "classes.carla_originals" : [("classes.carla_originals", None)],
               }
@@ -274,7 +274,7 @@ def remove_init():
         for member in members:
             if not isinstance(member, str) and member is not None:
                 member, include_only = member
-                directive = ":special-members:"
+                directive : str = ":special-members:"
             if include_only is None:
                 directive = ":no-special-members:"
                 include_only = "<blank>"

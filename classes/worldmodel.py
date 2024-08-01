@@ -481,7 +481,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     
     This class is the interface between the agent, the :external_py_class:`carla.World`, the
     :py:class:`.HUD`, and the :py:class:`.KeyboardControl`.
-    It handles ticking of the simulator and rendering of the pygame_ interface.
+    It handles ticking of the simulator and rendering of the pygame interface.
     
     If :py:attr:`.LaunchConfig.externalActor` is set, it will look for an actor with the role name
     :py:attr:`.LaunchConfig.rolename`, if such an actor does not yet exist it will wait for its

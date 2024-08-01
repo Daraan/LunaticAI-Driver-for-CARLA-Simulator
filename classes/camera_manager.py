@@ -6,6 +6,7 @@ import pygame
 from carla import ColorConverter as cc
 
 from typing import TYPE_CHECKING, ClassVar, List, NamedTuple, Optional, cast
+from typing_extensions import Self
 
 from classes._sensor_interface import CustomSensorInterface
 from launch_tools import CarlaDataProvider
@@ -57,9 +58,16 @@ class CameraManager(CustomSensorInterface):
                  args:"LaunchConfig",
                  sensors:Optional[List[CameraBlueprint]]=CameraBlueprintsSimple,
                  ):
-        """Constructor method"""
+        """
+        Constructor method.
+        
+        :py:meth:`set_sensor` should be called after init to set :py:attr:`sensor`
+        and :py:attr:`index` to a valid value.
+        """
         self.sensor = None
-        self.surface : pygame.Surface = None
+        self.index : int = None
+        
+        self.surface : Optional[pygame.Surface] = None # set on _parse_image, # type: ignore
         self._parent = parent_actor
         self.hud : "HUD" = hud
         self.current_frame = -1
@@ -107,7 +115,7 @@ class CameraManager(CustomSensorInterface):
                 self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
             except AttributeError:
                 self.sensors[i] = CameraBlueprint(item[0], item[1], item[2], blp)
-        self.index : int = None # set_sensor should be called after init
+
 
     def toggle_camera(self):
         """Activate a camera"""
@@ -127,12 +135,12 @@ class CameraManager(CustomSensorInterface):
                 self.sensors[index][-1], # type: ignore
                 self._camera_transforms[self.transform_index][0],
                 attach_to=self._parent,
-                attachment=self._camera_transforms[self.transform_index][1]))
+                attachment_type=self._camera_transforms[self.transform_index][1]))
 
             # We need to pass the lambda a weak reference to
             # self to avoid circular reference.
             weak_self = weakref.ref(self)
-            self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
+            self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image)) # type: ignore[arg-type]
         if notify:
             self.hud.notification(self.sensors[index][2])
         self.index = index
@@ -151,8 +159,8 @@ class CameraManager(CustomSensorInterface):
         self.index = None   # type: ignore
         self.surface = None # type: ignore
 
-    def render(self, display):
-        """Render method"""
+    def render(self, display : pygame.surface.Surface) -> None:
+        """Renders method the current camera image"""
         if self.surface is not None:
             display.blit(self.surface, (0, 0))
 

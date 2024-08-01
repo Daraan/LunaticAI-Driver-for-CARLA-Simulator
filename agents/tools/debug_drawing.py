@@ -1,7 +1,10 @@
+# Most errors are from covariant
+# pyright: reportArgumentType=information
+# pyright: reportOptionalMemberAccess=information
 import math
 import carla
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from agents.tools import lane_explorer
 from classes.constants import RoadOption, RoadOptionColor
@@ -48,11 +51,11 @@ def _draw_route_wp(world: carla.World, waypoints: "list[tuple[carla.Waypoint, Ro
         color = roadoption_color(w[1])
 
         wp = w[0].transform.location + carla.Location(z=vertical_shift)
-        world.debug.draw_point(wp, size=size, color=color, life_time=life_time)
+        world.debug.draw_point(wp, size=size, color=color, life_time=life_time)  # type: ignore[arg-type]
 
-    world.debug.draw_point(waypoints[0][0].transform.location + carla.Location(z=vertical_shift), size=2*size,
+    world.debug.draw_point(waypoints[0][0].transform.location + carla.Location(z=vertical_shift), size=2*size, # type: ignore[arg-type]
                                 color=carla.Color(0, 0, 128), life_time=life_time)
-    world.debug.draw_point(waypoints[-1][0].transform.location + carla.Location(z=vertical_shift), size=2*size,
+    world.debug.draw_point(waypoints[-1][0].transform.location + carla.Location(z=vertical_shift), size=2*size,# type: ignore[arg-type]
                                 color=carla.Color(128, 128, 128), life_time=life_time)
 
 
@@ -69,11 +72,11 @@ def _draw_route_trans(world: carla.World, waypoints: "list[tuple[carla.Transform
         color = roadoption_color(w[1])
 
         wp = w[0].location + carla.Location(z=vertical_shift)
-        world.debug.draw_point(wp, size=size, color=color, life_time=life_time)
+        world.debug.draw_point(wp, size=size, color=color, life_time=life_time) 
 
-    world.debug.draw_point(waypoints[0][0].location + carla.Location(z=vertical_shift), size=2*size,
+    world.debug.draw_point(waypoints[0][0].location + carla.Location(z=vertical_shift), size=2*size,  # type: ignore[arg-type]
                                 color=carla.Color(0, 0, 128), life_time=life_time)
-    world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=2*size,
+    world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=2*size, # type: ignore[arg-type]
                                 color=carla.Color(128, 128, 128), life_time=life_time)
 
 
@@ -86,14 +89,14 @@ def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform | carl
     if len(waypoints) == 0:
         return
     if isinstance(waypoints[0][0], carla.Transform):
-        _draw_route_trans(world, waypoints, vertical_shift, size, downsample, life_time)
+        _draw_route_trans(world, waypoints, vertical_shift, size, downsample, life_time) # type: ignore[arg-type]
     elif isinstance(waypoints[0][0], carla.Waypoint):
-        _draw_route_wp(world, waypoints, vertical_shift, size, downsample, life_time)
+        _draw_route_wp(world, waypoints, vertical_shift, size, downsample, life_time)  # type: ignore[arg-type]
     else:
         print("Drawing of type:", type(waypoints[0][0]), "not supported.")
 
 
-def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5, *, road_options: "list[RoadOption]"=None, **kwargs):
+def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5, *, road_options: Optional["list[RoadOption]"]=None, **kwargs):
     """
     Draw a list of waypoints at a certain height given in z.
 
@@ -119,21 +122,22 @@ def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5
         begin = wpt_t.location + carla.Location(z=z)
         angle = math.radians(wpt_t.rotation.yaw)
         end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
-        world.debug.draw_arrow(begin, end, color=color, **kwargs)
+        world.debug.draw_arrow(begin, end, color=color, **kwargs)  # type: ignore[arg-type]
 
 
 def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destination: carla.Waypoint):
     #from agents.tools.misc import get_trafficlight_trigger_location # pylint: disable=import-outside-toplevel # is a circular import
 
     world_model = game_framework.world_model
+    assert world_model, "GameFramework has no world_model"
 
     # Debug drawing of the route
     try:
-        destination = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
-        destination = destination + carla.Vector3D(0, 0, 1.5) # elevate to be not in road
+        loc = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
+        loc = loc + carla.Vector3D(0, 0, 1.5) # elevate to be not in road
     except IndexError:
         pass
-    game_framework.debug.draw_point(destination, life_time=0.5)
+    game_framework.debug.draw_point(loc, life_time=0.5)   # type: ignore[arg-type]
     lane_explorer.draw_waypoint_info(game_framework.debug, agent._current_waypoint, lt=10)
     if agent._current_waypoint.is_junction:
         junction = agent._current_waypoint.get_junction()
@@ -146,7 +150,7 @@ def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destin
     if traffic_light:
         wps = traffic_light.get_stop_waypoints()
         for wp in wps:
-            game_framework.debug.draw_point(wp.transform.location + carla.Location(z=2), life_time=0.6)
+            game_framework.debug.draw_point(wp.transform.location + carla.Location(z=2), life_time=0.6)  
             lane_explorer.draw_waypoint_info( game_framework.debug, wp)
         trigger_loc = get_trafficlight_trigger_location(traffic_light)
         trigger_wp = game_framework.get_map().get_waypoint(trigger_loc)

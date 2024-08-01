@@ -22,24 +22,24 @@ class CustomSensorInterface(object):
                 # Note after https://github.com/carla-simulator/scenario_runner/pull/1091
                 # x = CarlaDataProvider.remove_actor_by_id(self.sensor.id)
                 CarlaDataProvider.remove_actor_by_id(self.sensor.id)
-                x = "Actor was probably destroyed by"
+                destroyed = "Actor was probably destroyed by the CarlaDataProvider"
             else:
-                x = self.sensor.destroy()
-            self.sensor = None
-            return x
+                destroyed = self.sensor.destroy()
+            self.sensor = None  # type: ignore
+            return destroyed
         
-    def stop(self):
+    def stop(self) -> None:
         """
         Stop the :py:attr:`sensor` if its in listening mode.
         If it is a :external_py_class:`carla.Sensor`, calls the simulator.
         """
-        if self.sensor is None:
+        if self.sensor is None:  # type: ignore
             return
         if isinstance(self.sensor, carla.Sensor):
             if self.sensor.is_listening():
-                self.sensor.stop()
+                self.sensor.stop() # NOTE: calls simulation
         else:
-            self.sensor.stop()
+            self.sensor.stop()  # type: ignore
 
     def __del__(self):
         """
