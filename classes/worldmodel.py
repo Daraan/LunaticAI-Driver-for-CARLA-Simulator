@@ -10,7 +10,7 @@ import numpy as np
 import hydra
 from hydra.core.global_hydra import GlobalHydra
 from hydra.core.hydra_config import HydraConfig
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 
 import carla
 import pygame
@@ -33,8 +33,10 @@ from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from types import ModuleType
+    from typing_extensions import Self
     from hydra.conf import HydraConf
     from agents.lunatic_agent import LunaticAgent
+    from agents.navigation.global_route_planner import GlobalRoutePlanner
     from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig, CameraConfig, RssRoadBoundariesModeAlias
     from classes._sensor_interface import CustomSensorInterface
 
@@ -76,6 +78,14 @@ class AccessCarlaMixin:
     
     @map.setter
     def map(self, value: carla.Map):
+        """
+        Avoid setting the map directly. Use :py:meth:`.CarlaDataProvider.set_world` instead.
+        
+        Raises:
+            ValueError: If the map is not the same as the one set in :py:attr:`.CarlaDataProvider.get_map`.
+        
+        :meta private:
+        """
         if CarlaDataProvider.get_map() != value:
             raise ValueError("CarlaDataProvider.get_map() and passed map are not the same.")
         # Do nothing as map is set when using get_map or set_world
@@ -85,9 +95,11 @@ class AccessCarlaMixin:
         """
         Access to a cached version of the blueprint library
         
-        Note:
-            The world must be setup before this can be accessed.
+        Attention:
+            The world must be setup before (:py:meth:`.set_world`) before this can be accessed.
         """
+        if CarlaDataProvider._blueprint_library is None:
+            raise ValueError("Blueprint Library not set. Call CarlaDataProvider.set_world() first.")
         return CarlaDataProvider._blueprint_library
 
 # ==============================================================================
@@ -104,7 +116,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     # ----- Init Functions -----
     
     @classmethod
-    def quickstart(cls, launch_config: Optional["LaunchConfig"]=None, *, logging=False):
+    def quickstart(cls, launch_config: Optional["LaunchConfig"]=None, *, logging=False) -> "Self":
         if not launch_config:
             launch_config = cls.initialize_hydra(logging=logging)
         if not logging and AD_RSS_AVAILABLE:
@@ -118,13 +130,39 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     # Hydra Tools
     # TODO: this could be some launch_tools MixinClass
     @staticmethod
-    def initialize_hydra(config_dir: str="./conf", config_name: str="launch_config", version_base=None, *, job_name="LunaticAgentJob", logging=True) -> "LaunchConfig":
+    def initialize_hydra(config_dir: str="./conf", 
+                         config_name: str="launch_config", 
+                         version_base=None, *, 
+                         job_name="LunaticAgentJob", 
+                         logging=True,
+                         structured=True) -> "LaunchConfig":
         """
         Use this function only if no hydra.main is available.
         
         Usage:
+        
+        .. code-block:: python
+        
             args = GameFramework.initialize_hydra(config_dir=<abs_path_of_conf>, config_name="launch_config")
             game_framework = GameFramework(args)
+            
+        Args:
+            config_dir: The directory where the hydra configuration is stored.
+            config_name: The name of the configuration file.
+            version_base: The version base of hydra for the configuration. Default is None.
+            job_name: The name of the job.
+            logging: If True, will set up logging.
+            structured: If True will create the config based on :py:class:`.LaunchConfig`,
+                        otherwise it will be based on a :python:`dict`. This is useful for runtime
+                        type-checks and conversions. 
+                        If the configs :py:attr:`.LaunchConfig.strict_config` value is < 2, this 
+                        parameter is ignored. Disable if you experience problems.
+                        Default is :python:`True`.
+            
+        See Also:
+            Hydra functions:
+                - :py:func:`hydra.initialize_config_dir`
+                - :py:func:`hydra.compose`
         """
         config_dir = os.path.abspath(config_dir)
         hydra_initialized = GameFramework.hydra_initialized()
@@ -134,11 +172,32 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             hydra.initialize_config_dir(version_base=version_base, 
                                             config_dir=config_dir, 
                                             job_name=job_name)
-    
-        config: "LaunchConfig" = assure_type("LaunchConfig", 
-                                             hydra.compose(config_name=config_name,
-                                                           return_hydra_config=not hydra_initialized, 
-                                                           overrides=None))
+            
+        dict_config = hydra.compose(config_name=config_name,
+                                                return_hydra_config=not hydra_initialized, 
+                                                overrides=None)
+        if structured and dict_config.get("strict_config", 3) >= 2:
+            # Uses the correct dataclass schemas as values.
+            from agents.tools.config_creation import LaunchConfig, config_store
+            if config_name == "launch_config":
+                if LaunchConfig._config_path:
+                    # Load defined schema from the config Store
+                    cn = config_store.load(LaunchConfig._config_path)
+                    schema: Optional[DictConfig] = cn.node # type: ignore[assignment]
+                    with open_dict(schema):
+                        schema.merge_with(dict_config)
+                    config = assure_type(LaunchConfig, schema)
+                else:
+                    schema = None
+            else:
+                schema = None
+            if schema is None:
+                logger.debug("No schema found for structured init file %s. Falling back to LaunchConfig", config_name)
+                launch_config = LaunchConfig(**dict_config) # type: ignore
+                config : LaunchConfig = OmegaConf.structured(launch_config, 
+                                                            flags={'allow_objects' : True}) 
+        else:
+            config = assure_type("LaunchConfig", dict_config)
         
         if not hydra_initialized:
             hydra_conf: HydraConfig = GameFramework.get_hydra_config(raw=True)
@@ -150,7 +209,6 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             if logging:
                  # Assure that our logger works
                 configure_log(config.hydra.job_logging, logger.name) # type: ignore
-            from omegaconf import open_dict
             with open_dict(config):
                 del config["hydra"]
         config.agent._set_flag("allow_objects", True)
@@ -229,8 +287,48 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.traffic_manager = traffic_manager
         return traffic_manager
     
-    def init_agent_and_interface(self, ego, agent_class:"LunaticAgent", config:"LunaticAgentSettings"=None, overwrites:Optional[Dict[str, Any]]=None):
-        self.agent, self.world_model, self.global_planner = agent_class.create_world_and_agent(self._args, vehicle=ego, sim_world=self.world, agent_config=config, overwrites=overwrites)
+    def init_agent_and_interface(self,
+                                 ego: Optional[carla.Vehicle],
+                                 agent_class: "type[LunaticAgent]",
+                                 config: Optional["LunaticAgentSettings"]=None,
+                                 overwrites:Optional[Dict[str, Any]]=None
+                                 ) -> "tuple[LunaticAgent, WorldModel, GlobalRoutePlanner, RSSKeyboardControl]":
+        """
+        Quick setup for the agent and the world model.
+        
+        Among others this executes:
+            - :py:meth:`.LunaticAgent.create_world_and_agent`
+            - :py:meth:`.GameFramework.make_controller`
+            - :py:meth:`.WorldModel.tick_server_world`
+        
+        .. code-block:: python
+        
+            from agents.lunatic_agent import LunaticAgent, LunaticAgentSettings
+            
+            ego = world.spawn_actor(world.get_blueprint_library().find("vehicle.audi.tt"))
+            agent, world_model, global_planner, controller = (
+                game_framework.init_agent_and_interface(ego, LunaticAgent)
+            )
+            
+        Arguments:
+            ego: The ego vehicle. Can be :code:`None` if the agent is set to use an 
+                 external actor (:py:attr:`.LaunchConfig.externalActor`).
+            agent_class: The agent class to instantiate.
+            config: The configuration of the agent. If :code:`None` the 
+                    :py:attr:`.agent_class.BASE_SETTINGS <.LunaticAgent.BASE_SETTINGS>` are used.
+            overwrites: Additional overwrites to the configuration.
+            
+        
+        
+        """
+        if ego is None and not self._args.externalActor:
+            raise ValueError("`ego` must be passed if ``externalActor` is not set.")
+        self.agent, self.world_model, self.global_planner \
+            = agent_class.create_world_and_agent(self._args, 
+                                               vehicle=ego, 
+                                               sim_world=self.world, 
+                                               agent_config=config,
+                                               overwrites=overwrites)
         self.config = self.agent.config
         controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         self.world_model.game_framework = weakref.proxy(self)
@@ -238,7 +336,10 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.agent.verify_settings(strictness=-1) # NOTE: Here live info is already available and will throw some errors
         return self.agent, self.world_model, self.global_planner, controller
     
-    def make_world_model(self, config:"LunaticAgentSettings", player:carla.Vehicle = None, map_inst:Optional[carla.Map]=None):
+    def make_world_model(self, config:"LunaticAgentSettings", player: Optional[carla.Vehicle]=None, map_inst:Optional[carla.Map]=None):
+        """
+        Creates a :py:class:`WorldModel` with a backreference to the GameFramework.
+        """
         self.world_model = WorldModel(config, self._args, player=player)
         self.world_model.game_framework = weakref.proxy(self)
         return self.world_model
@@ -256,7 +357,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                                         config=self.config, 
                                         clock=self.clock, 
                                         **kwargs)
-        self.controller : "weakref.ProxyType[controller_class]" = weakref.proxy(controller)
+        self.controller = weakref.proxy(controller)
         return controller # NOTE: does not return the proxy object.
     
     @staticmethod
@@ -495,7 +596,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     `with gameframework(agent) <GameFramework.__call__>`:py:meth: is used.
     """
     
-    game_framework : Optional["weakref.ProxyType[GameFramework]"] = None
+    game_framework : Optional["weakref.CallableProxyType[GameFramework]"] = None
     """
     Set when world created via GameFramework. Uses weakref.proxy as backreference
     

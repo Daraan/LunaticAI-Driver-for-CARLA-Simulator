@@ -6,6 +6,8 @@ Note:
     when this file runs.
 """
 
+from __future__ import annotations
+
 # DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
 
 __all__ = [
@@ -20,9 +22,11 @@ __all__ = [
            "RuleConfig",
            "CameraConfig",
            "LaunchConfig",
+           
+           "config_store",
+           "ConfigDict",
         ]
 
- 
 # pyright: reportAttributeAccessIssue=warning
 # pyright: reportCallIssue=warning
 # pyright: reportInvalidStringEscapeSequence=false
@@ -37,20 +41,24 @@ import logging
 import carla
 
 from copy import deepcopy
-from dataclasses import dataclass, field, asdict, is_dataclass
+from dataclasses import dataclass, field, is_dataclass
 from functools import partial
 
 from launch_tools import class_or_instance_method, ast_parse, Literal
-from agents.tools._config_tools import (extract_annotations, 
+from agents.tools._config_tools import (ConfigDict, extract_annotations, set_container_type, 
                                         set_readonly_interpolations, set_readonly_keys,
-                                        RssLogLevelAlias, RssRoadBoundariesModeAlias, RssLogLevelStub, RssRoadBoundariesModeStub,)
+                                        RssLogLevelAlias, RssRoadBoundariesModeAlias, 
+                                        RssLogLevelStub, RssRoadBoundariesModeStub,
+                                        config_path, config_store)
 from classes.constants import Phase, RulePriority, RoadOption
 from classes.camera_manager import CameraBlueprint
 from classes.rss_sensor import AD_RSS_AVAILABLE
 from classes.rss_visualization import RssDebugVisualizationMode
 
 from omegaconf import DictConfig, MISSING, ListConfig, OmegaConf, SCMode, open_dict
-from omegaconf.errors import InterpolationToMissingValueError, InterpolationKeyError
+from omegaconf.errors import InterpolationKeyError, MissingMandatoryValue
+
+from hydra.conf import HydraConf
 
 # ---- Typing ----
 
@@ -59,14 +67,15 @@ from omegaconf.errors import InterpolationToMissingValueError, InterpolationKeyE
 # SI [StringInterpolation] : Use this for String interpolation, for example "http://${host}:${port}"
 from omegaconf import SI, II
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast, get_type_hints, Type
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Dict, List, Optional, Tuple, Union, cast, get_type_hints, Type
 from typing_extensions import TypeAlias, Never, overload, Literal, Self
 
-from agents.tools._config_tools import (_T, _M, _NestedStrDict, _NestedConfigDict, ConfigType,
-                                        OverwriteDictTypes, DictConfigAlias, _DictConfigLike)
+from agents.tools._config_tools import (_T, _M, _AC, _NestedStrDict, _NestedConfigDict, ConfigType,
+                                        OverwriteDictTypes, DictConfigAlias, _DictConfigLike,)
 
 if TYPE_CHECKING:
     from classes.rule import Rule
+    from agents.leaderboard_agent import LunaticChallenger
 
 # ---------- Globals --------------
 
@@ -97,6 +106,27 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
     
     Handling the initialization from a nested dataclass and merges in the changes
     from the overwrites options.
+    """
+    
+    _config_path : ClassVar[Optional[str]] = "NOT_GIVEN"
+    """
+    The key, relative to the LaunchConfig, where the config is stored.
+
+    Create subclasses like:
+    
+    .. code-block:: python
+    
+        @config_path("agent/speed")
+        @dataclass
+        class AgentSpeedSettings(AgentConfig):
+        
+    Attention:
+        - Use "/" as separator and not dots.
+        - This is used for the Hydra schema registration and repeated paths will overwrite each other.
+        - This value is inherited (if != :code:`NOT_GIVEN`), and the value of the parent is taken
+          as default. Do not type-hint this value it must be a ClassVar to not conflict with dataclasses.
+        
+    :meta private:
     """
     
     overwrites: "Optional[_NestedConfigDict]" = None
@@ -147,18 +177,18 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
     @class_or_instance_method
     def _get_commented_yaml(cls_or_self : Union[Type[Self], Self], string:str, container: "DictConfig | _NestedConfigDict",
                             *, include_private:bool=False) -> str:
-        # Get documentations and store globally
-        global _class_annotations
-        if _class_annotations is None:
-            with open(_file_path, "r") as f: # NOTE: This file only!
-                tree = ast_parse(f.read())
-                _class_annotations = {}
-                extract_annotations(tree, docs=_class_annotations, global_annotations=_class_annotations)
-        
         if inspect.isclass(cls_or_self):
             cls = cls_or_self
         else:
             cls = cls_or_self.__class__
+        cls_file = inspect.getfile(cls)
+        # Get documentations and store globally
+        global _class_annotations
+        if _class_annotations is None:
+            with open(cls_file, "r") as f: # NOTE: This file only!
+                tree = ast_parse(f.read())
+                _class_annotations = {}
+                extract_annotations(tree, docs=_class_annotations, global_annotations=_class_annotations)
         
         from ruamel.yaml import YAML
         from ruamel.yaml.comments import CommentedMap
@@ -338,14 +368,15 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         return cls_or_self._get_commented_yaml(string, container) # type: ignore[arg-type]
         
     @classmethod
-    def from_yaml(cls, path: str, *, merge:bool=True) -> Self:
+    def from_yaml(cls, path: str, *, merge:bool =True) -> Self:
         """
         Loads the options from a yaml file.
         
         Args:
             path: The path to the yaml file.
-            merge: Merges the loaded yaml into the base class settings. 
-                Defaults to True.
+            merge: Merges the loaded yaml into the base class settings. Otherwise returns
+                   the settings as they are in the file.
+                   Defaults to True.
         
         Returns:
             AgentConfig: An instance of this class
@@ -356,15 +387,33 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         options = OmegaConf.merge(OmegaConf.structured(cls, flags={"allow_objects":True}),
                                                             loaded)
         return cast(cls, options)
-
+    
     @classmethod
-    def create(cls, settings:"Union[os.PathLike[str], str, DictConfig, _NestedConfigDict | AgentConfig]", 
+    def load_schema(cls, path: Optional[str]=None) -> ConfigDict[Self]:
+        """
+        Classes decorated with :py:func:`@config_path <.config_path>` can be loaded with this method.
+        
+        This is equivalent to:
+            create(as_dictconfig=True, dict_config_no_parent=False)
+        
+        See Also:
+            Hydra_ ConfigStore
+            
+        :meta private:
+        """
+        path = path or cls._config_path
+        if path is None:
+            raise ValueError("No path to the schema provided and the class has not been created with `@config_path`.")
+        return cast(cls, config_store.load(path).node)
+    
+    @classmethod
+    def create(cls, settings:"Union[os.PathLike[str], str, DictConfig, _NestedConfigDict | AgentConfig, None]"=None, 
                     overwrites:"Optional[_NestedConfigDict]"=None, 
                     *,
                     assure_copy : bool = True,
                     as_dictconfig:Optional["bool | SCMode"]=True,
                     dict_config_no_parent:bool = True,
-                    ) -> Self:
+                    ) -> "Self | ConfigDict[Self]":
         """
         Creates the agent settings based on the provided arguments.
         
@@ -391,14 +440,21 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         """
         from agents.tools.logging import logger
         behavior : cls
-        if isinstance(settings, dict):
-            logger.debug("Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a dict config. Interpolations not available.")
-            behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings) # type: ignore[attr-type]
-        elif isinstance(settings, (str, os.PathLike)):
+        if settings is None:
+            if not as_dictconfig:
+                behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
+            else:
+                behavior = cls.load_schema()
+        if isinstance(settings, (str, os.PathLike)):
+            # load yaml file
             logger.info("Using agent settings from file `%s`", settings)
             behavior = cls.from_yaml(settings) # DictConfig  # type: ignore[attr-type]
+        elif isinstance(settings, dict):
+            logger.debug("Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a dict config. Interpolations not available.")
+            behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings) # type: ignore[attr-type]
         elif is_dataclass(settings) or isinstance(settings, DictConfig):
             logger.debug("Using agent settings as is, as it is a dataclass or DictConfig.")
+            #clean_settings = {k : v for k, v in settings.items() if not OmegaConf.is_missing(v)}
             if assure_copy:
                 behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
             elif inspect.isclass(settings):
@@ -426,7 +482,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                                                                  flags={"allow_objects": True})))
             else:
                 try:
-                    behavior.update(overwrites)
+                    behavior.merge_with(overwrites)
                 except Exception:
                     logger.error("Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. Passing config_mode=True might help.")
                     raise
@@ -452,11 +508,11 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
     
     @overload
     @classmethod
-    def check_config(cls, config: _M, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[True]") -> ConfigType: ... 
+    def check_config(cls, config: ConfigType, strictness: "Literal[0] | Literal[False]", as_dict_config: "Literal[True]") -> ConfigType: ... 
     
     @overload
     @classmethod
-    def check_config(cls, config: _M, strictness: int, as_dict_config: "Literal[True]") -> Self: ... 
+    def check_config(cls, config: ConfigType, strictness: int, as_dict_config: "Literal[True]") -> Self: ... 
     
     @classmethod
     def check_config(cls, config : "ConfigType | _M | _NestedConfigDict", strictness: int = 1, as_dict_config : bool=True) -> "Self | ConfigType | _M":
@@ -516,7 +572,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         
         return conf
     
-    def copy(self):
+    def copy(self) -> "Self":
         """Returns a deep copy of this object."""
         return deepcopy(self)
 
@@ -579,7 +635,12 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         
         :meta public:
         """
-        NotImplemented # type: ignore
+        return
+        try:
+            set_container_type(self.__class__, self)
+        except Exception:
+            logging.warning("Ignoring error in setting container type:\n", exc_info=True)
+            raise
 
     def __post_init__(self):
         """
@@ -594,6 +655,8 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         #if isinstance(self.overwrites, DictConfig):
         #    self.overwrites = OmegaConf.to_container(self.overwrites, throw_on_missing=False) # convert to dict
         # Merge the overwrite dict into the correct ones.
+        
+        # Handle the overwrites
         try:
             value : Union[_NestedConfigDict, AgentConfig, DictConfig, str, bool, float, int, list[Any], ListConfig, None, Literal["None"]]
             annotations = get_type_hints(self.__class__)
@@ -619,7 +682,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                             logging.warning("Overwriting `current_rule` with %s. Expecting interpolation '%s'", value, ContextSettings.current_rule)
                     elif key == "overwrites":
                         if value:
-                            print("Error: a non-empty overwrites key should not be set in the overwrites dict. Ignoring it")
+                            logging.error("A non-empty overwrites key should not be set in the overwrites dict. Ignoring it")
                     elif key == "rules":
                         setattr(self, key, value) # value is a list
                     elif key == "live_info":
@@ -661,6 +724,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
 # Live Info
 # ---------------------
 
+@config_path("agent/live_info")
 @dataclass
 class LiveInfo(AgentConfig):
     """
@@ -823,6 +887,7 @@ class AutopilotSpeedSettings(AgentConfig):
     Exceeding a speed limit can be done using negative percentages.
     """
     
+@config_path("agent/speed")
 @dataclass
 class LunaticAgentSpeedSettings(AutopilotSpeedSettings, BehaviorAgentSpeedSettings):
     vehicle_percentage_speed_difference : float = MISSING # 30
@@ -872,6 +937,7 @@ class AutopilotDistanceSettings(AgentConfig):
     The distance is in meters and will affect the minimum moving distance. It is computed from front to back of the vehicle objects.
     """
 
+@config_path("agent/distance")
 @dataclass
 class LunaticAgentDistanceSettings(AutopilotDistanceSettings, BehaviorAgentDistanceSettings):
     distance_to_leading_vehicle : float = MISSING # 5.0
@@ -925,6 +991,7 @@ class AutopilotLaneChangeSettings(AgentConfig):
     """
     
 
+@config_path("agent/lane_change")
 @dataclass
 class LunaticAgentLaneChangeSettings(BehaviorAgentLaneChangeSettings):
     """
@@ -1090,6 +1157,7 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
         or ignores slower vehicles in front of it in the other lane.
     """
     
+    @config_path("agent/obstacles/speed_detection_downscale")
     @dataclass
     class SpeedLimitDetectionDownscale(AgentConfig):
         """see `speed_detection_downscale`"""
@@ -1135,6 +1203,7 @@ class AutopilotObstacleSettings(AgentConfig):
     Percentage of time to ignore pedestrians
     """
     
+@config_path("agent/obstacles/detection_angles")
 @dataclass
 class LunaticAgentObstacleDetectionAngles(BasicAgentObstacleDetectionAngles):
     """
@@ -1156,6 +1225,7 @@ class LunaticAgentObstacleDetectionAngles(BasicAgentObstacleDetectionAngles):
     """Idea: When the agent is turning it might needs a wider angle to detect vehicles"""
     
 
+@config_path("agent/obstacles")
 @dataclass
 class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObstacleSettings):
     dynamic_threshold : bool = True
@@ -1194,9 +1264,7 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     """
     
     
-# ---------------------
-# Emergency
-# ---------------------
+
 
 # ---------------------
 # ControllerSettings
@@ -1238,8 +1306,10 @@ class AutopilotControllerSettings(AgentConfig):
     Default is 0. Numbers high enough to cause the vehicle to drive through other lanes might break the controller.
     """
     
+@config_path("agent/controls")
 @dataclass
-class LunaticAgentControllerSettings(AutopilotControllerSettings, BehaviorAgentControllerSettings):
+class LunaticAgentControllerSettings(AutopilotControllerSettings, 
+                                     BehaviorAgentControllerSettings):
     pass
 
 # ---------------------
@@ -1344,6 +1414,7 @@ class BehaviorAgentPlannerSettings(BasicAgentPlannerSettings):
     
 
 
+@config_path("agent/planner")
 @dataclass
 class LunaticAgentPlannerSettings(BehaviorAgentPlannerSettings):
     dt : float = MISSING # 1.0 / 20.0 # Note: Set this from main script and do not assume it.
@@ -1386,6 +1457,7 @@ class BehaviorAgentEmergencySettings(BasicAgentEmergencySettings):
     pass
 
 
+@config_path("agent/emergency")
 @dataclass
 class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
     ignore_percentage : float = 0.0
@@ -1404,6 +1476,7 @@ class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
 # RSS
 # --------------------- 
 
+@config_path("agent/rss")
 @dataclass
 class RssSettings(AgentConfig):
     
@@ -1467,6 +1540,7 @@ class RssSettings(AgentConfig):
                     self.log_level = RssLogLevelStub(self.log_level)
 
 
+@config_path("agent/detection_matrix")
 @dataclass
 class DetectionMatrixSettings(AgentConfig):
     enabled : bool = True
@@ -1512,7 +1586,7 @@ class DetectionMatrixSettings(AgentConfig):
 # ---------------------
 
 @dataclass
-class RuleConfig(AgentConfig):
+class RuleConfig(_DictConfigLike if TYPE_CHECKING else object):
     """Subconfig for rules; can have arbitrary keys"""
         
     instance : object = MISSING             # pyright: ignore[reportRedeclaration, reportAssignmentType]
@@ -1778,6 +1852,7 @@ class BehaviorAgentSettings(AgentConfig):
     avoid_tailgators : bool = True
 
 
+@config_path("agent")
 @dataclass
 class LunaticAgentSettings(AgentConfig):
     """
@@ -1845,8 +1920,6 @@ class LunaticAgentSettings(AgentConfig):
     :meta private:
     """
 
-
-
 @dataclass
 class ContextSettings(LunaticAgentSettings):
     """
@@ -1881,6 +1954,7 @@ class ContextSettings(LunaticAgentSettings):
 # Launch Settings 
 # ---------------------
 
+@config_path("camera")
 @dataclass
 class CameraConfig(AgentConfig):
     """
@@ -1905,6 +1979,7 @@ class CameraConfig(AgentConfig):
     HUD settings: Not yet implemented. Future settings for the HUD.
     """
     
+    @config_path("camera/recorder")
     @dataclass
     class RecorderSettings(AgentConfig):
         """
@@ -1937,6 +2012,7 @@ class CameraConfig(AgentConfig):
     recorder : RecorderSettings = field(default_factory=RecorderSettings)
     """.. <take doc|RecorderSettings>"""
     
+    @config_path("camera/detection_matrix")
     @dataclass
     class DetectionMatrixHudConfig(AgentConfig):
         """
@@ -1965,8 +2041,10 @@ class CameraConfig(AgentConfig):
     """.. <take doc|DetectionMatrixHudConfig>"""
 
 
+@config_path("launch_config_default.yaml") # NOTE: this may not be named launch_config
 @dataclass
-class LaunchConfig(AgentConfig):          # pyright: ignore[reportRedeclaration]
+class LaunchConfig(AgentConfig):
+        
     strict_config: Union[bool, int] = 3
     """
     If enabled will assert that the loaded config is a subset of the `LaunchConfig` class.
@@ -2063,20 +2141,23 @@ class LaunchConfig(AgentConfig):          # pyright: ignore[reportRedeclaration]
     
     camera : CameraConfig = field(default_factory=CameraConfig)
     """.. <take doc|CameraConfig>"""
+    
+    hydra : Annotated[HydraConf, "Key not guaranteed to be present or complete."] \
+        = field(default=MISSING, kw_only=True, compare=False, hash=False)
+    """
+    Hydra_ config dict.
+    
+    Attention:
+        This field is not guaranteed to be present or the complete :py:class:`HydraConf` schema.
+    """
+    
+    if not TYPE_CHECKING:
+        # should not be HydraConf at runtime, as it is not complete
+        hydra : HydraConf = field(default=MISSING, kw_only=True, compare=False, hash=False)
+    
+    if READTHEDOCS or TYPE_CHECKING:
+        leaderboard : Annotated[DictConfig, "Only present for the", LunaticChallenger] = field(init=False, kw_only=True)
 
-
-if READTHEDOCS or TYPE_CHECKING:
-    # Some patching for documentation and type checking
-    from hydra.conf import HydraConf
-    from typing_extensions import NotRequired
-    if TYPE_CHECKING:
-        class LaunchConfig(LaunchConfig):
-            hydra : NotRequired[HydraConf]              # pyright: ignore # NotRequired only for TypedDict
-            leaderboard : NotRequired[DictConfig]       # pyright: ignore
-    else:
-        # For documentation
-        LaunchConfig.__annotations__["hydra"] = NotRequired[HydraConf]
-        LaunchConfig.__annotations__["leaderboard"] = NotRequired[DictConfig]
 
 def export_schemas(detailed_rules:bool=False):
     """

@@ -23,7 +23,7 @@ import launch_tools
 
 from launch_tools import CarlaDataProvider
 
-from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
+from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, ConfigDict
 
 from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
@@ -53,7 +53,7 @@ PRINT_RULES = False
 # -- Game Loop ---------------------------------------------------------
 # ==============================================================================
 
-def game_loop(args: LaunchConfig):
+def game_loop(args: ConfigDict[LaunchConfig]):
     """
     Main loop of the simulation. 
     
@@ -77,7 +77,7 @@ def game_loop(args: LaunchConfig):
     # you can access args.agent as copy of the original settings
     # To not validate the config against LunaticAgentSettings use OmegaConf.create(args.agent)
     # to create a copy.
-    agent_config = LunaticAgentSettings.create(args.agent)
+    agent_config : ConfigDict[LunaticAgentSettings] = LunaticAgentSettings.create(settings=args.agent)
     
     try:
         logger.info("Creating Game Framework ...")
@@ -191,7 +191,10 @@ def game_loop(args: LaunchConfig):
                 
                 """Draw route information and junctions"""
                 if game_framework._args.debug:
-                    debug_drawing(agent, game_framework, destination)
+                    try:
+                        debug_drawing(agent, game_framework, destination)
+                    except Exception:
+                        logger.debug("Error in debug drawing", exc_info=True)
             
             # -- Stop Loop or Continue when agent is done --
             

@@ -16,6 +16,7 @@ import sys
 from copy import deepcopy
 from typing import (Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Set, Tuple, Union, 
                     TYPE_CHECKING, cast as assure_type)
+from typing_extensions import Self
 
 from agents.rules import rule_from_config
 
@@ -38,7 +39,7 @@ from agents.tools.lunatic_agent_tools import generate_lane_change_path, result_t
 from agents.tools.logging import logger
 
 from agents import substep_managers
-from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner, DynamicLocalPlannerWithRss
+from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlannerWithRss
 
 from classes.constants import AgentState, HazardSeverity, Phase, Hazard, RoadOption
 from classes.rss_sensor import AD_RSS_AVAILABLE
@@ -86,13 +87,22 @@ class LunaticAgent(BehaviorAgent):
     vehicles_nearby: List[carla.Vehicle]
     static_obstacles_nearby: List[carla.Actor]
     obstacles_nearby: List[carla.Actor]
+    """
+    Combination of :py:attr:`vehicles_nearby`, :py:attr:`walkers_nearby` 
+    and :py:attr:`static_obstacles_nearby`.
+    """
+    
     traffic_lights_nearby : List[carla.TrafficLight]
     traffic_signs_nearby : List[carla.TrafficSign] = NotImplemented
+    """
+    :meta private:
+    """
     
     current_states: Dict[AgentState, int]
     """The current states of the agent. The count of the steps being each state is stored as value."""
     
     _world_model : WorldModel # TODO: maybe as weakref
+    """Reference to the attached :py:class:`WorldModel`."""
     
     _validate_phases = False
     """A flag to sanity check if the agent passes trough the phases in the correct order"""
@@ -103,9 +113,19 @@ class LunaticAgent(BehaviorAgent):
     from agents.tools.lunatic_agent_tools import create_agent_config as _create_agent_config
     
     @classmethod
-    def create_world_and_agent(cls, args: LaunchConfig, *, vehicle : carla.Vehicle, sim_world : carla.World,
-                               settings_archetype: "Optional[type[AgentConfig]]"=None, agent_config: Optional["LunaticAgentSettings"]=None, 
-                               overwrites: Dict[str, Any]={}):
+    def create_world_and_agent(cls, args: LaunchConfig, *, 
+                               vehicle : Optional[carla.Vehicle]=None, 
+                               sim_world : carla.World,
+                               settings_archetype: "Optional[type[AgentConfig]]"=None, 
+                               agent_config: Optional["LunaticAgentSettings"]=None, 
+                               overwrites: Dict[str, Any]={}
+                               ) -> "Tuple[Self, WorldModel, GlobalRoutePlanner]":
+        """
+        Setup function to create the agent from the :py:class:`LaunchConfig` settings.
+        
+        Note:
+            - :py:meth:`.GameFramework.init_agent_and_interface` is 
+        """
         
         if agent_config is None:
             if hasattr(args, "agent"):
@@ -682,7 +702,7 @@ class LunaticAgent(BehaviorAgent):
                 
                 # TODO: somehow backup the control defined before.
                 self.execute_phase(Phase.EMERGENCY | Phase.END, update_controls=emergency_controls, prior_results=emergency.hazards_detected)
-                planned_control = self.get_control()
+                planned_control = self.get_control() # type: carla.VehicleControl # type: ignore[assignment]
             
             # Other Exceptions
             
@@ -730,9 +750,9 @@ class LunaticAgent(BehaviorAgent):
             if self.ctx.control is None:
                 raise ValueError("A VehicleControl object must be set on the agent when %s is raised during `._inner_step`" % type(e).__name__) from e
         
-        planned_control = self.ctx.control
+        planned_control = self.ctx.control # type: carla.VehicleControl # type: ignore[assignment]
         planned_control.manual_gear_shift = False
-        return self.get_control()
+        return self.get_control()          # type: ignore[return-value]
 
     @must_clear_hazard
     @result_to_context("control")

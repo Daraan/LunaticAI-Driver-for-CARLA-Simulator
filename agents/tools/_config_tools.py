@@ -1,7 +1,6 @@
 """
 Helper Tools for :py:mod:`.config_tools`.
 """
-# pyright: strict
 # pyright: reportPrivateUsage=false, reportUnknownLambdaType=false, reportUnusedClass=false
 # pyright: reportPossiblyUnboundVariable=information,reportAttributeAccessIssue=warning
 # pyright: reportUnknownVariableType=information, reportUnknownMemberType=information
@@ -12,18 +11,27 @@ import carla
 import inspect
 import logging
 
+from dataclasses import is_dataclass
 from enum import IntEnum
 
 import omegaconf.errors
-from omegaconf import DictConfig, ListConfig, OmegaConf, SCMode
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Union, cast
-from typing_extensions import TypeAlias, TypeVar, Self
+from omegaconf import MISSING, DictConfig, ListConfig, MissingMandatoryValue, OmegaConf, SCMode
+from omegaconf._utils import is_structured_config
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Union, cast, get_type_hints
+from typing_extensions import TypeAlias, TypeVar, Self, TypeAliasType
 
 from classes.rss_sensor import AD_RSS_AVAILABLE
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import AgentConfig
 
+#from types import MappingProxyType
+#ALLOW_OBJECTS = cast(Dict[str, Literal[True]], MappingProxyType({"allow_objects" : True}))
+#"""
+#Alias for :python:`{"allow_objects" : True}`
+# NOTE: Problem: Flag is not copied to a new dictionary, it cannot be modified; or is shared
+# if this one is mutable
+#"""
 
 # ----------- Resolvers -------------
 
@@ -49,6 +57,52 @@ if os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
     OmegaConf.register_new_resolver("randuniform", random.uniform)
     OmegaConf.register_new_resolver("look_ahead_time", look_ahead_time)
     os.environ["_OMEGACONF_RESOLVERS_REGISTERED"] = "1"
+
+
+CONFIG_SCHEMA_NAME = "launch_config_schema.yaml"
+from hydra.core.config_store import ConfigStore
+config_store = ConfigStore.instance()
+
+if TYPE_CHECKING:
+    from agents.tools.config_creation import AgentConfig
+
+def register_hydra_schema(obj: type[Any], name: Optional[str]=None):
+    """
+    Uses Hydra's ConfigStore to register the schema of the current class.
+    
+    See also:
+        :py:func:`config_path`
+    """
+    if name is None:
+        name = cast(str, getattr(obj, "_config_path", obj.__name__))
+    config_store.store(name, OmegaConf.structured(obj, flags={"allow_objects" : True}), 
+                       provider="agents.tools.config_creation", group=None, package=None)
+
+def config_path(path: Optional[str] = None):
+    """
+    Register the schema of the current class with Hydra's ConfigStore.
+    """          
+    
+    def _register(obj : "type[_AC]") -> "type[_AC]":
+        if path is None:
+            name = obj._config_path # type: ignore[attr-defined]
+        else:
+            name = path
+        if name is None or name == "NOT_GIVEN":
+            raise ValueError(f"Path is not given for {obj.__name__}. Use @register('path/to/config.yaml') to set the path.")
+        dots = name.count(".")
+        if dots > 0 and not (dots == 1 and name.endswith(".yaml")):
+            raise ValueError(f"Use '/' as separator and not dots. E.g. {name.replace('.', '/')} and not '{name}'")
+        obj._config_path = name
+        if not is_dataclass(obj) and not TYPE_CHECKING: # type: ignore
+            raise ValueError(f"Only dataclasses can be registered. {obj.__name__} is not a dataclass.")
+        register_hydra_schema(obj, name)
+        return obj
+
+    return _register
+    
+def load_config_schema(name: str) -> Any:
+    return config_store.load(name).node
 
 # ---------------------
 # Helper methods
@@ -87,7 +141,7 @@ _NOTSET = object()
 
 # ----- Type Annotations -----
 
-ConfigType = TypeVar("ConfigType", DictConfig, "AgentConfig", covariant=True)
+ConfigType = TypeVar("ConfigType", DictConfig, "AgentConfig")
 """
 Generic of an object that is a :py:class:`omegaconf.DictConfig` 
 or a subclass of :py:class:`AgentConfig`.
@@ -96,6 +150,16 @@ or a subclass of :py:class:`AgentConfig`.
 _T = TypeVar("_T")
 _M = TypeVar("_M", Dict[str, Any], DictConfig)
 """A generic type variable for a mapping type."""
+
+_AC = TypeVar("_AC", bound="AgentConfig")
+"""A agent config type variable"""
+    
+
+ConfigDict = TypeAliasType("ConfigDict", _AC, type_params=(_AC,))
+"""
+This annotation hints that object is a duck-typed :py:class:`omegaconf.DictConfig`
+and not a subclass of :py:class:`AgentConfig`.
+"""
 
 _NestedConfigDict : TypeAlias = Dict[str, "_NestedConfigDict | AgentConfig | DictConfig | Any"]
 """Allowed types for nested config"""
@@ -210,6 +274,8 @@ else:
 
 # --------------- YAML Export -----------------
 
+PATH_FIELD_NAME = "config_path"
+
 def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict], global_annotations : Dict[str, _NestedStrDict]):
     import re
     for main_body in parent.body:
@@ -295,7 +361,54 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
             del doc
             
 # --------------- Other Tools -----------------
-            
+
+def set_container_type(base: "type[AgentConfig]", container : Union[_NestedConfigDict, "AgentConfig"]):
+    """
+    Sets the object_type for sub configs if the config has been initialized with
+    a :py:class:`omegaconf.DictConfig` and not the respective AgentConfig subclass.
+
+    Args:
+        base : The base / duck type the container should have.
+        container : The passed value.
+    """
+    try:
+        annotations = get_type_hints(base)
+    except TypeError:
+        logging.debug("Error getting type hints for", base.__name__, "with container", type(container))
+        return
+    keys: "list[str]" = container.__dataclass_fields__.keys() if is_dataclass(container) else container.keys() # type: ignore
+    for key in keys:
+        if key == "overwrites" or key not in annotations:
+            continue
+        if (isinstance(container, (DictConfig, ListConfig))
+            and (OmegaConf.is_interpolation(container, key)
+                    or key not in container)):
+            continue
+        try:
+            value = getattr(container, key, MISSING)
+        except MissingMandatoryValue:
+            continue
+        if value == MISSING:
+            continue
+        typ = annotations[key]
+        if is_structured_config(typ): # is structured dataclass or attrs
+            if OmegaConf.get_type(value) == dict: # but is not
+                if isinstance(value, DictConfig):
+                    #value._metadata.object_type = typ
+                    if hasattr(typ, "create"):
+                        setattr(container, key, typ.create(value, as_dictconfig=True))
+                    else:
+                        setattr(container, key, OmegaConf.structured(typ(**value), flags={"allow_objects" : True}))
+                # Below might rise type-errors if the schema is not correct
+                elif hasattr(typ, "uses_overwrite_interface") and typ.uses_overwrite_interface():  # type: ignore[attr-defined]
+                    setattr(container, key, typ(overwrites=value)) # type: ignore[arg-type]
+                else:
+                    setattr(container, key, typ(**value))
+            if isinstance(value, (DictConfig, dict)) or is_dataclass(value):
+                set_container_type(typ, value)
+                
+
+        
 def _flatten_dict(source : _NestedConfigDict, target : _NestedConfigDict, resolve : bool=False):
     if isinstance(source, DictConfig):
         items = source.items_ex(resolve=resolve)
