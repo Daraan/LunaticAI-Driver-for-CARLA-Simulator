@@ -2,11 +2,12 @@
 # pyright: reportArgumentType=information
 # pyright: reportOptionalMemberAccess=information
 import math
+import random
 import carla
+
 
 from typing import TYPE_CHECKING, Optional
 
-from agents.tools import lane_explorer
 from classes.constants import RoadOption, RoadOptionColor
 
 if TYPE_CHECKING:
@@ -14,6 +15,17 @@ if TYPE_CHECKING:
     from classes.worldmodel import GameFramework
     from agents.tools.misc import get_trafficlight_trigger_location # imported correctly from end of misc, to avoid circular import
     
+
+red = carla.Color(255, 0, 0)
+green = carla.Color(0, 255, 0)
+blue = carla.Color(47, 210, 231)
+cyan = carla.Color(0, 255, 255)
+yellow = carla.Color(255, 255, 0)
+orange = carla.Color(255, 162, 0)
+white = carla.Color(255, 255, 255)
+
+trail_life_time = 10
+waypoint_separation = 4.0
 
 
 def roadoption_color(option: "RoadOption") -> carla.Color:
@@ -36,6 +48,8 @@ def roadoption_color(option: "RoadOption") -> carla.Color:
         return carla.Color(0, 128, 0)  # Green
     """
     return RoadOptionColor(option)
+
+
 
 
 def _draw_route_wp(world: carla.World, waypoints: "list[tuple[carla.Waypoint, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
@@ -125,23 +139,30 @@ def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5
         world.debug.draw_arrow(begin, end, color=color, **kwargs)  # type: ignore[arg-type]
 
 
-def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destination: carla.Waypoint):
+def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destination: Optional[carla.Location]):
+    """
+    
+    Raises:
+        IndexError: If the agent has no more waypoints and no **destination** is given.
+    """
     #from agents.tools.misc import get_trafficlight_trigger_location # pylint: disable=import-outside-toplevel # is a circular import
 
     world_model = game_framework.world_model
     assert world_model, "GameFramework has no world_model"
 
     # Debug drawing of the route
-    try:
+    if destination:
+        loc = destination
+    else:
+        
         loc = agent._local_planner._waypoints_queue[-1][0].transform.location # TODO find a nicer way
         loc = loc + carla.Vector3D(0, 0, 1.5) # elevate to be not in road
-    except IndexError:
-        pass
+            
     game_framework.debug.draw_point(loc, life_time=0.5)   # type: ignore[arg-type]
-    lane_explorer.draw_waypoint_info(game_framework.debug, agent._current_waypoint, lt=10)
+    draw_waypoint_info(game_framework.debug, agent._current_waypoint, lt=10)
     if agent._current_waypoint.is_junction:
         junction = agent._current_waypoint.get_junction()
-        lane_explorer.draw_junction(game_framework.debug, junction, 0.1)
+        draw_junction(game_framework.debug, junction, 0.1)
     if not agent._last_traffic_light:
         traffic_light = agent.live_info.next_traffic_light
     else:
@@ -151,7 +172,7 @@ def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destin
         wps = traffic_light.get_stop_waypoints()
         for wp in wps:
             game_framework.debug.draw_point(wp.transform.location + carla.Location(z=2), life_time=0.6)  
-            lane_explorer.draw_waypoint_info( game_framework.debug, wp)
+            draw_waypoint_info( game_framework.debug, wp)
         trigger_loc = get_trafficlight_trigger_location(traffic_light)
         trigger_wp = game_framework.get_map().get_waypoint(trigger_loc)
         game_framework.debug.draw_point(trigger_wp.transform.location + carla.Location(z=2), life_time=0.6, size=0.2, color=carla.Color(0,0,255))
@@ -167,3 +188,98 @@ def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destin
         draw_route(world_model.world,
                     waypoints=[ (wp, RoadOption.LEFT) for wp in affected_wps ],
                     size=0.1)
+
+
+def draw_transform(debug: carla.DebugHelper, trans: carla.Transform, col: carla.Color=carla.Color(255, 0, 0), lt:float=-1) -> None:
+    debug.draw_arrow(
+        trans.location, trans.location + trans.get_forward_vector(), # type: ignore[arg-type]
+        thickness=0.05, arrow_size=0.1, color=col, life_time=lt)
+
+
+def draw_junction(debug: carla.DebugHelper, junction : carla.Junction, l_time:float=10):
+    """Draws a junction bounding box and the initial and final waypoint of every lane."""
+    # draw bounding box
+    box = junction.bounding_box
+    point1 = box.location + carla.Location(x=box.extent.x, y=box.extent.y, z=2)
+    point2 = box.location + carla.Location(x=-box.extent.x, y=box.extent.y, z=2)
+    point3 = box.location + carla.Location(x=-box.extent.x, y=-box.extent.y, z=2)
+    point4 = box.location + carla.Location(x=box.extent.x, y=-box.extent.y, z=2)
+    debug.draw_line(
+        point1, point2,
+        thickness=0.1, color=orange, life_time=l_time, persistent_lines=False)
+    debug.draw_line(
+        point2, point3,
+        thickness=0.1, color=orange, life_time=l_time, persistent_lines=False)
+    debug.draw_line(
+        point3, point4,
+        thickness=0.1, color=orange, life_time=l_time, persistent_lines=False)
+    debug.draw_line(
+        point4, point1,
+        thickness=0.1, color=orange, life_time=l_time, persistent_lines=False)
+    # draw junction pairs (begin-end) of every lane
+    junction_w = junction.get_waypoints(carla.LaneType.Any)
+    for pair_w in junction_w:
+        draw_transform(debug, pair_w[0].transform, orange, l_time)
+        debug.draw_point(
+            pair_w[0].transform.location + carla.Location(z=0.75), 0.1, orange, l_time, False)
+        draw_transform(debug, pair_w[1].transform, orange, l_time)
+        debug.draw_point(
+            pair_w[1].transform.location + carla.Location(z=0.75), 0.1, orange, l_time, False)
+        debug.draw_line(
+            pair_w[0].transform.location + carla.Location(z=0.75),
+            pair_w[1].transform.location + carla.Location(z=0.75), 0.1, white, l_time, False)
+
+
+def draw_waypoint_info(debug: carla.DebugHelper, w: carla.Waypoint, lt:float=5):
+    w_loc = w.transform.location
+    debug.draw_string(w_loc + carla.Location(z=0.5), "lane: " + str(w.lane_id), False, yellow, lt)
+    debug.draw_string(w_loc + carla.Location(z=1.0), "road: " + str(w.road_id), False, blue, lt)
+    debug.draw_string(w_loc + carla.Location(z=-.5), str(w.lane_change), False, red, lt)
+
+
+def draw_waypoint_union(debug: carla.DebugHelper, w0: carla.Waypoint, w1: carla.Waypoint, color: carla.Color=carla.Color(255, 0, 0), lt:float=5) -> None:
+    debug.draw_line(
+        w0.transform.location + carla.Location(z=0.25), # type: ignore[arg-type]
+        w1.transform.location + carla.Location(z=0.25),   # type: ignore[arg-type]
+        thickness=0.1, color=color, life_time=lt, persistent_lines=False)
+    debug.draw_point(w1.transform.location + carla.Location(z=0.25), 0.1, color, lt, False) # type: ignore[arg-type]
+
+
+def lane_explorer(debug : carla.DebugHelper, current_w: carla.Waypoint, draw_info=True, waypoint_separation=waypoint_separation, trail_life_time:float=0.1):
+    """From CARLA lane_explorer.py example"""
+
+    # list of potential next waypoints
+    potential_w = list(current_w.next(waypoint_separation))
+
+    # check for available right driving lanes
+    if current_w.lane_change & carla.LaneChange.Right:
+        right_w = current_w.get_right_lane()
+        if right_w and right_w.lane_type == carla.LaneType.Driving:
+            potential_w += list(right_w.next(waypoint_separation))
+
+    # check for available left driving lanes
+    if current_w.lane_change & carla.LaneChange.Left:
+        left_w = current_w.get_left_lane()
+        if left_w and left_w.lane_type == carla.LaneType.Driving:
+            potential_w += list(left_w.next(waypoint_separation))
+
+    # choose a random waypoint to be the next
+    next_w = random.choice(potential_w)
+    potential_w.remove(next_w)
+
+    # Render some nice information, notice that you can't see the strings if you are using an editor camera
+    if draw_info:
+        draw_waypoint_info(debug, current_w, trail_life_time)
+    draw_waypoint_union(debug, current_w, next_w, cyan if current_w.is_junction else green, trail_life_time)
+    draw_transform(debug, current_w.transform, white, trail_life_time)
+
+    # print the remaining waypoints
+    for p in potential_w:
+        draw_waypoint_union(debug, current_w, p, red, trail_life_time)
+        draw_transform(debug, p.transform, white, trail_life_time)
+
+    # draw all junction waypoints and bounding box
+    if next_w.is_junction:
+        junction = next_w.get_junction()
+        draw_junction(debug, junction, trail_life_time)
+    return next_w
