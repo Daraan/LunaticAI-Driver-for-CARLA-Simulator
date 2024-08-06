@@ -18,6 +18,7 @@ agents.tools.config\_creation module
    :undoc-members:
    :show-inheritance:
    :no-inherited-members:
+   :imported-members: MISSING, NestedConfigDict
 
 
 .. _agents/tools/hints:

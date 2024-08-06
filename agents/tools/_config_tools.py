@@ -174,8 +174,36 @@ This annotation hints that object is a duck-typed :py:class:`omegaconf.DictConfi
 and not a subclass of :py:class:`AgentConfig`.
 """
 
-_NestedConfigDict : TypeAlias = Dict[str, "_NestedConfigDict | AgentConfig | DictConfig | Any"]
-"""Allowed types for nested config"""
+# Problem in Sphinx is entered twice and creates large signatures
+
+"""
+Allowed types for nested config
+"""
+
+# Special annotations
+if READTHEDOCS and not TYPE_CHECKING:
+    from typing_extensions import TypeAliasType
+    # annotate MISSING instead of ???
+    MISSING = TypeAliasType("MISSING", Any) 
+    """
+    Alias for :py:obj:`omegaconf.MISSING`, is literally :python:`"???"` but has type :python:`Any`.
+
+    If an attribute with this value is accessed from a :py:class:`DictConfig`, 
+    it will raise a :py:exc:`MissingMandatoryValue` error.
+
+    :meta hide-value:
+    :meta public:
+    """
+
+    # prevent unpack of nested types
+    NestedConfigDict = TypeAliasType("NestedConfigDict", dict[str, "AgentConfig | DictConfig | Any |  NestedConfigDict"]) # type: ignore
+    """
+    Type alias for nested configurations: :python:`Dict[str, NestedConfigDict | AgentConfig | DictConfig | Any]`
+
+    :meta hide-value:
+    """
+else:
+    NestedConfigDict : TypeAlias = Dict[str, "AgentConfig | DictConfig | Any | NestedConfigDict"]
 
 _NestedStrDict = Dict[str, "str | _NestedStrDict"]
 """Nested dict with str as leaves"""
@@ -183,8 +211,8 @@ _NestedStrDict = Dict[str, "str | _NestedStrDict"]
 if TYPE_CHECKING:
     from omegaconf.basecontainer import BaseContainer
     # More informative types when type checking; need primitive types at runtime
-    DictConfigAlias : TypeAlias = Union[DictConfig, _NestedConfigDict]
-    OverwriteDictTypes : TypeAlias = Dict[str, Union[Dict[str, _NestedConfigDict], "AgentConfig"]]
+    DictConfigAlias : TypeAlias = Union[DictConfig, NestedConfigDict]
+    OverwriteDictTypes : TypeAlias = Dict[str, Union[Dict[str, NestedConfigDict], "AgentConfig"]]
     
     class _DictConfigLike(BaseContainer):
         """
@@ -195,7 +223,6 @@ if TYPE_CHECKING:
         """
         keys = DictConfig.keys
         values = DictConfig.values
-
 else:
     # primitive type at runtime
     DictConfigAlias : TypeAlias = Dict[str, Any]
@@ -290,6 +317,7 @@ else:
 PATH_FIELD_NAME = "config_path"
 
 def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict], global_annotations : Dict[str, _NestedStrDict]):
+    """Extracts comments from the source code"""
     import re
     for main_body in parent.body:
         # Skip non-classes
@@ -352,7 +380,7 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
                 header = ("-" * len(main_body.name)) + "\n" # + main_body.name + "\n" + ("-" * len(main_body.name)) + "\n" + doc
                 footer = "\n" + ("-" * len(main_body.name))
 
-                if doc.startswith("@package"):
+                if doc.startswith(".. @package"):
                     start = doc.find("\n") + 1
                     if start == 0:
                         # no linebreak found
@@ -360,10 +388,10 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
                         start = doc.find("\n") + 1
                     header += main_body.name + "\n" + ("-" * len(main_body.name)) + "\n"
                     if doc[start:].lstrip():
-                        doc = doc[:start] + header + doc[start:].lstrip() + footer + "\n\n"
+                        doc = doc[3:start] + header + doc[start:].lstrip() + footer + "\n\n"
                     else:
                         # no content beside package
-                        doc = doc[:start] + header + "\n"
+                        doc = doc[3:start] + header + "\n"
                 else:
                     doc = header + doc + footer
             # remove rst
@@ -375,7 +403,7 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
             
 # --------------- Other Tools -----------------
 
-def set_container_type(base: "type[AgentConfig]", container : Union[_NestedConfigDict, "AgentConfig"]):
+def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfigDict, "AgentConfig"]):
     """
     Sets the object_type for sub configs if the config has been initialized with
     a :py:class:`omegaconf.DictConfig` and not the respective AgentConfig subclass.
@@ -422,7 +450,7 @@ def set_container_type(base: "type[AgentConfig]", container : Union[_NestedConfi
                 
 
         
-def _flatten_dict(source : _NestedConfigDict, target : _NestedConfigDict, resolve : bool=False):
+def _flatten_dict(source : NestedConfigDict, target : NestedConfigDict, resolve : bool=False):
     if isinstance(source, DictConfig):
         items = source.items_ex(resolve=resolve)
     else:
@@ -446,7 +474,7 @@ def flatten_config(config : "type[AgentConfig] | AgentConfig", *, resolve: bool 
         type is a normal dictionary.
     """
     try:
-        resolved = cast(_NestedConfigDict, OmegaConf.to_container(OmegaConf.structured(config, flags={"allow_objects" : True}), 
+        resolved = cast(NestedConfigDict, OmegaConf.to_container(OmegaConf.structured(config, flags={"allow_objects" : True}), 
                                                         resolve=resolve, 
                                                         throw_on_missing=False,
                                                         structured_config_mode=SCMode.DICT))

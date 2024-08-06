@@ -6,7 +6,7 @@ Note:
     when this file runs.
 """
 
-from __future__ import annotations as _ # rename to not confuse it somewhere else
+from __future__ import annotations as _
 
 __all__ = [
            "AgentConfig", 
@@ -42,17 +42,12 @@ from copy import deepcopy
 from dataclasses import dataclass, field, is_dataclass
 from functools import partial
 
-from omegaconf import DictConfig, MISSING, ListConfig, OmegaConf, SCMode, open_dict
+from omegaconf import DictConfig, ListConfig, OmegaConf, SCMode, open_dict
 from omegaconf.errors import InterpolationKeyError, MissingMandatoryValue
 
 from hydra.conf import HydraConf
 
 from launch_tools import class_or_instance_method, ast_parse, Literal
-from agents.tools._config_tools import (ConfigDict, extract_annotations, set_container_type, 
-                                        set_readonly_interpolations, set_readonly_keys,
-                                        RssLogLevelAlias, RssRoadBoundariesModeAlias, 
-                                        RssLogLevelStub, RssRoadBoundariesModeStub,
-                                        config_path, config_store)
 from classes.constants import Phase, RulePriority, RoadOption, AD_RSS_AVAILABLE
 from agents.tools.hints import CameraBlueprint
 from classes.rss_visualization import RssDebugVisualizationMode
@@ -67,12 +62,22 @@ from omegaconf import SI, II
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Dict, List, Optional, Tuple, Union, cast, get_type_hints, Type
 from typing_extensions import TypeAlias, Never, overload, Literal, Self
 
-from agents.tools._config_tools import (_T, _M, _AC, _NestedStrDict, _NestedConfigDict, ConfigType,
-                                        OverwriteDictTypes, DictConfigAlias, _DictConfigLike,)
+from agents.tools._config_tools import (_T, _M, _NestedStrDict, ConfigType,
+                                        OverwriteDictTypes, DictConfigAlias, _DictConfigLike,
+                                        
+                                        ConfigDict, extract_annotations, set_container_type, 
+                                        set_readonly_interpolations, set_readonly_keys,
+                                        RssLogLevelAlias, RssRoadBoundariesModeAlias, 
+                                        RssLogLevelStub, RssRoadBoundariesModeStub,
+                                        config_path, config_store,
+                                        
+                                        NestedConfigDict, MISSING as _MISSING)
 
 if TYPE_CHECKING:
     from classes.rule import Rule
     from agents.leaderboard_agent import LunaticChallenger
+    from classes.worldmodel import GameFramework
+
 
 # ---------- Globals --------------
 
@@ -92,6 +97,33 @@ _file_path = __file__
 __file__ alias of this module. used for YAML comments.
 Modify this variable if a config from a different file should be parsed.
 """
+
+if READTHEDOCS and not TYPE_CHECKING:
+    # Import and usage with sphinx imported-members does not work
+    from typing_extensions import TypeAliasType
+    # annotate MISSING instead of ???
+    MISSING : Any = _MISSING  # type: ignore # noqa
+    """
+    Alias for :py:obj:`omegaconf.MISSING`, is literally :python:`"???"` but has type :python:`Any`.
+
+    If an attribute with this value is accessed from a :py:class:`DictConfig`, 
+    it will raise a :py:exc:`MissingMandatoryValue` error.
+    
+    :meta hide-value:
+    """
+
+    # prevent unpack of nested types
+    NestedConfigDict = TypeAliasType("NestedConfigDict", dict[str, "AgentConfig | DictConfig | Any |  NestedConfigDict"])
+    """
+    Alias for nested configurations: :python:`Dict[str, NestedConfigDict | AgentConfig | DictConfig | Any]`
+
+    :meta hide-value:
+    """
+    __all__.insert(0, "MISSING")  # type: ignore # noqa
+    __all__.insert(1, "NestedConfigDict")  # type: ignore # noqa
+else:
+    from omegaconf import MISSING  # type: ignore # noqa
+    
 
 # ---------------------
 # Base Classes
@@ -126,7 +158,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
     :meta private:
     """
     
-    overwrites: "Optional[_NestedConfigDict]" = None
+    overwrites: "Optional[NestedConfigDict]" = None
     """Overwrites of nested dictionaries for used for the initialization of the config."""
     
     @classmethod
@@ -172,7 +204,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         OmegaConf.save(options, path, resolve=resolve)  # NOTE: This might raise if options is structured, for export structured this is actually not necessary. # type: ignore[argument-type]
     
     @class_or_instance_method
-    def _get_commented_yaml(cls_or_self : Union[Type[Self], Self], string:str, container: "DictConfig | _NestedConfigDict",
+    def _get_commented_yaml(cls_or_self : Union[Type[Self], Self], string:str, container: "DictConfig | NestedConfigDict",
                             *, include_private:bool=False) -> str:
         if inspect.isclass(cls_or_self):
             cls = cls_or_self
@@ -199,7 +231,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
         
         # add comments to all other attributes
-        def add_comments(container : "DictConfig | _NestedConfigDict", data: CommentedMap, lookup : Union[AgentConfig, _NestedStrDict], indent:int=0):
+        def add_comments(container : "DictConfig | NestedConfigDict", data: CommentedMap, lookup : Union[AgentConfig, _NestedStrDict], indent:int=0):
             """
             
             Args:
@@ -218,7 +250,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                     comment_txt = "\n" + cls_doc[key].get("__doc__", "")                     # type: ignore
                     assert isinstance(comment_txt, str)
                     # no @package in subfields
-                    if comment_txt.startswith("\n@package "):
+                    if comment_txt.startswith("\n@package "): # already striped here
                         comment_txt = "\n".join(comment_txt.split("\n")[2:]).strip()
                 else:
                     comment_txt = lookup.get(key, None) 
@@ -227,7 +259,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                 if isinstance(comment_txt, dict):
                     add_comments(comment_txt, data[key], comment_txt, indent=indent+2)
                     continue
-                if not include_private and ":meta private:" in comment_txt:
+                if (":meta exclude:" in comment_txt) or not include_private and ":meta private:" in comment_txt:
                     # TODO: does nor remove the key
                     data.pop(key)
                     continue # Skip private fields; todo does not skip "_named" fields
@@ -404,8 +436,8 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         return cast(cls, config_store.load(path).node)
     
     @classmethod
-    def create(cls, settings:"Union[os.PathLike[str], str, DictConfig, _NestedConfigDict | AgentConfig, None]"=None, 
-                    overwrites:"Optional[_NestedConfigDict]"=None, 
+    def create(cls, settings:"Union[os.PathLike[str], str, DictConfig, NestedConfigDict | AgentConfig, None]"=None, 
+                    overwrites:"Optional[NestedConfigDict]"=None, 
                     *,
                     assure_copy : bool = True,
                     as_dictconfig:Optional["bool | SCMode"]=True,
@@ -512,14 +544,32 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
     def check_config(cls, config: ConfigType, strictness: int, as_dict_config: "Literal[True]") -> Self: ... 
     
     @classmethod
-    def check_config(cls, config : "ConfigType | _M | _NestedConfigDict", strictness: int = 1, as_dict_config : bool=True) -> "Self | ConfigType | _M":
+    def check_config(cls, config : "ConfigType | _M | NestedConfigDict", strictness: int = 1, as_dict_config : bool=True) -> "Self | ConfigType | _M":
         """
-        - strictness == 1: Will cast the config to this class, assuring all keys are present.
-            However the type and correctness of the field-contents are not checked.
-        - strictness > 1 the config will be a DictConfig object, **as_dict_config** is ignored. 
-        - strictness == 2: Will assure that the *initial* types are correct.
-        - strictness >= 2 will return the config as a structured config,
-            forcing the defined types during runtime as well.
+        - :python:`strictness == 1` type-cast the config to this class, assuring all keys are present.
+          However the type and correctness of the field-contents are not checked.
+        - :python:`strictness > 1` the config will be a :external_py_class:`DictConfig` object.
+          **as_dict_config** is ignored. 
+        - :python:`strictness == 2`: Will assure that the *initial* types are correct.
+        - :python:`strictness >= 2` will return the config as a structured config, forcing the
+          defined types during runtime as well.
+          
+        Attention:
+            Type-forcing for more complex types does not work, e.g. types from the :code:`carla` module,
+            this also includes carla enums.
+            See https://omegaconf.readthedocs.io/en/2.3_branch/structured_config.html
+            
+        Parameters:
+            config: The configuration to check against this class
+            
+        Args:
+            strictness: See above. Defaults to 1.
+            as_dict_config: Whether to return a duck-typed :external_py_class:`DictConfig` 
+                            instead of an instance of this class. 
+                            Defaults to :python:`True`.
+            
+        Returns:
+            A version of this class or a duck-typed :external_py_class:`DictConfig`.
         """
         if 'experiments' in config and not hasattr(cls, 'experiments'): # For LaunchConfig
             print("\nWARNING: There is key 'experiments' in the config. Did you forget a '# @package _global_' in the first line? Keys in experiments: %s", config["experiments"].keys())
@@ -542,6 +592,10 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
             return new_config
         new_config: cls = OmegaConf.structured(new_config, flags={"allow_objects": True}) # include flag, yes no?
         return new_config
+    
+    if READTHEDOCS and not TYPE_CHECKING:
+        # simplify for online
+        check_config.__wrapped__.__annotations__ = check_config.__annotations__ = {"config": "NestedConfigDict", 'strictness': 'int', 'as_dict_config': 'bool', "return": "Self"} # pylint: disable=protected-access, line-too-long
         
     @class_or_instance_method
     def to_dict_config(cls_or_self : Union[Type[Self], Self], *, lock_interpolations:bool=True, lock_fields:Optional[List[str]]=None) -> DictConfig:
@@ -558,7 +612,6 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         Returns:
             :py:class:`AgentConfig` (duck-typed); actually :external-icon-parse:`:py:class:\`omegaconf.DictConfig\``) : The options as a :py:class:`DictConfig`.
         """
-        """A DictConfig duck-typed as this class."""
         options = cls_or_self
         conf = OmegaConf.structured(options, flags={"allow_objects": True})
         # This pre
@@ -585,7 +638,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
             return getattr(cls_or_self, key)
         return getattr(cls_or_self, key, default)
     
-    def update(self, options : "Union[_NestedConfigDict, DictConfig, AgentConfig]", clean:bool=True) -> None:
+    def update(self, options : "Union[NestedConfigDict, DictConfig, AgentConfig]", clean:bool=True) -> None:
         """
         Updates the options with a new dictionary. Will call :py:meth:`update` recursively
         for nested :py:class:`AgentConfig` objects.
@@ -655,7 +708,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         
         # Handle the overwrites
         try:
-            value : Union[_NestedConfigDict, AgentConfig, DictConfig, str, bool, float, int, list[Any], ListConfig, None, Literal["None"]]
+            value : Union[NestedConfigDict, AgentConfig, DictConfig, str, bool, float, int, list[Any], ListConfig, None, Literal["None"]]
             annotations = get_type_hints(self.__class__)
             for key in self.overwrites.keys():
                 if key in annotations: # This is "overwrites" -> to "self"
@@ -725,7 +778,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
 @dataclass
 class LiveInfo(AgentConfig):
     """
-    @package agent.live_info
+    .. @package agent.live_info
     
     Keeps track of information that changes during the simulation.
     """
@@ -1587,11 +1640,11 @@ class RuleConfig(_DictConfigLike if TYPE_CHECKING else object):
     """Subconfig for rules; can have arbitrary keys"""
         
     instance : object = MISSING             # pyright: ignore[reportRedeclaration, reportAssignmentType]
-    """The instance of the rule, can be accessed by ctx.current_rule.instance"""
+    """The instance of the rule, can be accessed by :python:`ctx.current_rule.instance`"""
     
-    if TYPE_CHECKING: # Cannot import Rule, omegaconf wants type
+    if TYPE_CHECKING: # Cannot import Rule but need a type for OmegaConf
         instance : Rule = MISSING   
-        """The instance of the rule, can be accessed by ctx.current_rule.instance"""
+        """The instance of the rule, can be accessed by :python:`ctx.current_rule.instance`"""
 
 
 @dataclass
@@ -1639,6 +1692,7 @@ class CreateRuleFromConfig(_DictConfigLike if TYPE_CHECKING else object):
     
     See Also:
         https://hydra.cc/docs/advanced/instantiate_objects/overview/
+        :py:class:`.Rule` for more information on the parameters.
     
     """
     
@@ -1663,9 +1717,11 @@ class CreateRuleFromConfig(_DictConfigLike if TYPE_CHECKING else object):
     Interpolation to agent, or rather, context keys is possible.
     
     Note:
-        - Also has an "instance" key which is the instance of the rule.
-        - You can access config rule also with ctx.current_rule
+        - Also has an **instance** key which is the instance of the rule.
+        - You can access config rule also with :python:`ctx.current_rule`
     """
+    if READTHEDOCS and not TYPE_CHECKING:
+        self_config : NestedConfigDict = MISSING # lets not introduce a new variable
     
     priority: RulePriority = MISSING
     cooldown_reset_value : Optional[int] = MISSING
@@ -1673,9 +1729,10 @@ class CreateRuleFromConfig(_DictConfigLike if TYPE_CHECKING else object):
     enabled: bool = MISSING
     
     if READTHEDOCS or TYPE_CHECKING:
-        rules : List["CreateRuleFromConfig"] = MISSING
+        rules : "List[CreateRuleFromConfig]" = MISSING
     else:
         rules : list = MISSING # List[CreateRuleFromConfig] # Cannot use this forward ref with omegaconf
+    
     execute_all_rules : bool = MISSING
     
     weights : Optional[Dict[str, float]] = MISSING
@@ -1685,8 +1742,11 @@ class CreateRuleFromConfig(_DictConfigLike if TYPE_CHECKING else object):
     MAX_TICKS : Optional[int] = MISSING
     max_tick_callback : Optional[str] = MISSING
     
-    gameframework : None = MISSING
-    """Needed explicitly for BlockingRules"""
+    gameframework : None = MISSING  # pyright: ignore[reportRedeclaration]
+    """Needed explicitly for :py:class:`BlockingRules` once. Depending on setup can be omitted"""
+    
+    if READTHEDOCS or TYPE_CHECKING:
+        gameframework : Optional[GameFramework] = MISSING
     
     def __post_init__(self):
         if isinstance(self.phases, str):
@@ -1703,7 +1763,10 @@ class CreateRuleFromConfig(_DictConfigLike if TYPE_CHECKING else object):
                 delattr(self, key)
 
 RuleCreatingParameters : TypeAlias = Union[CreateRuleFromConfig, CallFunctionFromConfig, DictConfig]
-
+"""
+Alias of types that are valid for :py:func:`hydra.instantiate`
+to create :py:class:`Rule | list[Rule] <Rule>`.
+"""
 
 def _from_config_default_rules():
     """
@@ -1853,7 +1916,7 @@ class BehaviorAgentSettings(AgentConfig):
 @dataclass
 class LunaticAgentSettings(AgentConfig):
     """
-    @package agent
+    .. @package agent
     
     Config schema definition for the :py:class:`LunaticAgent` class
     """
@@ -1898,7 +1961,7 @@ class LunaticAgentSettings(AgentConfig):
     
     if READTHEDOCS or TYPE_CHECKING:
         # variant needs to be first.
-        rules : List[RuleCreatingParameters] = field(default_factory=_from_config_default_rules) # pyright: ignore[reportArgumentType]
+        rules : "list[RuleCreatingParameters]" = field(default_factory=_from_config_default_rules) # pyright: ignore[reportArgumentType]
         
     # ---- Special Attributes for Context and Rule overwrites ----
     # These attributes are not usable by the agent
@@ -1955,7 +2018,7 @@ class ContextSettings(LunaticAgentSettings):
 @dataclass
 class CameraConfig(AgentConfig):
     """
-    @package camera
+    .. @package camera
     """
     
     width: int = 1280
@@ -2092,7 +2155,9 @@ class LaunchConfig(AgentConfig):
     loop: bool = True
     """
     If True the agent will look for a new waypoint after the initial route is done.
-    - NOTE: Needs custom implementation in the main file.
+    
+    Note: 
+        Needs custom implementation in the main file by the user.
     """
 
     # camera:
@@ -2146,6 +2211,8 @@ class LaunchConfig(AgentConfig):
     
     Attention:
         This field is not guaranteed to be present or the complete :py:class:`HydraConf` schema.
+    
+    :meta exclude: # not included in yaml.comments
     """
     
     if not TYPE_CHECKING:

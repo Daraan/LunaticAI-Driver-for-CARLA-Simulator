@@ -33,7 +33,9 @@ sync: true
 handle_ticks: true
 
 # If True the agent will look for a new waypoint after the initial route is done.
-# - NOTE: Needs custom implementation in the main file.
+#  
+# Note: 
+#     Needs custom implementation in the main file by the user.
 loop: true
 # width of pygame window
 width: 1280

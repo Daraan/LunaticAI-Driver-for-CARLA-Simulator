@@ -222,14 +222,20 @@ def patch_challenger():
     _change_contents("agents.rst", content)
         
 def add_imported_members():
-    module: dict[str, "list[str] | str | Literal['all']"] = {"classes" : ["CustomSensorInterface"],
+    modules: dict[str, "list[str] | str | Literal['all'] | tuple[str, list[str]]"] = {"classes" : ["CustomSensorInterface"],
                                                              "classes.carla_originals" : "all",
+                                                             "agents.tools" : ("config_creation", ["MISSING, NestedConfigDict"]),
                                                              }
-    for file, members in module.items():
+    for file, members in modules.items():
         if isinstance(members, str) and members != "all":
             members = [members]
         content = _get_contents(file+".rst")
-        start = content.find(".. automodule:: "+file+"\n")
+        if isinstance(members, tuple):
+            module = file + "." + members[0]
+            members = members[1]
+        else:
+            module = file
+        start = content.find(".. automodule:: "+module+"\n")
         end = content.find("----", start)
         if end == -1:
             subcontent = content[start:]
@@ -244,6 +250,8 @@ def add_imported_members():
             if not members:
                 continue
             subcontent = re.sub(pattern, extra+"   :imported-members: " + ", ".join(members) +extra+"\n", subcontent, count=1)
+        elif ":imported-members:" in subcontent:
+            continue
         else:
             subcontent = re.sub(pattern, extra+"   :imported-members:" + extra +"\n", subcontent, count=1)
         content = content[:start] + subcontent + content[end:]
