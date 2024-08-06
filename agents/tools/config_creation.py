@@ -6,7 +6,7 @@ Note:
     when this file runs.
 """
 
-from __future__ import annotations
+# from __future__ import annotations
 
 # DO NOT USE from __future__ import annotations ! This would break the dataclass interface.
 
@@ -2156,7 +2156,9 @@ class LaunchConfig(AgentConfig):
         hydra : HydraConf = field(default=MISSING, kw_only=True, compare=False, hash=False)
     
     if READTHEDOCS or TYPE_CHECKING:
-        leaderboard : Annotated[DictConfig, "Only present for the", LunaticChallenger] = field(init=False, kw_only=True)
+        from sphinx.util.inspect import TypeAliasForwardRef as _Ref
+        #from typing import ForwardRef as _Ref
+        leaderboard : Annotated[DictConfig, "Only present for the", _Ref("LunaticChallenger")] = field(init=False, kw_only=True)
 
 
 def export_schemas(detailed_rules:bool=False):
