@@ -117,6 +117,31 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     @classmethod
     def quickstart(cls, launch_config: Optional["LaunchConfig"]=None, *, logging=False) -> "Self":
+        """
+        Initializes Hydra_ in a limited way, i.e. does not allow for command line overrides.
+        
+        Sets up the :py:class:`carla.Client` and related instances as well as pygame.
+        
+        Note:
+            It is recommended that you use a :python:`@hydra.main` decorated main function instead
+            to make full use of the Hydra_ framework.
+        
+        Parameters:
+            launch_config: The configuration to use. If :code:`None`, will use the default 
+                           configuration from :code:`./conf/launch_config.yaml`.
+            logging: If True, change the how logging is done by applying the logger settings from
+                     :code:`./conf/config_extensions/job_logging.yaml`.
+                     Default is :code:`False`.
+                     
+        Returns:
+            The initialized :py:class:`GameFramework` instance.
+                     
+        See Also:
+            This function uses:
+                - :py:meth:`.initialize_hydra`
+                - :py:meth:`.init_carla`
+                - :py:meth:`.init_pygame`
+        """
         if not launch_config:
             launch_config = cls.initialize_hydra(logging=logging)
         if not logging and AD_RSS_AVAILABLE:

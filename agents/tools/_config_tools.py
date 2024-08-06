@@ -33,6 +33,9 @@ if TYPE_CHECKING:
 # if this one is mutable
 #"""
 
+READTHEDOCS = os.environ.get("READTHEDOCS", False)
+"""Whether the code is currently running on readthedocs."""
+
 # ----------- Resolvers -------------
 
 def look_ahead_time(speed: float, time_to_collision: float, plus: float=0) -> float:
@@ -45,7 +48,7 @@ def look_ahead_time(speed: float, time_to_collision: float, plus: float=0) -> fl
     return speed / 3.6 * time_to_collision + plus # km / h * s = m
 
 # need this check for readthedocs
-if os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
+if not READTHEDOCS and os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
     import random
     OmegaConf.register_new_resolver("sum", lambda x, y: x + y)       # type: ignore[arg-type]
     OmegaConf.register_new_resolver("subtract", lambda x, y: x - y)  # type: ignore[arg-type]
@@ -60,6 +63,8 @@ if os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
 
 
 CONFIG_SCHEMA_NAME = "launch_config_schema.yaml"
+"""Name to use for the launch_config as it cannot be launch_config itself."""
+
 from hydra.core.config_store import ConfigStore
 config_store = ConfigStore.instance()
 
@@ -83,22 +88,28 @@ def config_path(path: Optional[str] = None):
     Register the schema of the current class with Hydra's ConfigStore.
     """          
     
-    def _register(obj : "type[_AC]") -> "type[_AC]":
-        if path is None:
-            name = obj._config_path # type: ignore[attr-defined]
-        else:
-            name = path
-        if name is None or name == "NOT_GIVEN":
-            raise ValueError(f"Path is not given for {obj.__name__}. Use @register('path/to/config.yaml') to set the path.")
-        dots = name.count(".")
-        if dots > 0 and not (dots == 1 and name.endswith(".yaml")):
-            raise ValueError(f"Use '/' as separator and not dots. E.g. {name.replace('.', '/')} and not '{name}'")
-        obj._config_path = name
-        if not is_dataclass(obj) and not TYPE_CHECKING: # type: ignore
-            raise ValueError(f"Only dataclasses can be registered. {obj.__name__} is not a dataclass.")
-        register_hydra_schema(obj, name)
-        return obj
-
+    if not READTHEDOCS:
+    
+        def _register(obj : "type[_AC]") -> "type[_AC]":  # pyright: ignore[reportRedeclaration]
+            if path is None:
+                name = obj._config_path # type: ignore[attr-defined]
+            else:
+                name = path
+            if name is None or name == "NOT_GIVEN":
+                raise ValueError(f"Path is not given for {obj.__name__}. Use @register('path/to/config.yaml') to set the path.")
+            dots = name.count(".")
+            if dots > 0 and not (dots == 1 and name.endswith(".yaml")):
+                raise ValueError(f"Use '/' as separator and not dots. E.g. {name.replace('.', '/')} and not '{name}'")
+            obj._config_path = name
+            if not is_dataclass(obj) and not TYPE_CHECKING: # type: ignore
+                raise ValueError(f"Only dataclasses can be registered. {obj.__name__} is not a dataclass.")
+            register_hydra_schema(obj, name)
+            return obj
+    else:
+        # dummy:
+        def _register(obj : "type[_AC]") -> "type[_AC]":
+            return obj
+        
     return _register
     
 def load_config_schema(name: str) -> Any:
