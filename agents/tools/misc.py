@@ -13,10 +13,7 @@ import math
 import numpy as np
 
 import carla
-
-from agents.tools import debug_drawing
-from agents.tools.debug_drawing import draw_waypoints
-
+from typing import TYPE_CHECKING
 
 __all__ = [
     'draw_waypoints',
@@ -29,6 +26,16 @@ __all__ = [
     'compute_distance',
     'positive'
 ]
+
+if TYPE_CHECKING:
+    from agents.tools.debug_drawing import draw_waypoints
+else:
+    # circular import when loading agents/navigation/local_planner.py, which we do not want to
+    # modify. When debug_drawing is loaded this function will be replaced by the correct one.
+    def draw_waypoints(*args, **kwargs):
+        from agents.tools.debug_drawing import draw_waypoints
+        return draw_waypoints(*args, **kwargs)
+
 
 def get_speed(vehicle, kmh=True, vel=None):
     """
@@ -218,7 +225,3 @@ def get_closest_tl_trigger_wp(reference_location: carla.Location, traffic_light:
             closest_wp = wp
             distance = test_distance
     return closest_wp, distance
-
-
-# patch, to avoid import in function
-debug_drawing.get_trafficlight_trigger_location = get_trafficlight_trigger_location # type: ignore

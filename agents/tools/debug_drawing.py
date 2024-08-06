@@ -9,11 +9,11 @@ import carla
 from typing import TYPE_CHECKING, Optional
 
 from classes.constants import RoadOption, RoadOptionColor
+from agents.tools import misc # draw_waypoints patched from this module
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     from classes.worldmodel import GameFramework
-    from agents.tools.misc import get_trafficlight_trigger_location # imported correctly from end of misc, to avoid circular import
     
 
 red = carla.Color(255, 0, 0)
@@ -173,7 +173,7 @@ def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destin
         for wp in wps:
             game_framework.debug.draw_point(wp.transform.location + carla.Location(z=2), life_time=0.6)  
             draw_waypoint_info( game_framework.debug, wp)
-        trigger_loc = get_trafficlight_trigger_location(traffic_light)
+        trigger_loc = misc.get_trafficlight_trigger_location(traffic_light)
         trigger_wp = game_framework.get_map().get_waypoint(trigger_loc)
         game_framework.debug.draw_point(trigger_wp.transform.location + carla.Location(z=2), life_time=0.6, size=0.2, color=carla.Color(0,0,255))
 
@@ -283,3 +283,7 @@ def lane_explorer(debug : carla.DebugHelper, current_w: carla.Waypoint, draw_inf
         junction = next_w.get_junction()
         draw_junction(debug, junction, trail_life_time)
     return next_w
+
+
+# circular import
+misc.draw_waypoints = draw_waypoints
