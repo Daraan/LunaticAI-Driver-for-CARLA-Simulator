@@ -44,21 +44,20 @@ from copy import deepcopy
 from dataclasses import dataclass, field, is_dataclass
 from functools import partial
 
+from omegaconf import DictConfig, MISSING, ListConfig, OmegaConf, SCMode, open_dict
+from omegaconf.errors import InterpolationKeyError, MissingMandatoryValue
+
+from hydra.conf import HydraConf
+
 from launch_tools import class_or_instance_method, ast_parse, Literal
 from agents.tools._config_tools import (ConfigDict, extract_annotations, set_container_type, 
                                         set_readonly_interpolations, set_readonly_keys,
                                         RssLogLevelAlias, RssRoadBoundariesModeAlias, 
                                         RssLogLevelStub, RssRoadBoundariesModeStub,
                                         config_path, config_store)
-from classes.constants import Phase, RulePriority, RoadOption
-from classes.camera_manager import CameraBlueprint
-from classes.rss_sensor import AD_RSS_AVAILABLE
+from classes.constants import Phase, RulePriority, RoadOption, AD_RSS_AVAILABLE
+from agents.tools.hints import CameraBlueprint
 from classes.rss_visualization import RssDebugVisualizationMode
-
-from omegaconf import DictConfig, MISSING, ListConfig, OmegaConf, SCMode, open_dict
-from omegaconf.errors import InterpolationKeyError, MissingMandatoryValue
-
-from hydra.conf import HydraConf
 
 # ---- Typing ----
 
@@ -588,22 +587,22 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
             return getattr(cls_or_self, key)
         return getattr(cls_or_self, key, default)
     
-    def update(self, options : "Union[_NestedConfigDict, DictConfig, AgentConfig]", clean:bool=True):
+    def update(self, options : "Union[_NestedConfigDict, DictConfig, AgentConfig]", clean:bool=True) -> None:
         """
-        Updates the options with a new dictionary.
+        Updates the options with a new dictionary. Will call :py:meth:`update` recursively
+        for nested :py:class:`AgentConfig` objects.
         
         Parameters:
             options: The new options to update with.
             clean: Whether to call :py:meth:`_clean_options` after updating. Defaults to True.
         """
         try:
-            if isinstance(options, AgentConfig):
-                assert is_dataclass(options)
+            if is_dataclass(options): # instance of AgentConfig
                 key_values = options.__dataclass_fields__.items()
             elif isinstance(options, DictConfig):
                 key_values = options.items_ex(resolve=False) # Calling this with missing keys will raise an error 
             else:
-                key_values = options.items()
+                key_values = options.items() # type: ignore
             
             for k, v in key_values: 
                 if isinstance(getattr(self, k), AgentConfig):  # pyright: ignore[reportArgumentType], k is str

@@ -148,7 +148,6 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             launch_config.agent.rss.log_level = "off"
         cls.init_carla(launch_config)
         cls.init_pygame(launch_config)
-        print("actors", len(CarlaDataProvider.get_world().get_actors()))
         return cls(launch_config)
         
     

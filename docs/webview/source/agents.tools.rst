@@ -27,6 +27,7 @@ agents.tools.hints module
 
 .. automodule:: agents.tools.hints
    :members:
+   :special-members: __bool__
    :undoc-members:
    :show-inheritance:
    :no-inherited-members:

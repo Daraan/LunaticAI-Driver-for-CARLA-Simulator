@@ -1,3 +1,4 @@
+# pyright: reportUnusedImport=information, reportInvalidStringEscapeSequence=false
 """
 In this module defines enums and constants that are used throughout the project.
 
@@ -18,6 +19,12 @@ except ImportError:
 if TYPE_CHECKING:
     from agents.tools.hints import TrafficLightDetectionResult
     from classes.rule import Rule, Context # pylint: disable=unused-import # both are explicitly set
+    
+try:
+    from carla import ad      # pyright: ignore
+    AD_RSS_AVAILABLE : bool = True
+except ImportError:
+    AD_RSS_AVAILABLE = False  # pyright: ignore[reportConstantRedefinition]
     
 class RuleResult(Enum):
     """Special :python:`objects` that indicate special return values"""
@@ -394,13 +401,14 @@ class Phase(Flag):
         raise ValueError(f"Phase {self} is not a valid phase")
         return Phase(self.value * 2)
     
-    def validate_next_phase(current_phase, next_phase):
+
+    def validate_next_phase(current_phase, next_phase : "Phase") -> None: # type: ignore
         """
         :meta private:
         """
         
-        assumed_next = current_phase.next_phase()
-        NotImplemented # Currently done in agent.execute_phase
+        assumed_next = current_phase.next_phase()  # type: ignore
+        NotImplemented # Currently done in agent.execute_phase # type: ignore
 
     @classmethod
     def get_user_controlled_phases(cls):
@@ -436,13 +444,13 @@ class Phase(Flag):
 
     @classmethod
     @lru_cache(1)  # < Python3.8
-    def get_exceptions(cls):
+    def get_exceptions(cls) -> "list[Phase]":
         """
         Returns the :py:attr:`BEGIN` and :py:attr:`END` combinations of the exceptions.
         """
          # TODO: Get this from EXCEPTIONS
         exceptions = [cls.TURNING_AT_JUNCTION, cls.HAZARD, cls.EMERGENCY, cls.COLLISION, cls.CAR_DETECTED, cls.DONE]
-        exception_phases = []
+        exception_phases : "list[Phase]" = []
         for e in exceptions: # improve with itertools
             exception_phases.append(e | cls.BEGIN)
             exception_phases.append(e | cls.END)
@@ -607,7 +615,7 @@ class RoadOption(IntEnum):
 
 
 class __ItemAccess(type): # noqa
-    def __getitem__(cls, key) -> carla.Color:
+    def __getitem__(cls, key : str) -> carla.Color:
         return getattr(cls, key)
     
     def __call__(cls, option: "RoadOption") -> carla.Color:

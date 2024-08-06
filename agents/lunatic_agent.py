@@ -41,8 +41,7 @@ from agents.tools.logging import logger
 from agents import substep_managers
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlannerWithRss
 
-from classes.constants import AgentState, HazardSeverity, Phase, Hazard, RoadOption
-from classes.rss_sensor import AD_RSS_AVAILABLE
+from classes.constants import AgentState, HazardSeverity, Phase, Hazard, RoadOption, AD_RSS_AVAILABLE
 from classes.rule import BlockingRule, Context, Rule
 from agents.tools.config_creation import (AgentConfig, LaunchConfig, LiveInfo, LunaticAgentSettings, 
                                           CameraConfig, RuleCreatingParameters)

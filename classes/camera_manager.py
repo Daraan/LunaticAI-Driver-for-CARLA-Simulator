@@ -5,29 +5,15 @@ import numpy as np
 import pygame
 from carla import ColorConverter as cc
 
-from typing import TYPE_CHECKING, ClassVar, List, NamedTuple, Optional, cast
-from typing_extensions import Self
+from typing import TYPE_CHECKING, ClassVar, List, Optional, cast
 
+from agents.tools.hints import CameraBlueprint
 from classes._sensor_interface import CustomSensorInterface
 from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
     from classes.hud import HUD
     from agents.tools.config_creation import LaunchConfig
-
-class CameraBlueprint(NamedTuple):
-    """
-    Represents a camera blueprint to spawn a camera sensor.
-    """
-    
-    blueprint_path : str
-    """Blueprint name for the actor"""
-    color_convert : cc
-    """Color converter for the camera"""
-    name : str
-    """Semantic name of the blueprint, e.g. RGB, Segmenation"""
-    actual_blueprint : Optional[carla.ActorBlueprint] = None
-    """The actual blueprint object; filled in later"""
 
 # TODO integrate into camera.yaml
 CameraBlueprints = {
@@ -39,8 +25,10 @@ CameraBlueprints = {
     'Camera Semantic Segmentation (CityScapes Palette)' : CameraBlueprint('sensor.camera.semantic_segmentation', cc.CityScapesPalette, 'Camera Semantic Segmentation (CityScapes Palette)'),
     'Lidar (Ray-Cast)' : CameraBlueprint('sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)')
 }
+"""Camera blueprints used by the CARLA examples."""
 
-CameraBlueprintsSimple = [CameraBlueprints['Camera RGB']]
+CameraBlueprintsSimple: List[CameraBlueprint] = [CameraBlueprints['Camera RGB']]
+"""Just a single RGB camera. Default for :py:meth:`.CameraManager.sensors`"""
 
 
 # ==============================================================================

@@ -20,7 +20,7 @@ from omegaconf._utils import is_structured_config
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Union, cast, get_type_hints
 from typing_extensions import TypeAlias, TypeVar, Self, TypeAliasType
 
-from classes.rss_sensor import AD_RSS_AVAILABLE
+from classes.constants import AD_RSS_AVAILABLE
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import AgentConfig
@@ -67,13 +67,12 @@ CONFIG_SCHEMA_NAME = "launch_config_schema.yaml"
 
 from hydra.core.config_store import ConfigStore
 config_store = ConfigStore.instance()
-
-if TYPE_CHECKING:
-    from agents.tools.config_creation import AgentConfig
+"""Hydra_ 's ConfigStore instance to access config schemas."""
 
 def register_hydra_schema(obj: type[Any], name: Optional[str]=None):
     """
-    Uses Hydra's ConfigStore to register the schema of the current class.
+    Uses Hydra's ConfigStore to register the schema of the current class in the
+    :py:obj:`ConfigStore <config_store>`.
     
     See also:
         :py:func:`config_path`
@@ -85,8 +84,11 @@ def register_hydra_schema(obj: type[Any], name: Optional[str]=None):
 
 def config_path(path: Optional[str] = None):
     """
-    Register the schema of the current class with Hydra's ConfigStore.
-    """          
+    Decorator to register the schema of the current class with Hydra's ConfigStore.
+    
+    Returns 
+        (Callable[[type[AgentConfig]], type[AgentConfig]]) Wrapper function to register the schema.
+    """
     
     if not READTHEDOCS:
     
@@ -106,7 +108,7 @@ def config_path(path: Optional[str] = None):
             register_hydra_schema(obj, name)
             return obj
     else:
-        # dummy:
+        # dummy, to avoid errors
         def _register(obj : "type[_AC]") -> "type[_AC]":
             return obj
         
@@ -416,7 +418,7 @@ def set_container_type(base: "type[AgentConfig]", container : Union[_NestedConfi
                 else:
                     setattr(container, key, typ(**value))
             if isinstance(value, (DictConfig, dict)) or is_dataclass(value):
-                set_container_type(typ, value)
+                set_container_type(typ, value) # type: ignore[arg-type]
                 
 
         
