@@ -794,7 +794,7 @@ class Rule(_GroupRule):
                 logger.warning(f"Class {self.__class__.__name__} has a self_config class that is not a dataclass. This might lead to undesired results, i.e. missing keys in the config.")
             default_self_config = default_self_config()
         if not isinstance(default_self_config, DictConfig):
-            default_self_config = cast(RuleConfig, OmegaConf.create(default_self_config, flags={"allow_objects": True}))
+            default_self_config = cast(RuleConfig, OmegaConf.create(default_self_config, flags={"allow_objects": True})) # type: ignore
         if self_config:
             self.self_config = cast(RuleConfig, OmegaConf.merge(default_self_config, self_config))
         else:

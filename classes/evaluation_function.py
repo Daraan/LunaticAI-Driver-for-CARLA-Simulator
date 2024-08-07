@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+# pyright: strict
 # pyright: reportInconsistentConstructor=information
+
 
 import inspect
 from collections import abc
@@ -9,16 +13,32 @@ try: # Python 3.8+
 except ImportError:
     from launch_tools import singledispatchmethod
 
-from typing import Callable, Any, ClassVar, Dict, Hashable, TYPE_CHECKING, Optional, Union
-from typing_extensions import overload, Self, TypeAlias
+from typing import Callable, Any, ClassVar, Dict, Hashable, TYPE_CHECKING, Optional, Union, TypeVar, cast
+from typing_extensions import overload, Self, ParamSpec, Concatenate, TypeAlias, TypeAliasType
 
 if TYPE_CHECKING:
     from classes.rule import Context, Rule # circular import
     from typing import NoReturn
+    
+    
 # NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
 
-_Callable_Any : TypeAlias = Callable[..., Any]    # type: ignore[unused-variable]
-_Callable_H : TypeAlias = Callable[..., Hashable] # type: ignore[unused-variable]
+_T = TypeVar("_T")
+_P = ParamSpec("_P")
+
+_Rule = TypeVar("_Rule", bound="Rule")
+_ContextOrRule : TypeAlias = Union["Context", "Rule"]
+_ContextOrRuleType = TypeVar("_ContextOrRuleType", "Context", "Rule")
+
+_ConditionType : TypeAlias = Callable[["Context"], Hashable] | Callable[[_Rule, "Context"], Hashable]
+
+_ActionNoArgsType : TypeAlias = Callable[[_Rule, "Context"], Any] | Callable[["Context"], Any]
+_ActionTypeArgs : TypeAlias = Callable[Concatenate[_Rule, "Context", _P], Any] | Callable[Concatenate["Context", _P], Any]
+_ActionType : TypeAlias = _ActionTypeArgs[_Rule, _P] | _ActionNoArgsType[_Rule]
+
+_Action = TypeAliasType("_Action", _ActionType[_Rule, _P], type_params=(_Rule, _P))
+
+
 
 class ConditionFunction:
     """
@@ -79,7 +99,7 @@ class ConditionFunction:
 
     """
     
-    actions: Dict[Hashable, Callable[["Union[Context, Rule]"], Any]] = {}
+    actions: Dict[Hashable, _ActionType[Rule, ...] | "partial[_ActionType[Rule, ...]]"] = {}
     """
     Mapping of return values to actions to be executed.
     If this dictionary is not empty it will be used as the :py:attr:`.Rule.actions` dictionary.
@@ -89,14 +109,19 @@ class ConditionFunction:
     """Forbidden names for action functions."""
     
     @overload
-    def __new__(cls, first_argument: Union[None, str], name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None) -> "type[Self]":
+    def __new__(cls, first_argument: Optional[str]=None, name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None) -> "partial[type[Self]]":
         ...
         
     @overload
-    def __new__(cls, first_argument: Callable[..., Hashable], name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None) -> Self:
+    def __new__(cls, first_argument: _ConditionType[_Rule], name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None) -> Self:
         ...
     
-    def __new__(cls, first_argument: Optional[Union[str, Callable[["Context"], Hashable]]]=None, name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None) -> Union["type[Self]", Self]:
+    def __new__(cls, 
+                first_argument: Optional[Union[str, _ConditionType[_Rule]]]=None,
+                name:str="ConditionFunction", 
+                *, 
+                truthy:bool=False, 
+                use_self: Optional[bool]=None) -> partial[type[Self]] | Self:
         # example usage: @ConditionFunction("name")
         if isinstance(first_argument, str):
             # Calling decorator with a string
@@ -109,7 +134,7 @@ class ConditionFunction:
         instance = super().__new__(cls)
         return instance
     
-    def __init__(self, evaluation_function: Callable[["Context"], Hashable], name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None):
+    def __init__(self, evaluation_function: _ConditionType[_Rule], name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None):
         update_wrapper(self, evaluation_function, assigned=("__qualname__", "__module__", "__annotations__", "__doc__"))
         self.evaluation_function = evaluation_function
         self.truthy = truthy
@@ -130,7 +155,7 @@ class ConditionFunction:
             In the method case the real Context object is args[0]!
         """
         try:
-            rule_result = self.evaluation_function(ctx, *args, **kwargs)    # type: ignore
+            rule_result = self.evaluation_function(ctx, *args, **kwargs)  # type: ignore
         except Exception:
             print(f"ERROR: in Rule {self.name} with function {self.evaluation_function}")
             raise
@@ -153,15 +178,21 @@ class ConditionFunction:
             return self # called on class Rule.condition
         return partial(self, instance) # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
     
-    def copy(self, copy_actions:bool=False):
+    def copy(self, copy_actions: bool=False):
         """
         Copies the class by creating a new instance.
         
         Parameters:
-            copy_actions: If :python:`True`, the :py:attr:`actions` dictionary is copied as well. Defaults to :python:`False`.
-                
-                Warning:
-                    Be aware that the actions themselves are not copied; they are identical and shared.
+            copy_actions: If :python:`True`, the :py:attr:`.ConditionFunction.actions` 
+                dictionary is copied as well. 
+                Defaults to :code:`False`.
+                    
+        Returns: 
+            ConditionFunction: A new instance, with the same :python:`__init__` arguments.
+            
+        Warning:
+            Be aware that when using **copy_actions** the actions themselves are not copied; 
+            they are identical and shared.
         """
         instance = super().__new__(self.__class__)
         self.__class__.__init__(instance, self.evaluation_function, self.name, truthy=self.truthy, use_self=self.use_self)
@@ -184,19 +215,51 @@ class ConditionFunction:
             return ConditionFunction._complete_func_to_string(func)
         return func.__name__
     
-    def _check_action(self, action_function: Callable[["Union[Context, Rule]"], Any], 
-                      key: Hashable, **kwargs: Any) -> Callable[["Context | Rule"], Any]:
+    from typing_extensions import TypeIs, TypeGuard # TODO: move
+    @staticmethod
+    def _has_no_kwargs(func : _ActionTypeArgs[_Rule, _P] | _ActionNoArgsType[_Rule], *args: _P.args, **kwargs:_P.kwargs) -> TypeIs[_ActionNoArgsType[_Rule]]:
+        return bool(kwargs) or bool(args)
+    
+    @overload
+    def _check_action(self, action_function: _ActionTypeArgs[_Rule, _P], key: Hashable, *args : _P.args,  **kwargs: _P.kwargs) -> "partial[_ActionTypeArgs[_Rule, _P]]": ...
+    
+    @overload
+    def _check_action(self, action_function: _ActionNoArgsType[_Rule], key: Hashable) -> "_ActionNoArgsType[_Rule]": ...
+    
+    def _check_action(self, action_function: _ActionTypeArgs[_Rule, _P] | _ActionNoArgsType[_Rule],
+                      key: Hashable,
+                      *args : _P.args,
+                      **kwargs: _P.kwargs):
+        assert not args, "args are not allowed"
         if action_function.__name__ in ConditionFunction._INVALID_NAMES:
             raise ValueError(f"When using ConditionFunction.add_action, the action function's name may not be in {ConditionFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
         if key in self.actions:
             print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
-        if kwargs:
-            # TODO: # CRITICAL: are args problematic?
-            action_function = partial(action_function, **kwargs)
+        if not kwargs:
+            return cast(_ActionNoArgsType[_Rule], action_function)
+        action_function = cast(partial[_ActionTypeArgs[_Rule, _P]], partial(action_function, **kwargs))
         return action_function
     
+    from typing_extensions import Never
+    
+    @overload
+    def register_action(self, key: Hashable=True, _:None=None) -> Callable[[_Action[_Rule, _P]], _Action[_Rule, _P]]:
+        ... # decorator usage
+        
+    @overload
+    def register_action(self, key: Hashable=True, *args: _P.args, **kwargs: _P.kwargs) -> Callable[[_ActionTypeArgs[_Rule, _P]], "partial[_ActionTypeArgs[_Rule, _P]]"]:
+        ... # decorator usage
+        
+    @overload
+    def register_action(self, action_function: _Action[_Rule, _P], key: Hashable=True, _:None=None) -> _Action[_Rule, _P]: ...
+        # function usage
+    
+    @overload
+    def register_action(self, action_function: _ActionTypeArgs[_Rule, _P], key: Hashable=True, *args: _P.args, **kwargs: _P.kwargs) -> "partial[_ActionTypeArgs[_Rule, _P]]": ...
+        # function usage
+    
     @singledispatchmethod
-    def register_action(self, key: Hashable=True, **kwargs: Any):
+    def register_action(self, key: Hashable=True, *args: _P.args, **kwargs: _P.kwargs) -> Callable[[_Action[_Rule, _P]], "_Action[_Rule, _P] | partial[_Action[_Rule, _P]]"]:
         """
         Add an action to be executed when the condition function returns a specific value.
         
@@ -206,14 +269,16 @@ class ConditionFunction:
         
             # As decorator
             @ConditionFunction
-            def is_speeding(ctx: Context) -> Literal["very fast", "fast", "normal", "slow"]:
+            def is_speeding(ctx: Context) -> Literal["very fast", "fast", "normal", "slow", True]:
                 ...
             
             @is_speeding.register_action(key="very fast")
+            # or
+            @is_speeding.register_action # default key is True
             def very_fast_action(ctx: Context):
                 ctx.agent.set_target_speed(ctx.config.target_speed-5)
             
-            # Or functionally
+            # Or as function
             def fast_action(ctx: Context):
                 ctx.agent.set_target_speed(ctx.config.target_speed+1)
                 
@@ -221,25 +286,30 @@ class ConditionFunction:
         
         Parameters:
             key: If the condition function returns this value, this action will be executed. Defaults to :python:`True`.
+            action_function: The action to be executed. 
             kwargs : Additional keyword arguments to be passed to the action function when it is executed.
             
         Note:
             Only one action is allowed per key. If an action is already registered for the key, it will be overwritten.
         """
-        def decorator(action_function: Callable[["Union[Context, Rule]"], Any]):
-            action_function = self._check_action(action_function, key, **kwargs)
-            self.actions[key] = action_function # register action
-            return action_function
+        assert not args, "args are not allowed"
+        def decorator(action_function: _Action[_Rule, _P]) -> "_Action[_Rule, _P] | partial[_Action[_Rule, _P]]":
+            if self._has_no_kwargs(action_function, *args, **kwargs):
+                checked_action = cast(_Action[_Rule, _P], self._check_action(action_function, key))
+            else: 
+                checked_action = cast(partial[_Action[_Rule, _P]], self._check_action(action_function, key, **kwargs))
+            self.actions[key] = checked_action # register action
+            return checked_action
         return decorator
     
-    @register_action.register(abc.Callable)
-    def _register_action_directly(self, action_function: Callable[["Union[Context, Rule]"], Any], key: Hashable=True, **kwargs: Any):
+    @register_action.register(abc.Callable) # type: ignore
+    def _register_action_directly(self, action_function: _Action[_Rule, _P], key: Hashable=True, *args: _P.args, **kwargs: _P.kwargs) -> "_Action[_Rule, _P] | partial[_Action[_Rule, _P]]":
         # Functional use
-        action_function = self._check_action(action_function, key, **kwargs)
+        checked_action = self._check_action(action_function, key, **kwargs)
         self.actions[key] = action_function # register action
-        
+        return checked_action
     
-    # ----------------------    
+    # ----------------------
     
     if not TYPE_CHECKING:
         # This is shadowed as pyright interprets self.__class__.__name__ as this function
@@ -330,7 +400,7 @@ class ActionFunction(ConditionFunction):
     :meta private:
     """
     
-    def __init__(self, action_function: Callable[["Context"], Any], name: str="ActionFunction", *, use_self: Optional[bool]=None):
+    def __init__(self, action_function: _ActionType[_Rule, _P], name: str="ActionFunction", *, use_self: Optional[bool]=None):
         super().__init__(action_function, name, use_self=use_self)
 
     @classmethod
@@ -341,6 +411,6 @@ class ActionFunction(ConditionFunction):
         """
         raise NotImplementedError("NOT is not implemented for ActionFunction")
 
-    def __call__(self, ctx: "Context", *args: Any, **kwargs: Any) -> Any:
-        return self.evaluation_function(ctx, *args, **kwargs)
+    def __call__(self, ctx: "Rule | Context", *args: Any, **kwargs: Any) -> Any:
+        return self.evaluation_function(ctx, *args, **kwargs)  # type: ignore[arg-type]
 

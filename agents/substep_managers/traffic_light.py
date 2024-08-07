@@ -1,5 +1,9 @@
+
+# pyright: strict
+# pyright: reportPrivateUsage=false
+
 import random
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, TypeVar, TypeAlias, Union
 
 import carla
 from carla import TrafficLightState
@@ -14,6 +18,9 @@ from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
+
+_A = TypeVar("_A", bound=carla.Actor)
+ActorList : TypeAlias = Union[carla.ActorList, List[_A]]
     
 def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
     return traffic_light.state == TrafficLightState.Red
@@ -22,8 +29,8 @@ def _is_red_or_yellow(traffic_light : "carla.TrafficLight") -> bool:
     return traffic_light.state in (TrafficLightState.Red, TrafficLightState.Yellow)
 
 def affected_by_traffic_light(self : "LunaticAgent", 
-                              lights_list : Optional[List["carla.TrafficLight"]]=None, 
-                              max_distance : float=None) -> TrafficLightDetectionResult:
+                              lights_list : Optional[ActorList["carla.TrafficLight"]]=None, 
+                              max_distance : Optional[float]=None) -> TrafficLightDetectionResult:
         """
         Method to check if there is a red light affecting the vehicle.
 
@@ -58,7 +65,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
         ego_vehicle_location = self.config.live_info.current_location
         ego_vehicle_waypoint = self._current_waypoint
 
-        filtered_lights = filter(_is_red_or_yellow if detect_yellow_tlighs else _is_red_light, lights_list)
+        filtered_lights = filter(_is_red_or_yellow if detect_yellow_tlighs else _is_red_light, lights_list) # type: ignore
         
         for traffic_light in filtered_lights:
             trigger_wp = InformationManager.get_trafficlight_trigger_waypoint(traffic_light)
@@ -109,7 +116,8 @@ def detect_traffic_light(self : "LunaticAgent", traffic_lights : Optional[List["
     affected_traffic_light : TrafficLightDetectionResult = affected_by_traffic_light(self, traffic_lights, 
                                     max_distance=max_tlight_distance)
     
-    if affected_traffic_light.traffic_light_was_found and affected_traffic_light.traffic_light.state == TrafficLightState.Red:
+    if (affected_traffic_light.traffic_light_was_found 
+        and affected_traffic_light.traffic_light.state == TrafficLightState.Red):  # type: ignore[attr]
         self.current_states[AgentState.BLOCKED_RED_LIGHT] += 1
     else:
         self.current_states[AgentState.BLOCKED_RED_LIGHT] = 0

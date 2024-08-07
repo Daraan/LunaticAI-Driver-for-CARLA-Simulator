@@ -588,7 +588,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                 return cls.cast(OmegaConf.structured(new_config, flags={"allow_objects": True}))
             return new_config
         # TODO: # Note: This does not assure missing keys:
-        new_config = cls.create(config, as_dictconfig=SCMode.DICT_CONFIG, assure_copy=False)
+        new_config = cls.create(config, as_dictconfig=True, assure_copy=False)
         if strictness == 2:
             if as_dict_config and not isinstance(new_config, DictConfig):
                 return cast(cls, OmegaConf.structured(new_config, flags={"allow_objects": True}))
