@@ -1,9 +1,13 @@
 import re
 from typing import TYPE_CHECKING
+from typing_extensions import Literal
 
 import docutils.nodes
-from sphinx.transforms import post_transforms
+import sphinx
 import sphinx.addnodes
+import sphinx.application
+import sphinx.environment
+from sphinx.transforms import post_transforms
 from sphinxnotes.comboroles import CompositeRole
 
 if TYPE_CHECKING:
@@ -14,6 +18,8 @@ check_doctree = None
 IGNORE_INCLUDE_MD = True
 
 RE_MATCH_FILE = re.compile(r"^(?P<path>[a-zA-Z0-9_/.]*/)(?P<file>[a-zA-Z0-9_.]+\.(?P<ext>\w+))?(?P<fragment>#.*)?$")
+"""Pattern for ./path/to/file.md#fragment"""
+
 REMOTE_URL = "https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator" # might be overwritten by conf.py
 
 class InjectClassRole(CompositeRole):
@@ -35,7 +41,12 @@ class InjectClassRole(CompositeRole):
 def missing_reference_handle(app : "sphinx.application.Sphinx", 
                              env : "sphinx.environment.BuildEnvironment", 
                              node : "sphinx.addnodes.pending_xref", 
-                             contnode : "docutils.nodes.Node"):
+                             contnode : "docutils.nodes.Node") -> "docutils.nodes.Node | None":
+    """
+    Depending on the priority might not trigger
+    """
+    print(node)
+    #breakpoint()
     if node.attributes["refdomain"] == "py" or ":py:" in node.rawsource or node.attributes["reftype"] == "term":
         if node.rawsource and ":py:" not in node.rawsource:
             print("Missing reference: skipping", node.rawsource)
@@ -76,6 +87,7 @@ class FileResolver(post_transforms.ReferencesResolver):
         """
         Assure that .py and .md links in markdown point to the correct target.
         """
+        # Special cases
         if "reftarget" in node.attributes:
             reftarget :str = node.attributes["reftarget"]
             if node.attributes.get("reftargetid") == "readme-workflow":
@@ -86,18 +98,22 @@ class FileResolver(post_transforms.ReferencesResolver):
                 node.replace_self(newnode)
                 return
             if reftarget == "conf/":
+                # Point to github conf/
                 node["reftarget"] = "/".join((REMOTE_URL, "tree/main/conf/")) # if left untouched will point to local conf/
-                node["classes"].extend(["github", "fa", "fa-github"])
+                node["classes"].extend(["github", "fa", "fa-github"])         # type: ignore[attr-defined]
                 newnode = docutils.nodes.reference(node.rawsource, "", *node.children, **node.attributes, internal=False, refuri=node["reftarget"])
                 node.replace_self(newnode)
                 return
             if check_doctree and check_doctree[1] == "index":
+                # add xref class
                 current_node = node
                 while current_node.children:
                     current_node = current_node.children[0]
                     if isinstance(current_node, docutils.nodes.literal):
                         if "xref" not in current_node["classes"]:
-                            current_node["classes"].append("xref")
+                            current_node["classes"].append("xref")   # type: ignore[attr-defined]
+            
+            # Check for file links
             match = RE_MATCH_FILE.match(reftarget)
             # debug
             #if node.attributes.get("refdomain") == "py":
@@ -187,7 +203,7 @@ class FileResolver(post_transforms.ReferencesResolver):
             check_doctree = None
 
 
-def include_read_listener(app, relative_path, parent_docname, content):
+def include_read_listener(app, relative_path:str, parent_docname:str, content: list[str]):
     if IGNORE_INCLUDE_MD and any("include:: _include.md" in line for line in content): # problem if two includes!
         return
     global check_doctree
@@ -196,8 +212,32 @@ def include_read_listener(app, relative_path, parent_docname, content):
 
 
 def source_read_listener(app : "sphinx.application.Sphinx", docname : str, content : list[str]):
+    """Trigger to check for simple rst <- .md includes"""
     for line in content[:10]:
         if ":parser: myst_parser.sphinx_" in line and not (IGNORE_INCLUDE_MD and any("include:: _include.md" in line for line in content)):
             global check_doctree
-            print("setting check doctree freom soruce read")
+            print("setting check doctree from source read")
             check_doctree = (None, docname, content)
+            
+            
+def autodoc_skip_member(app : "sphinx.application.Sphinx",
+                        what : Literal["module", "class", "exception", 
+                                       "function", "method", "attribute"], 
+                        name : str, obj, skip: "bool | None", options) -> "bool | None":
+    """
+    options: autodoc options, like in agents.rst
+    
+    Emitted when autodoc has to decide whether a member should be included in the documentation. 
+    The member is excluded if a handler returns True. It is included if the handler returns False.
+
+    If more than one enabled extension handles the autodoc-skip-member event, autodoc will use the 
+    first non-None value returned by a handler. Handlers should return None to fall back to the 
+    skipping behavior of autodoc and other enabled extensions.
+    
+    Args:
+        options : the options given to the directive: an object with attributes inherited_members, 
+                  undoc_members, show_inheritance and no-index that are true if the flag option of 
+                  same name was given to the auto directive
+    """
+    return skip
+

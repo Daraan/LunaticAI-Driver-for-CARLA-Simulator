@@ -224,7 +224,7 @@ def patch_challenger():
 def add_imported_members():
     modules: dict[str, "list[str] | str | Literal['all'] | tuple[str, list[str]]"] = {"classes" : ["CustomSensorInterface"],
                                                              "classes.carla_originals" : "all",
-                                                             "agents.tools" : ("config_creation", ["MISSING, NestedConfigDict"]),
+                                                             "agents.tools" : ("config_creation", ["MISSING, NestedConfigDict"]), # BUG somehow does not work
                                                              }
     for file, members in modules.items():
         if isinstance(members, str) and members != "all":

@@ -46,7 +46,9 @@ print("Are we local or on readthedocs (True)?", os.environ["READTHEDOCS"])
 
 # must be done after adjusting the sys.path
 from docs.webview.source import _conf_extensions
-from docs.webview.source._conf_extensions import InjectClassRole, FileResolver, source_read_listener, include_read_listener, REMOTE_URL
+from docs.webview.source._conf_extensions import (InjectClassRole, FileResolver, autodoc_skip_member, missing_reference_handle, 
+                                                  source_read_listener, include_read_listener, 
+                                                  REMOTE_URL,)
 
 
 # -- Project information -----------------------------------------------------
@@ -496,13 +498,23 @@ def setup(app : "sphinx.application.Sphinx"):
     
 
     #py_external = sphinx.domains.python.PyXRefRole(nodeclass="py-module", innernodeclass="py-module py-external")
-    #app.add_role_to_domain("py", "external", py_external)
-
+    
+    # ------------
+    # Roles:
+    # ------------
     app.add_role("external-icon-parse", InjectClassRole(classes=["external-icon"]))
+    
+    # ------------
+    # Events:
+    # see https://www.sphinx-doc.org/en/master/extdev/event_callbacks.html
+    # ------------
     #app.connect("missing-reference", missing_reference_handle, priority=2000)
     app.connect("include-read", include_read_listener)
     app.connect("source-read", source_read_listener, priority=1000)
     #app.connect("doctree-read", doctree_read_listener, priority=1000)
+    
+    # Manually skip members
+    #app.connect("autodoc-skip-member", autodoc_skip_member)
     
     app.add_transform(FileResolver)
 

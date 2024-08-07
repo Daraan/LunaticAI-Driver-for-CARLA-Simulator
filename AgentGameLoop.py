@@ -23,7 +23,7 @@ import launch_tools
 
 from launch_tools import CarlaDataProvider
 
-from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, ConfigDict
+from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, AsDictConfig
 
 from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
@@ -53,7 +53,7 @@ PRINT_RULES = False
 # -- Game Loop ---------------------------------------------------------
 # ==============================================================================
 
-def game_loop(args: ConfigDict[LaunchConfig]):
+def game_loop(args: LaunchConfig):
     """
     Main loop of the simulation. 
     
@@ -77,7 +77,7 @@ def game_loop(args: ConfigDict[LaunchConfig]):
     # you can access args.agent as copy of the original settings
     # To not validate the config against LunaticAgentSettings use OmegaConf.create(args.agent)
     # to create a copy.
-    agent_config : ConfigDict[LunaticAgentSettings] = LunaticAgentSettings.create(settings=args.agent)
+    agent_config : AsDictConfig[LunaticAgentSettings] = LunaticAgentSettings.create(settings=args.agent)
     
     try:
         logger.info("Creating Game Framework ...")
@@ -259,7 +259,7 @@ def game_loop(args: ConfigDict[LaunchConfig]):
 @hydra.main(version_base=None, config_path="./conf", config_name="launch_config")
 def main(args: LaunchConfig):
     """
-    This is the main function wrapped with the `@hydra <Hydra>`_ method that takes care of the configuration
+    This is the main function wrapped with the `@hydra <https://hydra.cc/docs/intro/>`_ method that takes care of the configuration
     merge and sets up logging.
     
     Args:

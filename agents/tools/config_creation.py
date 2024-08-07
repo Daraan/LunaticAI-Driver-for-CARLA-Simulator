@@ -22,7 +22,7 @@ __all__ = [
            "LaunchConfig",
            
            "config_store",
-           "ConfigDict",
+           "AsDictConfig",
         ]
 
 # pyright: reportAttributeAccessIssue=warning
@@ -65,7 +65,7 @@ from typing_extensions import TypeAlias, Never, overload, Literal, Self
 from agents.tools._config_tools import (_T, _M, _NestedStrDict, ConfigType,
                                         OverwriteDictTypes, DictConfigAlias, _DictConfigLike,
                                         
-                                        ConfigDict, extract_annotations, set_container_type, 
+                                        AsDictConfig, extract_annotations, set_container_type, 
                                         set_readonly_interpolations, set_readonly_keys,
                                         RssLogLevelAlias, RssRoadBoundariesModeAlias, 
                                         RssLogLevelStub, RssRoadBoundariesModeStub,
@@ -96,6 +96,9 @@ _file_path = __file__
 """
 __file__ alias of this module. used for YAML comments.
 Modify this variable if a config from a different file should be parsed.
+
+.. deprecated::
+    Will take the file of the object automatically
 """
 
 if READTHEDOCS and not TYPE_CHECKING:
@@ -418,7 +421,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         return cast(cls, options)
     
     @classmethod
-    def load_schema(cls, path: Optional[str]=None) -> ConfigDict[Self]:
+    def load_schema(cls, path: Optional[str]=None) -> AsDictConfig[Self]:
         """
         Classes decorated with :py:func:`@config_path <.config_path>` can be loaded with this method.
         
@@ -440,9 +443,9 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                     overwrites:"Optional[NestedConfigDict]"=None, 
                     *,
                     assure_copy : bool = True,
-                    as_dictconfig:Optional["bool | SCMode"]=True,
+                    as_dictconfig:Optional[bool]=True,
                     dict_config_no_parent:bool = True,
-                    ) -> "Self | ConfigDict[Self]":
+                    ) -> "Self | AsDictConfig[Self]":
         """
         Creates the agent settings based on the provided arguments.
         
@@ -555,9 +558,9 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
           defined types during runtime as well.
           
         Attention:
-            Type-forcing for more complex types does not work, e.g. types from the :code:`carla` module,
-            this also includes carla enums.
-            See https://omegaconf.readthedocs.io/en/2.3_branch/structured_config.html
+            Type-forcing for more complex types does not work, e.g. types from the :py:mod:`carla` module,
+            this especially includes carla's enum objects.
+            For what is supported see https://omegaconf.readthedocs.io/en/2.3_branch/structured_config.html.
             
         Parameters:
             config: The configuration to check against this class
@@ -1918,7 +1921,7 @@ class LunaticAgentSettings(AgentConfig):
     """
     .. @package agent
     
-    Config schema definition for the :py:class:`LunaticAgent` class
+    Config schema definition for the :py:class:`.LunaticAgent` class
     """
     
     overwrites : Optional[OverwriteDictTypes] = field(default_factory=dict, repr=False)

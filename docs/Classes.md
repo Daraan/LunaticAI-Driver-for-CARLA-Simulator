@@ -10,13 +10,13 @@ The {py:class}`.GameFramework` is a helper-class class for a quicker setup.
 It manages the game loop of the agent and takes care of:
 
 - Initialization of:
-  - :external_py_class:`carla.Client`, :external_py_class:`carla.World` and :external_py_class:`carla.Map`
-  - :external_py_mod:`pygame` interface
-  - :external_py_class:`carla.TrafficManager` for other actors
+  - {external_py_class}`carla.Client`, {external_py_class}`carla.World` and {external_py_class}`carla.Map`
+  - {external_py_mod}`pygame` interface
+  - {external_py_class}`carla.TrafficManager` for other actors
   - The [agent](/docs/Agents.md)
   - {py:class}`.WorldModel`
   - [CARLAS's GlobalRoutePlanner](gh:https://github.com/carla-simulator/carla/blob/master/PythonAPI/carla/agents/navigation/global_route_planner.py)
-  - {py:class}`.KeyboardController <RSSKeyboardControl>`
+  - [KeyboardController](#keyboardcontrols)
 - Cooldowns of rules
 - Load the [LaunchConfig](conf/ConfigFiles.md) via [Hydra's compose API](https://hydra.cc/docs/advanced/compose_api/){.external-icon}
 - Interface to the [CarlaDataProvider](gh:https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenariomanager/carla_data_provider.py) from the [scenario_runner](gh:https://github.com/carla-simulator/scenario_runner) package.
@@ -32,25 +32,26 @@ It is based on the `World` classes used in the [examples from CARLA](https://git
 It is a extension of the [{external:class}`carla.World`]{.external-icon} class and provides the following functionalities:
 
 - Spawning of the ego actor (optional)
-  - Or waits until an external script provides it. Command line argument `external_actor="<actor name, default 'hero'>"`.
+  - Or waits until an external script provides it. Command line argument `external_actor="hero"`.
 - Ticking (`sync=True`) or waiting for the tick (`sync=False`) of the [{external:class}`carla.World`]{.external-icon}
 - HUD management
   - Camera setup and management
   - Some sensors for the pygame user interface, displayed on the HUD
   - Toggling of [{external:class}`carla.MapLayer`]{.external-icon}
-  - rendering 
+  - rendering
+
     :::{note}
     {py:meth}`.GameFramework.render_everything` extends the rendering of the {py:class}`.WorldModel` 
     and is the preferred function to call for rendering.
     :::
+
 - [RSS](https://carla.readthedocs.io/en/latest/adv_rss/){.external-icon} features
 - Weather change
-- Some cleanup tasks when the program ends
-
+- Cleanup when the program ends
 
 ## HUD and Camera Manager
 
-The {py:class}`.HUD` {py:class}`.HUD` is a modification of the HUD used in the [manual_control RSS example of Carla](https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/rss/manual_control_rss.py){.external-icon}.
+The {py:class}`.HUD` is a modification of the `HUD` classes used in the [manual_control_rss.py example of Carla](https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/rss/manual_control_rss.py){.external-icon}.
 
 It closely combines with the [](#classes.camera_manager.CameraManager) to provide the visual human interface for the pygame window.
 
@@ -72,7 +73,7 @@ See contents of the {py:mod}`classes.constants` module.
 
 ## carla_originals
 
-This package contains (mostly) unmodified classes extracted from [examples provided by CARLA](https://github.com/carla-simulator/carla/tree/dev/PythonAPI/examples){.external-icon}
+This package contains (mostly) unmodified classes extracted from [examples provided by CARLA](https://github.com/carla-simulator/carla/tree/dev/PythonAPI/examples){.external-icon}. The classes have are imported into this package.
 
 ## Driver, Vehicle, VehicleSpawner
 
@@ -91,7 +92,7 @@ This class allows for an alternative way to execute rules through different inte
     Raise when the `agent.run_step` of the agent should not be continued further.
     The agent then returns the current `ctx.control` to the caller of `run_step`.
 - {py:class}`.UserInterruption`
-    Terminate the `run_step` loop if user input is detected, for example `KeyboardInterrupt` or a pygame hotkey like <kbd>Esc</kbd>.
+    Terminate the `run_step` loop if user input is detected, for example [{py:exc}`KeyboardInterrupt`]{.external-icon} or a pygame hotkey like <kbd>Esc</kbd>.
     This allows the scenario runner and leaderboard to exit gracefully.
 - {py:class}`.UpdatedPathException`
   Should be raised when the path has been updated and the agent should replan.  

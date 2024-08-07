@@ -44,7 +44,7 @@ def _setup_logger(name : str ="__main__", level : int = logging.DEBUG):
 def make_logger(name: str = "__main__", level: int = logging.DEBUG) -> logging.Logger:
     """
     Create a logger object with the specified name and log level.
-    If :py:obj:`USE_HYDRA_IF_POSSIBLE` is True and the :code:`hydra <Hydra>`_
+    If :py:obj:`USE_HYDRA_IF_POSSIBLE` is True and the :code:`hydra <https://hydra.cc/>`_
     package is installed, this function will return a simple variant with only
     the **name** set.
     Otherwise it will create a logger that is formatted based on :code:`_setup_logger`

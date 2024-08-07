@@ -75,14 +75,14 @@ class ConditionFunction:
     Returns:
         ConditionFunction | type[ConditionFunction] : 
             A :py:class:`ConditionFunction` or a partially initialized version to be used as a decorator 
-            when the :code:`first_argument` is not a callable.
+            when the **first_argument** is not a callable.
 
     """
     
     actions: Dict[Hashable, Callable[["Union[Context, Rule]"], Any]] = {}
     """
     Mapping of return values to actions to be executed.
-    If this dictionary is not empty it will be used as the :py:attr:`Rule.actions` dictionary.
+    If this dictionary is not empty it will be used as the :py:attr:`.Rule.actions` dictionary.
     """
     
     _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
@@ -158,7 +158,7 @@ class ConditionFunction:
         Copies the class by creating a new instance.
         
         Parameters:
-            copy_actions : If :python:`True`, the :py:attr:`actions` dictionary is copied as well. Defaults to :python:`False`.
+            copy_actions: If :python:`True`, the :py:attr:`actions` dictionary is copied as well. Defaults to :python:`False`.
                 
                 Warning:
                     Be aware that the actions themselves are not copied; they are identical and shared.

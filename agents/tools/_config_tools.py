@@ -92,7 +92,7 @@ def config_path(path: Optional[str] = None):
     
     if not READTHEDOCS:
     
-        def _register(obj : "type[_AC]") -> "type[_AC]":  # pyright: ignore[reportRedeclaration]
+        def _register(obj : "type[_AnAgentConfig]") -> "type[_AnAgentConfig]":  # pyright: ignore[reportRedeclaration]
             if path is None:
                 name = obj._config_path # type: ignore[attr-defined]
             else:
@@ -109,7 +109,7 @@ def config_path(path: Optional[str] = None):
             return obj
     else:
         # dummy, to avoid errors
-        def _register(obj : "type[_AC]") -> "type[_AC]":
+        def _register(obj : "type[_AnAgentConfig]") -> "type[_AnAgentConfig]":
             return obj
         
     return _register
@@ -164,11 +164,10 @@ _T = TypeVar("_T")
 _M = TypeVar("_M", Dict[str, Any], DictConfig)
 """A generic type variable for a mapping type."""
 
-_AC = TypeVar("_AC", bound="AgentConfig")
-"""A agent config type variable"""
-    
+_AnAgentConfig = TypeVar("_AnAgentConfig", bound="AgentConfig")
+"""A generic :py:class:`AgentConfig` type variable"""
 
-ConfigDict = TypeAliasType("ConfigDict", _AC, type_params=(_AC,))
+AsDictConfig = TypeAliasType("AsDictConfig", _AnAgentConfig, type_params=(_AnAgentConfig,))
 """
 This annotation hints that object is a duck-typed :py:class:`omegaconf.DictConfig`
 and not a subclass of :py:class:`AgentConfig`.

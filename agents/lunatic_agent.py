@@ -123,7 +123,9 @@ class LunaticAgent(BehaviorAgent):
         Setup function to create the agent from the :py:class:`LaunchConfig` settings.
         
         Note:
-            - :py:meth:`.GameFramework.init_agent_and_interface` is 
+            - :py:meth:`.GameFramework.init_agent_and_interface` is the preferred way to create to
+              instantiate the agent, only use this method if you try not do create a 
+              :py:class:`GameFramework` object.
         """
         
         if agent_config is None:

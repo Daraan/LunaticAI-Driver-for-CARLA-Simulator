@@ -20,12 +20,27 @@ if TYPE_CHECKING:
     from agents.tools.hints import TrafficLightDetectionResult
     from classes.rule import Rule, Context # pylint: disable=unused-import # both are explicitly set
     
+AD_RSS_AVAILABLE : bool
+"""
+Indicator if the :py:mod:`carla.ad` module is available, i.e. if the current carla version was build
+with RSS support. As a rule of thumb: On Windows this will be always false.
+If this is false some objects will be missing in the :py:mod:`carla` module, for example 
+the :py:class:`carla.RssSensor`, likewise are some utilities of this project involving RSS not be
+available.
+
+See Also:
+    - https://carla.readthedocs.io/en/latest/adv_rss/
+    - https://github.com/intel/ad-rss-lib
+
+:meta hide-value:
+"""
 try:
     from carla import ad      # pyright: ignore
-    AD_RSS_AVAILABLE : bool = True
+    AD_RSS_AVAILABLE = True
 except ImportError:
     AD_RSS_AVAILABLE = False  # pyright: ignore[reportConstantRedefinition]
-    
+
+
 class RuleResult(Enum):
     """Special :python:`objects` that indicate special return values"""
     
@@ -511,8 +526,8 @@ class Hazard(Flag):
 
 class HazardSeverity(Flag):
     """
-    High level descriptions of :py:class:`Hazard`s.
-    Which are stored in :py:attr:`~.LunaticAgent.detected_hazards_info`.
+    High level descriptions to further weight :py:class:`Hazard`.
+    The :py:class:`HazardSeverity` flags are stored in :py:attr:`~.LunaticAgent.detected_hazards_info`.
     """
     
     UNKNOWN = -1 
