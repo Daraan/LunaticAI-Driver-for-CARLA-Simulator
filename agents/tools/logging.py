@@ -59,7 +59,7 @@ def make_logger(name: str = "__main__", level: int = logging.DEBUG) -> logging.L
     """
     if USE_HYDRA_IF_POSSIBLE:
         try:
-            import hydra          # type: ignore
+            import hydra          # type: ignore # noqa
             hydra_logging = True
         except ImportError:
             hydra_logging = False

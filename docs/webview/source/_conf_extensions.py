@@ -1,5 +1,6 @@
+from inspect import Signature
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 from typing_extensions import Literal
 
 import docutils.nodes
@@ -241,3 +242,74 @@ def autodoc_skip_member(app : "sphinx.application.Sphinx",
     """
     return skip
 
+
+
+from _autodoc_type_aliases import autodoc_type_aliases
+
+_convert = {
+    '_ActionType[_Rule, _P, _T]' : autodoc_type_aliases["_ActionType"],
+    '_ConditionType[_Rule, _CP, _CH]' : autodoc_type_aliases["_ConditionType"],
+    '_ActionTypeAlias' : autodoc_type_aliases["_ActionType"],
+    '_ActorList' : 'list',
+    'CallableAction' : autodoc_type_aliases["_ActionType"],
+    'ConditionFunctionLike[Self, _P, _H]' : autodoc_type_aliases["_ConditionType"],
+}
+
+
+# autodoc-before-process-signature
+def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_method : bool):
+    """Process object signature"""
+    try:
+        signature: str | None | Signature = getattr(obj, "__signature__", None)
+        if not signature:
+            return
+
+        for replace_th, new_hint in _convert.items():
+            for keyword, typehint in obj.__annotations__.items():
+                if isinstance(typehint, str):
+                    obj.__annotations__[keyword] = typehint.replace(replace_th, new_hint)
+                if isinstance(signature, str):
+                    signature = signature.replace(replace_th, new_hint)
+                elif keyword == "return":
+                    if isinstance(signature.return_annotation, str):
+                        signature.replace(return_annotation=signature.return_annotation.replace(replace_th, new_hint))
+                elif isinstance(signature.parameters[keyword].annotation, str):
+                    signature.parameters[keyword]._annotation = signature.parameters[keyword]._annotation.replace(replace_th, new_hint)
+                else:
+                    continue
+                
+        if not isinstance(signature, str):
+            #parameters = signature.parameters
+            
+            #signature = signature.replace(new_sig)
+            pass
+            
+        if bound_method and hasattr(obj, "__func__"):
+            setattr(obj.__func__, "__signature__", signature)
+        else:
+            setattr(obj, "__signature__", signature)
+    except Exception as e:
+        print("Error in before_type_hint_cleaner", e)
+        breakpoint()
+
+import re
+
+# autodoc-process-signature
+def type_hint_cleaner(app : sphinx.application.Sphinx, 
+                      what : Literal["module", "class", "exception", 
+                                       "function", "method", "attribute"],
+                      name : str, 
+                      obj : Any, 
+                      options : dict, 
+                      signature : Optional[str], 
+                      return_annotation : Optional[str]):
+    for replace_th, new_hint in _convert.items():
+        if return_annotation:
+            return_annotation = return_annotation.replace(replace_th, new_hint)
+        if signature:
+            if "_ActorList" in signature:
+                print("Signature:", signature)
+                breakpoint()
+            signature = signature.replace(replace_th, new_hint)
+
+    return signature, return_annotation

@@ -41,5 +41,5 @@ else:
 
 if TYPE_CHECKING:
     # still use submodule for type-hints
-    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-    from scenario_runner.srunner.scenariomanager.timer import GameTime
+    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider # noqa: F401
+    from scenario_runner.srunner.scenariomanager.timer import GameTime # noqa: F401

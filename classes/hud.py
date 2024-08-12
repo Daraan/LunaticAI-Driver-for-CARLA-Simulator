@@ -277,7 +277,7 @@ class FadingText(object):
         """Fading text method for every tick"""
         delta_seconds = 1e-3 * clock.get_time()
         self.seconds_left = max(0.0, self.seconds_left - delta_seconds)
-        self.surface.set_alpha(500.0 * self.seconds_left)
+        self.surface.set_alpha(500.0 * self.seconds_left) # type: ignore[arg-type]
 
     def render(self, display):
         """Render fading text method"""
@@ -299,7 +299,7 @@ class HelpText(object):
         self.seconds_left = 0
         self._width = width
         self._height = height
-        if doc != False:
+        if doc is not False:
             self.create_surface(doc or __doc__) # Use doc of THIS file, analog to carla examples.
         else:
             self.surface = None

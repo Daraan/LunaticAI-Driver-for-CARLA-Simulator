@@ -11,6 +11,11 @@ ones provided in the examples from the CARLA PythonAPI.
 
 """
 
+__all__ = [
+    "CustomSensorInterface",
+    "carla_originals",
+]
+
 from . import carla_originals
 
 from ._sensor_interface import CustomSensorInterface

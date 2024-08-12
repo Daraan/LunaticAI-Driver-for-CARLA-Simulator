@@ -6,7 +6,7 @@ from functools import partial, wraps
 
 import carla
 from classes.constants import RoadOption
-from agents.tools.config_creation import AgentConfig, LunaticAgentSettings
+from agents.tools.config_creation import AgentConfig
 from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
                                compute_distance)
@@ -57,8 +57,8 @@ def must_clear_hazard(func):
         return result
     return wrapper
 
-def phase_callback(*, on_enter: Phase = None, 
-                      on_exit: Union[Phase, Callable] = None, 
+def phase_callback(*, on_enter: Optional[Phase] = None, 
+                      on_exit: Union[Phase, Callable, None] = None, 
                       on_exit_exceptions: Union[Tuple["type[BaseException]"], bool, None] = (),
                       prior_result: Optional["Callable | str"] = None):
         """
@@ -72,13 +72,18 @@ def phase_callback(*, on_enter: Phase = None,
                 The phase to execute after the decorated function.
                 Defaults to None.
             on_exit_exceptions (Tuple[BaseException] | bool), optional):
-                If True, the on_exit phase will still be executed if any [LunaticAgentException](#classes.exceptions.LunaticAgentException) is raised.
+                If True, the on_exit phase will still be executed if any 
+                :py:exc:`LunaticAgentException` are raised.
                 If a tuple of exceptions is provided, the on_exit phase will only be executed if one of the exceptions is raised.
                 The exception will be re-raised after the on_exit phase is executed.
                 Defaults to empty tuple().
+
+        Warning:
+            If **on_enter** and **on_exit** are not set, the decorator will print a 
+            warning and ignore the decorator.
         """
         # Validate exception -> Tuple
-        if on_exit_exceptions == True:
+        if on_exit_exceptions is True:
             on_exit_exceptions = (LunaticAgentException,)
         elif isclass(on_exit_exceptions) and issubclass(on_exit_exceptions, BaseException):
             on_exit_exceptions = (on_exit_exceptions,)
@@ -90,7 +95,8 @@ def phase_callback(*, on_enter: Phase = None,
 
         def decorator(func):
             if not on_enter and not on_exit:
-                print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` decorator for function %s. Ignoring decorator." % func.__name__)
+                print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
+                      "decorator for function %s. Ignoring decorator." % func.__name__)
                 return func
             @wraps(func)
             def wrapper(self: "LunaticAgent", *args, **kwargs):
@@ -140,7 +146,7 @@ def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal[
         lane : The lane to consider.
     
     Note:
-        :code:`lane` must be a key in :code:`BehaviorAgentObstacleSettings.SpeedLimitDetectionDownscale`.
+        **lane** must be a key in :code:`BehaviorAgentObstacleSettings.SpeedLimitDetectionDownscale`.
 
     """
     
@@ -230,10 +236,13 @@ def detect_vehicles(self: "LunaticAgent",
     if vehicle_list is None:
         # NOTE: If empty list is passed e.g. for walkers this pulls all vehicles
         # TODO: Propose update to original carla
-        vehicle_list = self._world.get_actors().filter("*vehicle*")
+        vehicle_list = self._world.get_actors().filter("*vehicle*") # type: Sequence[carla.Actor] # type: ignore
     elif len(vehicle_list) == 0: # Case for no pedestrians
         return ObstacleDetectionResult(False, None, -1)
 
+    if not max_distance:
+        max_distance = self.config.obstacles.base_vehicle_threshold # TODO: This is not modified with the dynamic threshold
+    
     def get_route_polygon():
         # Note nested functions can access variables from the outer scope
         route_bb = []
@@ -260,9 +269,6 @@ def detect_vehicles(self: "LunaticAgent",
 
         return Polygon(route_bb)
 
-    if not max_distance:
-        max_distance = self.config.obstacles.base_vehicle_threshold # TODO: This is not modified with the dynamic threshold
-
     # TODO: can get this from CDP
     ego_transform = self._vehicle.get_transform()
     ego_location = ego_transform.location # NOTE: property access creates a new location object, i.e. ego_location != ego_front_transform
@@ -275,7 +281,7 @@ def detect_vehicles(self: "LunaticAgent",
     # Get the transform of the front of the ego
     ego_front_transform = ego_transform
     ego_front_transform.location += carla.Location(
-        self._vehicle.bounding_box.extent.x * ego_transform.get_forward_vector())
+        ego_transform.get_forward_vector() * self._vehicle.bounding_box.extent.x)
 
     opposite_invasion = abs(self.config.planner.offset) + self._vehicle.bounding_box.extent.y > ego_wpt.lane_width / 2
     use_bbs = self.config.obstacles.use_bbs_detection or opposite_invasion or ego_wpt.is_junction

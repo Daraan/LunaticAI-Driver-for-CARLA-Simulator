@@ -6,13 +6,14 @@ from omegaconf._impl import select_node
 import carla
 
 
-from classes.constants import Phase
+from classes.constants import Phase, READTHEDOCS
 from classes.rule import Rule, ConditionFunction, Context, always_execute
 from agents.tools.logging import logger
 
 from typing import TYPE_CHECKING, List, Optional
 
-DEBUG_RULES = True # TODO: Turn off again
+_debug_rules = True # TODO: Turn off again
+DEBUG_RULES = not READTHEDOCS and _debug_rules
 
 #TODO: maybe create some omega conf dict creator that allows to create settings more easily
 # e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
@@ -295,8 +296,8 @@ if __name__ == "__main__" or DEBUG_RULES:
     
     a = Another()
     
-    class CustomInitRule(Rule):
-        def __init__(self, phases=None):
+    class CustomInitRule(Rule):        
+        def __init__(self, phases:Optional[Phase]=None):
             # NOTE: The 
             super().__init__(phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, condition=always_execute, action=lambda ctx: assert_type(ctx, Context))
             self._custom = True
@@ -321,8 +322,30 @@ if __name__ == "__main__" or DEBUG_RULES:
     simple_rule = SimpleRule()
     simple_ruleB = SimpleRuleB()
     another_rule = Another()
-    custom_rule = CustomInitRule()
-    assert custom_rule._custom
+    
+    def _test_custom_init_Rule():
+        """Suppress warning message when creating this invalid case"""
+        from contextlib import redirect_stderr  # noqa
+        import io, sys, re  # noqa
+        alt_out = io.StringIO()
+        # suppress expected message
+        
+        with redirect_stderr(alt_out):
+            custom_rule = CustomInitRule()
+        
+        alt_out.seek(0)
+        content = alt_out.read()
+        if f"Warning 'condition' argument passed but class {CustomInitRule.__name__}" not in content:
+            print("ERROR: Expected warning message not found")
+        else:
+            content = re.sub(fr"Warning 'condition' argument passed but class {CustomInitRule.__name__}.+?"
+                             "This might lead to undesired results.\n", "", content)
+        if content:
+            print(content, file=sys.stderr)
+        assert custom_rule._custom
+        return custom_rule
+    
+    custom_rule = _test_custom_init_Rule()
     
     # Check Doc -> Descritpion
     

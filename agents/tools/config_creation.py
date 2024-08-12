@@ -7,6 +7,7 @@ Note:
 """
 
 from __future__ import annotations as _
+import sys
 
 __all__ = [
            "AgentConfig", 
@@ -47,7 +48,7 @@ from omegaconf.errors import InterpolationKeyError, MissingMandatoryValue
 
 from hydra.conf import HydraConf
 
-from launch_tools import class_or_instance_method, ast_parse, Literal
+from launch_tools import class_or_instance_method, Literal
 from classes.constants import Phase, RulePriority, RoadOption, AD_RSS_AVAILABLE
 from agents.tools.hints import CameraBlueprint
 from classes.rss_visualization import RssDebugVisualizationMode
@@ -59,13 +60,14 @@ from classes.rss_visualization import RssDebugVisualizationMode
 # SI [StringInterpolation] : Use this for String interpolation, for example "http://${host}:${port}"
 from omegaconf import SI, II
 
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Dict, List, Optional, Tuple, Union, cast, get_type_hints, Type
-from typing_extensions import TypeAlias, Never, overload, Literal, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Union, cast, get_type_hints, Type
+from typing_extensions import TypeAlias, Never, overload, Literal, Self, Annotated
 
+# Type Annotations and Helpers
 from agents.tools._config_tools import (_T, _M, _NestedStrDict, ConfigType,
                                         OverwriteDictTypes, DictConfigAlias, _DictConfigLike,
                                         
-                                        AsDictConfig, extract_annotations, set_container_type, 
+                                        AsDictConfig, extract_annotations, get_commented_yaml, 
                                         set_readonly_interpolations, set_readonly_keys,
                                         RssLogLevelAlias, RssRoadBoundariesModeAlias, 
                                         RssLogLevelStub, RssRoadBoundariesModeStub,
@@ -78,13 +80,20 @@ if TYPE_CHECKING:
     from agents.leaderboard_agent import LunaticChallenger
     from classes.worldmodel import GameFramework
 
+if sys.version_info < (3, 9):
+    # fix for typing.get_type_hints when OmegaConf.structured is used with nested dataclasses
+    __original_config_path = config_path
+    def config_path(path=None):
+        decorator = __original_config_path(path)
+        def wrapper(cls):
+            globals()[cls.__name__] = cls # add to globals
+            return decorator(cls)
+        return wrapper
+            
 
 # ---------- Globals --------------
 
-from agents.tools._config_tools import _NOTSET # type: ignore
-
-_class_annotations : Optional[Dict[str, _NestedStrDict]] = None
-"""Nested documentation strings for classes; used for YAML comments."""
+from agents.tools._config_tools import _NOTSET
 
 _WARN_LIVE_INFO = True
 """Warn about a possibly malformed live_info in the config."""
@@ -206,78 +215,6 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
             options = OmegaConf.create(options, flags={"allow_objects": True})  # type: ignore
         OmegaConf.save(options, path, resolve=resolve)  # NOTE: This might raise if options is structured, for export structured this is actually not necessary. # type: ignore[argument-type]
     
-    @class_or_instance_method
-    def _get_commented_yaml(cls_or_self : Union[Type[Self], Self], string:str, container: "DictConfig | NestedConfigDict",
-                            *, include_private:bool=False) -> str:
-        if inspect.isclass(cls_or_self):
-            cls = cls_or_self
-        else:
-            cls = cls_or_self.__class__
-        cls_file = inspect.getfile(cls)
-        # Get documentations and store globally
-        global _class_annotations
-        if _class_annotations is None:
-            with open(cls_file, "r") as f: # NOTE: This file only!
-                tree = ast_parse(f.read())
-                _class_annotations = {}
-                extract_annotations(tree, docs=_class_annotations, global_annotations=_class_annotations)
-        
-        from ruamel.yaml import YAML
-        from ruamel.yaml.comments import CommentedMap
-        yaml2 = YAML(typ='rt')
-        #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
-        data : CommentedMap = yaml2.load(string)
-        
-        cls_doc = _class_annotations[cls.__name__]
-
-        # First line
-        data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
-        
-        # add comments to all other attributes
-        def add_comments(container : "DictConfig | NestedConfigDict", data: CommentedMap, lookup : Union[AgentConfig, _NestedStrDict], indent:int=0):
-            """
-            
-            Args:
-                container: The current dict to be commented
-            """
-            if isinstance(container, DictConfig):
-                containeritems = container.items_ex(resolve=False)
-            else:
-                containeritems = container.items()
-            for key, value in containeritems:
-                if TYPE_CHECKING:
-                    assert isinstance(key, str)
-                if isinstance(value, dict) and isinstance(cls_doc.get(key, None), dict):
-                    # Add nested comments
-                    add_comments(value, data[key], cls_doc[key], indent=indent+2) # type: ignore[arg-type]
-                    comment_txt = "\n" + cls_doc[key].get("__doc__", "")                     # type: ignore
-                    assert isinstance(comment_txt, str)
-                    # no @package in subfields
-                    if comment_txt.startswith("\n@package "): # already striped here
-                        comment_txt = "\n".join(comment_txt.split("\n")[2:]).strip()
-                else:
-                    comment_txt = lookup.get(key, None) 
-                if comment_txt is None:
-                    continue
-                if isinstance(comment_txt, dict):
-                    add_comments(comment_txt, data[key], comment_txt, indent=indent+2)
-                    continue
-                if (":meta exclude:" in comment_txt) or not include_private and ":meta private:" in comment_txt:
-                    # TODO: does nor remove the key
-                    data.pop(key)
-                    continue # Skip private fields; todo does not skip "_named" fields
-                comment_txt = comment_txt.replace("\n\n","\n \n")
-                if comment_txt.count("\n") > 0:
-                    comment_txt = "\n"+comment_txt
-                data.yaml_set_comment_before_after_key(key, comment_txt, indent=indent)
-        add_comments(container, data, cls_doc)  # pyright: ignore[reportArgumentType]
-        # data.yaml_add_eol_comment(comment_txt, key = key)
-
-        import io
-        stream = io.StringIO()
-        yaml2.dump(data, stream)
-        stream.seek(0)
-        return stream.read()
 
     @class_or_instance_method
     def to_yaml(cls_or_self : Union[Type[Self], Self], resolve:bool=False, yaml_commented:bool=True, 
@@ -397,7 +334,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         if not yaml_commented:
             return string
         # Extend 
-        return cls_or_self._get_commented_yaml(string, container) # type: ignore[arg-type]
+        return get_commented_yaml(cls_or_self, string, container)  # type: ignore[arg-type]
         
     @classmethod
     def from_yaml(cls, path: str, *, merge:bool =True) -> Self:
@@ -519,7 +456,12 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                     logger.error("Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. Passing config_mode=True might help.")
                     raise
         if as_dictconfig and not isinstance(behavior, DictConfig):
-            behavior = OmegaConf.structured(behavior, flags={"allow_objects": True})  
+            try:
+                behavior = OmegaConf.structured(behavior, flags={"allow_objects": True})
+            except Exception as e:
+                print(e)
+                breakpoint()
+                raise
         elif as_dictconfig == False and isinstance(behavior, DictConfig):
             return cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings) # pyright: ignore[reportCallIssue]
         elif as_dictconfig is None:
@@ -689,11 +631,6 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         :meta public:
         """
         return
-        try:
-            set_container_type(self.__class__, self)
-        except Exception:
-            logging.warning("Ignoring error in setting container type:\n", exc_info=True)
-            raise
 
     def __post_init__(self):
         """
@@ -1210,10 +1147,12 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
         or ignores slower vehicles in front of it in the other lane.
     """
     
+    # Python 3.7 compatibility allows no nesting here
     @config_path("agent/obstacles/speed_detection_downscale")
     @dataclass
     class SpeedLimitDetectionDownscale(AgentConfig):
         """see `speed_detection_downscale`"""
+        
         same_lane : float = 3.0
         other_lane : float = 2.0
         overtaking : float = 2.5
@@ -1225,6 +1164,7 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
         """
         Used by AvoidTailgatorRule, look further behind for tailgators
         """
+
     
     speed_detection_downscale : SpeedLimitDetectionDownscale = field(default_factory=SpeedLimitDetectionDownscale)
     """
@@ -1315,8 +1255,6 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     
     By default checks converts the current speed to a distance of 5 seconds and adds 10 meters.
     """
-    
-    
 
 
 # ---------------------
@@ -2208,7 +2146,7 @@ class LaunchConfig(AgentConfig):
     """.. <take doc|CameraConfig>"""
     
     hydra : Annotated[HydraConf, "Key not guaranteed to be present or complete."] \
-        = field(default=MISSING, kw_only=True, compare=False, hash=False)
+        = field(default=MISSING, compare=False, hash=False)
     """
     Hydra_ config dict.
     
@@ -2220,10 +2158,13 @@ class LaunchConfig(AgentConfig):
     
     if not TYPE_CHECKING:
         # should not be HydraConf at runtime, as it is not complete
-        hydra : HydraConf = field(default=MISSING, kw_only=True, compare=False, hash=False)
+        hydra : HydraConf = field(default=MISSING, compare=False, hash=False)
     
     if READTHEDOCS or TYPE_CHECKING:
         leaderboard : Annotated[DictConfig, "Only present for the", LunaticChallenger] = field(init=False, kw_only=True)
+        
+
+
 
 
 def export_schemas(detailed_rules:bool=False):

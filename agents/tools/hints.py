@@ -4,10 +4,10 @@ Module to add high-level semantic return types for obstacle and traffic light de
 The code is compatible with Python 2.7, <3.6 and >=3.6. The later uses the typed version of named tuples.
 """
 
-import sys
 
 # Carla code with compatibility
 '''
+import sys
 if sys.version_info < (3, 6):
     from collections import namedtuple
     ObstacleDetectionResult = namedtuple('ObstacleDetectionResult', ['obstacle_was_found', 'obstacle', 'distance'])
@@ -54,6 +54,7 @@ class TrafficLightDetectionResult(NamedTuple):
             Value of :py:attr:`traffic_light_was_found`.
         """
         return self.traffic_light_was_found
+
 
 # Use proper NamedTuples (Python 3.6+) and not the compatibility version from carla
 class ObstacleDetectionResult(NamedTuple):

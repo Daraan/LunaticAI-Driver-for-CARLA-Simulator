@@ -8,7 +8,7 @@ submodules:
 build:
   os: "ubuntu-22.04"
   tools:
-    python: "3.10"
+    python: "3.11"
 
 # Optional but recommended, declare the Python requirements required
 # to build your documentation

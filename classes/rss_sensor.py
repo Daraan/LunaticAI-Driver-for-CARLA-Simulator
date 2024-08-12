@@ -4,13 +4,17 @@
 #
 # Based on CARLA example : https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/rss/rss_visualization.py
 
+
+# pyright: reportUnknownMemberType=none
+# pyright: reportUnknownArgumentType=information
+# pyright: reportUnknownParameterType=information
+# pyright: reportTypeCommentUsage=none
+
 import math
-from typing import List, Tuple, cast as assure_type
+from typing import List, Tuple, cast as assure_type, TYPE_CHECKING
 
 import inspect
 import carla
-
-from classes.constants import AD_RSS_AVAILABLE
 
 from launch_tools import CarlaDataProvider 
 from classes._sensor_interface import CustomSensorInterface
@@ -18,14 +22,21 @@ from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisuali
 
 from agents.tools.logging import logger
 
+from classes.constants import AD_RSS_AVAILABLE
+if AD_RSS_AVAILABLE:
+    from carla import ad
+
+if TYPE_CHECKING:
+    assert ad # remove Unbound type # type: ignore
+
 # ==============================================================================
 # -- RssSensor -----------------------------------------------------------------
 # ==============================================================================
 
-
 class RssStateInfo(object):
 
     def __init__(self, rss_state, ego_dynamics_on_route, world_model):
+        # type: (ad.rss.state.RssState, carla.RssEgoDynamicsOnRoute, ad.rss.world.WorldModel) -> None
         self.rss_state = rss_state
         self.distance = -1
         self.is_dangerous = ad.rss.state.isDangerous(rss_state)
@@ -58,6 +69,7 @@ class RssStateInfo(object):
             self.margin += self.lateral_margin
 
     def get_actor(self, world):
+        # type: (carla.World) -> carla.Actor | None
         if self.rss_state.objectId == 18446744073709551614:
             return None # "Border Left"
         elif self.rss_state.objectId == 18446744073709551615:

@@ -1,3 +1,7 @@
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Literal
+
 import carla
 
 __all__ = ['CustomSensorInterface']
@@ -13,7 +17,7 @@ class CustomSensorInterface(object):
 
     sensor : carla.Sensor
 
-    def destroy(self):
+    def destroy(self) -> 'bool | None | Literal["Actor was probably destroyed by the CarlaDataProvider"]':
         """Stops and destroys the actor of the sensor"""
         from launch_tools import CarlaDataProvider # pylint: disable=import-outside-toplevel, avoid circular import
         if self.sensor is not None:

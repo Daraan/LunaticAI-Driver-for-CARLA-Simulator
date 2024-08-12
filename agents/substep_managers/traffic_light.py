@@ -1,9 +1,10 @@
-
-# pyright: strict
 # pyright: reportPrivateUsage=false
 
+from __future__ import annotations
+
 import random
-from typing import TYPE_CHECKING, List, Optional, TypeVar, TypeAlias, Union
+from typing import TYPE_CHECKING, List, Optional, TypeVar, Union
+from typing_extensions import TypeAliasType, TypeAlias
 
 import carla
 from carla import TrafficLightState
@@ -20,8 +21,9 @@ if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 
 _A = TypeVar("_A", bound=carla.Actor)
-ActorList : TypeAlias = Union[carla.ActorList, List[_A]]
-    
+_ActorList : TypeAlias = Union[carla.ActorList, List[_A]]
+
+
 def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
     return traffic_light.state == TrafficLightState.Red
 
@@ -29,7 +31,7 @@ def _is_red_or_yellow(traffic_light : "carla.TrafficLight") -> bool:
     return traffic_light.state in (TrafficLightState.Red, TrafficLightState.Yellow)
 
 def affected_by_traffic_light(self : "LunaticAgent", 
-                              lights_list : Optional[ActorList["carla.TrafficLight"]]=None, 
+                              lights_list : Optional[_ActorList[carla.TrafficLight]]=None, 
                               max_distance : Optional[float]=None) -> TrafficLightDetectionResult:
         """
         Method to check if there is a red light affecting the vehicle.

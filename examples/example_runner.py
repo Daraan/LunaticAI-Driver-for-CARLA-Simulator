@@ -3,6 +3,7 @@ Executing this files allows to run all files in the examples folder.
 """
 import os
 import sys
+import importlib.util
 
 
 # List files
@@ -46,12 +47,14 @@ if idx is not None:
 
 # run file
 
-import importlib.util
+
 
 module_name = os.path.basename(file_path).split(".")[0]
 print("\n----------------------------", f"Example Running {module_name}...", "\n----------------------------")
 print("\n\n")
 
 spec = importlib.util.spec_from_file_location("__main__", file_path)
+if not spec:
+    raise FileNotFoundError(f"File {file_path} not found.")
 module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+spec.loader.exec_module(module)  # type: ignore[attr-defined]

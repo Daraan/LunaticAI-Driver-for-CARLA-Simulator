@@ -14,10 +14,11 @@ from __future__ import annotations
 
 import sys
 from copy import deepcopy
-from typing import (Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Set, Tuple, Union, 
+from typing import (Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Sequence, Set, Tuple, Union, 
                     TYPE_CHECKING, cast as assure_type)
-from typing_extensions import Self
+from typing_extensions import Self, Literal, overload
 
+from agents.navigation.basic_agent import BasicAgent
 from agents.rules import rule_from_config
 
 import carla
@@ -41,7 +42,7 @@ from agents.tools.logging import logger
 from agents import substep_managers
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlannerWithRss
 
-from classes.constants import AgentState, HazardSeverity, Phase, Hazard, RoadOption, AD_RSS_AVAILABLE
+from classes.constants import READTHEDOCS, AgentState, HazardSeverity, Phase, Hazard, RoadOption, AD_RSS_AVAILABLE
 from classes.rule import BlockingRule, Context, Rule
 from agents.tools.config_creation import (AgentConfig, LaunchConfig, LiveInfo, LunaticAgentSettings, 
                                           CameraConfig, RuleCreatingParameters)
@@ -51,7 +52,6 @@ from classes.worldmodel import WorldModel, CarlaDataProvider
 from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
-    from typing import Literal # for Python 3.8
     import pygame
 
 
@@ -1051,7 +1051,7 @@ class LunaticAgent(BehaviorAgent):
         """
         return self.emergency_manager(control, reasons)
     
-    def lane_change(self, direction: "Literal['left'] | Literal['right']", same_lane_time=0, other_lane_time=0, lane_change_time=2):
+    def lane_change(self, direction: Literal['left', 'right'], same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """
         Changes the path so that the vehicle performs a lane change.
         Use 'direction' to specify either a 'left' or 'right' lane change,
@@ -1076,23 +1076,23 @@ class LunaticAgent(BehaviorAgent):
         # TODO: # CRITICAL: Keep old global plan if it is some end goal -> Restore it.
         
     # TODO: Use generate_lane_change_path to finetune 
-    def make_lane_change(self, order=["left", "right"], up_angle_th=180, low_angle_th=0):
+    def make_lane_change(self, order: Sequence[Literal["left", "right"]]=["left", "right"], up_angle_th:int=180, low_angle_th:int=0):
         """
         Move to the left/right lane if possible
 
         Args:
-            order (Sequence[Literal["left", "right"]] | Literal["left", "right"]): The order in
+            order : The order in
                 which the agent should try to change lanes. If a single string is given, the agent
                 will try to change to that lane.
-            up_angle_th (int): The angle threshold for the upper limit of obstacle detection in the other lane.
+            up_angle_th : The angle threshold for the upper limit of obstacle detection in the other lane.
                 Default is 180 degrees, meaning that the agent will detect obstacles ahead.
-            low_angle_th (int): The angle threshold for the lower limit of obstacle detection in the other lane.
+            low_angle_th : The angle threshold for the lower limit of obstacle detection in the other lane.
                 Default is 0 degrees, meaning that the agent will detect obstacles behind.
             
         Assumes:
-            (self.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \
-                and not waypoint.is_junction and self.config.live_info.current_speed > 10)
-            check_behind.obstacle_was_found and self.config.live_info.current_speed < get_speed(check_behind.obstacle)
+            - :python:`(self.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \
+                and not waypoint.is_junction and self.config.live_info.current_speed > 10)`
+            - :python:`check_behind.obstacle_was_found and self.config.live_info.current_speed < get_speed(check_behind.obstacle)`
         """
         vehicle_list = self.vehicles_nearby
         waypoint = self._current_waypoint # todo use a getter
@@ -1200,7 +1200,7 @@ class LunaticAgent(BehaviorAgent):
         config_creation._WARN_LIVE_INFO = False
 
         if verify_dataclass:
-            if verify_dataclass == True:
+            if verify_dataclass is True:
                 dataclass = self.BASE_SETTINGS
             elif issubclass(verify_dataclass, AgentConfig):
                 dataclass = verify_dataclass
@@ -1241,9 +1241,18 @@ class LunaticAgent(BehaviorAgent):
         else:
             self._detection_matrix = None
         self._road_matrix_counter = 0
+        
+    if READTHEDOCS or TYPE_CHECKING:
+        # From the parent class, but without type-hints
+        def set_destination(self, end_location:carla.Location, start_location:carla.Location, clean_queue:bool=True) -> None:
+            ...
     
     def set_vehicle(self, vehicle:carla.Actor):
-        """Set the vehicle for the agent (experimental if applied a second time)"""
+        """
+        Set the vehicle for the agent (experimental if applied a second time)
+        
+        :meta private:
+        """
         self._vehicle = assure_type(carla.Vehicle, vehicle)
         if all(actor.id != vehicle.id for actor in CarlaDataProvider._actor_velocity_map): # do not register same id twice
             try:
@@ -1318,12 +1327,20 @@ class LunaticAgent(BehaviorAgent):
 
     # NOTE: the original pedestrian_avoid_manager is still usable
     def pedestrian_avoid_manager(self, waypoint) -> NoReturn:       #pylint: disable=unused-argument
-        """This function was replaced by ", substep_managers.pedestrian_detection_manager"""
+        """
+        This function was replaced by ", substep_managers.pedestrian_detection_manager
+        
+        :meta private:
+        """
         raise NotImplementedError("This function was replaced by ", substep_managers.pedestrian_detection_manager)
 
     #@override
     def collision_and_car_avoid_manager(self, waypoint) -> NoReturn:
-        """This function was split into detect_obstacles_in_path and car_following_manager"""
+        """
+        This function was split into detect_obstacles_in_path and car_following_manager
+        
+        :meta private:
+        """
         raise NotImplementedError("This function was split into detect_obstacles_in_path and car_following_manager")
     
     #@override
@@ -1332,7 +1349,13 @@ class LunaticAgent(BehaviorAgent):
 
     #@override
     def emergency_stop(self) -> NoReturn:
+        """
+        :meta private:
+        """
         raise NotImplementedError("This function was overwritten use ´add_emergency_stop´ instead")
+        ...
+    
+
 
     # ------------------------------------ #
     # As reference Parent Functions 
@@ -1343,21 +1366,21 @@ class LunaticAgent(BehaviorAgent):
     #def done(self): # from base class self._local_planner.done()
         
     #def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
-        """
-        Adds a specific plan to the agent.
+    """
+    Adds a specific plan to the agent.
 
-            :param plan: list of [carla.Waypoint, RoadOption] representing the route to be followed
-            :param stop_waypoint_creation: stops the automatic random creation of waypoints
-            :param clean_queue: resets the current agent's plan
-        """
+        :param plan: list of [carla.Waypoint, RoadOption] representing the route to be followed
+        :param stop_waypoint_creation: stops the automatic random creation of waypoints
+        :param clean_queue: resets the current agent's plan
+    """
 
     #def trace_route(self, start_waypoint, end_waypoint):
-        """
-        Calculates the shortest route between a starting and ending waypoint.
+    """
+    Calculates the shortest route between a starting and ending waypoint.
 
-            :param start_waypoint (carla.Waypoint): initial waypoint
-            :param end_waypoint (carla.Waypoint): final waypoint
-        """
+        :param start_waypoint (carla.Waypoint): initial waypoint
+        :param end_waypoint (carla.Waypoint): final waypoint
+    """
 
     def _destroy_sensor(self):
         if self._detection_matrix:

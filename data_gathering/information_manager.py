@@ -7,19 +7,21 @@ i.e. distill the information from the data and return high level information
 
 from fnmatch import fnmatch
 from functools import wraps
-from typing import Any, ClassVar, TYPE_CHECKING, NamedTuple, Optional, Union, Dict, List
+from typing import (Any, ClassVar, TYPE_CHECKING, 
+                    NamedTuple, Optional, Union, Dict, List, Callable, TypeVar)
+from typing_extensions import Literal, Self, ParamSpec, Concatenate
 from cachetools import cached
 import carla
+
+from launch_tools import CarlaDataProvider
+from agents.tools.logging import logger
+from classes.constants import AgentState
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 
-from launch_tools import CarlaDataProvider
-
-from agents.tools.logging import logger
-
-
-from classes.constants import AgentState
+_T = TypeVar("_T")
+_P = ParamSpec("_P")
 
 DRIVING_SPEED_THRESHOLD = 0.05 # m/s >= check
 STOPPED_SPEED_THRESHOLD = 0.05 # m/s < check
@@ -39,11 +41,14 @@ class InformationManager:
     """Current tick to not double class :py:meth:`global_tick`"""
     
     # Instance Variables
-    relevant_traffic_light : Union[float, carla.TrafficLight] = None
+    relevant_traffic_light : Union[carla.TrafficLight, None] = None
     """Result of :py:meth:`.CarlaDataProvider.get_next_traffic_light`"""
     
-    relevant_traffic_light_distance : Union[float, None] = None
-    """Distance to the :py:attr:`relevant_traffic_light`"""
+    relevant_traffic_light_distance : float = float('inf')
+    """
+    Distance to the :py:attr:`relevant_traffic_light`
+    Is float('inf') if :py:attr:`relevant_traffic_light` is None.
+    """
     
     _relevant_traffic_light_location : carla.Location = None
     
@@ -54,7 +59,7 @@ class InformationManager:
     
     _vehicle_speed : float # m/s
     
-    gathered_information : Dict[str, Any]
+    gathered_information : "InformationManager.Information"
     """:py:class:`.InformationManager.Information` gathered during :py:meth:`tick`"""
     
     # Class & Global Variables
@@ -99,13 +104,14 @@ class InformationManager:
     
     # AgentState detection
     
+    #@staticmethod # not possible in python3.7
     def _check_state(state : AgentState):
         """
         Updates the state counter and the state checked dict when the function is called
         """
-        def wrapper(func):
+        def wrapper(func : Callable[Concatenate[Self,_P], _T]) ->  Callable[Concatenate[Self,_P], _T]:# -> _Wrapped[Callable[Concatenate[Self, _P], Any], bool | Non...:
             @wraps(func)
-            def inner(self: "InformationManager", *args, **kwargs):
+            def inner(self: Self, *args: _P.args, **kwargs: _P.kwargs):
                 result = func(self, *args, **kwargs)
                 if result is not None:
                     if result:
@@ -118,7 +124,7 @@ class InformationManager:
         return wrapper
     
     @_check_state(AgentState.DRIVING)
-    def detect_driving_state(self):
+    def detect_driving_state(self) -> bool:
         """
         Increased the :py:attr:`AgentState.DRIVING` counter if the vehicle is driving.
         
@@ -127,7 +133,7 @@ class InformationManager:
         return self._vehicle_speed >= DRIVING_SPEED_THRESHOLD
     
     @_check_state(AgentState.STOPPED)
-    def detect_stopped_state(self):
+    def detect_stopped_state(self) -> bool:
         """
         Increased the :py:attr:`AgentState.STOPPED` counter if the vehicle is stopped.
         
@@ -136,7 +142,7 @@ class InformationManager:
         return self._vehicle_speed < STOPPED_SPEED_THRESHOLD
     
     @_check_state(AgentState.REVERSE)
-    def detect_reverse_state(self):
+    def detect_reverse_state(self) -> bool:
         """
         Determines if in the last tick the VehicleControl.reverse flag was set.
         
@@ -179,7 +185,7 @@ class InformationManager:
 
     # --- Traffic Light ---
     
-    def _get_next_traffic_light(self):
+    def _get_next_traffic_light(self) -> Optional[carla.TrafficLight]:
         # TODO: Do not use the CDP but use the planned route instead.
         self.relevant_traffic_light = CarlaDataProvider.get_next_traffic_light(self._vehicle)
         if self.relevant_traffic_light:
@@ -188,7 +194,8 @@ class InformationManager:
         else:
             # Is at an intersection
             self._relevant_traffic_light_location = None
-            self.relevant_traffic_light_distance = None
+            self.relevant_traffic_light_distance = float('inf')
+        return self.relevant_traffic_light
     
     def detect_next_traffic_light(self):
         """
@@ -199,10 +206,10 @@ class InformationManager:
             
             **This function is automatically called in :py:meth:`tick`**
         """
-        if self.relevant_traffic_light_distance:
+        if self.relevant_traffic_light_distance < float('inf'):
             tlight_distance = self._relevant_traffic_light_location.distance(self.live_info.current_location)
         else:
-            tlight_distance = None
+            tlight_distance = float('inf')
         
         # Search for a traffic light if none is given or if the distance to the current one increased
         # 1% tolerance to prevent permanent updates when far away from a traffic light
@@ -238,7 +245,7 @@ class InformationManager:
         # - Location -
         # NOTE: That transform.location and location are similar but not identical.
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
-        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not clean
+        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not cleaned
         # Only exact waypoint. TODO: update in agent
         current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet.
         
@@ -328,7 +335,7 @@ class InformationManager:
         current_speed: float
         current_states : Dict[AgentState, int]
         
-        relevant_traffic_light: carla.TrafficLight
+        relevant_traffic_light: Optional[carla.TrafficLight]
         relevant_traffic_light_distance: float
         
         vehicles: List[carla.Vehicle]

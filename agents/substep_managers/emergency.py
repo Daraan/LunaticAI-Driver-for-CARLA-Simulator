@@ -14,8 +14,12 @@ def emergency_manager(self : "LunaticAgent", *, reasons:"set[Hazard]", control :
     Modifies the control values to perform an emergency stop.
     The steering remains unchanged to avoid going out of the lane during turns.
 
-    :param control: (carla.VehicleControl) control to be modified
-    :param enable_random_steer: (bool, optional) Flag to enable random steering
+    Parameters:
+        reasons: set of :py:class:`.Hazard` that triggered the emergency stop. 
+            If empty this function will do nothing. Normally :py:attr:`detected_hazards <.LunaticAgent.detected_hazards>`.
+        control: control to be modified.
+            If :code:`None` uses the agents :py:meth:`get_control <.LunaticAgent.get_control>`.
+        force: if True, the emergency stop will be performed even if the **reasons**  are empty.
     """
     control = control or self.get_control()
     if control is None:

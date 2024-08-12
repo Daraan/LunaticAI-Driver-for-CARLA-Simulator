@@ -11,8 +11,6 @@ import weakref
 
 import carla
 
-from classes.hud import get_actor_display_name, HUD
-
 from classes._sensor_interface import CustomSensorInterface
 __all__ = [
     'CollisionSensor',
@@ -21,6 +19,10 @@ __all__ = [
     'RadarSensor',
     'IMUSensor'
 ]
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from classes.hud import HUD
 
 # ==============================================================================
 # -- CollisionSensor -----------------------------------------------------------
@@ -35,11 +37,11 @@ class CollisionSensor(CustomSensorInterface):
         https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
     """
 
-    def __init__(self, parent_actor : carla.Actor, hud : HUD):
+    def __init__(self, parent_actor : carla.Actor, hud : "HUD"):
         """Constructor method"""
         self.history: "list[tuple[int, float]]" = []
         self._parent = parent_actor
-        self.hud: HUD = hud
+        self.hud: "HUD" = hud
         world = self._parent.get_world()
         blueprint = world.get_blueprint_library().find('sensor.other.collision')
         self.sensor = world.spawn_actor(blueprint, carla.Transform(), attach_to=self._parent) # type: ignore
@@ -61,6 +63,7 @@ class CollisionSensor(CustomSensorInterface):
         self = weak_self()
         if not self:
             return
+        from classes.hud import get_actor_display_name # lazy import to avoid circular import
         actor_type = get_actor_display_name(event.other_actor)
         self.hud.notification('Collision with %r' % actor_type)
         impulse = event.normal_impulse

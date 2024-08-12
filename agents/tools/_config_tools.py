@@ -1,10 +1,14 @@
 """
 Helper Tools for :py:mod:`.config_tools`.
 """
+
+from __future__ import annotations
+
 # pyright: reportPrivateUsage=false, reportUnknownLambdaType=false, reportUnusedClass=false
 # pyright: reportPossiblyUnboundVariable=information,reportAttributeAccessIssue=warning
 # pyright: reportUnknownVariableType=information, reportUnknownMemberType=information
 
+import sys
 import ast
 import os
 import carla
@@ -17,10 +21,13 @@ from enum import IntEnum
 import omegaconf.errors
 from omegaconf import MISSING, DictConfig, ListConfig, MissingMandatoryValue, OmegaConf, SCMode
 from omegaconf._utils import is_structured_config
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Union, cast, get_type_hints
-from typing_extensions import TypeAlias, TypeVar, Self, TypeAliasType
+from hydra.core.config_store import ConfigStore
 
 from classes.constants import AD_RSS_AVAILABLE
+from launch_tools import ast_parse
+
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Union, cast, get_type_hints
+from typing_extensions import TypeAlias, TypeVar, Self, TypeAliasType
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import AgentConfig
@@ -65,11 +72,14 @@ if not READTHEDOCS and os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") ==
 CONFIG_SCHEMA_NAME = "launch_config_schema.yaml"
 """Name to use for the launch_config as it cannot be launch_config itself."""
 
-from hydra.core.config_store import ConfigStore
+
 config_store = ConfigStore.instance()
 """Hydra_ 's ConfigStore instance to access config schemas."""
 
-def register_hydra_schema(obj: type[Any], name: Optional[str]=None):
+POSTPOND_REGISTER = sys.version_info < (3, 10)
+postpond_register: dict[str, type[Any]] = {}
+
+def register_hydra_schema(obj: "type[Any]", name: Optional[str]=None):
     """
     Uses Hydra's ConfigStore to register the schema of the current class in the
     :py:obj:`ConfigStore <config_store>`.
@@ -79,9 +89,14 @@ def register_hydra_schema(obj: type[Any], name: Optional[str]=None):
     """
     if name is None:
         name = cast(str, getattr(obj, "_config_path", obj.__name__))
+    #if not POSTPOND_REGISTER:
+    #    pass
+    #else:
+    #    postpond_register[name] = obj
     config_store.store(name, OmegaConf.structured(obj, flags={"allow_objects" : True}), 
-                       provider="agents.tools.config_creation", group=None, package=None)
-
+                        provider="agents.tools.config_creation", group=None, package=obj.__module__)
+        
+    
 def config_path(path: Optional[str] = None):
     """
     Decorator to register the schema of the current class with Hydra's ConfigStore.
@@ -370,7 +385,7 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
                         # Move fitting sub-class to key
                         docs[main_body.name][target] = global_annotations[key] # pyright: ignore[reportOptionalSubscript]
                         continue
-                    except:
+                    except Exception:
                         pass
                     raise NameError(f"{key} needs to be defined before {target} or globally") from e
                 continue
@@ -399,6 +414,81 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
             docs[main_body.name][target] = doc
             del target # delete to get better errors
             del doc
+
+class_annotations : Optional[Dict[str, _NestedStrDict]] = None
+"""Nested documentation strings for classes; used for YAML comments."""
+
+def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], string:str, container: "DictConfig | NestedConfigDict",
+                        *, include_private:bool=False) -> str:
+    if inspect.isclass(cls_or_self):
+        cls = cls_or_self
+    else:
+        cls = cls_or_self.__class__
+    cls_file = inspect.getfile(cls)
+    # Get documentations and store globally
+    global class_annotations
+    if class_annotations is None:
+        with open(cls_file, "r") as f: # NOTE: This file only!
+            tree = ast_parse(f.read())
+            class_annotations = {}
+            extract_annotations(tree, docs=class_annotations, global_annotations=class_annotations)
+    
+    from ruamel.yaml import YAML
+    from ruamel.yaml.comments import CommentedMap
+    yaml2 = YAML(typ='rt')
+    #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
+    data : CommentedMap = yaml2.load(string)
+    
+    cls_doc = class_annotations[cls.__name__]
+
+    # First line
+    data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
+    
+    # add comments to all other attributes
+    def add_comments(container : "DictConfig | NestedConfigDict", data: CommentedMap, lookup : Union[AgentConfig, _NestedStrDict], indent:int=0):
+        """
+        
+        Args:
+            container: The current dict to be commented
+        """
+        if isinstance(container, DictConfig):
+            containeritems = container.items_ex(resolve=False)
+        else:
+            containeritems = container.items()
+        for key, value in containeritems:
+            if TYPE_CHECKING:
+                assert isinstance(key, str)
+            if isinstance(value, dict) and isinstance(cls_doc.get(key, None), dict):
+                # Add nested comments
+                add_comments(value, data[key], cls_doc[key], indent=indent+2) # type: ignore[arg-type]
+                comment_txt = "\n" + cls_doc[key].get("__doc__", "")                     # type: ignore
+                assert isinstance(comment_txt, str)
+                # no @package in subfields
+                if comment_txt.startswith("\n@package "): # already striped here
+                    comment_txt = "\n".join(comment_txt.split("\n")[2:]).strip()
+            else:
+                comment_txt = lookup.get(key, None) 
+            if comment_txt is None:
+                continue
+            if isinstance(comment_txt, dict):
+                add_comments(comment_txt, data[key], comment_txt, indent=indent+2)
+                continue
+            if (":meta exclude:" in comment_txt) or not include_private and ":meta private:" in comment_txt:
+                # TODO: does nor remove the key
+                data.pop(key)
+                continue # Skip private fields; todo does not skip "_named" fields
+            comment_txt = comment_txt.replace("\n\n","\n \n")
+            if comment_txt.count("\n") > 0:
+                comment_txt = "\n"+comment_txt
+            data.yaml_set_comment_before_after_key(key, comment_txt, indent=indent)
+    add_comments(container, data, cls_doc)  # pyright: ignore[reportArgumentType]
+    # data.yaml_add_eol_comment(comment_txt, key = key)
+
+    import io
+    stream = io.StringIO()
+    yaml2.dump(data, stream)
+    stream.seek(0)
+    return stream.read()
             
 # --------------- Other Tools -----------------
 
@@ -432,7 +522,7 @@ def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfig
             continue
         typ = annotations[key]
         if is_structured_config(typ): # is structured dataclass or attrs
-            if OmegaConf.get_type(value) == dict: # but is not
+            if OmegaConf.get_type(value) is dict: # but is not
                 if isinstance(value, DictConfig):
                     #value._metadata.object_type = typ
                     if hasattr(typ, "create"):

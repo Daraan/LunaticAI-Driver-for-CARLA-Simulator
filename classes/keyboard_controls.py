@@ -181,7 +181,7 @@ class RSSKeyboardControl(KeyboardControl):
     Controls the size of steering area when using the mouse.
     """
     
-    signal_received = False
+    signal_received: "bool | int" = False
     """
     Got a signal to stop the simulation. No more events will be parsed if True.
     

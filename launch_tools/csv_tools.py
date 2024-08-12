@@ -3,9 +3,11 @@
 
 from typing import List
 import pandas as pd
-from carla.libcarla import Location, Rotation, Transform # pylint: disable=no-name-in-module
+from carla import Location, Rotation, Transform # pylint: disable=no-name-in-module
 
-__all__ = ["transform_to_pandas", "vehicle_location_to_dataframe", "csv_to_transformations"]
+__all__ = ["transform_to_pandas", 
+           "vehicle_location_to_dataframe", 
+           "csv_to_transformations"]
 
 
 # A dataframe template to store the locations of vehicles

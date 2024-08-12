@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     import docutils.nodes
 
 
-
 PROJECT_ROOT = '../../../'
 #sys.path.insert(1, os.path.abspath('../../../agents'))
 #sys.path.insert(1, os.path.abspath('../../../scenario_runner'))
@@ -46,9 +45,9 @@ print("Are we local or on readthedocs (True)?", os.environ["READTHEDOCS"])
 
 # must be done after adjusting the sys.path
 from docs.webview.source import _conf_extensions
-from docs.webview.source._conf_extensions import (InjectClassRole, FileResolver, autodoc_skip_member, missing_reference_handle, 
+from docs.webview.source._conf_extensions import (InjectClassRole, FileResolver, autodoc_skip_member, before_type_hint_cleaner, missing_reference_handle, 
                                                   source_read_listener, include_read_listener, 
-                                                  REMOTE_URL,)
+                                                  REMOTE_URL, type_hint_cleaner,)
 
 
 # -- Project information -----------------------------------------------------
@@ -146,7 +145,9 @@ rst_prolog = """
 """
 
 intersphinx_mapping = {'python': ('https://docs.python.org/3/', None),
-                                       'typing_extensions' : ("https://docs.python.org/3/", None),
+                                       #'typing_extensions' : ("https://docs.python.org/3/", None),
+                                       # Shpinx 8
+                                       'typing-extensions' : ("https://typing-extensions.readthedocs.io/en/latest/", None),
                                        'omegaconf' : ('https://omegaconf.readthedocs.io/en/latest/', '_omegaconf-inv_patch.inv'),
                                        'pygame' : ("https://www.pygame.org/docs/", None),
                                        'carla' : ('https://carla.readthedocs.io/en/latest/', '_carla-inv.inv'),
@@ -178,7 +179,9 @@ autodoc_class_signature = "mixed" # "separated" or "mixed"
 autodoc_mock_imports = ["leaderboard", "pygame", "shapely", 
                                    "py_trees", "pandas", "numpy", "matplotlib", 
                                    "pylab", "networkx", "graphviz", "cachetools", "six", "scenario_runner", "srunner",
-                                   "hydra"]
+                                   "hydra", "carla"]
+
+from docs.webview.source._autodoc_type_aliases import autodoc_type_aliases
 
 autodoc_typehints="both"
 
@@ -515,6 +518,10 @@ def setup(app : "sphinx.application.Sphinx"):
     
     # Manually skip members
     #app.connect("autodoc-skip-member", autodoc_skip_member)
+    
+    # Clean type-hints
+    app.connect("autodoc-before-process-signature", before_type_hint_cleaner, priority=501)
+    app.connect("autodoc-process-signature", type_hint_cleaner, priority=501)
     
     app.add_transform(FileResolver)
 

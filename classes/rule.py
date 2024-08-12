@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 # pyright: reportIndexIssue=information, reportCallIssue=information, reportGeneralTypeIssues=information
 # pyright: reportUnusedFunction=information, reportUnusedImport=information
 # pyright: reportUnnecessaryIsInstance=false, reportUnnecessaryComparison=false
+
+
+
 from collections.abc import Mapping
 from dataclasses import is_dataclass
 from functools import partial, wraps
-from typing_extensions import Annotated
-
 
 from launch_tools import CarlaDataProvider, Literal
 import pygame
@@ -22,9 +25,9 @@ import random
 import inspect
 from inspect import isclass
 from itertools import accumulate
-from typing import (Any, ClassVar, FrozenSet, List, Set, Tuple, Union, Iterable, 
+from typing import (Any, ClassVar, FrozenSet, List, Set, Tuple, TypeVar, Union, Iterable, 
                     Callable, Optional, Dict, Hashable, TYPE_CHECKING, cast)
-from typing_extensions import overload, TypeAlias
+from typing_extensions import overload, TypeAlias, Self, ParamSpec, Annotated, TypedDict, Self
 from weakref import ProxyType, WeakSet, proxy
 
 from omegaconf import DictConfig, OmegaConf
@@ -40,14 +43,18 @@ if TYPE_CHECKING:
     from agents.tools.config_creation import LiveInfo, RuleConfig, ContextSettings
     from typing import Literal, NoReturn
 else:
-    RuleConfig = Any # need variable at runtime
+    RuleConfig : TypeAlias = Any # need variable at runtime
     
     # Note: gameframework.py adds GameFramework to this module's variables
     # at this position it would be a circular import
 
-ConditionFunctionLike : TypeAlias = Union["ConditionFunction", 
-                                          Callable[["Context"], Hashable], 
-                                          Callable[["Rule", "Context"], Hashable]]
+_Rule = TypeVar("_Rule", bound="Rule")
+_P = ParamSpec("_P")
+_H = TypeVar("_H", bound=Hashable)
+
+ConditionFunctionLike : TypeAlias = Union["ConditionFunction[_Rule, _P, _H]", 
+                                          Callable[["Context"], _H], 
+                                          Callable[[_Rule, "Context"], _H]]
 """
 Callable that uses a :py:class:`Context` object as a single argument,
 or alternatively a :py:class:`Rule` and a :py:class:`Context` object (in this order).
@@ -56,7 +63,7 @@ The function must return a :term:`Hashable` value.
 """
 
 CallableAction : TypeAlias = Union[Callable[["Context"], Any], 
-                                   Callable[["Rule", "Context"], Any]]
+                                   Callable[[_Rule, "Context"], Any]]
 """
 Callable that uses a :py:class:`Context` object as a single argument,
 or alternatively a :py:class:`Rule` and a :py:class:`Context` object (in this order).
@@ -155,7 +162,7 @@ class Context(CarlaDataProvider):
         self._init_arguments = kwargs
         self.phase_results = dict.fromkeys(Phase.get_phases(), Context.PHASE_NOT_EXECUTED)
         
-        self.config : "ContextSettings" = agent.config.copy()
+        self.config : "ContextSettings" = agent.config.copy() # type: ignore
         self.config._content["live_info"] = agent.live_info # not a copy! # pyright: ignore
         
         self.detected_hazards = set()
@@ -325,6 +332,7 @@ def _use_temporary_config(func):
             ctx.config = original_ctx_config
     return wrapper
 
+
 class _CountdownRule:
 
     # TODO: low prio: make cooldown dependant of tickrate or add a conversion from seconds to ticks OR make time-based
@@ -437,7 +445,10 @@ class _CountdownRule:
             """
             Rule.update_all_cooldowns()
             Rule.unblock_all_rules()
-                
+          
+          
+_GroupInstanceValues = TypedDict('__GroupInstanceValues', {"cooldown": int, "max_cooldown": int, "instances": "WeakSet[_GroupRule]"})
+"""TypeHint that describes the values of `_GroupRule._group_instances`."""
 
 class _GroupRule(_CountdownRule):
     group : Optional[str] = None # group of rules that share a cooldown
@@ -448,7 +459,7 @@ class _GroupRule(_CountdownRule):
     """
 
     # first two values in the list are current and max cooldown, the third is a set of all instances
-    _group_instances : ClassVar[Dict[str, Tuple[int, int, "WeakSet[_GroupRule]"]]] = {}
+    _group_instances : ClassVar[Dict[str, _GroupInstanceValues]] = {}
     """
     Dictionary of all group instances. 
         Keys:
@@ -463,8 +474,8 @@ class _GroupRule(_CountdownRule):
         if group is None:
             return
         if group not in self._group_instances:
-            self._group_instances[group] = [0, self.max_cooldown, WeakSet()] # pyright: ignore[reportArgumentType]
-        self._group_instances[group][2].add(self) # add to weak set
+            self._group_instances[group] = dict(cooldown=0, max_cooldown=0, instances=WeakSet()) # type: ignore[assignment]
+        self._group_instances[group]["instances"].add(self) # add to weak set
 
     @property
     def cooldown(self) -> int:
@@ -473,7 +484,7 @@ class _GroupRule(_CountdownRule):
         If 0 the rule is ready to be executed.
         """
         if self.group:
-            return _GroupRule._group_instances[self.group][0]
+            return _GroupRule._group_instances[self.group]["cooldown"]
         return super().cooldown
     
     @property
@@ -484,7 +495,7 @@ class _GroupRule(_CountdownRule):
     @cooldown.setter
     def cooldown(self, value : int):
         if self.group:
-            _GroupRule._group_instances[self.group][0] = value
+            _GroupRule._group_instances[self.group]["cooldown"] = value
             return
         super().cooldown = value
     
@@ -494,9 +505,9 @@ class _GroupRule(_CountdownRule):
             logger.warning("Rule does not belong to a group, but set_my_group_cooldown was called. Ignoring.")
             return
         if value is None:
-            self._group_instances[self.group][0] = self._group_instances[self.group][1] # set to max
+            self._group_instances[self.group]["cooldown"] = self._group_instances[self.group]["max_cooldown"] # set to max
         else:
-            self._group_instances[self.group][0] = value
+            self._group_instances[self.group]["cooldown"] = value
 
     def reset_cooldown(self, value:Optional[int]=None):
         """Reset or set the cooldown; for a group rule it resets the group cooldown."""
@@ -509,20 +520,23 @@ class _GroupRule(_CountdownRule):
     def set_cooldown_of_group(cls, group: str, value: int):
         """Updates the cooldown of the specified group to a specific value"""
         if group in cls._group_instances:
-            cls._group_instances[group][0] = value
+            cls._group_instances[group]["cooldown"] = value
         else:
             raise ValueError(f"Group {group} does not exist.")
 
-    __filter_not_ready_instances = lambda instance: instance.group is None and instance._cooldown > 0
-    """Filter function to get all instances that are not ready. see `update_all_cooldowns`."""
-
+    __filter_not_ready_instances : Callable[["_CountdownRule"], bool] = lambda instance: instance.group is None and instance._cooldown > 0 # pylint: disable=line-too-long # type: ignore[attr-defined]
+    """
+    Filter function to get all instances that are not ready. see `update_all_cooldowns`
+    Group rules should not be affected by this filter.
+    """
+    
     @classmethod
     def update_all_cooldowns(cls):
         """Globally updates the cooldown of *all* rules."""
         # Update Groups
         for instance_data in cls._group_instances.values():
-            if instance_data[0] > 0:
-                instance_data[0] -= 1
+            if instance_data["cooldown"] > 0:
+                instance_data["cooldown"] -= 1
         for instance in filter(cls.__filter_not_ready_instances, cls._instances):
             instance._cooldown -= 1
 
@@ -580,7 +594,7 @@ class Rule(_GroupRule):
     phase : "Phase"
     """For the Class API the phase attribute be set to a single Phase object."""
     
-    condition : ConditionFunctionLike
+    condition : ConditionFunctionLike[Self, _P, _H]
     """
     The condition that determines if the rule's actions should be executed.
     
@@ -592,15 +606,15 @@ class Rule(_GroupRule):
         return a :term:`Hashable` value that is used as key in the :py:attr:`actions` dict.
     """
     
-    actions : Dict[Any, CallableAction]
+    actions : Dict[Any, CallableAction[Self]]
     """Dictionary that maps rule results to the action that should be executed."""
     
-    action : Annotated[CallableAction, "attribute not available on instance -> merged into `actions`"]
+    action : Annotated[CallableAction[Self], "attribute not available on instance -> merged into `actions`"]
     """
     Action that should be executed if the rule is True. If `actions` is set, this is ignored.
     """
     
-    false_action : Annotated[CallableAction, "attribute not available on instance -> merged into `actions`"]
+    false_action : Annotated[CallableAction[Self], "attribute not available on instance -> merged into `actions`"]
     """Action that should be executed if the rule is False. May not be set if `actions` is set."""
     
     #group : Optional[str]
@@ -649,12 +663,54 @@ class Rule(_GroupRule):
         """
         return self.__class__(self) # Make use over overloaded __init__
 
+    @overload
+    def __new__(cls, phases: Union["Phase", Iterable["Phase"], None]=None, *args, **kwargs) -> "Self":
+        ...
+        
+    @overload
+    def __new__(cls, phases: "type[Any] | Self", *args, **kwargs) -> "Self":
+        ...
+        
+    @overload
+    def __new__(cls, phases: str, bases:Tuple[type], clsdict: dict[str, Any], **kwargs) -> "type[Self]":
+        ...
+
+    def __new__(cls, phases: Optional[Union["Phase", Iterable["Phase"], None, "type[Any]", Self, str]]=None, bases:Optional[tuple[type]]=None, clsdict: Optional[dict[str, Any]]=None, **kwargs):
+        """
+        The @Rule decorator allows to instantiate a Rule class directly for easier out-of-the-box usage.
+        Further check for metaclass initialization, else this is a normal instance creation.
+        """
+        # @Rule
+        # class NewRuleInstance:
+        if isclass(phases):
+            if issubclass(phases, _CountdownRule):
+                raise ValueError("When using @Rule the class may not be a subclass of Rule. Do not inherit from rule or subclass from Rule instead with the decorator."
+                                 "Do not do:\n\t@Rule\n\tclass MyRule(>>Rule<<): ...\n" )
+            decorated_class = phases
+            
+            # Create the new class, # NOTE: goes to __init_subclass__
+            new_rule_class = type(decorated_class.__name__, (cls,), decorated_class.__dict__.copy(), init_by_decorator=True) # > calls init_subclass; copy() for correct type!
+            return super().__new__(cast("type[Self]", new_rule_class))
+        # class NewRuleType(metaclass=Rule)
+        if isinstance(phases, str):
+            try:
+                class_name = phases
+                assert clsdict and isinstance(bases, tuple)
+                new_rule_class = type(class_name, (cls,) + bases, clsdict, metaclass=True, **kwargs) # > calls init_subclass; copy() for correct type!
+                return cast("type[Self]",new_rule_class)
+            except Exception:
+                print("ERROR: If you want to initialize a rule be sure that you pass a Phase object as the first argument."
+                      "A string assumes that you've used class NewSubclass(metaclass=Rule)")
+                raise
+        # Normal instance
+        return super().__new__(cls)
+
     @singledispatchmethod
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
                  #/, # phases must be positional; python3.8+ only
                  condition : Optional[ConditionFunctionLike]=None, 
-                 action: Optional[Union[CallableAction, Dict[Any, CallableAction]]] = None,
+                 action: Optional[Union[CallableAction[Self], Dict[Any, CallableAction]]] = None,
                  false_action: Optional[CallableAction] = None,
                  *, 
                  actions : Optional[Dict[Any, CallableAction]] = None,
@@ -803,36 +859,6 @@ class Rule(_GroupRule):
         
         self.overwrite_settings["self"] = self.self_config
         self.overwrite_settings["self"]["instance"] = self
-    
-    def __new__(cls, phases=None, *args, **kwargs):
-        """
-        The @Rule decorator allows to instantiate a Rule class directly for easier out-of-the-box usage.
-        Further check for metaclass initialization, else this is a normal instance creation.
-        """
-        # @Rule
-        # class NewRuleInstance:
-        if isclass(phases):
-            if issubclass(phases, _CountdownRule):
-                raise ValueError("When using @Rule the class may not be a subclass of Rule. Do not inherit from rule or subclass from Rule instead with the decorator."
-                                 "Do not do:\n\t@Rule\n\tclass MyRule(>>Rule<<): ...\n" )
-            decorated_class = phases
-            
-            # Create the new class, # NOTE: goes to __init_subclass__
-            new_rule_class = type(decorated_class.__name__, (cls,), decorated_class.__dict__.copy(), init_by_decorator=True) # > calls init_subclass; copy() for correct type!
-            return super().__new__(new_rule_class)
-        # class NewRuleType(metaclass=Rule)
-        if isinstance(phases, str):
-            try:
-                clsname = phases
-                bases, clsdict = args[:2]
-                new_rule_class = type(clsname, (cls,), clsdict, metaclass=True) # > calls init_subclass; copy() for correct type!
-                return new_rule_class #
-            except Exception:
-                print("ERROR: If you want to initialize a rule be sure that you pass a Phase object as the first argument."
-                      "A string assumes that you've used class NewSubclass(metaclass=Rule)")
-                raise
-        # Normal instance
-        return super().__new__(cls)
     
     # Called on subclass creation. Can be used for class API
     def __init_subclass__(cls, init_by_decorator=False, metaclass=False):
@@ -1159,7 +1185,7 @@ class MultiRule(metaclass=Rule):
             
     @__init__.register(_CountdownRule) # For similar_rule = Rule(some_rule), easier cloning
     @__init__.register(type) # For @Rule class MyRule: ...
-    def __init_by_decorating_class(self, cls: "MultiRule"):
+    def __init_by_decorating_class(self, cls: "MultiRule"):   # pyright: ignore[reportUnusedFunction]
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         assert hasattr(cls, "condition"), f"Class {cls} has no condition attribute. It must be provided."
@@ -1177,7 +1203,7 @@ class MultiRule(metaclass=Rule):
                       ignore_phase=getattr(cls, "ignore_phase", True))
     
     @__init__.register(Mapping)
-    def __init_from_mapping(self, cls:Mapping):
+    def __init_from_mapping(self, cls:Mapping):  # pyright: ignore[reportUnusedFunction]
         self.__init__(cls.get("phases", cls.get("phase")), cls["rules"], cls.get("condition"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), self_config=cls.get("self_config"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
 
     
@@ -1283,7 +1309,7 @@ class RandomRule(metaclass=MultiRule): # pyright: ignore[reportGeneralTypeIssues
 
     @__init__.register(_CountdownRule)
     @__init__.register(type)
-    def __init_by_decorating_class(self, cls: "RandomRule"):
+    def __init_by_decorating_class(self, cls: "RandomRule"): # pyright: ignore[reportUnusedFunction]
         phases = getattr(cls, "phases", getattr(cls, "phase", None))
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None)) 
         
@@ -1300,7 +1326,7 @@ class RandomRule(metaclass=MultiRule): # pyright: ignore[reportGeneralTypeIssues
                       ignore_phase=getattr(cls, "ignore_phase", True))
     
     @__init__.register(Mapping)
-    def __init_from_mapping(self, cls:Mapping):
+    def __init_from_mapping(self, cls:Mapping):  # pyright: ignore[reportUnusedFunction]
         self.__init__(cls.get("phases"), cls["rules"], repeat_if_not_applicable=cls.get("repeat_if_not_applicable", True), condition=cls.get("condition"), description=cls["description"], overwrite_settings=cls.get("overwrite_settings"), self_conifg=cls.get("self_config"), priority=cls.get("priority", RulePriority.NORMAL), cooldown_reset_value=cls.get("cooldown_reset_value"), group=cls.get("group"), enabled=cls.get("enabled", True), sort_rules_by_priority=cls.get("sort_rules_by_priority", True), execute_all_rules=cls.get("execute_all_rules", False), prior_action=cls.get("prior_action", None), ignore_phase=cls.get("ignore_phase", True))
 
     def evaluate_children(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Any:
@@ -1350,7 +1376,7 @@ class BlockingRule(metaclass=Rule):
     
     MAX_TICKS = 5000 # 5000 * 1/20 = 250 seconds
     
-    max_tick_callback : Optional[Callable[["BlockingRule", Context], Any]] = None
+    max_tick_callback : Optional[Callable[[Self, Context], Any]] = None
 
     @singledispatchmethod
     def __init__(self, 
@@ -1382,7 +1408,7 @@ class BlockingRule(metaclass=Rule):
 
     @__init__.register(_CountdownRule)
     @__init__.register(type)
-    def __init_by_decorating_class(self, cls: "BlockingRule"): # pylint: disable=unused-variable
+    def __init_by_decorating_class(self, cls: "BlockingRule"): # pyright: ignore[reportUnusedFunction]
         """
         Initialize by passing a Rule or class object to the __init__ method.
         
@@ -1442,10 +1468,12 @@ class BlockingRule(metaclass=Rule):
                 Defaults to :python:`None`.
         
         See Also:
-            - py:meth:`.LunaticAgent.parse_keyboard_input`
-            - py:meth:`.LunaticAgent.apply_control)`
-            - py:meth:`.BlockingRule.update_world)`
-            - py:meth:`.Context.get_or_calculate_control)`
+            Executes the following methods:
+        
+            1. :py:meth:`.LunaticAgent.parse_keyboard_input`
+            2. :py:meth:`.LunaticAgent.apply_control` 
+            3. :py:meth:`.BlockingRule.update_world` ticks the :py:class:`carla.World` and renders everything.
+            4. :py:meth:`.Context.get_or_calculate_control` to acquire the :py:class:`carla.VehicleControl` object.
         """
         ctx.agent.parse_keyboard_input(control=control) # NOTE: if skipped the user has no option to stop the agent
         ctx.agent.apply_control(control)

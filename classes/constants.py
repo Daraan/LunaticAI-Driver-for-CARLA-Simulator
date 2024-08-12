@@ -5,9 +5,10 @@ In this module defines enums and constants that are used throughout the project.
 .. Comment "#: :meta hide-value:" hides the value in the documentation.
 """
 
+import os
 from enum import Enum, Flag, IntEnum, auto
 from functools import lru_cache, reduce
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import carla
 
@@ -35,10 +36,24 @@ See Also:
 :meta hide-value:
 """
 try:
-    from carla import ad      # pyright: ignore
+    from carla import ad      # pyright: ignore # noqa
     AD_RSS_AVAILABLE = True
 except ImportError:
     AD_RSS_AVAILABLE = False  # pyright: ignore[reportConstantRedefinition]
+    
+    
+READTHEDOCS = os.environ.get("READTHEDOCS", False)
+"""
+Whether the code is currently used to build the docs:
+
+Values:
+    - False: Normal Runtime
+    - 'local' : Local build
+    - other: ReadTheDocs build
+
+:meta hide-value:
+:meta private:
+"""
 
 
 class RuleResult(Enum):

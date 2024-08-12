@@ -1,46 +1,79 @@
-from __future__ import annotations
+
 
 # pyright: strict
 # pyright: reportInconsistentConstructor=information
+# pyright: reportGeneralTypeIssues=warning
+# pyright: reportAttributeAccessIssue=warning
 
+from __future__ import annotations
 
+import sys
 import inspect
 from collections import abc
-from functools import partial, update_wrapper
+from functools import partial, update_wrapper, wraps
 
-try: # Python 3.8+
-    from functools import singledispatchmethod
-except ImportError:
-    from launch_tools import singledispatchmethod
+from launch_tools import singledispatchmethod
 
-from typing import Callable, Any, ClassVar, Dict, Hashable, TYPE_CHECKING, Optional, Union, TypeVar, cast
-from typing_extensions import overload, Self, ParamSpec, Concatenate, TypeAlias, TypeAliasType
+import typing
+from typing import Callable, Any, ClassVar, Dict, Generic, Hashable, TYPE_CHECKING, Optional, Union, TypeVar
+from typing_extensions import overload, Self, ParamSpec, Concatenate, TypeAlias, TypeGuard, Never
+
+from classes.constants import READTHEDOCS
 
 if TYPE_CHECKING:
-    from classes.rule import Context, Rule # circular import
     from typing import NoReturn
-    
-    
-# NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
+    # NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
+    from classes.rule import Context, Rule # circular import
+    from functools import _Wrapped  # noqa # type: ignore
+
 
 _T = TypeVar("_T")
-_P = ParamSpec("_P")
+_H = TypeVar("_H", bound=Hashable)   # Free
+_CH = TypeVar("_CH", bound=Hashable) # Generic of ConditionFunction
+
+_P = ParamSpec("_P")   # Free, e.g. for action function.
+_CP = ParamSpec("_CP") # Generic of ConditionFunction
 
 _Rule = TypeVar("_Rule", bound="Rule")
-_ContextOrRule : TypeAlias = Union["Context", "Rule"]
-_ContextOrRuleType = TypeVar("_ContextOrRuleType", "Context", "Rule")
 
-_ConditionType : TypeAlias = Callable[["Context"], Hashable] | Callable[[_Rule, "Context"], Hashable]
+_ConditionWithRule : TypeAlias = Callable[Concatenate[_Rule, "Context", _CP], _CH]
+_ConditionOnlyCtx : TypeAlias = Callable[Concatenate["Context", _CP], _CH]
+_ConditionType : TypeAlias = Union[_ConditionWithRule[_Rule, _CP, _CH], _ConditionOnlyCtx[_CP, _CH]]
+_AnyCondition : TypeAlias = Callable[_CP, _CH]  # noqa 
 
-_ActionNoArgsType : TypeAlias = Callable[[_Rule, "Context"], Any] | Callable[["Context"], Any]
-_ActionTypeArgs : TypeAlias = Callable[Concatenate[_Rule, "Context", _P], Any] | Callable[Concatenate["Context", _P], Any]
-_ActionType : TypeAlias = _ActionTypeArgs[_Rule, _P] | _ActionNoArgsType[_Rule]
+_ActionWithRule : TypeAlias = Callable[Concatenate[_Rule, "Context", _P], _T]
+_ActionOnlyCtx : TypeAlias = Callable[Concatenate["Context", _P], _T]
+_ActionType : TypeAlias = Union[_ActionWithRule[_Rule, _P, _T], _ActionOnlyCtx[_P, _T]]
+_AnyAction : TypeAlias = Callable[_P, _T]
 
-_Action = TypeAliasType("_Action", _ActionType[_Rule, _P], type_params=(_Rule, _P))
+# Non Generic Type Alias
+# cannot use ... in <3.9 for Generic types
+if not TYPE_CHECKING and sys.version_info < (3, 10):
+    __dummy = ParamSpec("__dummy")
+    _ActionTypeAlias = _ActionType["Rule", __dummy, Any]
+    _ConditionTypeAlias = _ConditionType["Rule", __dummy, Hashable]
+    _ConditionTypeAlias.__parameters__ = _ConditionTypeAlias.__args__[0].__parameters__ = \
+        _ConditionTypeAlias.__args__[1].__parameters__ = _ActionTypeAlias.__parameters__ = \
+        _ActionTypeAlias.__args__[0].__parameters__ = _ActionTypeAlias.__args__[1].__parameters__ = ()
+    _ConditionTypeAlias.__args__[0].__args__ = tuple(p for p in _ConditionTypeAlias.__args__[0].__args__ if p is not __dummy)
+    _ConditionTypeAlias.__args__[1].__args__ = tuple(p for p in _ConditionTypeAlias.__args__[1].__args__ if p is not __dummy)
+    _ActionTypeAlias.__args__[0].__args__ = tuple(p for p in _ActionTypeAlias.__args__[0].__args__ if p is not __dummy)
+    _ActionTypeAlias.__args__[1].__args__ = tuple(p for p in _ActionTypeAlias.__args__[1].__args__ if p is not __dummy)
+else:
+    _ActionTypeAlias = _ActionType["Rule", [...], Any]
+    _ConditionTypeAlias = _ConditionType["Rule", [...], Hashable]
+
+if TYPE_CHECKING:
+    # Condition.functions can be might be wrapped.
+    _W = Union[_Wrapped[Concatenate["Rule", "Context", ...], Any, Concatenate["Rule", "Context", ...], Any], 
+                _Wrapped[Concatenate["Context", ...], Any, Concatenate["Context", ...], Any]]
+    _ActionsDictValues = Union[_ActionTypeAlias, _W]
+else:
+    _ActionsDictValues = _ActionTypeAlias
 
 
 
-class ConditionFunction:
+class ConditionFunction(Generic[_Rule, _CP, _CH]):
     """
     Implements a decorator to wrap function to be used with :any:`Rule` classes.
     The function must return a hashable type, which is used to access the action to be taken 
@@ -63,43 +96,54 @@ class ConditionFunction:
     Hint:
         ConditionFunctions also allow for more specific returns types
         
-        ..  code-block:: python
+        Example:
         
-            @ConditionFunction
-            def is_speeding(ctx: Context) -> Hashable:
-                config = ctx.agent.config
-                if config.speed > config.speed_limit+20:
-                    return "very fast"
-                elif config.speed > config.speed_limit+5:
-                    return "fast"
-                elif: config.speed < config.speed_limit-20:
-                    return "very slow"
-                else:
-                    return "normal"
+            ..  code-block:: python
+            
+                @ConditionFunction
+                def is_speeding(ctx: Context) -> Hashable:
+                    config = ctx.agent.config
+                    if config.speed > config.speed_limit+20:
+                        return "very fast"
+                    elif config.speed > config.speed_limit+5:
+                        return "fast"
+                    elif: config.speed < config.speed_limit-20:
+                        return "very slow"
+                    else:
+                        return "normal"
 
-            Rule(is_speeding, 
-                 action={
-                    "very fast": lambda ctx: ctx.agent.config.follow_speed_limits(), 
-                    "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5) 
-                 })
+                Rule(is_speeding, 
+                    action={
+                        "very fast": lambda ctx: ctx.agent.config.follow_speed_limits(), 
+                        "fast" : lambda ctx: ctx.agent.config.set_target_speed(ctx.speed_limit+5) 
+                    })
+    
     Parameters:
-        first_argument : A callable to be decorated or a string to be used as the name of the function.
+        first_argument : 
+            If :code:`None` or a string, the class will create a :term:`decorator`
+            that expects a callable as the first argument.
+            If a string is passed it substitutes as the **name** argument.
+            Otherwise a callable is expected like in the snippet used above.
         name : The name to represent the function. Defaults to :python:`"ConditionFunction"`.
         truthy : If True, the function will always cast the return value to a boolean value. Defaults to :code:`False`.
-        use_self : If :python:`True`, the function will be treated as a method and the first argument will be the instance of the :any:`Rule` that uses this function.
-            If :python:`None`, the decision depends on the signature of the function, if it has only one argument only the :any:`Context` object is passed,
-            if it has two or more arguments the first argument that is passed is the instance of the :any:`Rule`.
-            Use :python:`False` to not use the instance of the :any:`Rule` as the first argument.
-            Defaults to :python:`None`.
+        use_self : If :python:`True`, the function will be treated as a method and the first argument will be the instance of the :py:class:`.Rule` that uses this function.
+            If :code:`None`, the decision depends on the signature of the function, if it has only one argument only the :py:class:`.Context` object is passed,
+            if it has two or more arguments the first argument that is passed is the instance of the :py:class:`.Rule`.
+            Use :code:`False` to not use the instance of the :py:class:`.Rule` as the first argument.
+            Defaults to :code:`None`.
             
     Returns:
-        ConditionFunction | type[ConditionFunction] : 
+        ConditionFunction | partial[type[ConditionFunction]] : 
             A :py:class:`ConditionFunction` or a partially initialized version to be used as a decorator 
             when the **first_argument** is not a callable.
-
+            
+    Generics:
+        - _Rule : Generic :py:class:`.Rule` type.
+        - _CP : :py:class:`typing.ParamSpec` of the passed :py:attr:`evaluation_function`.
+        - _H : The :term:`Hashable` return type of the :py:attr:`evaluation_function`.
     """
     
-    actions: Dict[Hashable, _ActionType[Rule, ...] | "partial[_ActionType[Rule, ...]]"] = {}
+    actions: Dict[Hashable, _ActionsDictValues] = {}
     """
     Mapping of return values to actions to be executed.
     If this dictionary is not empty it will be used as the :py:attr:`.Rule.actions` dictionary.
@@ -109,22 +153,25 @@ class ConditionFunction:
     """Forbidden names for action functions."""
     
     @overload
-    def __new__(cls, first_argument: Optional[str]=None, name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None) -> "partial[type[Self]]":
+    def __new__(cls, first_argument: Optional[str]=None, name:str="ConditionFunction", *, 
+                truthy:bool=False, use_self: Optional[bool]=None) -> "partial[type[Self]]":
         ...
         
     @overload
-    def __new__(cls, first_argument: _ConditionType[_Rule], name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None) -> Self:
+    def __new__(cls, first_argument: _ConditionType[_Rule, _CP, _CH], name:str="ConditionFunction", *, 
+                truthy:bool=False, use_self: Optional[bool]=None) -> Self:
         ...
     
     def __new__(cls, 
-                first_argument: Optional[Union[str, _ConditionType[_Rule]]]=None,
+                first_argument: Optional[Union[str, _ConditionType[_Rule, _CP, _CH]]]=None,
                 name:str="ConditionFunction", 
                 *, 
-                truthy:bool=False, 
+                truthy: bool=False, 
                 use_self: Optional[bool]=None) -> partial[type[Self]] | Self:
         # example usage: @ConditionFunction("name")
         if isinstance(first_argument, str):
-            # Calling decorator with a string
+            # Calling decorator with a string @ConditionFunction("name")
+            assert name == "ConditionFunction", "The `name` argument must be the default."
             return partial(cls, name=first_argument, truthy=truthy, use_self=use_self) # pyright: ignore[reportReturnType], duck type
         # example_usage: @ConditionFunction(name="name") or @ConditionFunction(truthy=True)
         if first_argument is None:
@@ -134,20 +181,44 @@ class ConditionFunction:
         instance = super().__new__(cls)
         return instance
     
-    def __init__(self, evaluation_function: _ConditionType[_Rule], name:str="ConditionFunction", *, truthy:bool=False, use_self: Optional[bool]=None):
+    evaluation_function : _ConditionType[_Rule, _CP, _CH]
+    """
+    The function that is wrapped by the :py:class:`ConditionFunction`.
+    Uses the generic type hints :py:obj:`_Rule`, :py:obj:`_CP`, :py:obj:`_CH` of the class.
+    """
+    
+    if READTHEDOCS and not TYPE_CHECKING:
+        __new__.__annotations__["first_argument"] = Optional["name" | _ConditionTypeAlias]
+        evaluation_function : typing.Callable[[_Rule, "Context", _CP], _CH] | typing.Callable[["Context", _CP], _CH]
+    
+    def __init__(self, 
+                 evaluation_function: _ConditionType[_Rule, _CP, _CH], 
+                 name:str="ConditionFunction", 
+                 *, 
+                 truthy: bool=False, 
+                 use_self: Optional[bool]=None):
         update_wrapper(self, evaluation_function, assigned=("__qualname__", "__module__", "__annotations__", "__doc__"))
         self.evaluation_function = evaluation_function
-        self.truthy = truthy
+        self.truthy: bool = truthy
         if name != "ConditionFunction":
             self.name = name
         elif hasattr(evaluation_function, "__name__"):
             self.name = evaluation_function.__name__
         else:
             self.name = str(evaluation_function)
-        self.use_self = use_self
+        self.use_self: bool | None = use_self
         self.actions = self.actions.copy()
 
-    def __call__(self, ctx: "Rule | Context", *args: Any, **kwargs: Any) -> Hashable:
+    @overload
+    def __call__(self, ctx: "Rule", arg1: "Context", *args:_CP.args, **kwargs:_CP.kwargs) -> _CH: ...
+    
+    @overload
+    def __call__(self, ctx: "Context", *args:_CP.args, **kwargs:_CP.kwargs) -> _CH: ...
+    
+    @overload
+    def __call__(self, ctx: "Rule | Context", *args:_CP.args, **kwargs:_CP.kwargs) -> _CH: ...
+    
+    def __call__(self, ctx: "Rule | Context", *args:_CP.args, **kwargs:_CP.kwargs) -> _CH: # pyright: ignore[reportInconsistentOverload]
         """
         Note:
             To handle the method vs. function difference depending on __get__ 
@@ -155,7 +226,7 @@ class ConditionFunction:
             In the method case the real Context object is args[0]!
         """
         try:
-            rule_result = self.evaluation_function(ctx, *args, **kwargs)  # type: ignore
+            rule_result = self.evaluation_function(ctx, *args, **kwargs) # type: ignore[arg-type]
         except Exception:
             print(f"ERROR: in Rule {self.name} with function {self.evaluation_function}")
             raise
@@ -165,11 +236,11 @@ class ConditionFunction:
             assert isinstance(ctx, Context), f"This should not happen: In the method case the argument must be a Context object, not {type(ctx)}"
         ctx.rule_result = rule_result
         if self.truthy:
-            return bool(rule_result)
-        assert isinstance(rule_result, Hashable), f"evaluation_function must return a hashable type, not {type(rule_result)}"
+            return bool(rule_result)  # type: ignore
+        assert isinstance(rule_result, Hashable), f"evaluation_function must return a hashable type, not {type(rule_result)}" # type: ignore
         return rule_result
     
-    def __get__(self, instance: "Optional[Rule]", objtype:Optional["type[Rule]"]=None): # pylint: disable=unused-argument
+    def __get__(self, instance: "Optional[Rule]", objtype: Optional["type[Rule]"]=None) -> "Self | partial[_CH]": # noqa
         """
         :term:`Descriptor Protocol <descriptor>`, for in class usage like Rule.condition
         """
@@ -215,51 +286,39 @@ class ConditionFunction:
             return ConditionFunction._complete_func_to_string(func)
         return func.__name__
     
-    from typing_extensions import TypeIs, TypeGuard # TODO: move
     @staticmethod
-    def _has_no_kwargs(func : _ActionTypeArgs[_Rule, _P] | _ActionNoArgsType[_Rule], *args: _P.args, **kwargs:_P.kwargs) -> TypeIs[_ActionNoArgsType[_Rule]]:
-        return bool(kwargs) or bool(args)
-    
-    @overload
-    def _check_action(self, action_function: _ActionTypeArgs[_Rule, _P], key: Hashable, *args : _P.args,  **kwargs: _P.kwargs) -> "partial[_ActionTypeArgs[_Rule, _P]]": ...
-    
-    @overload
-    def _check_action(self, action_function: _ActionNoArgsType[_Rule], key: Hashable) -> "_ActionNoArgsType[_Rule]": ...
-    
-    def _check_action(self, action_function: _ActionTypeArgs[_Rule, _P] | _ActionNoArgsType[_Rule],
+    def _is_partial_action(action_function: Callable[_P, _T]) -> TypeGuard["partial[_T] | Callable[_P, _T]"]:
+        return isinstance(action_function, partial)
+        
+    def _check_action(self, action_function: _AnyAction[_P, _T],
                       key: Hashable,
-                      *args : _P.args,
-                      **kwargs: _P.kwargs):
-        assert not args, "args are not allowed"
+                      **preset_kwargs: _P.kwargs
+                      ) -> "_AnyAction[_P, _T] | _Wrapped[_P, _T, _P, _T]": 
+        """
+        Checks if an action has an invalid name, a key is already registered.
+        If kwargs are passed these will be fixed for the returned action.
+        """
         if action_function.__name__ in ConditionFunction._INVALID_NAMES:
-            raise ValueError(f"When using ConditionFunction.add_action, the action function's name may not be in {ConditionFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
+            raise ValueError(f"When using ConditionFunction.add_action, the action function's name "
+                             "may not be in {ConditionFunction._INVALID_NAMES}, "
+                             "got '{action_function.__name__}'.")
         if key in self.actions:
             print("Warning: Overwriting already registered action", self.actions[key], "with key", f"'{key}'", "in", self.name)
-        if not kwargs:
-            return cast(_ActionNoArgsType[_Rule], action_function)
-        action_function = cast(partial[_ActionTypeArgs[_Rule, _P]], partial(action_function, **kwargs))
-        return action_function
-    
-    from typing_extensions import Never
-    
-    @overload
-    def register_action(self, key: Hashable=True, _:None=None) -> Callable[[_Action[_Rule, _P]], _Action[_Rule, _P]]:
-        ... # decorator usage
+        if not preset_kwargs:
+            return action_function # return original function
         
-    @overload
-    def register_action(self, key: Hashable=True, *args: _P.args, **kwargs: _P.kwargs) -> Callable[[_ActionTypeArgs[_Rule, _P]], "partial[_ActionTypeArgs[_Rule, _P]]"]:
-        ... # decorator usage
-        
-    @overload
-    def register_action(self, action_function: _Action[_Rule, _P], key: Hashable=True, _:None=None) -> _Action[_Rule, _P]: ...
-        # function usage
+        # Preset kwargs.
+        @wraps(action_function)
+        def action_function_with_kwargs(*args: _P.args, **kwargs: _P.kwargs) -> _T:
+             # inserts args when called and kwargs from check action
+             # allows overrides
+            return action_function(*args, **preset_kwargs, **kwargs) # type: ignore
+        return action_function_with_kwargs
     
-    @overload
-    def register_action(self, action_function: _ActionTypeArgs[_Rule, _P], key: Hashable=True, *args: _P.args, **kwargs: _P.kwargs) -> "partial[_ActionTypeArgs[_Rule, _P]]": ...
-        # function usage
     
     @singledispatchmethod
-    def register_action(self, key: Hashable=True, *args: _P.args, **kwargs: _P.kwargs) -> Callable[[_Action[_Rule, _P]], "_Action[_Rule, _P] | partial[_Action[_Rule, _P]]"]:
+    def register_action(self, key: typing.Hashable=True, **kwargs: _P.kwargs) \
+            -> typing.Callable[[_ActionType[_Rule, _P, _T]], _ActionType[_Rule, _P, _T]]:
         """
         Add an action to be executed when the condition function returns a specific value.
         
@@ -286,27 +345,35 @@ class ConditionFunction:
         
         Parameters:
             key: If the condition function returns this value, this action will be executed. Defaults to :python:`True`.
-            action_function: The action to be executed. 
             kwargs : Additional keyword arguments to be passed to the action function when it is executed.
+            action_function: The action to be executed.
+            
+        Returns:
+                typing.Callable[[Rule, Context, ...], typing.Any] | typing.Callable[[Context, ...], typing.Any] : The decorated action function.
             
         Note:
             Only one action is allowed per key. If an action is already registered for the key, it will be overwritten.
         """
-        assert not args, "args are not allowed"
-        def decorator(action_function: _Action[_Rule, _P]) -> "_Action[_Rule, _P] | partial[_Action[_Rule, _P]]":
-            if self._has_no_kwargs(action_function, *args, **kwargs):
-                checked_action = cast(_Action[_Rule, _P], self._check_action(action_function, key))
-            else: 
-                checked_action = cast(partial[_Action[_Rule, _P]], self._check_action(action_function, key, **kwargs))
-            self.actions[key] = checked_action # register action
+        def decorator(action_function: _ActionType[_Rule, _P, _T]) -> _ActionType[_Rule, _P, _T]:
+            checked_action = self._check_action(action_function, key, **kwargs) # type: ignore[arg-type]
+            self.actions[key] = checked_action # register action # type: ignore
             return checked_action
         return decorator
     
     @register_action.register(abc.Callable) # type: ignore
-    def _register_action_directly(self, action_function: _Action[_Rule, _P], key: Hashable=True, *args: _P.args, **kwargs: _P.kwargs) -> "_Action[_Rule, _P] | partial[_Action[_Rule, _P]]":
-        # Functional use
-        checked_action = self._check_action(action_function, key, **kwargs)
-        self.actions[key] = action_function # register action
+    def _register_action_directly(self, action_function: _ActionTypeAlias, key: Hashable=True, **kwargs: _P.kwargs) -> _ActionTypeAlias:
+        """
+        # Case 1
+        @register_action # key is True
+        def action_function(ctx: Context):
+            ...
+            
+        # Case 2
+        register_action(action_function, key="very fast", **action_function_kwargs)
+        """
+        checked_action = self._check_action(action_function, key, **kwargs) # type: ignore[arg-type]
+        # Case 1 and 2 (without kwargs): checked_action is the action function, else wrapped.
+        self.actions[key] = checked_action # register action # type: ignore
         return checked_action
     
     # ----------------------
@@ -321,7 +388,7 @@ class ConditionFunction:
             return self.name
     else:
         __name__ : str
-
+        
     def __str__(self):
         return self.name
     
@@ -336,81 +403,70 @@ class ConditionFunction:
         return s
 
     @classmethod
-    def AND(cls, func1 : "ConditionFunction", func2 : "ConditionFunction") -> "ConditionFunction":
-        """Combine two functions to return True if both return True."""
-        def combined_func(ctx: "Context", *args: Any, **kwargs: Any):
+    def AND(cls, func1 : "ConditionFunction[_Rule, _CP, _CH]", func2 : "ConditionFunction[_Rule, _CP, _H]") -> "ConditionFunction[_Rule, _CP, _CH | _H]":
+        """Combine two functions with :python:`and`, i.e. to return True if both return True."""
+        # NOTE: arguments are, lost. For type hints need to make ConditionFunction generic
+        def combined_func(ctx: "Context", *args: _CP.args, **kwargs: _CP.kwargs):
             return func1(ctx, *args, **kwargs) and func2(ctx, *args, **kwargs)
-        return cls(combined_func, name=f"{func1.name}_and_{func2.name}")
+        return cls(combined_func, name=f"{func1.name}_and_{func2.name}") # type: ignore
 
     @classmethod
-    def OR(cls, func1 : "ConditionFunction", func2 : "ConditionFunction") -> "ConditionFunction":
+    def OR(cls, func1 : "ConditionFunction[_Rule, _CP, _CH]", func2 : "ConditionFunction[_Rule, _CP, _H]") -> "ConditionFunction[_Rule, _CP, _CH | _H]":
         """Combine two functions to return True if either returns True."""
-        def combined_func(ctx: "Context", *args: Any, **kwargs: Any):
+        def combined_func(ctx: "Context", *args: _CP.args, **kwargs: _CP.kwargs):
             return func1(ctx, *args, **kwargs) or func2(ctx, *args, **kwargs)
 
-        return cls(combined_func, name=f"{func1.name}_or_{func2.name}")
+        return cls(combined_func, name=f"{func1.name}_or_{func2.name}")  # type: ignore
 
     @classmethod
-    def NOT(cls, func: "ConditionFunction") -> "ConditionFunction":
+    def NOT(cls, func: "ConditionFunction[_Rule, _CP, _CH]") -> "ConditionFunction[_Rule, _CP, bool]":
         """Invert the return value of a function."""
-        def combined_func(ctx: "Context", *args : Any, **kwargs: Any):
+        def combined_func(ctx: "Context | Rule", *args: _CP.args, **kwargs: _CP.kwargs):
             return not func(ctx, *args, **kwargs)
+        return cls(combined_func, name=f"not_{func.name}") # type: ignore
 
-        return cls(combined_func, name=f"not_{func.name}")
-
-    def __add__(self, other: "ConditionFunction") -> "ConditionFunction":
+    def __add__(self, other: "ConditionFunction[_Rule, _CP, _H]") -> "ConditionFunction[_Rule, _CP, _CH | _H]":
         """Combine with another function using :py:meth:`AND`."""
         return self.AND(self, other)
     
-    def __and__(self, other: "ConditionFunction") -> "ConditionFunction":
+    def __and__(self, other: "ConditionFunction[_Rule, _CP, _H]") -> "ConditionFunction[_Rule, _CP, _CH | _H]":
         """Combine with another function using :py:meth:`AND`."""
         return self.AND(self, other)
 
-    def __or__(self, other: "ConditionFunction") -> "ConditionFunction":
+    def __or__(self, other: "ConditionFunction[_Rule, _CP, _H]") -> "ConditionFunction[_Rule, _CP, _CH | _H]":
         """Combine with another function using :py:meth:`OR`."""
         return self.OR(self, other)
 
-    def __invert__(self) -> "ConditionFunction":
+    def __invert__(self) -> "ConditionFunction[_Rule, _CP, bool]":
         """
         Invert the return value of the function.
         """
         return self.NOT(self)
 
 
-def TruthyConditionFunction(func: Callable[..., Hashable]) -> ConditionFunction:
-    """
-    Allows a condition to return any value, but will be converted to a boolean.
     
-    Note:
-        This is equivalent to :python:`ConditionFunction(func, truthy=True)`.
-        
-    .. deprecated:: x
-    
-    :meta private:
-    """
-    return ConditionFunction(func, truthy=True)
-    
-class ActionFunction(ConditionFunction):
+class ActionFunction(ConditionFunction[_Rule, _P, _T]):
     """
     A decorator that can be used with :any:`Rule.action`. It is nearly equivalent to :any:`ConditionFunction`, 
     only calling the function is more simple, i.e. does not assert a Hashable return type.
     
-    .. deprecated:: x
+    .. deprecated::
+        Will likely be removed as no strong use case.
     
     :meta private:
     """
     
-    def __init__(self, action_function: _ActionType[_Rule, _P], name: str="ActionFunction", *, use_self: Optional[bool]=None):
+    def __init__(self, action_function: _ActionType[_Rule, _P, _T], name: str="ActionFunction", *, use_self: Optional[bool]=None):
         super().__init__(action_function, name, use_self=use_self)
 
     @classmethod
-    def NOT(cls, func : Any) -> "NoReturn":  # pylint: disable=unused-argument
+    def NOT(cls, _ : Never) -> "NoReturn":  # type: ignore
         """
         Raises:
             NotImplementedError: NOT is not implemented for ActionFunction.
         """
         raise NotImplementedError("NOT is not implemented for ActionFunction")
 
-    def __call__(self, ctx: "Rule | Context", *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, ctx: "Rule | Context", *args: _P.args, **kwargs: _P.kwargs) -> _T:
         return self.evaluation_function(ctx, *args, **kwargs)  # type: ignore[arg-type]
 
