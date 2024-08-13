@@ -1,3 +1,16 @@
+# pyright: reportUnnecessaryIsInstance=information
+# pyright: reportPrivateUsage=false
+# pyright: reportTypeCommentUsage=none
+
+"""
+Helper functions and methods for the :py:class:`.LunaticAgent`, some methods are variants
+from the original CARLA agents that have been simplified and outsourced to this
+module.
+"""
+
+from __future__ import annotations
+
+import sys
 from inspect import isclass
 from operator import attrgetter
 from omegaconf import DictConfig
@@ -6,34 +19,43 @@ from functools import partial, wraps
 
 import carla
 from classes.constants import RoadOption
-from agents.tools.config_creation import AgentConfig
+from agents.tools.config_creation import AgentConfig, LunaticAgentSettings
 from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
                                compute_distance)
 from agents.tools.logging import logger
 
 from classes.constants import Phase
-from classes.exceptions import EmergencyStopException, LunaticAgentException, SkipInnerLoopException
+from classes.exceptions import EmergencyStopException, LunaticAgentException
 from launch_tools import CarlaDataProvider, Literal
 from typing import TYPE_CHECKING, Any, Callable, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
+from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     from classes.worldmodel import WorldModel
     from classes.rule import Context
 
+_T = TypeVar("_T")
+_P = ParamSpec('_P')
+if sys.version_info >= (3, 8):
+    _AgentFunction = Callable[Concatenate["LunaticAgent", _P], _T]
+else:
+    _AgentFunction = Callable[[Concatenate["LunaticAgent", _P]], _T]
 
 # ------------------------------
 # Decorators
 # ------------------------------    
     
-def result_to_context(key):
+    
+def result_to_context(key: str):
     """
-    Decorator to insert the result into the context object
+    Decorator to use for the agent. Sets the **key** attribute of the 
+    :py:class:`.Context`.
     """
-    def decorator(func):
+    def decorator(func: _AgentFunction[_P, _T]):
         @wraps(func)
-        def wrapper(self : "LunaticAgent", *args, **kwargs):
+        def wrapper(self : "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs) -> _T:
             result = func(self, *args, **kwargs)
             setattr(self.ctx, key, result)
             return result
@@ -41,7 +63,7 @@ def result_to_context(key):
         
     return decorator
 
-def must_clear_hazard(func):
+def must_clear_hazard(func: _AgentFunction[_P, _T]):
     """
     Decorator which raises an EmergencyStopException if self.detected_hazards
     is not empty after the function call.
@@ -50,87 +72,118 @@ def must_clear_hazard(func):
         EmergencyStopException: If self.detected_hazards is not empty after the function call.
     """
     @wraps(func)
-    def wrapper(self: "LunaticAgent", *args, **kwargs):
+    def wrapper(self : "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs) -> _T:
         result = func(self, *args, **kwargs)
         if self.detected_hazards:
             raise EmergencyStopException(self.detected_hazards)
         return result
     return wrapper
 
-def phase_callback(*, on_enter: Optional[Phase] = None, 
-                      on_exit: Union[Phase, Callable, None] = None, 
-                      on_exit_exceptions: Union[Tuple["type[BaseException]"], bool, None] = (),
-                      prior_result: Optional["Callable | str"] = None):
-        """
-        Decorator function for defining phase callbacks that are executed at the start and end of a function.
+def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], None] = None, 
+                      on_exit: Union[Phase, Callable[['LunaticAgent'], Any], None] = None, 
+                      on_exit_exceptions: Union[Sequence["type[BaseException]"], bool, None] = (),
+                      prior_result_getter: Optional[Union[Callable[['LunaticAgent'], Any], str]] = None):
+    """
+    Decorator function for defining phase callbacks that are executed at the start and end of a function.
 
-        Args:
-            on_enter (Phase, optional): 
-                The phase to execute before the decorated function.
-                Defaults to None.
-            on_exit (Phase, optional): 
-                The phase to execute after the decorated function.
-                Defaults to None.
-            on_exit_exceptions (Tuple[BaseException] | bool), optional):
-                If True, the on_exit phase will still be executed if any 
-                :py:exc:`LunaticAgentException` are raised.
-                If a tuple of exceptions is provided, the on_exit phase will only be executed if one of the exceptions is raised.
-                The exception will be re-raised after the on_exit phase is executed.
-                Defaults to empty tuple().
+    Args:
+        on_enter (Phase, optional): 
+            The phase to execute before the decorated function.
+            Defaults to None.
+        on_exit: 
+            Either the phase to execute after the decorated function or a callable.
+            Defaults to None.
+        on_exit_exceptions (Tuple[BaseException] | bool)):
+            If a non-empty sequence of exceptions is provided, the **on_exit** phase will 
+            **only be executed if one of the exceptions is raised.**
+            
+            If :python:`True`, the **on_exit** phase will be executed if any 
+            :py:exc:`LunaticAgentException` are raised.
+            Defaults to :code:`False`.
+            
+            Attention:
+                - The **on_exit** phase will *only* be executed if and only if one of the exceptions
+                  is raised.
+                - The **exception will be re-raised** after executing **on_exit**.
+            
+        prior_result_getter: Can be the name of an attribute of the agent. If the 
+            attribute is a callable, it will be called without arguments. Alternatively
+            a callable can be passed. The result will be used as the **prior_results**
+            argument for the :py:meth:`.LunaticAgent.execute_phase` method.
+    
+    Warns:
+        If **on_enter** and **on_exit** are not set, the decorator will print a 
+        warning and ignore the decorator.
+    """
+    # Validate exception -> Tuple
+    _on_exit_exceptions_ : Tuple["type[BaseException]", ...]
+    if on_exit_exceptions is True:
+        _on_exit_exceptions_ = (LunaticAgentException,)
+    elif isclass(on_exit_exceptions) and issubclass(on_exit_exceptions, BaseException):
+        # This allows to pass a single exception, and is actually Never
+        _on_exit_exceptions_ = assure_type(Tuple["type[BaseException]", ...], (on_exit_exceptions,))
+    elif not on_exit_exceptions:
+        _on_exit_exceptions_ = ()
+    else:
+        _on_exit_exceptions_ = tuple(on_exit_exceptions)
+    
+    # Validate prior_result -> Callable
+    if prior_result_getter and not callable(prior_result_getter):
+        prior_result_getter = attrgetter(prior_result_getter) # raises Type Error if not string
 
-        Warning:
-            If **on_enter** and **on_exit** are not set, the decorator will print a 
-            warning and ignore the decorator.
-        """
-        # Validate exception -> Tuple
-        if on_exit_exceptions is True:
-            on_exit_exceptions = (LunaticAgentException,)
-        elif isclass(on_exit_exceptions) and issubclass(on_exit_exceptions, BaseException):
-            on_exit_exceptions = (on_exit_exceptions,)
-        else:
-            on_exit_exceptions = tuple(on_exit_exceptions)
-        # Validate prior_result -> Callable
-        if prior_result and not callable(prior_result):
-            prior_result = attrgetter(prior_result) # raises Type Error if not string
-
-        def decorator(func):
-            if not on_enter and not on_exit:
-                print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
-                      "decorator for function %s. Ignoring decorator." % func.__name__)
-                return func
-            @wraps(func)
-            def wrapper(self: "LunaticAgent", *args, **kwargs):
-                if on_enter:
-                    prior_result = prior_result(self) if prior_result else None
-                    # if the attribute is a callable, e.g. get_control(), call it
-                    if callable(prior_result):
-                        prior_result = prior_result()
+    # Pay attention to prior_result which should not be prior_result
+    def decorator(func : _AgentFunction[_P, _T]):
+        if on_enter is None and on_exit is None:
+            print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
+                    "decorator for function %s. Ignoring decorator." % func.__name__)
+            if TYPE_CHECKING: assert_never(func)
+            return func
+        @wraps(func)
+        def wrapper(self: "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
+            if on_enter:
+                # Careful do not set prior_result else it is not nonlocal
+                prior_result = prior_result_getter(self) if prior_result_getter else None
+                # if the attribute is a callable, e.g. get_control(), call it
+                if callable(prior_result):
+                    # Call attribute of the agent
+                    prior_result = prior_result()
+                if isinstance(on_enter, Phase):
                     self.execute_phase(on_enter, prior_results=prior_result)
-                if on_exit_exceptions:
-                    try:
-                        result = func(self, *args, **kwargs)
-                    except on_exit_exceptions as e:
-                        if on_exit:
-                            if isinstance(on_exit, Phase):
-                                self.execute_phase(on_exit, prior_results=e)
-                            else:
-                                on_exit(self)
-                        raise
                 else:
+                    on_enter(self)
+            
+            # Call with exception handling
+            if _on_exit_exceptions_:
+                try:
                     result = func(self, *args, **kwargs)
-                if on_exit:
+                except _on_exit_exceptions_ as e:
+                    if on_exit is not None:
+                        if isinstance(on_exit, Phase):
+                            self.execute_phase(on_exit, prior_results=e)
+                        else:
+                            on_exit(self)
+                    raise
+            else:
+                result = func(self, *args, **kwargs)
+            
+            if on_exit:
+                if callable(on_exit):
+                    on_exit(self)
+                else:
                     self.execute_phase(on_exit, prior_results=result)
-                return result
+            
+            return result
 
-            return wrapper
+        return wrapper
 
-        return decorator
+    return decorator
 
 # ------------------------------
 # Obstacle Detection
 # ------------------------------
 
-def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal["same_lane", "other_lane", "overtaking", "tailgating"]):
+def max_detection_distance(self: Union["Context", "LunaticAgent"], 
+                           lane: Literal["same_lane", "other_lane", "overtaking", "tailgating"]) -> float:
     """
     Convenience function to be used with :py:func:`lunatic_agent_tools.detect_vehicles` and :any:`LunaticAgent.detect_obstacles_in_path`.
     
@@ -155,27 +208,21 @@ def max_detection_distance(self: Union["Context", "LunaticAgent"], lane:Literal[
 
 
 def detect_obstacles_in_path(self : "LunaticAgent", 
-                             obstacle_list: Optional[Union[Literal['all'],
-                                                           Sequence[carla.Actor]]]) -> ObstacleDetectionResult:
+                             obstacle_list: Optional[Union[Sequence[carla.Actor],\
+                                                           Literal['all']]]) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     and managing possible tailgating chances.
 
     Args:
-        self (LunaticAgent): The agent
-        obstacle_list (List[carla.Actor]): The list of obstacles that should be checked
-        min_detection_threshold (float): The minimum distance to consider an obstacle.
-            The max_distance to consider an obstacle is:
-            `max(min_detection_threshold, self.config.live_info.current_speed_limit / n)`
-            where `n` is speed_limit_divisors[0] for incoming lane change 
-            and speed_limit_divisors[1] when the agent stays on the lane.
-        speed_limit_divisors (Tuple[float, float], optional): 
-            Two divisors for the speed limit to calculate the max distance.
-            Defaults to (2, 3).
+        self : The agent
+        obstacle_list : The list of obstacles that should be checked
 
     Note: 
-        Former collision_and_car_avoid_manager, which evaded car via the tailgating function
-        now rule based.
+        - Distance to detect vehicles that hinder a lance change are calculated with the
+          :py:func:`max_detection_distance` function.
+        - Former :code:`BehaviorAgent.collision_and_car_avoid_manager`, which evaded cars via the 
+          tailgating function; this is now rule based.
         
     Tip: 
         As the first argument is the agent, this function can be used as a method, i.e
@@ -188,40 +235,44 @@ def detect_obstacles_in_path(self : "LunaticAgent",
     # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
     if self.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
         detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
-                                                            self.max_detection_distance("other_lane"),
-                                                            up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
-                                                            lane_offset=-1)
+                                                        self.max_detection_distance("other_lane"),
+                                                        up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
+                                                        lane_offset=-1)
     elif self.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
         detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
-                                                            self.max_detection_distance("other_lane"),
-                                                            up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
-                                                            lane_offset=1)
+                                                        self.max_detection_distance("other_lane"),
+                                                        up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
+                                                        lane_offset=1)
     else:
         detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
-                                                            self.max_detection_distance("same_lane"),
-                                                            up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],)
+                                                        self.max_detection_distance("same_lane"),
+                                                        up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],)
     return detection_result
 
 
 def detect_vehicles(self: "LunaticAgent", 
-                    vehicle_list:Optional[Sequence[carla.Actor]]=None,
-                    max_distance:Optional[float]=None, 
+                    vehicle_list: Optional[Sequence[carla.Actor]]=None, # pyright: ignore[reportRedeclaration]
+                    max_distance: Optional[float]=None, 
                     up_angle_th:float=90, 
                     low_angle_th:float=0,
                     *, 
-                    lane_offset:int=0):
+                    lane_offset:int=0) -> ObstacleDetectionResult:
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
 
-        :param vehicle_list list containing vehicle objects.
-            If None, all vehicle in the scene are used
-        :param max_distance: max free-space to check for obstacles.
-            If None, the base threshold value is used
-        :param lane_offset: check a different lane than the one the agent is currently in.
+    Parameters:
+
+        self: The agent
+        vehicle_list: list containing vehicle objects.
+            If :code:`None`, all vehicle in the scene are used.
+        max_distance: max free-space to check for obstacles.
+            If :code:`None`, the :py:attr:`.LunaticAgentSettings.obstacles.base_vehicle_threshold` value 
+            is used.
+        lane_offset: check a different lane than the one the agent is currently in.
 
     The angle between the location and reference transform will also be taken into account. 
     Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
-    low_angle_th < angle < up_angle_th.
+    **low_angle_th** < angle < **up_angle_th**.
     
     Tip: 
         As the first argument is the agent, this function can be used as a method, i.e
@@ -245,7 +296,7 @@ def detect_vehicles(self: "LunaticAgent",
     
     def get_route_polygon():
         # Note nested functions can access variables from the outer scope
-        route_bb = []
+        route_bb = [] # type: list[list[float]]
         extent_y = self._vehicle.bounding_box.extent.y
         r_ext = extent_y + self.config.planner.offset
         l_ext = -extent_y + self.config.planner.offset
@@ -271,7 +322,7 @@ def detect_vehicles(self: "LunaticAgent",
 
     # TODO: can get this from CDP
     ego_transform = self._vehicle.get_transform()
-    ego_location = ego_transform.location # NOTE: property access creates a new location object, i.e. ego_location != ego_front_transform
+    ego_location = ego_transform.location  # NOTE: property access creates a new location object, i.e. ego_location != ego_front_transform
     ego_wpt = CarlaDataProvider.get_map().get_waypoint(ego_location)
 
     # Get the right offset
@@ -337,28 +388,57 @@ def detect_vehicles(self: "LunaticAgent",
 
     return ObstacleDetectionResult(False, None, -1)
 
-#TODO: UNCLEAR IF CORRECT -> understand angles
+# Untested
 detect_vehicles_in_front = partial(detect_vehicles, up_angle_th=90, low_angle_th=0)
+"""
+:py:func:`.detect_vehicles` with the default parameters for detecting vehicles in front of the agent.
+"""
+
 detect_vehicles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th=160)
+"""
+:py:func:`.detect_vehicles` with the default parameters for detecting vehicles behind the agent.
+"""
 
 
 # ------------------------------
 # Path Planning
 # ------------------------------
 
-def generate_lane_change_path(waypoint : carla.Waypoint, direction:"Literal['left'] | Literal['right']"='left', distance_same_lane=10,
-                                   distance_other_lane=25, lane_change_distance=25,
-                                   check=True, lane_changes=1, step_distance=2):
+def generate_lane_change_path(waypoint : carla.Waypoint, 
+                              direction: Literal['left', 'right']='left', 
+                              distance_same_lane: float=10,
+                              distance_other_lane: float=25, 
+                              lane_change_distance: float=25,
+                              check: bool=True, 
+                              lane_changes: int=1, 
+                              step_distance: float=2) -> "list[tuple[carla.Waypoint, RoadOption]]":
     """
     This method generates a path that results in a lane change.
     Use the different distances to fine-tune the maneuver.
     If the lane change is impossible, the returned path will be empty.
+    
+    Distance traveled:
+        1. **distance_same_lane** in the same lane.
+        2. **lane_change_distance** while reaching the other lane.
+        3. **distance_other_lane** in the other lane.
+    
+    Parameters:
+        waypoint: The starting waypoint.
+        direction: The direction of the lane change, either 'left' or 'right'.
+            Defaults to 'left'.
+        distance_same_lane: The distance to follow the same lane before the lane change.
+        distance_other_lane: The distance to follow the other lane after the lane change.
+        lane_change_distance: The distance to reach the center of the last lane.
+            A low value will make a fast lane change, while a high value will make slow lane change.
+        check: If :python:`True`, the method will check if the lane change is possible, i.e. that
+            there is a valid lane that the vehicle can change to.
+            This ignores :py:attr:`carla.Waypoint.lane_change`.
     """
     distance_same_lane = max(distance_same_lane, 0.1)
     distance_other_lane = max(distance_other_lane, 0.1)
     lane_change_distance = max(lane_change_distance, 0.1)
 
-    plan = [(waypoint, RoadOption.LANEFOLLOW)]
+    plan: "list[tuple[carla.Waypoint, RoadOption]]" = [(waypoint, RoadOption.LANEFOLLOW)]
     option = RoadOption.LANEFOLLOW
 
     # Same lane
@@ -404,7 +484,7 @@ def generate_lane_change_path(waypoint : carla.Waypoint, direction:"Literal['lef
                 return []
             side_wp = next_wp.get_right_lane()
 
-        if not side_wp or side_wp.lane_type != carla.LaneType.Driving:
+        if not side_wp or (check and side_wp.lane_type != carla.LaneType.Driving):
             return []
 
         # Update the plan
@@ -426,41 +506,55 @@ def generate_lane_change_path(waypoint : carla.Waypoint, direction:"Literal['lef
 
     
 def create_agent_config(self: "LunaticAgent", 
-                        behavior: Union[AgentConfig, DictConfig, str, None, "type[AgentConfig]"]=None, 
+                        source: Union["type[AgentConfig]", AgentConfig, DictConfig, str, None]=None, 
                         world_model: Optional["WorldModel"]=None, 
                         overwrite_options: Optional[Dict[str, Any]]=None):
     """
-    Method to create the agent config from different input types.
+    Method to create the :py:class:`.AgentConfig` from different input types.
+    
+    Parameters:
+        self: The agent
+        source:
+            - :code:`None` takes the config from the **world model** if available.
+            - :py:class:`.AgentConfig` (class or instance) to be used.
+            - :py:class:`omegaconf.DictConfig`, a dictionary with the configuration,
+              i.e. duck-typed as :py:class:`.AgentConfig`.
+              
+    Returns:
+        :py:attr:`self.BASE_SETTINGS <.LunaticAgent.BASE_SETTINGS>` (duck-typed): 
+            The configuration object. The actual type depends on **source**.
+            If it is a :python:`str`, :py:class:`.AgentConfig` or :py:class:`.DictConfig`, the actual
+            return type will be a :py:class:`omegaconf.DictConfig`.
     """
-    if behavior is None and world_model and world_model._config is not None:
+    if source is None and world_model and world_model._config is not None: # noqa # pyright: ignore[reportUnnecessaryComparison]
         logger.debug("Using world model config")
         opt_dict = world_model._config
-    elif behavior is None:
+    elif source is None:
         raise ValueError("Must pass a valid config as behavior or a world model with a set config.")
-    elif isinstance(behavior, str): # Assuming Path
+    elif isinstance(source, str): # Assuming Path
         logger.debug("Creating config from yaml file")
-        opt_dict = self.BASE_SETTINGS.from_yaml(behavior)
-    elif isinstance(behavior, AgentConfig) or isclass(behavior) and issubclass(behavior, AgentConfig):
+        opt_dict = self.BASE_SETTINGS.from_yaml(source)
+    elif isinstance(source, AgentConfig) or isclass(source) and issubclass(source, AgentConfig): # pyright: ignore[reportUnnecessaryIsInstance]
         logger.info("Config is a dataclass / AgentConfig")
-        _cfg = behavior.to_dict_config()
+        _cfg = source.to_dict_config()
         _cfg.merge_with(overwrite_options) # Note uses DictConfig.update
-        opt_dict = assure_type(behavior.__class__, _cfg)
-    elif isinstance(behavior, DictConfig):
+        opt_dict = assure_type(source.__class__, _cfg)
+    elif isinstance(source, DictConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
         logger.info("Config is a DictConfig")
-        behavior.merge_with(overwrite_options)
-        opt_dict = self.BASE_SETTINGS.cast(behavior)
-    elif isclass(behavior):
+        source.merge_with(overwrite_options)
+        opt_dict = self.BASE_SETTINGS.cast(source)
+    elif isclass(source):
         logger.info("Config is a class using, instance of it")
-        opt_dict  = assure_type(behavior, behavior(**overwrite_options))
+        opt_dict  = assure_type(source, source(**overwrite_options))
     elif not overwrite_options:
         logger.warning("Warning: Settings are not a supported Config class")
-        opt_dict = behavior  # assume the user passed something appropriate
+        opt_dict = source  # assume the user passed something appropriate
     else:
         logger.warning("Warning: Settings are not a supported Config class. Trying to apply overwrite options.")
-        behavior.update(overwrite_options) 
-        opt_dict = behavior  # assume the user passed something appropriate
+        source.update(overwrite_options) 
+        opt_dict = source  # assume the user passed something appropriate
     if isinstance(opt_dict, DictConfig):
-        opt_dict._set_flag("allow_objects", True)
+        opt_dict._set_flag("allow_objects", True) # noqa # pyright: ignore[reportPrivateUsage]
         opt_dict.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
     cfg = opt_dict
     return self.BASE_SETTINGS.cast(cfg)

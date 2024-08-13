@@ -10,6 +10,7 @@ autodoc_type_aliases = {
     '_ActionType' : "typing.Union[typing.Callable[[Rule, Context, ...], typing.Any], typing.Callable[[Context, ...], typing.Any]]",
     
     'CallableAction' : "typing.Union[typing.Callable[[Rule, Context, ...], typing.Any], typing.Callable[[Context, ...], typing.Any]]",
+    '_CallableCondition' : "typing.Union[typing.Callable[[Rule, Context, ...], typing.Hashable], typing.Callable[[Context, ...], typing.Hashable]]",
     
     '_Rule' : "Rule",
     '_CP' : 'typing.ParamSpec',

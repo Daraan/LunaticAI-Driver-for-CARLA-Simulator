@@ -754,7 +754,7 @@ class LiveInfo(AgentConfig):
     RoadOption that will used for the current step
     """
     
-    incoming_waypoint : carla.Waypoint = MISSING
+    incoming_waypoint : Optional[carla.Waypoint] = MISSING
     """
     Waypoint that is planned to be targeted in this step.
     """

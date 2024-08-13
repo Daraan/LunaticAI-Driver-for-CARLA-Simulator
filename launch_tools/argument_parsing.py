@@ -1,7 +1,7 @@
 """
 Argument parsers for arguments used by CARLA examples.
 
-.. deprecated::
+.. deprecated:: _
     In favor of Hydra_.
 """
 import argparse
@@ -25,9 +25,9 @@ def subparser(func) -> argparse.ArgumentParser:
 
     # allows to circumvent calling the function. 
     # i.e. parser_function.parse_args() instead of parser_function().parse_args()
-    wrapper.parse_args = lambda: wrapper(parser=None).parse_args()
+    wrapper.parse_args = lambda: wrapper(parser=None).parse_args()  # type: ignore[attr-defined]
     # allows to adjust parsers by adding another parser or by adding a parser function
-    wrapper.add = lambda parser: wrapper(parser) if isinstance(parser, argparse.ArgumentParser) else wrapper(parser())
+    wrapper.add = lambda parser: wrapper(parser) if isinstance(parser, argparse.ArgumentParser) else wrapper(parser())  # type: ignore[attr-defined]
     return wrapper
 
 
@@ -129,7 +129,7 @@ def automatic_control_example(argparser:argparse.ArgumentParser):
 
 def main_parser():
     parser = argparse.ArgumentParser()
-    client_settings.add(parser)
-    automatic_control_example.add(parser)
-    interactive_control_example.add(parser)
+    client_settings.add(parser)  # type: ignore[attr-defined]
+    automatic_control_example.add(parser)  # type: ignore[attr-defined]
+    interactive_control_example.add(parser)  # type: ignore[attr-defined]
     return parser

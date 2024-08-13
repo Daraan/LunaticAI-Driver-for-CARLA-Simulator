@@ -6,7 +6,7 @@ import random
 import carla
 
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from classes.constants import RoadOption, RoadOptionColor
 from agents.tools import misc # draw_waypoints patched from this module
@@ -110,7 +110,7 @@ def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform | carl
         print("Drawing of type:", type(waypoints[0][0]), "not supported.")
 
 
-def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5, *, road_options: Optional["list[RoadOption]"]=None, **kwargs):
+def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5, *, road_options: Optional["list[RoadOption]"]=None, **kwargs: Any) -> None:
     """
     Draw a list of waypoints at a certain height given in z.
 

@@ -1,6 +1,12 @@
+"""
+Sets up a custom :py:mod:`logging.Logger <logging>` for the project.
+:python:`from agents.tools.logging import logger` can be used to access the logger.
+"""
+
 import os
 import logging
 import datetime
+from typing import Optional
 
 USE_HYDRA_IF_POSSIBLE = True
 """
@@ -8,13 +14,17 @@ If :python:`True` and Hydra_ is available, :py:func:`make_logger` will
 return only a simple logger with just the name set.
 """
 
+DEFAULT_NAME = "__main__"
+
 TRACE = 5
-"""Logging value below :py:attr:`logging.DEBUG`"""
+"""Logging value below :py:obj:`logging.DEBUG`"""
 
 def log(text: str):
     """
     .. deprecated::
         use :py:obj:`logger` instead
+        
+    :meta private:
     """
     logging = (os.getenv('SHOW_LOGS') == "true") | False
     if logging:
@@ -41,22 +51,24 @@ def _setup_logger(name : str ="__main__", level : int = logging.DEBUG):
     logger.addHandler(handler)
     return logger
 
-def make_logger(name: str = "__main__", level: int = logging.DEBUG) -> logging.Logger:
+def make_logger(name: Optional[str] = None, level: int = logging.DEBUG) -> logging.Logger:
     """
     Create a logger object with the specified name and log level.
-    If :py:obj:`USE_HYDRA_IF_POSSIBLE` is True and the :code:`hydra <https://hydra.cc/>`_
-    package is installed, this function will return a simple variant with only
+    If :py:obj:`USE_HYDRA_IF_POSSIBLE` is :python:`True` and the `hydra <https://hydra.cc/>`_
+    package is installed, this function will return a simple :py:class:`logging.Logger` with only
     the **name** set.
     Otherwise it will create a logger that is formatted based on :code:`_setup_logger`
     from this file.
     
     Parameters:
-        name : The name of the logger. Defaults to "__main__".
-        level : The log level for the logger. Defaults to :py:attr:`logging.DEBUG`.
+        name: The name of the logger. Defaults to "__main__".
+        level: The log level for the logger. Defaults to :py:attr:`logging.DEBUG`.
     
     Returns:
-        logging.Logger: The logger object.
+        The logger object.
     """
+    if not name:
+        name = DEFAULT_NAME
     if USE_HYDRA_IF_POSSIBLE:
         try:
             import hydra          # type: ignore # noqa
@@ -67,7 +79,10 @@ def make_logger(name: str = "__main__", level: int = logging.DEBUG) -> logging.L
         hydra_logging = False
         
     if hydra_logging:
-        return logging.getLogger("__main__")
+        return logging.getLogger(DEFAULT_NAME)
     return _setup_logger(name, level)
 
-logger = make_logger()
+logger: logging.Logger = make_logger()
+"""
+A constant logger object that can be imported and used throughout the project.
+"""

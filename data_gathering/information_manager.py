@@ -3,6 +3,8 @@ Aim of this module is to provide a less convoluted access to information,
 i.e. distill the information from the data and return high level information
 """
 
+from __future__ import annotations
+
 # todo: maybe find another name for this module
 
 from fnmatch import fnmatch

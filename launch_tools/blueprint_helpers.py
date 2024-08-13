@@ -1,9 +1,9 @@
 from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing_extensions import Annotated
 
 from launch_tools import CarlaDataProvider, Literal
 
-if TYPE_CHECKING:
-    import carla
+import carla
 
 
 create_blueprint = CarlaDataProvider.create_blueprint
@@ -22,21 +22,20 @@ def get_blueprint_library(world: Optional["carla.World"]=None):
         world = CarlaDataProvider.get_world()
     return world.get_blueprint_library()
 
-def get_contrasting_blueprints(world: "carla.World", ego_vehicle="vehicle.lincoln.mkz_2020", ego_color: str="255,0,0") \
-    -> Tuple["carla.ActorBlueprint", "carla.ActorBlueprint"]:
+def get_contrasting_blueprints(ego_vehicle: str="vehicle.lincoln.mkz_2020", 
+                               ego_color: str="255,0,0") \
+    -> Tuple[Annotated[carla.ActorBlueprint, "ego"], Annotated[carla.ActorBlueprint, "NPC"]]:
     """
-    Sets the color of NPC vehicles and marks the ego vehicle red.
+    Convenience function to acquire two different colored blueprints, 
+    e.g. for the ego and all other NPC vehicles.
 
     Parameters:
-    world : carla.World
-        The world object.
-    ego_vehicle : str, optional
-        The name of the ego vehicle, by default "vehicle.lincoln.mkz_2020"
-    ego_color : str, optional
-        The color of the ego vehicle in RGB format, by default "255,0,0"
+        ego_vehicle : str, optional
+            The name of the ego vehicle, by default "vehicle.lincoln.mkz_2020"
+        ego_color : str, optional
+            The color of the ego vehicle in RGB format, by default "255,0,0"
 
     Returns:
-    tuple
         A tuple containing the ego vehicle blueprint and the NPC vehicle blueprint.
     """
     blueprint_library: carla.BlueprintLibrary = get_blueprint_library()

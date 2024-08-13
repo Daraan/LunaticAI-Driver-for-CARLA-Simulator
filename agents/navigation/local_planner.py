@@ -17,7 +17,6 @@ from agents.tools.misc import draw_waypoints, get_speed
 from typing import NamedTuple
 
 
-
 class RoadOption(IntEnum):
     """
     RoadOption represents the possible topological configurations when moving from a segment of lane to other.
@@ -68,6 +67,7 @@ class LocalPlanner(object):
     """
 
     def __init__(self, vehicle, opt_dict={}, map_inst=None):
+        # type: (carla.Vehicle, dict, carla.Map | None) -> None
         """
         :param vehicle: actor to apply to local planner logic onto
         :param opt_dict: dictionary of arguments with different parameters:
@@ -93,11 +93,11 @@ class LocalPlanner(object):
         else:
             self._map = self._world.get_map()
 
-        self._vehicle_controller = None
-        self.target_waypoint = None
-        self.target_road_option = None
+        self._vehicle_controller = None # type: VehiclePIDController # type: ignore[assignment]
+        self.target_waypoint = None     # type: carla.Waypoint # type: ignore[assignment]
+        self.target_road_option = None  # type: RoadOption # type: ignore[assignment]
 
-        self._waypoints_queue = deque(maxlen=10000)
+        self._waypoints_queue = deque(maxlen=10000) # type: deque[tuple[carla.Waypoint, RoadOption]]
         self._min_waypoint_queue_length = 100
         self._stop_waypoint_creation = False
 
@@ -148,7 +148,7 @@ class LocalPlanner(object):
 
     def reset_vehicle(self):
         """Reset the ego-vehicle"""
-        self._vehicle = None
+        self._vehicle = None # type: carla.Vehicle # type: ignore[assignment]
 
     def _init_controller(self):
         """Controller initialization"""
@@ -163,9 +163,9 @@ class LocalPlanner(object):
         # Compute the current vehicle waypoint
         current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
         self.target_waypoint, self.target_road_option = (current_waypoint, RoadOption.LANEFOLLOW)
-        self._waypoints_queue.append(PlannedWaypoint(self.target_waypoint, self.target_road_option))
+        self._waypoints_queue.append((self.target_waypoint, self.target_road_option))     # type: ignore
 
-    def set_speed(self, speed):
+    def set_speed(self, speed) -> None:
         """
         Changes the target speed
 
@@ -315,6 +315,7 @@ class LocalPlanner(object):
                 return None, RoadOption.VOID
 
     def get_plan(self):
+        # type: () -> deque[tuple[carla.Waypoint, RoadOption]]
         """Returns the current plan of the local planner"""
         return self._waypoints_queue
 

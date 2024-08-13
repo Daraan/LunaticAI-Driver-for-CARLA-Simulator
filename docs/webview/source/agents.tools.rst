@@ -32,3 +32,25 @@ agents.tools.hints module
    :undoc-members:
    :show-inheritance:
    :no-inherited-members:
+
+
+.. _agents/tools/logging:
+
+agents.tools.logging module
+---------------------------
+
+.. automodule:: agents.tools.logging
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+.. _agents/tools/lunatic_agent_tools:
+
+agents.tools.lunatic\_agent\_tools module
+-----------------------------------------
+
+.. automodule:: agents.tools.lunatic_agent_tools
+   :members:
+   :undoc-members:
+   :show-inheritance:

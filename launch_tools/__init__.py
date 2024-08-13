@@ -4,7 +4,8 @@
 # pyright: reportUnusedImport=information
 # pyright: reportMissingTypeStubs=none
 """
-Handles problematic import deriving from version conflicts
+Various tools load CARLA and data.
+Also handles problematic import deriving from version conflicts
 """
 
 __all__ = [
@@ -29,8 +30,8 @@ __all__ = [
     "ast_parse",
 ]
 
+import os
 import logging
-import sys
 
 # If carla is not installed try to find the .egg file
 try:
@@ -72,6 +73,8 @@ class class_or_instance_method(classmethod[_T, _Parameters, _R_co]
     
     The first argument of the decorated function should be decorated with:
     :python:`type[Self] | Self` or :python:`Union[Type[Self], Self]`
+    
+    :meta private:
     """
 
     def __get__(
@@ -81,3 +84,19 @@ class class_or_instance_method(classmethod[_T, _Parameters, _R_co]
             return super().__get__ (instance, type_)      # type: ignore # type_ is not None
         return self.__func__.__get__(instance, type_)
 
+# --- Exclude from docs ---
+
+    
+if "READTHEDOCS" in os.environ:
+    if ast_parse.__doc__:
+        ast_parse.__doc__ += "\n\n    :meta private:"
+    else:
+        ast_parse.__doc__ = ":meta private:"
+    
+    if singledispatchmethod.__doc__:  
+        singledispatchmethod.__doc__ += "\n\n    :meta private:"
+    else:
+        singledispatchmethod.__doc__ = ":meta private:"
+    
+    for __var in ("transform_to_pandas", "vehicle_location_to_dataframe", "csv_to_transformations"):
+        __all__.remove(__var) # type: ignore

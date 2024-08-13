@@ -1,9 +1,11 @@
 # Functions which not yet have a good grouping in their own files
 """Contains snippets that can can import/export vehicle positions from/to csv files."""
 
+from __future__ import annotations
+
 from typing import List
 import pandas as pd
-from carla import Location, Rotation, Transform # pylint: disable=no-name-in-module
+import carla
 
 __all__ = ["transform_to_pandas", 
            "vehicle_location_to_dataframe", 
@@ -15,9 +17,9 @@ LOC_DF = pd.DataFrame(columns=["x", "y", "z", "pitch", "yaw", "roll"])
 
 # -----------------------------------
 
-def transform_to_pandas(transform : Transform) -> pd.Series:
+def transform_to_pandas(transform : carla.Transform) -> pd.Series:
     """
-    Format a carla.Transform object to a pandas.Series.
+    Format a :py:class:`carla.Transform` object to a :py:class:`pandas.Series`.
     """
     loc = transform.location
     rot = transform.rotation
@@ -26,9 +28,9 @@ def transform_to_pandas(transform : Transform) -> pd.Series:
     return s
 
 
-def vehicle_location_to_dataframe(vehicles: list):
+def vehicle_location_to_dataframe(vehicles: list[carla.Actor]):
     """
-    Exports the locations of vehicles to a pandas dataframe.
+    Exports the locations of vehicles to a :py:class:`pandas.Dataframe`.
     """
     df = LOC_DF.copy()
     for i, v in enumerate(vehicles):
@@ -36,17 +38,17 @@ def vehicle_location_to_dataframe(vehicles: list):
     return df
 
 
-def csv_to_transformations(path) -> List[Transform]:
+def csv_to_transformations(path) -> List[carla.Transform]:
     """
     Read a csv file and return a list of Transform objects.
-    Expected columns: x, y, z, pitch, yaw, roll
+    Expected columns: :code:`x, y, z, pitch, yaw, roll`.
     """
     df = pd.read_csv(path)
     transformations = []
     for _, data in df.iterrows():
-        loc = Location(data.x, data.y, data.z)
-        rot = Rotation(pitch=data.pitch, yaw=data.yaw, roll=data.roll)
-        t = Transform(loc, rot)
+        loc = carla.Location(data.x, data.y, data.z)
+        rot = carla.Rotation(pitch=data.pitch, yaw=data.yaw, roll=data.roll)
+        t = carla.Transform(loc, rot)
         transformations.append(t)
     return transformations
 

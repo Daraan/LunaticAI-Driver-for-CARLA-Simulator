@@ -415,7 +415,10 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "requirements", "spawn_points.txt", "venv", "scenario_runner", "srunner", "_*", "test.py", "test.rst"]
-exclude_patterns.extend(["launch_tools.blueprint_helpers", "agents.navigation", "dynamic_planning", "agents.tools"])
+exclude_patterns.extend(["agents.navigation", "dynamic_planning"])
+# exclude_patterns.append("launch_tools.blueprint_helpers")
+# exclude_patterns.append("agents.tools")
+exclude_patterns.append("launch_tools.argument_parsing")
 
 
 #nitpick_ignore = [(None, None)] # not empty to allow regex

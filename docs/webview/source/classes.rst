@@ -68,6 +68,17 @@ classes.hud module
    :show-inheritance:
 
 
+.. _classes/keyboard_controls:
+
+classes.keyboard\_controls module
+---------------------------------
+
+.. automodule:: classes.keyboard_controls
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 .. _classes/rule:
 
 classes.rule module

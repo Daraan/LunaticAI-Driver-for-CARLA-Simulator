@@ -478,14 +478,14 @@ class LunaticAgent(BehaviorAgent):
         # -------------------------------------------------------------------
         if not self.done():
             # NOTE: This should be called after 
-            self.live_info.incoming_waypoint, self.live_info.incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
+            self.live_info.incoming_waypoint, self.live_info.incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(  # pyright: ignore[reportAttributeAccessIssue]
                 steps=self._look_ahead_steps)
         else:
             assert second_pass == False, "In the second pass the agent should have replanned and agent.done() should be False"
             # Assumes second_pass is False
             # Queue is empty
             self.live_info.incoming_waypoint = None
-            self.live_info.incoming_direction  = RoadOption.VOID
+            self.live_info.incoming_direction = RoadOption.VOID
         
         # Information that requires updated waypoint and route information:
         self.live_info.is_taking_turn = self.is_taking_turn()
@@ -886,7 +886,7 @@ class LunaticAgent(BehaviorAgent):
         
         return self._local_planner.run_step(debug)
 
-    def parse_keyboard_input(self, allow_user_updates=True, *, control=None):
+    def parse_keyboard_input(self, allow_user_updates=True, *, control: Optional[carla.VehicleControl]=None):
         """
         Parse the current user input and allow manual updates of the controls.
         
@@ -898,7 +898,7 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=planned_control)
         
         # Controls can be updated inplace by the user.        
-        if self._world_model.controller.parse_events(planned_control if allow_user_updates else carla.VehicleControl()):
+        if self._world_model.controller.parse_events(planned_control if allow_user_updates else carla.VehicleControl()): # pyright: ignore[reportOptionalMemberAccess]
             print("Exiting by user input.")
             raise UserInterruption("Exiting by user input.")
        
@@ -989,10 +989,9 @@ class LunaticAgent(BehaviorAgent):
         else:
             logger.info("react_to_hazard was called without any detected hazards.")
         if self.detected_hazards:
-            raise EmergencyStopException(hazard_detected)
+            raise EmergencyStopException(self.detected_hazards)
         logger.info("Hazards have been cleared.")
         
-    
     # ------------------ Behaviors ------------------ #
     # TODO: Section needs overhaul -> turn into rules
 

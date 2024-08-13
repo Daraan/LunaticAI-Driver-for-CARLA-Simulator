@@ -1,4 +1,6 @@
-# pyright: basic
+# pyright: reportTypeCommentUsage=none
+# pyright: reportUnknownMemberType=information
+
 #!/usr/bin/env python
 
 # Copyright (c) 2018 Intel Labs.
@@ -13,7 +15,7 @@ import math
 import numpy as np
 
 import carla
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 __all__ = [
     'draw_waypoints',
@@ -38,6 +40,7 @@ else:
 
 
 def get_speed(vehicle, kmh=True, vel=None):
+    # type: (carla.Vehicle, bool, float | None) -> float
     """
     Compute speed of a vehicle in Km/h.
 
@@ -52,8 +55,8 @@ def get_speed(vehicle, kmh=True, vel=None):
     # Importing CarlaDataProvider is circular import as it uses this module
     #vel = CarlaDataProvider.get_velocity(vehicle)
     if not vel:
-        vel = vehicle.get_velocity()
-        vel = math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
+        v_vector = vehicle.get_velocity()
+        vel = math.sqrt(v_vector.x ** 2 + v_vector.y ** 2 + v_vector.z ** 2)
     if kmh:
         return 3.6 * vel
     return vel
@@ -65,6 +68,7 @@ def get_trafficlight_trigger_location(traffic_light: carla.TrafficLight):
     """
 
     def rotate_point(point, radians):
+        # type: (carla.Vector3D, float) -> carla.Vector3D
         """
         rotate a given point by a given angle
         """
@@ -85,6 +89,7 @@ def get_trafficlight_trigger_location(traffic_light: carla.TrafficLight):
 
 
 def is_within_distance(target_transform, reference_transform, max_distance, angle_interval=None):
+    # type: (carla.Transform, carla.Transform, float, Sequence[float] | None) -> bool
     """
     Check if a location is both within a certain distance from a reference object.
     By using 'angle_interval', the angle between the location and reference transform
@@ -96,11 +101,11 @@ def is_within_distance(target_transform, reference_transform, max_distance, angl
     :param angle_interval: only locations between [min, max] angles will be considered. This isn't checked by default.
     :return: boolean
     """
-    target_vector = np.array([
+    target_vector = np.array([ # type: ignore
         target_transform.location.x - reference_transform.location.x,
         target_transform.location.y - reference_transform.location.y
     ])
-    norm_target = np.linalg.norm(target_vector)
+    norm_target = np.linalg.norm(target_vector) # type: ignore
 
     # If the vector is too short, we can simply stop here
     if norm_target < 0.001:
@@ -118,13 +123,14 @@ def is_within_distance(target_transform, reference_transform, max_distance, angl
     max_angle = angle_interval[1]
 
     fwd = reference_transform.get_forward_vector()
-    forward_vector = np.array([fwd.x, fwd.y])
-    angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.)))
+    forward_vector = np.array([fwd.x, fwd.y]) # type: ignore
+    angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.))) # pyright: ignore
 
     return min_angle < angle < max_angle
 
 
 def compute_magnitude_angle(target_location, current_location, orientation):
+    # type: (carla.Location, carla.Location, float) -> tuple[float, float]
     """
     Compute relative angle and distance between a target_location and a current_location
 
@@ -139,10 +145,11 @@ def compute_magnitude_angle(target_location, current_location, orientation):
     forward_vector = np.array([math.cos(math.radians(orientation)), math.sin(math.radians(orientation))])
     d_angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.)))
 
-    return (norm_target, d_angle)
+    return (norm_target, d_angle) # type: ignore
 
 
 def distance_vehicle(waypoint, vehicle_transform):
+    # type: (carla.Waypoint, carla.Transform) -> float
     """
     Returns the 2D distance from a waypoint to a vehicle
 
@@ -157,6 +164,7 @@ def distance_vehicle(waypoint, vehicle_transform):
 
 
 def vector(location_1, location_2):
+    # type: (carla.Location, carla.Location) -> list[float]
     """
     Returns the unit vector from location_1 to location_2
 
@@ -167,10 +175,11 @@ def vector(location_1, location_2):
     z = location_2.z - location_1.z
     norm = np.linalg.norm([x, y, z]) + np.finfo(float).eps
 
-    return [x / norm, y / norm, z / norm]
+    return [x / norm, y / norm, z / norm] # type: ignore
 
 
 def compute_distance(location_1, location_2):
+    # type: (carla.Location, carla.Location) -> float
     """
     Euclidean distance between 3D points
 
@@ -180,10 +189,11 @@ def compute_distance(location_1, location_2):
     y = location_2.y - location_1.y
     z = location_2.z - location_1.z
     norm = np.linalg.norm([x, y, z]) + np.finfo(float).eps
-    return norm
+    return norm # type: ignore
 
 
 def positive(num):
+    # type: (float) -> float
     """
     Return the given number if positive, else 0
 
@@ -205,7 +215,7 @@ def lanes_have_same_direction(wp1: carla.Waypoint, wp2: carla.Waypoint) -> bool:
     return wp1.lane_id * wp2.lane_id > 0
 
 
-def get_closest_tl_trigger_wp(reference_location: carla.Location, traffic_light: carla.TrafficLight):
+def get_closest_tl_trigger_wp(reference_location: carla.Location, traffic_light: carla.TrafficLight) -> "tuple[carla.Waypoint, float]":
     """
     Finds the closest triggering waypoint of the traffic light group to the reference location.
 
@@ -224,4 +234,4 @@ def get_closest_tl_trigger_wp(reference_location: carla.Location, traffic_light:
         if test_distance < distance:
             closest_wp = wp
             distance = test_distance
-    return closest_wp, distance
+    return closest_wp, distance  # type: ignore[unbound]

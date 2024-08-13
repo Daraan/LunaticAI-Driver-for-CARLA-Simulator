@@ -249,6 +249,7 @@ from _autodoc_type_aliases import autodoc_type_aliases
 _convert = {
     '_ActionType[_Rule, _P, _T]' : autodoc_type_aliases["_ActionType"],
     '_ConditionType[_Rule, _CP, _CH]' : autodoc_type_aliases["_ConditionType"],
+    '_CallableCondition[_Rule, _CP, _CH]' : autodoc_type_aliases["_ConditionType"],
     '_ActionTypeAlias' : autodoc_type_aliases["_ActionType"],
     '_ActorList' : 'list',
     'CallableAction' : autodoc_type_aliases["_ActionType"],

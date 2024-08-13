@@ -13,7 +13,8 @@ Attention:
 """
 import operator
 import os
-from typing import Any, Dict, TYPE_CHECKING, Union
+from typing import Any, Dict, TYPE_CHECKING, Sequence, Tuple, Union, cast
+from typing_extensions import TypedDict
 from omegaconf import OmegaConf
 from hydra import compose, initialize_config_dir
 from hydra.core.utils import configure_log
@@ -24,15 +25,9 @@ import pygame
 from agents.tools.debug_drawing import draw_route
 from classes.exceptions import UserInterruption
 
-try:
-    # Prefer the current submodule version
-    from launch_tools import CarlaDataProvider, GameTime, singledispatchmethod
-except ModuleNotFoundError:
-    from srunner.scenariomanager.timer import GameTime                        # pyright: ignore[reportMissingImports]      
-    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider # pyright: ignore[reportMissingImports]
-    from functools import singledispatchmethod # If this fails please use Python3.10+
-    
 
+from launch_tools import CarlaDataProvider, GameTime, singledispatchmethod
+     
 try:
     from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track # pyright: ignore[reportMissingImports]
     from leaderboard.utils.route_manipulation import downsample_route          # pyright: ignore[reportMissingImports]
@@ -44,20 +39,20 @@ except ModuleNotFoundError:
 
 from agents.lunatic_agent import LunaticAgent
 
-from classes.constants import Phase
+from classes.constants import READTHEDOCS, Phase
 from classes.keyboard_controls import RSSKeyboardControl
 from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
 from agents.tools.logging import logger
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 
 if TYPE_CHECKING:
-    from scenario_runner.srunner.autoagents.sensor_interface import SensorInterface
+    #from scenario_runner.srunner.autoagents.sensor_interface import SensorInterface
+    from leaderboard.envs.sensor_interface import SensorInterface
     from classes.constants import RoadOption
     from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
+    from agents.navigation.local_planner import LocalPlanner
 
 import logging
-logger.setLevel(logging.DEBUG)
-
 
 def get_entry_point():
     """Must return the name of the class to be used"""
@@ -110,11 +105,9 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     sensor_interface: "SensorInterface" #: :meta private:
     
-    _global_plan: "list[tuple[Dict[str, float], RoadOption]]" = None
-    _global_plan_world_coord: "list[tuple[carla.Transform, RoadOption]]" = None
-    _global_plan_waypoints: "list[tuple[carla.Waypoint, RoadOption]]" = None 
-    
-    _road_matrix_updater : "DetectionMatrix" = None
+    _global_plan: "list[tuple[_GPSDataDict, RoadOption]]" = None  # type: ignore[assignment]
+    _global_plan_world_coord: "list[tuple[carla.Transform, RoadOption]]" = None  # type: ignore[assignment]
+    _global_plan_waypoints: "list[tuple[carla.Waypoint, RoadOption]]" = None  # type: ignore[assignment]
     
     def __init__(self, carla_host, carla_port, debug=False):
         """
@@ -123,13 +116,15 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         Further initialization is done in :py:meth:`LunaticChallenger.setup`.
         """
         print("Initializing LunaticChallenger")
-        self.world_model: WorldModel = None
-        self.game_framework: GameFramework = None
+        # Correct types are set at setup
+        self.world_model: WorldModel = None        # type: ignore[assignment]
+        self.game_framework: GameFramework = None  # type: ignore[assignment]
         self._destroyed = False
+        # AutonomousAgent init
         super().__init__(carla_host, carla_port, debug)
         self.track = Track.MAP
         self._opendrive_data = None
-        self._local_planner = None
+        self._local_planner: "LocalPlanner" = None  # type: ignore[assignment]
 
     def setup(self, path_to_conf_file: Union[str, LaunchConfig]):
         """
@@ -138,10 +133,12 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         To some extends initializes the Hydra_ framework and load the configuration.
         
         Parameters:
-            path_to_conf_file : Can either be a string pointing to a configuration file to load a :py:class:`.LaunchConfig` or a :py:class:`.LaunchConfig` to be used directly.
+            path_to_conf_file:
+                Can either be a string pointing to a configuration file to load a 
+                :py:class:`.LaunchConfig` or a :py:class:`.LaunchConfig` to be used directly.
                 
                 Note: 
-                    If a :py:class:`.LaunchConfig` is passed directly the Hydra setup will be skipped.
+                    If a :py:class:`.LaunchConfig` is passed directly the Hydra_ setup will be skipped.
         """
         self._destroyed = False
         self.track = Track.MAP
@@ -161,8 +158,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 overrides.append("agent.detection_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
                 if ENABLE_RSS is not None:
                     overrides.append("agent.rss.enabled=" + str(ENABLE_RSS).lower())
-                args = compose(config_name=config_name, return_hydra_config=True, 
-                            overrides=overrides # uses conf/agent/leaderboard
+                args = cast(LaunchConfig, 
+                            compose(config_name=config_name, 
+                                    return_hydra_config=True, 
+                                    overrides=overrides) # uses conf/agent/leaderboard
                             )
                 args.debug = DEBUG
                 # Let scenario manager decide
@@ -179,9 +178,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 from hydra.core.hydra_config import HydraConfig
                 if OmegaConf.is_missing(args.hydra.runtime, "output_dir"):
                     args.hydra.runtime.output_dir = args.hydra.run.dir
-                HydraConfig.instance().set_config(args)
+                HydraConfig.instance().set_config(args)  # type: ignore[arg-type]
                 os.makedirs(args.hydra.runtime.output_dir, exist_ok=True)
-                configure_log(args.hydra.job_logging, logger.name) # Assure that our logger works
+                # Assure that our logger works
+                configure_log(args.hydra.job_logging, logger.name) # type: ignore[arg-type]
                 
                 if DATA_MATRIX_ASYNC is not None:
                     args.agent.detection_matrix.sync = not DATA_MATRIX_ASYNC
@@ -189,8 +189,11 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                     args.agent.detection_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
                 logger.info(OmegaConf.to_yaml(args))
             else:
-                args = compose(config_name=config_name, return_hydra_config=True, 
-                    overrides=overrides)
+                args = cast(LaunchConfig, 
+                            compose(config_name=config_name, 
+                                    return_hydra_config=True, 
+                                    overrides=overrides) # uses conf/agent/leaderboard
+                            )
             logger.setLevel(logging.DEBUG)
             self.args = args
             
@@ -273,7 +276,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         return sensors
 
     @staticmethod
-    def _print_input_data(input_data):
+    def _print_input_data(input_data: Dict[str, Tuple[int, Any]]):
+        """
+        Debug method to view the input data
+        """
         if not input_data:
             return None
         print("=====================>")
@@ -297,12 +303,12 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         return super(AutonomousAgent, self).run_step(debug=self.args.debug, second_pass=second_pass)
 
     @run_step.register(dict)
-    def _(self, input_data:"Dict[str, tuple[int, Any]]", timestamp=None) -> carla.VehicleControl:
+    def _(self, input_data: Dict[str, Tuple[int, Any]], timestamp: float=-1) -> carla.VehicleControl:  # noqa: U100
         """Function that is called by leaderboard framework"""
         try:
             if self._print_input_data(input_data) and "OpenDRIVE" in input_data:
-                frame, data = input_data["OpenDRIVE"]
-                data : str = data["opendrive"]
+                frame, data_value = input_data["OpenDRIVE"]
+                data : str = data_value["opendrive"]
                 if self._opendrive_data != data:
                     if self._opendrive_data is not None:
                         #breakpoint()
@@ -326,7 +332,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
             
             self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control)
-            final_controls: carla.VehicleControl = self.get_control()
+            final_controls: carla.VehicleControl = self.get_control()  # type: ignore[assignment]
             
             # TODO: Update HUD controls info
             return final_controls
@@ -349,17 +355,19 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         if self.game_framework._args.debug:
             draw_route(CarlaDataProvider.get_world(), plan, vertical_shift=0.5, size=0.15, downsample=1, life_time=1000.0)
     
-    def set_global_plan(self, global_plan_gps: "tuple[Dict[str, float], RoadOption]", global_plan_world_coord: "tuple[carla.Transform, RoadOption]"):
+    def set_global_plan(self, global_plan_gps: Sequence["tuple[_GPSDataDict, RoadOption]"], global_plan_world_coord: Sequence["tuple[carla.Transform, RoadOption]"]):
         """
         Set the plan (route) for the agent
         """
-        #super().set_global_plan(global_plan_gps, global_plan_world_coord)
-        print("==============Road updated============")
-        print("Plan GPS", global_plan_gps[:10])
-        print("Plan World Coord", global_plan_world_coord[:10])
+        # old: 
+        # super().set_global_plan(global_plan_gps, global_plan_world_coord)
+        # new:
+        #print("==============Road updated============")
+        #print("Plan GPS", global_plan_gps[:10])
+        #print("Plan World Coord", global_plan_world_coord[:10])
         
         ds_ids: "list[int]" = downsample_route(global_plan_world_coord, DOWNSAMPLING_FACTOR_OF_ROUTE_COORDINATES) # Downsample to less distance. TODO: should increase this
-        print("Downsampled ids", ds_ids)
+        #print("Downsampled ids", ds_ids)
         
         # Reduce the global plan to the downsampled ids
         self._global_plan_world_coord = [(global_plan_world_coord[x][0], global_plan_world_coord[x][1]) for x in ds_ids]
@@ -386,7 +394,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 self.wallclock_t0 = GameTime.get_wallclocktime()
             wallclock = GameTime.get_wallclocktime()
             wallclock_diff = (wallclock - self.wallclock_t0).total_seconds()
-            sim_ratio = 0 if wallclock_diff == 0 else timestamp/wallclock_diff
+            sim_ratio = 0 if wallclock_diff == 0 else timestamp / wallclock_diff
 
             print('=== [Agent] -- Wallclock = {} -- System time = {} -- Game time = {} -- Ratio = {}x'.format(
                 str(wallclock)[:-3], format(wallclock_diff, '.3f'), format(timestamp, '.3f'), format(sim_ratio, '.3f')))
@@ -399,21 +407,36 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     def destroy(self):
         self._destroyed = True
         print("Destroying Lunatic Challenger")
-        if self._road_matrix_updater is not None:
-            self._road_matrix_updater.stop()
-            self._road_matrix_updater = None
+        if self._detection_matrix is not None:
+            self._detection_matrix.stop()
+            self._detection_matrix = None
         super().destroy()
         if self.world_model:
             if not WORLD_MODEL_DESTROY_SENSORS:
                 self.world_model.actors.clear()
             self.world_model.destroy()
-            self.world_model = None
+            self.world_model = None  # type: ignore[assignment]
         if self.game_framework:
             self.game_framework.agent = None
-            self.game_framework = None
+            self.game_framework = None  # type: ignore[assignment]
         pygame.quit()
         print("Destroyed", self)
         
     def __del__(self):
         if not self._destroyed:
             self.destroy()
+
+
+# --- Type hints ---
+class _GPSDataDict(TypedDict if not READTHEDOCS or TYPE_CHECKING else object):
+    """
+    Bases: :py:class:`typing.TypedDict`
+    
+    Type hint for the global plan in GPS coordinates,
+    used in :py:meth:`.LunaticChallenger.set_global_plan`.
+    
+    :meta public:
+    """
+    lat : float
+    lon : float
+    z : float

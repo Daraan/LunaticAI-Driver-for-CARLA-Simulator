@@ -4,55 +4,47 @@ from __future__ import annotations
 # pyright: reportUnusedFunction=information, reportUnusedImport=information
 # pyright: reportUnnecessaryIsInstance=false, reportUnnecessaryComparison=false
 
-
-
+import random
+import inspect
 from collections.abc import Mapping
 from dataclasses import is_dataclass
 from functools import partial, wraps
 
-from launch_tools import CarlaDataProvider, Literal
+from launch_tools import CarlaDataProvider, singledispatchmethod
 import pygame
 
-from classes.exceptions import DoNotEvaluateChildRules, LunaticAgentException, SkipInnerLoopException, UnblockRuleException
-from classes.worldmodel import GameFramework
-
-try: # Python 3.8+
-    from functools import singledispatchmethod
-except ImportError:
-    from launch_tools import singledispatchmethod
-    
-import random
-import inspect
 from inspect import isclass
 from itertools import accumulate
 from typing import (Any, ClassVar, FrozenSet, List, Set, Tuple, TypeVar, Union, Iterable, 
                     Callable, Optional, Dict, Hashable, TYPE_CHECKING, cast)
-from typing_extensions import overload, TypeAlias, Self, ParamSpec, Annotated, TypedDict, Self
+from typing_extensions import (overload, TypeAlias, Self, ParamSpec, Annotated, 
+                               TypedDict, Literal, NoReturn)
 from weakref import ProxyType, WeakSet, proxy
 
 from omegaconf import DictConfig, OmegaConf
 
+from agents.tools.logging import logger
+from classes.exceptions import DoNotEvaluateChildRules, LunaticAgentException, SkipInnerLoopException, UnblockRuleException
+from classes.worldmodel import GameFramework
 from classes.constants import Hazard, HazardSeverity, Phase, RulePriority, RuleResult
 from classes.evaluation_function import ConditionFunction
-from agents.tools.logging import logger
-
 from data_gathering.information_manager import InformationManager
+
+
 if TYPE_CHECKING:
     import carla
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import LiveInfo, RuleConfig, ContextSettings
-    from typing import Literal, NoReturn
-else:
-    RuleConfig : TypeAlias = Any # need variable at runtime
-    
-    # Note: gameframework.py adds GameFramework to this module's variables
+    # NOTE: gameframework.py adds GameFramework to this module's variables
     # at this position it would be a circular import
 
-_Rule = TypeVar("_Rule", bound="Rule")
-_P = ParamSpec("_P")
+_T = TypeVar("_T")
 _H = TypeVar("_H", bound=Hashable)
+_P = ParamSpec("_P")
+_Rule = TypeVar("_Rule", bound="Rule")
 
-ConditionFunctionLike : TypeAlias = Union["ConditionFunction[_Rule, _P, _H]", 
+
+ConditionFunctionLike : TypeAlias = Union[ConditionFunction[Any, _P, _H], 
                                           Callable[["Context"], _H], 
                                           Callable[[_Rule, "Context"], _H]]
 """
@@ -62,8 +54,8 @@ or alternatively a :py:class:`Rule` and a :py:class:`Context` object (in this or
 The function must return a :term:`Hashable` value.
 """
 
-CallableAction : TypeAlias = Union[Callable[["Context"], Any], 
-                                   Callable[[_Rule, "Context"], Any]]
+CallableAction : TypeAlias = Union[Callable[["Context"], _T], 
+                                   Callable[[_Rule, "Context"], _T]]
 """
 Callable that uses a :py:class:`Context` object as a single argument,
 or alternatively a :py:class:`Rule` and a :py:class:`Context` object (in this order).
@@ -606,15 +598,15 @@ class Rule(_GroupRule):
         return a :term:`Hashable` value that is used as key in the :py:attr:`actions` dict.
     """
     
-    actions : Dict[Any, CallableAction[Self]]
+    actions : Dict[Any, CallableAction[Self, Any]]
     """Dictionary that maps rule results to the action that should be executed."""
     
-    action : Annotated[CallableAction[Self], "attribute not available on instance -> merged into `actions`"]
+    action : Annotated[CallableAction[Self, Any], "attribute not available on instance -> merged into `actions`"]
     """
     Action that should be executed if the rule is True. If `actions` is set, this is ignored.
     """
     
-    false_action : Annotated[CallableAction[Self], "attribute not available on instance -> merged into `actions`"]
+    false_action : Annotated[CallableAction[Self, _T], "attribute not available on instance -> merged into `actions`"]
     """Action that should be executed if the rule is False. May not be set if `actions` is set."""
     
     #group : Optional[str]
@@ -709,11 +701,11 @@ class Rule(_GroupRule):
     def __init__(self, 
                  phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
                  #/, # phases must be positional; python3.8+ only
-                 condition : Optional[ConditionFunctionLike]=None, 
-                 action: Optional[Union[CallableAction[Self], Dict[Any, CallableAction]]] = None,
-                 false_action: Optional[CallableAction] = None,
+                 condition : Optional[ConditionFunctionLike[Self, _P, _H]]=None, 
+                 action: Optional[Union[CallableAction[Self, _T], Dict[Any, CallableAction[Self, Any]]]] = None,
+                 false_action: Optional[CallableAction[Self, _T]] = None,
                  *, 
-                 actions : Optional[Dict[Any, CallableAction]] = None,
+                 actions : Optional[Dict[Any, CallableAction[Self, Any]]] = None,
                  description: str = "What does this rule do?",
                  overwrite_settings: Optional[Dict[str, Any]] = None,
                  self_config: Optional[Dict[str, Any]] = None,
@@ -844,17 +836,17 @@ class Rule(_GroupRule):
         if self_config and "self" in self.overwrite_settings and self.overwrite_settings["self"] != self_config:
             logger.debug("Warning: self_config and self.overwrite_settings['self'] must be the same object.")
         
-        default_self_config = cast(RuleConfig, getattr(self, "self_config", getattr(self, "SelfConfig", {})))
+        default_self_config = cast("RuleConfig", getattr(self, "self_config", getattr(self, "SelfConfig", {})))
         if isclass(default_self_config):
             if not is_dataclass(default_self_config):
                 logger.warning(f"Class {self.__class__.__name__} has a self_config class that is not a dataclass. This might lead to undesired results, i.e. missing keys in the config.")
             default_self_config = default_self_config()
         if not isinstance(default_self_config, DictConfig):
-            default_self_config = cast(RuleConfig, OmegaConf.create(default_self_config, flags={"allow_objects": True})) # type: ignore
+            default_self_config = cast("RuleConfig", OmegaConf.create(default_self_config, flags={"allow_objects": True})) # type: ignore
         if self_config:
-            self.self_config = cast(RuleConfig, OmegaConf.merge(default_self_config, self_config))
+            self.self_config = cast("RuleConfig", OmegaConf.merge(default_self_config, self_config))
         else:
-            self.self_config = cast(RuleConfig, default_self_config)
+            self.self_config = cast("RuleConfig", default_self_config)
         assert self.self_config._get_flag("allow_objects"), "self_config must allow objects to be used as values."
         
         self.overwrite_settings["self"] = self.self_config
