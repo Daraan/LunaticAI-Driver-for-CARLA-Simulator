@@ -53,6 +53,7 @@ class VehiclePIDController():
         self._lat_controller = PIDLateralController(self._vehicle, offset, **args_lateral)
 
     def run_step(self, target_speed, waypoint):
+        # type: (float, carla.Waypoint) -> carla.VehicleControl
         """
         Execute one step of control invoking both lateral and longitudinal
         PID controllers to reach a target waypoint

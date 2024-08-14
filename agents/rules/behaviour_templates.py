@@ -320,7 +320,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     new_rule = DebugRuleWithEval()
     #new_rule.action
     simple_rule = SimpleRule()
-    simple_ruleB = SimpleRuleB()
+    simple_ruleB = SimpleRuleB(Phase.UPDATE_INFORMATION | Phase.BEGIN)
     another_rule = Another()
     
     def _test_custom_init_Rule():

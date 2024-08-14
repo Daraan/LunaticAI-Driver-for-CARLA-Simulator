@@ -588,60 +588,67 @@ class RulePriority(IntEnum):
     HIGHEST = 16
 
 
-class RoadOption(IntEnum):
-    """
-    RoadOption represents the possible topological configurations when moving from a segment of lane to other.
+if TYPE_CHECKING:
+    # For type-checkers these classes should be the same.
+    # Prevent circular imports
+    from agents.navigation.local_planner import RoadOption
+else:
+    class RoadOption(IntEnum):
+        """
+        RoadOption represents the possible topological configurations when moving from a segment of lane to other.
 
-    See Also:
-        :py:class:`RoadOptionColor` for the color representation of the road options.
-    """
+        See Also:
+            :py:class:`RoadOptionColor` for the color representation of the road options.
+        """
 
-    VOID = -1
-    """
-    Indicated by green
-    """
+        VOID = -1
+        """
+        Indicated by green
+        """
 
-    LEFT = 1
-    """
-    Indicated by yellow
+        LEFT = 1
+        """
+        Indicated by yellow
+        
+        :meta hide-value:
+        """
+
+        RIGHT = 2
+        """
+        Indicated by cyan
+        
+        :meta hide-value:
+        """
+
+        STRAIGHT = 3
+        """
+        Indicated by gray
+        
+        :meta hide-value:
+        """
+
+        LANEFOLLOW = 4
+        """
+        Indicated by green
+        
+        :meta hide-value:
+        """
+
+        CHANGELANELEFT = 5
+        """
+        Indicated by orange
+        
+        :meta hide-value:
+        """
+
+        CHANGELANERIGHT = 6
+        """
+        Indicated by dark cyan
+        
+        :meta hide-value:
+        """
     
-    :meta hide-value:
-    """
 
-    RIGHT = 2
-    """
-    Indicated by cyan
-    
-    :meta hide-value:
-    """
-
-    STRAIGHT = 3
-    """
-    Indicated by gray
-    
-    :meta hide-value:
-    """
-
-    LANEFOLLOW = 4
-    """
-    Indicated by green
-    
-    :meta hide-value:
-    """
-
-    CHANGELANELEFT = 5
-    """
-    Indicated by orange
-    
-    :meta hide-value:
-    """
-
-    CHANGELANERIGHT = 6
-    """
-    Indicated by dark cyan
-    
-    :meta hide-value:
-    """
 
 
 class __ItemAccess(type): # noqa

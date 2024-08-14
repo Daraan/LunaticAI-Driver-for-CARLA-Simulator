@@ -14,7 +14,7 @@ from launch_tools import singledispatchmethod
 
 import typing
 from typing import Any, ClassVar, Dict, Generic, Hashable, TYPE_CHECKING, Optional, Union, TypeVar
-from typing_extensions import Callable, overload, Self, ParamSpec, Concatenate, TypeAlias, TypeGuard, Never
+from typing_extensions import Annotated, Callable, overload, Self, ParamSpec, Concatenate, TypeAlias, TypeGuard, Never
 
 from classes.constants import READTHEDOCS
 
@@ -137,7 +137,9 @@ class ConditionFunction(Generic[_Rule, _CP, _CH]):
             when the **first_argument** is not a callable.
             
     Generics:
-        - _Rule : Generic :py:class:`.Rule` type.
+        - _Rule : 
+            Generic :py:class:`.Rule` type that could appear in the 
+            :py:attr:`evaluation_function's <evaluation_function>` signature.
         - _CP : :py:class:`typing.ParamSpec` of the passed :py:attr:`evaluation_function`.
         - _CH : The :term:`Hashable` return type of the :py:attr:`evaluation_function`.
     """
@@ -152,18 +154,18 @@ class ConditionFunction(Generic[_Rule, _CP, _CH]):
     """Forbidden names for action functions."""
     
     @overload
-    def __new__(cls, first_argument: Optional[str]=None, name:str="ConditionFunction", *, 
+    def __new__(cls, first_argument: Optional[Annotated[str, "name"]]=None, name: str="ConditionFunction", *, 
                 truthy:bool=False, use_self: Optional[bool]=None) -> "partial[type[Self]]":
         ...
         
     @overload
-    def __new__(cls, first_argument: _CallableCondition[_Rule, _CP, _CH], name:str="ConditionFunction", *, 
+    def __new__(cls, first_argument: _CallableCondition[_Rule, _CP, _CH], name: str="ConditionFunction", *, 
                 truthy:bool=False, use_self: Optional[bool]=None) -> Self:
         ...
     
     def __new__(cls, 
-                first_argument: Optional[Union[str, _CallableCondition[_Rule, _CP, _CH]]]=None,
-                name:str="ConditionFunction", 
+                first_argument: Optional[Union[Annotated[str, "name"], _CallableCondition[_Rule, _CP, _CH]]]=None,
+                name: str="ConditionFunction", 
                 *, 
                 truthy: bool=False, 
                 use_self: Optional[bool]=None) -> partial[type[Self]] | Self:
@@ -187,8 +189,8 @@ class ConditionFunction(Generic[_Rule, _CP, _CH]):
     """
     
     if READTHEDOCS and not TYPE_CHECKING:
-        __new__.__annotations__["first_argument"] = Optional["name" | _ConditionTypeAlias]
-        evaluation_function : typing.Callable[[_Rule, "Context", _CP], _CH] | typing.Callable[["Context", _CP], _CH]
+        __new__.__annotations__["first_argument"] = Optional["str[name]" | _ConditionTypeAlias]
+        evaluation_function : typing.Callable[typing.Concatenate[_Rule, "Context", _CP], _CH] | typing.Callable[typing.Concatenate["Context", _CP], _CH]
     
     def __init__(self, 
                  evaluation_function: _CallableCondition[_Rule, _CP, _CH], 

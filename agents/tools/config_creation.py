@@ -539,7 +539,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         return new_config
     
     if READTHEDOCS and not TYPE_CHECKING:
-        # simplify for online
+        # simplify signature for online
         check_config.__wrapped__.__annotations__ = check_config.__annotations__ = {"config": "NestedConfigDict", 'strictness': 'int', 'as_dict_config': 'bool', "return": "Self"} # pylint: disable=protected-access, line-too-long
         
     @class_or_instance_method

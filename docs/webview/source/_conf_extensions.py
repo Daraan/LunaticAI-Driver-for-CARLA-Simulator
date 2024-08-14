@@ -1,6 +1,6 @@
 from inspect import Signature
 import re
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 from typing_extensions import Literal
 
 import docutils.nodes
@@ -65,7 +65,7 @@ def doctree_read_listener(app, doctree : "docutils.nodes.document"):
     check_doctree = None
     
 
-def _fix_node_targets(nodes : "list[docutils.nodes.Node]"):
+def _fix_node_targets(nodes : "Iterable[docutils.nodes.Node]"):
     for node in nodes:
         FileResolver.fix_taget_of_node(node)
 
@@ -259,12 +259,16 @@ _convert = {
 
 # autodoc-before-process-signature
 def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_method : bool):
-    """Process object signature"""
+    """
+    Process object signature
+    
+    Note: processes
+    """
     try:
+        # signature = sphinx.util.inspect.signature(obj, type_aliases=options.autodoc_type_aliases)
         signature: str | None | Signature = getattr(obj, "__signature__", None)
         if not signature:
             return
-
         for replace_th, new_hint in _convert.items():
             for keyword, typehint in obj.__annotations__.items():
                 if isinstance(typehint, str):
@@ -278,12 +282,6 @@ def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_m
                     signature.parameters[keyword]._annotation = signature.parameters[keyword]._annotation.replace(replace_th, new_hint)
                 else:
                     continue
-                
-        if not isinstance(signature, str):
-            #parameters = signature.parameters
-            
-            #signature = signature.replace(new_sig)
-            pass
             
         if bound_method and hasattr(obj, "__func__"):
             setattr(obj.__func__, "__signature__", signature)
@@ -304,6 +302,7 @@ def type_hint_cleaner(app : sphinx.application.Sphinx,
                       options : dict, 
                       signature : Optional[str], 
                       return_annotation : Optional[str]):
+    
     for replace_th, new_hint in _convert.items():
         if return_annotation:
             return_annotation = return_annotation.replace(replace_th, new_hint)

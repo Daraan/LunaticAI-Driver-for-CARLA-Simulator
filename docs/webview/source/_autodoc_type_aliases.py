@@ -26,6 +26,7 @@ autodoc_type_aliases = {
     
     'Annotated' : 'typing.Annotated',
     'ClassVar' : 'typing.ClassVar',
+    'Context' : 'classes.rule.Context',
     
     '_ActorList' : 'list',
     'Dict' : 'typing.Dict',

@@ -724,8 +724,7 @@ class LunaticAgent(BehaviorAgent):
             except LunaticAgentException as e:
                 if self.ctx.control is None:
                     raise ValueError("A VehicleControl object must be set on the agent when %s is raised during `._inner_step`" % type(e).__name__) from e
-   
-            
+            # assert ctx.control
             
             # ----------------------------
             # No known Phase multiple exit points
@@ -737,7 +736,7 @@ class LunaticAgent(BehaviorAgent):
             
             ctx = self.execute_phase(Phase.RSS_EVALUATION | Phase.BEGIN, prior_results=None, update_controls=planned_control)
             if AD_RSS_AVAILABLE and self.config.rss and self.config.rss.enabled:
-                rss_updated_controls = self._world_model.rss_check_control(ctx.control)
+                rss_updated_controls = self._world_model.rss_check_control(ctx.control) # type: ignore[arg-type]
             else:
                 rss_updated_controls = None
             # NOTE: rss_updated_controls could be None. 
@@ -827,9 +826,10 @@ class LunaticAgent(BehaviorAgent):
             # ----------------------------
 
             self.execute_phase(Phase.CAR_DETECTED | Phase.BEGIN, prior_results=vehicle_detection_result)
-            control = self.car_following_behavior(*vehicle_detection_result) # Optional[NoReturn]
+            control = self.car_following_behavior(*vehicle_detection_result) # type: ignore[arg-type]
+            # NOTE: might throw EmergencyStopException
             self.execute_phase(Phase.CAR_DETECTED | Phase.END, update_controls=control, prior_results=vehicle_detection_result)
-            return self.get_control()
+            return self.get_control()  # type: ignore[return-value]
         
         #TODO: maybe new phase instead of END or remove CAR_DETECTED and handle as rules (maybe better)
         self.execute_phase(Phase.DETECT_CARS | Phase.END, prior_results=None) # NOTE: avoiding tailgate here
@@ -920,7 +920,7 @@ class LunaticAgent(BehaviorAgent):
         else:
             logger.debug("Agent is already in execution phase.")
         # Set automatic control-related vehicle lights
-        final_control = self.get_control()
+        final_control : carla.VehicleControl = self.get_control()  # type: ignore[assignment]
         self._update_lights(final_control)
         self._vehicle.apply_control(final_control)
         self.execute_phase(Phase.EXECUTION | Phase.END, prior_results=final_control)
@@ -1000,8 +1000,8 @@ class LunaticAgent(BehaviorAgent):
         # note ego_vehicle_wp is the current waypoint self._current_waypoint
         detection_result = self.detect_obstacles_in_path(self.walkers_nearby)
         if (detection_result.obstacle_was_found
-            and (detection_result.distance - max(detection_result.obstacle.bounding_box.extent.y, 
-                                                 detection_result.obstacle.bounding_box.extent.x)
+            and (detection_result.distance - max(detection_result.obstacle.bounding_box.extent.y,  # pyright: ignore[reportOptionalMemberAccess]
+                                                 detection_result.obstacle.bounding_box.extent.x)  # pyright: ignore[reportOptionalMemberAccess]
                                            - max(self._vehicle.bounding_box.extent.y, 
                                                  self._vehicle.bounding_box.extent.x)
             < self.config.distance.emergency_braking_distance)):
@@ -1040,7 +1040,7 @@ class LunaticAgent(BehaviorAgent):
     # ----
 
     #@override
-    def add_emergency_stop(self, control, reasons:"set[str]"=None) -> carla.VehicleControl:
+    def add_emergency_stop(self, control: carla.VehicleControl, reasons:"Optional[set[str]]"=None) -> carla.VehicleControl:
         """
         Modifies the control values to perform an emergency stop.
         The steering remains unchanged to avoid going out of the lane during turns.
@@ -1048,7 +1048,7 @@ class LunaticAgent(BehaviorAgent):
         :param control: (carla.VehicleControl) control to be modified
         :param enable_random_steer: (bool, optional) Flag to enable random steering
         """
-        return self.emergency_manager(control, reasons)
+        return self.emergency_manager(reasons=reasons, control=control)
     
     def lane_change(self, direction: Literal['left', 'right'], same_lane_time=0, other_lane_time=0, lane_change_time=2):
         """
@@ -1243,7 +1243,7 @@ class LunaticAgent(BehaviorAgent):
         
     if READTHEDOCS or TYPE_CHECKING:
         # From the parent class, but without type-hints
-        def set_destination(self, end_location:carla.Location, start_location:carla.Location, clean_queue:bool=True) -> None:
+        def set_destination(self, end_location:carla.Location, start_location:Optional[carla.Location]=None, clean_queue:bool=True) -> None:
             ...
     
     def set_vehicle(self, vehicle:carla.Actor):
@@ -1387,16 +1387,16 @@ class LunaticAgent(BehaviorAgent):
             self._detection_matrix = None
         if self._collision_sensor:
             self._collision_sensor.destroy()
-            self._collision_sensor = None
+            self._collision_sensor = None  # type: ignore[assignment]
             
     def destroy(self):
         """Resets attributes and destroys helpers like the :py:class:`.DetectionMatrix`."""
         self._destroy_sensor()
-        self._world_model = None
-        self._world = None
+        self._world_model = None    # type: ignore[assignment]
+        self._world = None          # type: ignore[assignment]
         if self.ctx:
-            self.ctx.agent = None
-        self.ctx = None
+            self.ctx.agent = None   # type: ignore[assignment]
+        self.ctx = None             # type: ignore[assignment]
         try:
             self.all_vehicles.clear()
             self.vehicles_nearby.clear()

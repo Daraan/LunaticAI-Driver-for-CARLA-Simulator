@@ -59,6 +59,7 @@ class DynamicVehiclePIDController(VehiclePIDController):
         self._lat_controller = DynamicPIDLateralController(agent)
 
     def run_step(self, waypoint):
+        # type: (carla.Waypoint) -> carla.VehicleControl
         """
         Execute one step of control invoking both lateral and longitudinal
         PID controllers to reach a target waypoint

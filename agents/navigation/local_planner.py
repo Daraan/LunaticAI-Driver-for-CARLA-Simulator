@@ -19,20 +19,8 @@ from typing import NamedTuple
 
 class RoadOption(IntEnum):
     """
-    RoadOption represents the possible topological configurations when moving from a segment of lane to other.
-    if option == RoadOption.LEFT:  # Yellow
-        return carla.Color(128, 128, 0)
-    elif option == RoadOption.RIGHT:  # Cyan
-        return carla.Color(0, 128, 128)
-    elif option == RoadOption.CHANGELANELEFT:  # Orange
-        return carla.Color(128, 32, 0)
-    elif option == RoadOption.CHANGELANERIGHT:  # Dark Cyan
-        return carla.Color(0, 32, 128)
-    elif option == RoadOption.STRAIGHT:  # Gray
-        return carla.Color(64, 64, 64)
-    else:  # LANEFOLLOW
-        return carla.Color(0, 128, 0)  # Green / Void
-
+    RoadOption represents the possible topological configurations when 
+    moving from a segment of lane to other.
     """
     
     VOID = -1
