@@ -488,7 +488,13 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     stream = io.StringIO()
     yaml2.dump(data, stream)
     stream.seek(0)
-    return stream.read()
+    string = stream.read()
+    if "rss" in data:
+        start = string.find("use_stay_on_road_feature: ")
+        end = string.find("\n", start)
+        # quote On/Off
+        string = string[:start+len("use_stay_on_road_feature: ")] + "'" + string[start+len("use_stay_on_road_feature: "):end] + "'" + string[end:]
+    return string
             
 # --------------- Other Tools -----------------
 
