@@ -1,4 +1,6 @@
-from typing import Dict, List, Set, NamedTuple
+from __future__ import annotations
+
+from typing import Dict, List, Set, NamedTuple, Optional
 import carla
 import math
 import collections
@@ -118,7 +120,7 @@ def get_all_road_lane_ids(world_map : carla.Map):
     Returns:
         set: A set containing unique road and lane identifiers in the format "roadId_laneId".
     """
-    road_lane_ids : Set[str] = set()
+    road_lane_ids : Set[RoadLaneId] = set()
 
     # iterate through all waypoints in the world map
     for waypoint in world_map.generate_waypoints(1.0):
@@ -151,7 +153,8 @@ def distance(p1, p2):
     """
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2 + (p1.z - p2.z) ** 2)
 
-def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=False, ego_on_bad_highway_street=False):
+def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=False, ego_on_bad_highway_street=False) -> Optional[dict[str | tuple[int, int], list[int]]]:
+    # type: (carla.Location, set[RoadLaneId], carla.Map, bool, bool) -> Optional[dict[str | tuple[int, int], list[int]]]
     """
     Create a matrix representing the lanes around the ego vehicle.
 
@@ -160,7 +163,7 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
         road_lane_ids (list): A list of all road-lane identifiers of the map, where each identifier is a string in the format "roadId_laneId". 
             Format: ["1_2", "2_1", "3_2"].
         world_map (carla.Map): The map representing the environment.
-        ghost (bool): Ghost mode when ego is exiting/entrying a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
+        ghost (bool): Ghost mode when ego is exiting/entering a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
         ego_on_bad_highway_street (bool): Indicates that ego is on the right lane of a highway that is an exit/entry and accounts as another road_id
 
     Returns:
@@ -179,21 +182,21 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             }
     """
     # Get lane & road id for ego_vehicle
-    ego_vehilce_waypoint = world_map.get_waypoint(ego_vehicle_location)
-    ego_vehilce_lane_id = ego_vehilce_waypoint.lane_id
+    ego_vehicle_waypoint = world_map.get_waypoint(ego_vehicle_location)
+    ego_vehicle_lane_id = ego_vehicle_waypoint.lane_id
     #logger.info("ego_vehicle_lane_id: ", ego_vehilce_lane_id)
-    ego_vehilce_road_id = ego_vehilce_waypoint.road_id
+    ego_vehicle_road_id = ego_vehicle_waypoint.road_id
 
     # get all lanes of ego's road
     lanes = []
     for id in road_lane_ids:
-        if ego_vehilce_road_id == id[0]:
+        if ego_vehicle_road_id == id[0]:
             lanes.append(id[1])
     lanes.sort()
     lanes = [int(id) for id in lanes]
     
     # split lanes into directions & sort, e.g. [-2,-1,1,2] -> [[-2,-1],[2,1]]
-    lanes_splitted = []
+    lanes_splitted: list[list[int]] = []
     z = 0
     for i in range(1, len(lanes)):
         if lanes[i] == lanes[i - 1] - 1 or lanes[i] == lanes[i - 1] + 1:
@@ -208,12 +211,12 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
 
     # Initialize matrix and key_value_pairs
     matrix = None
-    key_value_pairs = None
+    key_value_pairs: Optional[list[tuple["str | tuple[int, int]", list[int]]]] = None
     other_direction = []
     ego_direction = []
     # Identify list of lanes of ego's direction and opposite direction
     for direction in lanes_splitted:
-        if ego_vehilce_lane_id in direction:
+        if ego_vehicle_lane_id in direction:
             ego_direction = direction
         else:
             other_direction = direction
@@ -224,19 +227,19 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                (ego_vehilce_road_id, ego_direction[3]),
+                (ego_vehicle_road_id, ego_direction[3]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, ego_direction[2]),
+                (ego_vehicle_road_id, ego_direction[2]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, ego_direction[1]),
+                (ego_vehicle_road_id, ego_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, ego_direction[0]),
+                (ego_vehicle_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -249,15 +252,15 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                (ego_vehilce_road_id, ego_direction[2]),
+                (ego_vehicle_road_id, ego_direction[2]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, ego_direction[1]),
+                (ego_vehicle_road_id, ego_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, ego_direction[0]),
+                (ego_vehicle_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("No_4th_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -271,19 +274,19 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("left_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                (ego_vehilce_road_id, other_direction[0]),
+                (ego_vehicle_road_id, other_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, other_direction[1]),
+                (ego_vehicle_road_id, other_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, ego_direction[1]),
+                (ego_vehicle_road_id, ego_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, ego_direction[0]),
+                (ego_vehicle_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -298,11 +301,11 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("No_opposing_direction", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("No_opposing_direction", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                (ego_vehilce_road_id, ego_direction[1]),
+                (ego_vehicle_road_id, ego_direction[1]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, ego_direction[0]),
+                (ego_vehicle_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -316,11 +319,11 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("left_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("No_opposing_direction", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                (ego_vehilce_road_id, other_direction[0]),
+                (ego_vehicle_road_id, other_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             (
-                (ego_vehilce_road_id, ego_direction[0]),
+                (ego_vehicle_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("No_own_right_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -336,7 +339,7 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
             ("No_other_right_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("No_opposing_direction", [3, 3, 3, 3, 3, 3, 3, 3]),
             (
-                (ego_vehilce_road_id, ego_direction[0]),
+                (ego_vehicle_road_id, ego_direction[0]),
                 [0, 0, 0, 0, 0, 0, 0, 0],
             ),
             ("No_own_right_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
@@ -352,14 +355,14 @@ def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=Fal
     if matrix and not ghost:
         try:
             if ego_on_bad_highway_street:
-                if int(ego_vehilce_lane_id) > 0:
-                    matrix[ego_vehilce_road_id, ego_vehilce_lane_id + 1][3] = 1
+                if int(ego_vehicle_lane_id) > 0:
+                    matrix[ego_vehicle_road_id, ego_vehicle_lane_id + 1][3] = 1
                 else:
-                    matrix[ego_vehilce_road_id, ego_vehilce_lane_id - 1][3] = 1
+                    matrix[ego_vehicle_road_id, ego_vehicle_lane_id - 1][3] = 1
             else:
-                matrix[ego_vehilce_road_id, ego_vehilce_lane_id][3] = 1
+                matrix[ego_vehicle_road_id, ego_vehicle_lane_id][3] = 1
         except KeyError:
-            matrix[ego_vehilce_road_id, ego_vehilce_lane_id][3] = 1
+            matrix[ego_vehicle_road_id, ego_vehicle_lane_id][3] = 1
     return matrix
 
 # NOTE: sub function of detect_surrounding_cars

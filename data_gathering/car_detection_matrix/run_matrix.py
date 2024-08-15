@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import matplotlib
 matplotlib.use('Agg')
 
 import threading
 import time
-from typing import Dict, List, TYPE_CHECKING
+from typing import Dict, List, TYPE_CHECKING, Any, Optional, Set
+from typing_extensions import TypedDict
 
-import asyncio
 import threading
 import time
 
@@ -16,21 +18,11 @@ import pylab
 import carla
 import pygame
 
-from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
+from launch_tools import CarlaDataProvider
+
+from data_gathering.car_detection_matrix.informationUtils import RoadLaneId, get_all_road_lane_ids
 from data_gathering.car_detection_matrix.matrix_wrap import wrap_matrix_functionalities
-
-from launch_tools import CarlaDataProvider, Literal
-
-async def matrix_function(ego_vehicle, world, world_map, road_lane_ids, result_queue):
-    """
-    :meta private:
-    """
-    while True:
-        matrix = wrap_matrix_functionalities(ego_vehicle, world, world_map, road_lane_ids)
-        # Put the matrix into the queue for access outside the thread
-        await result_queue.put(matrix)
-        await asyncio.sleep(1)
-
+        
 class DetectionMatrix:
     """Create a matrix representing the lanes around the ego vehicle."""
     
@@ -59,18 +51,21 @@ class DetectionMatrix:
                 
     """
     
-    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids=None):
-        self.ego_vehicle = ego_vehicle
-        self.world = world
+    
+    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids: Optional[Set[RoadLaneId]]=None):
+        self._ego_vehicle = ego_vehicle
+        self._world = world
         self.running = True
+        """If the matrix will perform updates."""
         self._sync = True
-        self.world_map = CarlaDataProvider.get_map()
-        self.road_lane_ids = road_lane_ids or get_all_road_lane_ids(CarlaDataProvider._map)
-        self.matrix : Dict[int, List[int]] = None
+        self._world_map = CarlaDataProvider.get_map()
+        self._road_lane_ids = road_lane_ids or get_all_road_lane_ids(CarlaDataProvider._map)
+        """A set containing unique road and lane identifiers in the format "roadId_laneId"."""
+        self.matrix = None  # type: ignore[assignment]
 
     def _calculate_update(self):
-        return wrap_matrix_functionalities(self.ego_vehicle, self.world, self.world_map,
-                                                         self.road_lane_ids)
+        return wrap_matrix_functionalities(self._ego_vehicle, self._world, self._world_map,
+                                                         self._road_lane_ids)
     
     def update(self) -> "Dict[int, List[int]] | None":
         """
@@ -94,9 +89,12 @@ class DetectionMatrix:
          
     def __del__(self):
         if self.running:
-            self.stop()
+            try:
+                self.stop()
+            except Exception:
+                pass
         
-    def to_list(self) -> "None | List[List[int]]":
+    def to_list(self) -> "None | list[list[int]]":
         """
         Returns the values of :py:attr:`matrix` as a list.
         """
@@ -104,19 +102,29 @@ class DetectionMatrix:
             return None
         return list(self.matrix.values())
     
-    def to_numpy(self) -> "None | np.ndarray":
+    def to_numpy(self) -> "None | np.ndarray[int, Any]":
         """
         Returns the values of :py:attr:`matrix` as a numpy array.
         """
         if self.matrix is None:
             return None
-        return np.array(self.to_list())  
+        return np.array(self.to_list())
     
-    def render(self, display : pygame.Surface, 
-               imshow_settings:dict={'cmap':'jet'},
+    if TYPE_CHECKING:
+        class RenderOptions(TypedDict, total=False, closed=True):
+            """Signature for :py:meth:`.DetectionMatrix.render`."""
+            imshow_settings: dict[str, Any]
+            vertical : bool
+            draw_values : bool
+            text_settings : dict[str, Any]
+            draw : bool
+    
+    def render(self,
+               display : pygame.Surface, 
+               imshow_settings: dict[str, Any]={'cmap':'jet'},
                vertical:bool=True, 
                draw_values:bool=True,
-               text_settings:dict={'color':'orange'},
+               text_settings:dict[str, Any]={'color':'orange'},
                *,
                draw:bool=True):
         """
@@ -124,11 +132,13 @@ class DetectionMatrix:
         
         :meta private:
         """
-        if self.matrix is None or not draw:
+        if not draw:
+            return
+        matrix = self.to_numpy() # lanes are horizontal, OneLane: left to right, Left Lane at the top.
+        if matrix is None:
             return
         ax : pylab.Axes
         fig, ax = pylab.subplots(figsize=(2, 2), dpi=100)
-        matrix = self.to_numpy() # lanes are horizontal, OneLane: left to right, Left Lane at the top.
         if vertical:
             matrix = np.rot90(matrix) # 1st/3rd perspective
         ax.imshow(matrix, **imshow_settings)
@@ -173,9 +183,8 @@ class AsyncDetectionMatrix(DetectionMatrix):
         
     # TODO: add signal handler to interrupt the thread faster
     
-    def update(self):
-        """Not Implemented"""
-        NotImplemented
+    def update(self) -> None:
+        """Not available in the async version."""
 
     def _worker(self):
         while self.running:

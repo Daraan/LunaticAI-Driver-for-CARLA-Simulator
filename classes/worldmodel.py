@@ -1,5 +1,8 @@
-# Official Example from examples/automatic-control.py
-# NOTE it might has to use synchonous_mode
+"""
+Interface classes between CARLA, the agent, and the user interface.
+"""
+# pyright: ignore[reportOptionalMemberAccess=warning]
+
 from collections.abc import Mapping
 import os
 import sys
@@ -15,8 +18,7 @@ from omegaconf import DictConfig, OmegaConf, open_dict
 import carla
 import pygame
 import numpy.random as random
-from agents.tools.config_creation import LaunchConfig
-from agents.tools._config_tools import RssRoadBoundariesMode
+from agents.tools.config_creation import LaunchConfig, RssLogLevel, RssRoadBoundariesMode
 from launch_tools import class_or_instance_method
 from classes.hud import HUD, get_actor_display_name
 
@@ -37,8 +39,9 @@ if TYPE_CHECKING:
     from hydra.conf import HydraConf
     from agents.lunatic_agent import LunaticAgent
     from agents.navigation.global_route_planner import GlobalRoutePlanner
-    from agents.tools.config_creation import LunaticAgentSettings, LaunchConfig, CameraConfig, RssRoadBoundariesModeAlias
+    from agents.tools.config_creation import LunaticAgentSettings, RssRoadBoundariesModeAlias
     from classes._sensor_interface import CustomSensorInterface
+    from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 
 from launch_tools.blueprint_helpers import get_actor_blueprints
 from launch_tools import CarlaDataProvider, Literal, carla_service
@@ -109,7 +112,7 @@ class AccessCarlaMixin:
 class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     clock : ClassVar[pygame.time.Clock] = None
     display : ClassVar[pygame.Surface] = None
-    controller: "weakref.ProxyType[RSSKeyboardControl]" # TODO: is proxy a good idea, must be set bound outside
+    controller: "weakref.ProxyType[RSSKeyboardControl] | RSSKeyboardControl"# TODO: is proxy a good idea, must be set bound outside
     
     traffic_manager : Optional[carla.TrafficManager] = None
     
@@ -145,12 +148,11 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         if not launch_config:
             launch_config = cls.initialize_hydra(logging=logging)
         if not logging and AD_RSS_AVAILABLE:
-            launch_config.agent.rss.log_level = "off"
+            launch_config.agent.rss.log_level = RssLogLevel.off
         cls.init_carla(launch_config)
         cls.init_pygame(launch_config)
         return cls(launch_config)
-        
-    
+
     # Hydra Tools
     # TODO: this could be some launch_tools MixinClass
     @staticmethod
@@ -368,7 +370,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_model.game_framework = weakref.proxy(self)
         return self.world_model
     
-    def make_controller(self, world_model, controller_class : "type[_ControllerClass]"=RSSKeyboardControl, **kwargs):
+    def make_controller(self, world_model: "WorldModel", controller_class: "type[_ControllerClass]"=RSSKeyboardControl, **kwargs):
         """
         Creates a keyboard controller and attaches it to the world model.
         
@@ -432,7 +434,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     # ----- Setters -----
     
-    def set_controller(self, controller:KeyboardControl) -> None:
+    def set_controller(self, controller: KeyboardControl) -> None:
         """
         Set the :py:class:`KeyboardControl`
         
@@ -458,9 +460,9 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_model.tick(self.clock) # NOTE: Ticks WorldMODEL not CARLA WORLD!
         self.world_model.render(self.display, finalize=False)
         self.controller.render(self.display)
-        dm_render_conf : CameraConfig.DetectionMatrixHudConfig = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
+        dm_render_conf : "DetectionMatrix.RenderOptions" = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
         if dm_render_conf and self.agent:
-            self.agent._render_detection_matrix(self.display, dm_render_conf)
+            self.agent._render_detection_matrix(self.display, **dm_render_conf)
         self.world_model.finalize_render(self.display)
         
     @staticmethod
@@ -495,9 +497,9 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_model = agent._world_model
         try:
             if self.world_model.controller: # weakref.proxy
-                self.controller = self.world_model.controller # type: ignore
+                self.controller = self.world_model.controller
         except ReferenceError:
-            self.controller = None                            # type: ignore
+            self.controller = None                            # type: ignore[assignment]
         if not self.controller:
             logger.debug("Creating new controller.")
             self.controller = self.make_controller(self.world_model, start_in_autopilot=self._args.autopilot) # hard reference # type: ignore
@@ -638,7 +640,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
 
     def __init__(self, config: "LunaticAgentSettings", 
                  args: Union["LaunchConfig", "Mapping[str, Any]", "os.PathLike[str]", str] ="./conf/launch_config.yaml", 
-                 agent:Optional["LunaticAgent"] = None, 
+                 agent: Optional["LunaticAgent"] = None, 
                  *, 
                  carla_world: Optional[carla.World] =None, 
                  player: Optional[carla.Vehicle] =None, 
@@ -651,11 +653,12 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             self.world = carla_world
         elif carla_world is not None and self.world != carla_world:
             raise ValueError("CarlaDataProvider.get_world() and passed `carla_world` are not the same.")
-        self.world_settings = self.world.get_settings()
         
-        # TEMP:
+        self.world_settings = self.world.get_settings()
+        """Object containing some data about the simulation such as synchrony between client and server or rendering mode."""
+        
         if agent:
-            agent._world_model = self
+            agent._world_model = self # backreference, if needed; the LunaticAgent sets this as well.
         
         if self.map is not None: # if this is set accesses CarlaDataProvider
             if map_inst and self.map != map_inst:
@@ -707,7 +710,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         """Set from :py:attr:`.LaunchConfig.rolename`"""
         
         self._actor_filter = self._args.filter
-        self._actor_generation = self._args.generation
+        self._actor_generation: Literal[1, 2, "all"] = self._args.generation
         self._gamma = self._args.camera.gamma
 
         # TODO: Unify with CameraManager
@@ -783,9 +786,10 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             carla.MapLayer.All
         ]
         # RSS
-        self.rss_sensor = None # set in restart
-        self.rss_unstructured_scene_visualizer = None
-        self.rss_bounding_box_visualizer = None
+        # set in restart
+        self.rss_sensor = None
+        self.rss_unstructured_scene_visualizer: RssUnstructuredSceneVisualizer = None # type: ignore[assignment]
+        self.rss_bounding_box_visualizer: RssBoundingBoxVisualizer = None  # type: ignore[assignment]
         
         if config.rss:
             if config.rss.enabled and not self._actor_filter.startswith("vehicle."):
@@ -811,7 +815,10 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             logger.error("Traffic light map is empty") # should not have happened
             CarlaDataProvider.prepare_map()
 
-    def rss_set_road_boundaries_mode(self, road_boundaries_mode: Optional[Union["RssRoadBoundariesModeAlias", "carla.RssRoadBoundariesMode"]]=None) -> None:
+    def rss_set_road_boundaries_mode(self, 
+                                     road_boundaries_mode: Optional[Union["RssRoadBoundariesModeAlias", 
+                                                                          "carla.RssRoadBoundariesMode",
+                                                                          bool]]=None) -> None:
         """
         Choose wether or not to use the RSS road boundaries feature.
         
@@ -917,7 +924,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             # Get a random blueprint.
             if self.player is None or self.camera_manager is not None:
                 # First pass without a player or second pass -> new player
-                blueprint : carla.ActorBlueprint = assure_type(carla.ActorBlueprint, random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))) # type: ignore
+                blueprint : carla.ActorBlueprint = assure_type(carla.ActorBlueprint, random.choice(get_actor_blueprints(self._actor_filter, self._actor_generation))) # type: ignore
                 blueprint.set_attribute('role_name', self.actor_role_name) # type: ignore
                 if blueprint.has_attribute('color'):
                     color = random.choice(blueprint.get_attribute('color').recommended_values)

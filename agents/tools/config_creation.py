@@ -24,6 +24,9 @@ __all__ = [
            
            "config_store",
            "AsDictConfig",
+           
+           "RssLogLevel",
+           "RssRoadBoundariesMode",
         ]
 
 # pyright: reportAttributeAccessIssue=warning
@@ -49,7 +52,15 @@ from omegaconf.errors import InterpolationKeyError, MissingMandatoryValue
 from hydra.conf import HydraConf
 
 from launch_tools import class_or_instance_method, Literal
-from classes.constants import Phase, RulePriority, RoadOption, AD_RSS_AVAILABLE
+from classes.constants import (Phase, RulePriority, RoadOption, AD_RSS_AVAILABLE, READTHEDOCS,
+                               
+                               # replacements when RSS is not available
+                               RssLogLevelStub, RssRoadBoundariesModeStub,
+                               # Correct Runtime Classes, carla.RssLogLevel or RssLogLevelStub
+                               RssLogLevel, RssRoadBoundariesMode,
+                               # Union Types for both cases
+                               RssLogLevelAlias, RssRoadBoundariesModeAlias,
+                               )
 from agents.tools.hints import CameraBlueprint
 from classes.rss_visualization import RssDebugVisualizationMode
 
@@ -69,11 +80,10 @@ from agents.tools._config_tools import (_T, _M, _NestedStrDict, ConfigType,
                                         
                                         AsDictConfig, extract_annotations, get_commented_yaml, 
                                         set_readonly_interpolations, set_readonly_keys,
-                                        RssLogLevelAlias, RssRoadBoundariesModeAlias, 
-                                        RssLogLevelStub, RssRoadBoundariesModeStub,
+
                                         config_path, config_store,
                                         
-                                        NestedConfigDict, MISSING as _MISSING)
+                                        NestedConfigDict, MISSING as _MISSING, _NOTSET)
 
 if TYPE_CHECKING:
     from classes.rule import Rule
@@ -93,13 +103,8 @@ if sys.version_info < (3, 9):
 
 # ---------- Globals --------------
 
-from agents.tools._config_tools import _NOTSET
-
 _WARN_LIVE_INFO = True
 """Warn about a possibly malformed live_info in the config."""
-
-READTHEDOCS = os.environ.get("READTHEDOCS", False)
-"""Whether the code is currently running on readthedocs."""
 
 _file_path = __file__
 """
@@ -308,9 +313,10 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                 masked_rules.append(clean_rule)
             cfg.rules = masked_rules # type: ignore[attr-defined]
             
-        container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
+        container: Dict[str, Any] = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True) # pyright: ignore[reportAssignmentType]
         if AD_RSS_AVAILABLE:
             def replace_carla_enum(content: _T) -> _T:
+                # retrieve name from the stubs
                 if isinstance(content, carla.RssLogLevel):
                     return RssLogLevelStub(content).name
                 if isinstance(content, carla.RssRoadBoundariesMode):
@@ -460,7 +466,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                 behavior = OmegaConf.structured(behavior, flags={"allow_objects": True})
             except Exception as e:
                 print(e)
-                breakpoint()
+                #breakpoint()
                 raise
         elif as_dictconfig == False and isinstance(behavior, DictConfig):
             return cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings) # pyright: ignore[reportCallIssue]
@@ -1044,14 +1050,12 @@ class BasicAgentObstacleSettings(AgentConfig):
     """
     Whether the agent should ignore stop signs
     
-    Warning: 
-        No usage implemented!
+    Attention: 
+        No usage implemented yet.
     
     Idea:
         Nearby landmarks from waypoints need to be retrieved
         and checked for stop signs.
-        
-    :meta private:
     """
     
     use_bbs_detection : bool = True
@@ -1488,10 +1492,10 @@ class RssSettings(AgentConfig):
     else:
         enabled = False
         
-        use_stay_on_road_feature : RssRoadBoundariesModeAlias = RssRoadBoundariesModeStub.On      # pyright: ignore[reportRedeclaration]
+        use_stay_on_road_feature : RssRoadBoundariesModeAlias = RssRoadBoundariesMode.On      # pyright: ignore[reportRedeclaration]
         """Use the RssRoadBoundariesMode. NOTE: A call to :py:meth:`.rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : RssLogLevelAlias = RssLogLevelStub.err                                        # pyright: ignore[reportRedeclaration]
+        log_level : RssLogLevelAlias = RssLogLevel.err                                        # pyright: ignore[reportRedeclaration]
         """Set the initial log level of the RSSSensor"""
         
     debug_visualization_mode: RssDebugVisualizationMode = RssDebugVisualizationMode.RouteOnly
@@ -1520,15 +1524,15 @@ class RssSettings(AgentConfig):
         else:
             if not isinstance(self.use_stay_on_road_feature, RssRoadBoundariesModeAlias):   # pyright: ignore[reportUnnecessaryIsInstance]  
                 if isinstance(self.use_stay_on_road_feature, str):
-                    self.use_stay_on_road_feature = RssRoadBoundariesModeStub[self.use_stay_on_road_feature]
+                    self.use_stay_on_road_feature = RssRoadBoundariesMode[self.use_stay_on_road_feature]
                 else:
-                    self.use_stay_on_road_feature = RssRoadBoundariesModeStub(bool(self.use_stay_on_road_feature))
+                    self.use_stay_on_road_feature = RssRoadBoundariesMode(bool(self.use_stay_on_road_feature))
             # other not accessed
             if not isinstance(self.log_level, RssLogLevelAlias):  # pyright: ignore[reportUnnecessaryIsInstance]  
                 if isinstance(self.log_level, str):
-                    self.log_level = RssLogLevelStub[self.log_level]
+                    self.log_level = RssLogLevel[self.log_level]
                 else:
-                    self.log_level = RssLogLevelStub(self.log_level)
+                    self.log_level = RssLogLevel(self.log_level)
 
 
 @config_path("agent/detection_matrix")
@@ -2127,8 +2131,11 @@ class LaunchConfig(AgentConfig):
     filter: str = "vehicle.*"
     """Filter for the ego blueprint. Kept for compatibility with carla examples."""
     
-    generation: int = 2
+    generation: Union[int, str] = 2  # pyright: ignore[reportRedeclaration]
     """Generation for the ego blueprint. Kept for compatibility with carla examples."""
+    
+    if READTHEDOCS or TYPE_CHECKING:
+        generation: Literal[1, 2, 'all']
     
     autopilot: bool = False
     """

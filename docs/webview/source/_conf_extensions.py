@@ -254,6 +254,8 @@ _convert = {
     '_ActorList' : 'list',
     'CallableAction' : autodoc_type_aliases["_ActionType"],
     'ConditionFunctionLike[Self, _P, _H]' : autodoc_type_aliases["_ConditionType"],
+    'NoReturn' : 'typing.NoReturn',
+    'Iterable' : 'typing.Iterable',
 }
 
 
@@ -289,9 +291,10 @@ def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_m
             setattr(obj, "__signature__", signature)
     except Exception as e:
         print("Error in before_type_hint_cleaner", e)
-        breakpoint()
+        #breakpoint()
 
 import re
+
 
 # autodoc-process-signature
 def type_hint_cleaner(app : sphinx.application.Sphinx, 
@@ -307,9 +310,6 @@ def type_hint_cleaner(app : sphinx.application.Sphinx,
         if return_annotation:
             return_annotation = return_annotation.replace(replace_th, new_hint)
         if signature:
-            if "_ActorList" in signature:
-                print("Signature:", signature)
-                breakpoint()
             signature = signature.replace(replace_th, new_hint)
 
     return signature, return_annotation

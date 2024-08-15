@@ -1,3 +1,4 @@
+# pyright: strict
 # pyright: reportUnnecessaryIsInstance=information
 # pyright: reportPrivateUsage=false
 # pyright: reportTypeCommentUsage=none
@@ -18,8 +19,9 @@ from shapely.geometry import Polygon
 from functools import partial, wraps
 
 import carla
+from classes._type_protocols import HasBaseSettings, AgentConfigT
 from classes.constants import RoadOption
-from agents.tools.config_creation import AgentConfig, LunaticAgentSettings
+from agents.tools.config_creation import AgentConfig 
 from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import (is_within_distance,
                                compute_distance)
@@ -29,7 +31,7 @@ from classes.constants import Phase
 from classes.exceptions import EmergencyStopException, LunaticAgentException
 from launch_tools import CarlaDataProvider, Literal
 from typing import TYPE_CHECKING, Any, Callable, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
-from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never
+from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never, Protocol
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
@@ -42,6 +44,8 @@ if sys.version_info >= (3, 8):
     _AgentFunction = Callable[Concatenate["LunaticAgent", _P], _T]
 else:
     _AgentFunction = Callable[[Concatenate["LunaticAgent", _P]], _T]
+    
+_C = TypeVar("_C", bound=Callable[..., Any])
 
 # ------------------------------
 # Decorators
@@ -136,7 +140,7 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
         if on_enter is None and on_exit is None:
             print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
                     "decorator for function %s. Ignoring decorator." % func.__name__)
-            if TYPE_CHECKING: assert_never(func)
+            if TYPE_CHECKING: assert_never(func) # we ignore this # pyright: ignore
             return func
         @wraps(func)
         def wrapper(self: "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
@@ -349,6 +353,10 @@ def detect_vehicles(self: "LunaticAgent",
             continue
 
         target_wpt = CarlaDataProvider.get_map().get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
+        if not target_wpt:
+            logger.warning("No waypoint found for the checked obstacle."
+                           "This might be a bug in the map but ok for static obstacles.")
+            continue
 
         # General approach for junctions and vehicles invading other lanes due to the offset
         if (use_bbs or target_wpt.is_junction) and route_polygon:
@@ -384,17 +392,17 @@ def detect_vehicles(self: "LunaticAgent",
                 return ObstacleDetectionResult(True, 
                                                target_vehicle, 
                                                compute_distance(target_rear_transform.location,
-                                                                ego_front_transform.location)) # type: ignore[arg-type]
+                                                                ego_front_transform.location))
 
     return ObstacleDetectionResult(False, None, -1)
 
 # Untested
-detect_vehicles_in_front = partial(detect_vehicles, up_angle_th=90, low_angle_th=0)
+detect_obstacles_in_front = partial(detect_vehicles, up_angle_th=90, low_angle_th=0)
 """
 :py:func:`.detect_vehicles` with the default parameters for detecting vehicles in front of the agent.
 """
 
-detect_vehicles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th=160)
+detect_obstacles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th=160)
 """
 :py:func:`.detect_vehicles` with the default parameters for detecting vehicles behind the agent.
 """
@@ -503,9 +511,8 @@ def generate_lane_change_path(waypoint : carla.Waypoint,
         plan.append((next_wp, RoadOption.LANEFOLLOW))
 
     return plan
-
     
-def create_agent_config(self: "LunaticAgent", 
+def create_agent_config(self: "HasBaseSettings[AgentConfigT]", 
                         source: Union["type[AgentConfig]", AgentConfig, DictConfig, str, None]=None, 
                         world_model: Optional["WorldModel"]=None, 
                         overwrite_options: Optional[Dict[str, Any]]=None):
@@ -513,7 +520,7 @@ def create_agent_config(self: "LunaticAgent",
     Method to create the :py:class:`.AgentConfig` from different input types.
     
     Parameters:
-        self: The agent
+        self (LunaticAgent): The agent
         source:
             - :code:`None` takes the config from the **world model** if available.
             - :py:class:`.AgentConfig` (class or instance) to be used.
@@ -535,26 +542,45 @@ def create_agent_config(self: "LunaticAgent",
         logger.debug("Creating config from yaml file")
         opt_dict = self.BASE_SETTINGS.from_yaml(source)
     elif isinstance(source, AgentConfig) or isclass(source) and issubclass(source, AgentConfig): # pyright: ignore[reportUnnecessaryIsInstance]
-        logger.info("Config is a dataclass / AgentConfig")
+        logger.debug("Config is a dataclass / AgentConfig")
         _cfg = source.to_dict_config()
         _cfg.merge_with(overwrite_options) # Note uses DictConfig.update
         opt_dict = assure_type(source.__class__, _cfg)
     elif isinstance(source, DictConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
-        logger.info("Config is a DictConfig")
+        logger.debug("Config is a DictConfig")
         source.merge_with(overwrite_options)
         opt_dict = self.BASE_SETTINGS.cast(source)
     elif isclass(source):
-        logger.info("Config is a class using, instance of it")
+        logger.warning("Config is a class of type %s but not an AgentConfig, this is unexpected.",
+                       type(source))
         opt_dict  = assure_type(source, source(**overwrite_options))
     elif not overwrite_options:
-        logger.warning("Warning: Settings are not a supported Config class")
+        logger.warning("Settings of type %s are not a supported Config class", type(source))
         opt_dict = source  # assume the user passed something appropriate
     else:
-        logger.warning("Warning: Settings are not a supported Config class. Trying to apply overwrite options.")
+        logger.warning("Warning: Settings of type %s are not an instance of a supported class. "
+                       "Trying to apply overwrite options.", type(source))
         source.update(overwrite_options) 
         opt_dict = source  # assume the user passed something appropriate
     if isinstance(opt_dict, DictConfig):
         opt_dict._set_flag("allow_objects", True) # noqa # pyright: ignore[reportPrivateUsage]
         opt_dict.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
-    cfg = opt_dict
-    return self.BASE_SETTINGS.cast(cfg)
+    cfg = opt_dict  # pyright: ignore[reportUnknownVariableType]
+    return self.BASE_SETTINGS.cast(cfg)  # duck-type it
+
+
+# ------------------------------
+
+# hack to replace the function    
+def replace_with(func: _C) -> Callable[..., _C]:
+    """
+    Decorator that exchanges the decorated function by the wrapped function.
+    
+    Warning:
+        This is a hack to make the decorated function the identical to the
+        function in the argument.
+        The decorated function will be lost and will not be called!
+    """
+    def decorator(*args: Any, **kwargs: Any) -> _C:
+        return func
+    return decorator

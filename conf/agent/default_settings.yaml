@@ -156,8 +156,8 @@ obstacles:
 
   # Whether the agent should ignore stop signs
   #  
-  # Warning: 
-  #     No usage implemented!
+  # Attention: 
+  #     No usage implemented yet.
   #  
   # Idea:
   #     Nearby landmarks from waypoints need to be retrieved
@@ -385,7 +385,7 @@ rss:
   # NOTE: Initializing with False and changing it to True is not supported.
   # If RSS is not available (no ad-rss library) this will be set to False.
   enabled: true
-  use_stay_on_road_feature: On
+  use_stay_on_road_feature: 'On'
   log_level: err
   # Sets the visualization mode that should be rendered on the screen.
   debug_visualization_mode: RouteOnly

@@ -31,6 +31,8 @@ autodoc_type_aliases = {
     '_ActorList' : 'list',
     'Dict' : 'typing.Dict',
     'Phase' : 'classes.constants.Phase',
+    'NoReturn' : 'typing.NoReturn',
+    'Iterable' : 'typing.Iterable',
 }
 
 autodoc_type_aliases["_ActionTypeAlias"] = autodoc_type_aliases["_ActionType"]

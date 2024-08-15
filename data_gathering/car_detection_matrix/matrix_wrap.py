@@ -1,9 +1,9 @@
 import carla
 
-from data_gathering.car_detection_matrix.informationUtils import check_ego_on_highway, create_city_matrix, detect_surrounding_cars, log
+from data_gathering.car_detection_matrix.informationUtils import RoadLaneId, check_ego_on_highway, create_city_matrix, detect_surrounding_cars, log
 from classes.constants import StreetType
 
-def wrap_matrix_functionalities(ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids,
+def wrap_matrix_functionalities(ego_vehicle : carla.Actor, world : carla.World, world_map : carla.Map, road_lane_ids: "set[RoadLaneId]",
                                 radius=100, highway_shape=None):
     ego_location = ego_vehicle.get_location()
     ego_waypoint = world_map.get_waypoint(ego_location)

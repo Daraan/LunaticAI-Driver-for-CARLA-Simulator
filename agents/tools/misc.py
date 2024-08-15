@@ -62,7 +62,7 @@ def get_speed(vehicle, kmh=True, vel=None):
     return vel
 
 
-def get_trafficlight_trigger_location(traffic_light: carla.TrafficLight):
+def get_trafficlight_trigger_location(traffic_light: carla.TrafficLight) -> carla.Location:
     """
     Calculates the yaw of the waypoint that represents the trigger volume of the traffic light
     """
@@ -130,7 +130,7 @@ def is_within_distance(target_transform, reference_transform, max_distance, angl
 
 
 def compute_magnitude_angle(target_location, current_location, orientation):
-    # type: (carla.Location, carla.Location, float) -> tuple[float, float]
+    # type: (carla.Vector3D, carla.Vector3D, float) -> tuple[float, float]
     """
     Compute relative angle and distance between a target_location and a current_location
 
@@ -164,7 +164,7 @@ def distance_vehicle(waypoint, vehicle_transform):
 
 
 def vector(location_1, location_2):
-    # type: (carla.Location, carla.Location) -> list[float]
+    # type: (carla.Vector3D, carla.Vector3D) -> list[float]
     """
     Returns the unit vector from location_1 to location_2
 
@@ -178,8 +178,8 @@ def vector(location_1, location_2):
     return [x / norm, y / norm, z / norm] # type: ignore
 
 
-def compute_distance(location_1, location_2):
-    # type: (carla.Location, carla.Location) -> float
+
+def compute_distance(location_1: carla.Vector3D, location_2: carla.Vector3D) -> float:
     """
     Euclidean distance between 3D points
 
@@ -193,7 +193,6 @@ def compute_distance(location_1, location_2):
 
 
 def positive(num):
-    # type: (float) -> float
     """
     Return the given number if positive, else 0
 

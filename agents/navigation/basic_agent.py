@@ -171,6 +171,7 @@ class BasicAgent(object):
         self._local_planner.set_global_plan(route_trace, clean_queue=clean_queue)
         
     def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
+        # type: (list[tuple[carla.Waypoint, RoadOption]], bool, bool) -> None
         """
         Adds a specific plan to the agent.
 

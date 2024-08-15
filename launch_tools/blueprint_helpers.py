@@ -1,7 +1,7 @@
-from typing import List, Optional, Tuple, TYPE_CHECKING
-from typing_extensions import Annotated
+from typing import List, Optional, Tuple, Union
+from typing_extensions import Annotated, Literal, overload
 
-from launch_tools import CarlaDataProvider, Literal
+from launch_tools import CarlaDataProvider
 
 import carla
 
@@ -53,9 +53,13 @@ def get_contrasting_blueprints(ego_vehicle: str="vehicle.lincoln.mkz_2020",
     ego_bp.set_attribute('role_name', 'hero')
     return ego_bp, car_blueprint
 
+@overload
+def get_actor_blueprints(filter: str, generation: Literal['all']) -> carla.BlueprintLibrary: ...
 
-def get_actor_blueprints(world: "carla.World", filter: str,
-                         generation: "Literal[1, 2, 'all']") -> List["carla.ActorBlueprint"]:
+@overload
+def get_actor_blueprints(filter: str, generation: Literal[1, 2]) -> List[carla.ActorBlueprint]: ...
+
+def get_actor_blueprints(filter: str, generation: Literal[1, 2, 'all']) -> Union[List["carla.ActorBlueprint"], carla.BlueprintLibrary]:
     """
     Returns a list of actor blueprints filtered by the given filter and generation.
 
@@ -75,7 +79,7 @@ def get_actor_blueprints(world: "carla.World", filter: str,
     # If the filter returns only one bp, we assume that this one needed
     # and therefore, we ignore the generation
     if len(bps) == 1:
-        return bps
+        return [bps[0]]
 
     try:
         int_generation = int(generation)

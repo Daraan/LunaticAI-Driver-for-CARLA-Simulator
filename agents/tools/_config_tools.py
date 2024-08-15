@@ -23,10 +23,9 @@ from omegaconf import MISSING, DictConfig, ListConfig, MissingMandatoryValue, Om
 from omegaconf._utils import is_structured_config
 from hydra.core.config_store import ConfigStore
 
-from classes.constants import AD_RSS_AVAILABLE
 from launch_tools import ast_parse
 
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Union, cast, get_type_hints
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast, get_type_hints
 from typing_extensions import TypeAlias, TypeVar, Self, TypeAliasType
 
 if TYPE_CHECKING:
@@ -166,6 +165,7 @@ def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
 
 
 _NOTSET = object()
+"""Sentinel value for not set default values."""
 
 # ----- Type Annotations -----
 
@@ -242,89 +242,6 @@ else:
     DictConfigAlias : TypeAlias = Dict[str, Any]
     OverwriteDictTypes : TypeAlias = Dict[str, Dict[str, Any]]
     _DictConfigLike = object
-
-
-# Boost.Python.enum cannot be used as annotations for omegaconf, replacing them by real enums,
-# Functional API is easier to create but cannot be used as type hints
-if AD_RSS_AVAILABLE:
-    RssRoadBoundariesModeAliasX = IntEnum("RssRoadBoundariesModeAlias",  # pyright: ignore[reportRedeclaration]
-                                         {str(name):value for value, name in carla.RssRoadBoundariesMode.values.items()}, module=__name__) 
-    RssLogLevelAliasX = IntEnum("RssLogLevelAlias",      # pyright: ignore[reportRedeclaration]
-                               {str(name):value for value, name in carla.RssLogLevel.values.items()}, module=__name__)
-    """Enum for RSS Road Boundaries Mode"""
-
-    for value, name in carla.RssRoadBoundariesMode.values.items():
-        assert RssRoadBoundariesModeAliasX[str(name)] == value   # pyright: ignore[reportIndexIssue]
-        
-    for value, name in carla.RssLogLevel.values.items():
-        assert RssLogLevelAliasX[str(name)] == value             # pyright: ignore[reportIndexIssue]
-else:
-    # primitive type at runtime without RSS
-    RssLogLevelAliasX = Union[int, str]
-    RssRoadBoundariesModeAliasX = Union[int, str, bool]
-    
-
-
-class __CarlaIntEnum(IntEnum):
-    """
-    CARLA's Enums have a `values` entry that is not part of the python enum.Enum class.
-    This abstract class adds this method.
-    """
-        
-    values : ClassVar[Dict[int, Self]]
-    names  : ClassVar[Dict[str, Self]]
-    
-    def __init_subclass__(cls):
-        cls.values : dict[int, cls]
-        cls.names  : dict[str, cls]
-    
-class RssLogLevelStub(__CarlaIntEnum):
-    """Enum declaration used in carla.RssSensor to set the log level."""
-    trace = 0
-    debug = 1
-    info = 2
-    warn = 3
-    err = 4
-    critical = 5
-    off = 6
-    
-class RssRoadBoundariesModeStub(__CarlaIntEnum):
-    """
-    Enum declaration used in carla.RssSensor to enable or disable the stay on road feature. 
-    In summary, this feature considers the road boundaries as virtual objects.
-    The minimum safety distance check is applied to these virtual walls, 
-    in order to make sure the vehicle does not drive off the road. 
-    """
-    Off = 0
-    On = 1
-
-if AD_RSS_AVAILABLE:
-    for value, name in carla.RssRoadBoundariesMode.values.items():
-        assert RssRoadBoundariesModeStub[str(name)] == value
-        
-    for value, name in carla.RssLogLevel.values.items():
-        assert RssLogLevelStub[str(name)] == value
-    
-if TYPE_CHECKING:
-    RssLogLevelAlias: TypeAlias = Union[carla.RssLogLevel, RssLogLevelStub]
-    RssRoadBoundariesModeAlias: TypeAlias = Union[carla.RssRoadBoundariesMode, RssRoadBoundariesModeStub]
-# Correct at Runtime, correct time needed for OmegaConf
-elif AD_RSS_AVAILABLE:
-    RssLogLevelAlias = carla.RssLogLevel
-    RssRoadBoundariesModeAlias = carla.RssRoadBoundariesMode
-else:
-    RssLogLevelAlias = RssLogLevelStub
-    RssRoadBoundariesModeAlias = RssRoadBoundariesModeStub
-
-# Non type variant
-if AD_RSS_AVAILABLE:
-    RssLogLevel = carla.RssLogLevel
-    RssRoadBoundariesMode = carla.RssRoadBoundariesMode
-else:
-    RssLogLevel = RssLogLevelStub
-    RssRoadBoundariesMode = RssRoadBoundariesModeStub
-
-
 
 # --------------- YAML Export -----------------
 

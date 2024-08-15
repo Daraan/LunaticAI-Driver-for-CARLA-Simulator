@@ -8,18 +8,11 @@ In this module defines enums and constants that are used throughout the project.
 import os
 from enum import Enum, Flag, IntEnum, auto
 from functools import lru_cache, reduce
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, Dict, Union
+from typing_extensions import Self, TypeAlias, TypedDict
 
 import carla
 
-try:
-    from typing import TypedDict
-except ImportError:
-    from typing_extensions import TypedDict
-
-if TYPE_CHECKING:
-    from agents.tools.hints import TrafficLightDetectionResult
-    from classes.rule import Rule, Context # pylint: disable=unused-import # both are explicitly set
     
 AD_RSS_AVAILABLE : bool
 """
@@ -55,49 +48,52 @@ Values:
 :meta private:
 """
 
-
-class RuleResult(Enum):
-    """Special :python:`objects` that indicate special return values"""
+class AgentState(Flag):
+    DRIVING = auto()   #: :meta hide-value:
+    STOPPED = auto()   #: :meta hide-value:
+    _parked = auto()   # hidden it to avoid confusion, used further down for PARKED
     
-    NO_RESULT = object()
+    BLOCKED_BY_VEHICLE = auto()    #: :meta hide-value:
+    BLOCKED_RED_LIGHT = auto()     #: :meta hide-value:
+    BLOCKED_BY_STATIC = auto()
     """
-    Indicates the the rule returned no result, e.g. because an exception was raised.
+    Static obstacle. Not updated by the information manager but in the :py:attr:`Phase.DETECT_STATIC_OBSTACLES` phase.
     
     :meta hide-value:
     """
     
-    NOT_APPLICABLE = object()
+    BLOCKED_OTHER = auto()          #: :meta hide-value:
+    
+    REVERSE = auto()                #: :meta hide-value:
+    
+    OVERTAKING = auto()             #: :meta hide-value:
+    
+    AGAINST_LANE_DIRECTION = auto() #: :meta hide-value:
+    
+    PARKED = _parked | STOPPED # we want this to be a combination of the two
+    """Includes :py:attr:`STOPPED`"""
+    
+    BLOCKED = BLOCKED_OTHER | BLOCKED_BY_VEHICLE | BLOCKED_RED_LIGHT | BLOCKED_BY_STATIC
     """
-    Object that indicates that no action was executed, e.g. because the rule is on cooldown or blocked.
+    Combination of :python:`BLOCKED_OTHER | BLOCKED_BY_VEHICLE | BLOCKED_RED_LIGHT | BLOCKED_BY_STATIC`
     
     :meta hide-value:
     """
+    
+    # Maybe more states like CAR_IN_FRONT <- data matrix
 
-class StreetType(str, Enum):
-    """Used by the :py:class:`.DetectionMatrix` to interpret the street type."""
-    
-    ON_HIGHWAY = "On highway"
-    NON_HIGHWAY_STREET = "Non highway street"
-    ON_JUNCTION = "On junction"
-    ON_HIGHWAY_ENTRY = "On highway entry"
-    ON_HIGHWAY_EXIT = "On highway exit"
-    JUNCTION_AHEAD = "Junction ahead"
-    HIGHWAY_TRAFFIC_LIGHT = "Highway traffic light"
-    HIGHWAY_WITH_ENTRY_AND_EXIT = "Highway with entry/exit"
-    
-class StreetOccupation(IntEnum):
+
+class RulePriority(IntEnum):
     """
-    Enum to interpret the results of the :py:class:`DetectionMatrix`
+    Priority of a :py:class:`Rule <classes.rule.Rule>`. The higher a value, the higher the priority.
+    Rules are sorted by their priority before being applied.
     """
-    NO_CAR = 0
-    EGO = 1
-    CAR = 2
-    NO_ROAD = 3
-    
-    def __str__(self) -> str:
-        s = super().__str__()
-        return f"{s:^7}" # center the word
-        
+    NULL = 0
+    LOWEST = 1
+    LOW = 2
+    NORMAL = 4
+    HIGH = 8
+    HIGHEST = 16
 
 class Phase(Flag):
     """
@@ -400,7 +396,7 @@ class Phase(Flag):
     def next_phase(self):
         """
         Note:
-            This function is more for debugging and testing purposes,
+            This function is more for >>debugging<< and testing purposes,
             because of different control flows in the agent, the next phase
             might not be accurate.
             
@@ -445,7 +441,6 @@ class Phase(Flag):
         """
         :meta private:
         """
-        
         user_phases = cls.APPLY_MANUAL_CONTROLS, cls.EXECUTION, cls.TERMINATING, cls.CUSTOM_CYCLE
         assert all(p & cls.USER_CONTROLLED for p in user_phases)
         return user_phases
@@ -476,7 +471,10 @@ class Phase(Flag):
     @lru_cache(1)  # < Python3.8
     def get_exceptions(cls) -> "list[Phase]":
         """
-        Returns the :py:attr:`BEGIN` and :py:attr:`END` combinations of the exceptions.
+        Returns the :py:attr:`BEGIN` and :py:attr:`END` combinations of the exceptions that
+        do not follow the normal loop.
+        
+        :meta private:
         """
          # TODO: Get this from EXCEPTIONS
         exceptions = [cls.TURNING_AT_JUNCTION, cls.HAZARD, cls.EMERGENCY, cls.COLLISION, cls.CAR_DETECTED, cls.DONE]
@@ -575,18 +573,7 @@ class HazardSeverity(Flag):
     Includes :py:attr:`WARNING` and :py:attr:`CRITICAL`
     """
 
-class RulePriority(IntEnum):
-    """
-    Priority of a :py:class:`Rule <classes.rule.Rule>`. The higher a value, the higher the priority.
-    Rules are sorted by their priority before being applied.
-    """
-    NULL = 0
-    LOWEST = 1
-    LOW = 2
-    NORMAL = 4
-    HIGH = 8
-    HIGHEST = 16
-
+# ----------------- RoadOptions -----------------
 
 if TYPE_CHECKING:
     # For type-checkers these classes should be the same.
@@ -647,18 +634,17 @@ else:
         
         :meta hide-value:
         """
-    
 
 
-
-class __ItemAccess(type): # noqa
+class __ItemAccessMeta(type):  # noqa
+    """Class that allows item access on the class."""
     def __getitem__(cls, key : str) -> carla.Color:
         return getattr(cls, key)
     
     def __call__(cls, option: "RoadOption") -> carla.Color:
         return getattr(cls, option.name)
 
-class RoadOptionColor(metaclass=__ItemAccess):
+class RoadOptionColor(metaclass=__ItemAccessMeta):
     """
     Points to a :py:class:`carla.Color` object that represents the color of the road option.
     
@@ -713,41 +699,118 @@ class RoadOptionColor(metaclass=__ItemAccess):
     
     :meta hide-value:
     """
-    
-    
-    
-class AgentState(Flag):
-    DRIVING = auto()   #: :meta hide-value:
-    STOPPED = auto()   #: :meta hide-value:
-    _parked = auto()   # hidden it to avoid confusion, used further down for PARKED
-    
-    BLOCKED_BY_VEHICLE = auto()    #: :meta hide-value:
-    BLOCKED_RED_LIGHT = auto()     #: :meta hide-value:
-    BLOCKED_BY_STATIC = auto()
+
+
+# ----------------- RSS -----------------
+# depending on availability of the carla.ad module
+
+# Stub classes that are alike
+class _CarlaIntEnum(IntEnum):
     """
-    Static obstacle. Not updated by the information manager but in the :py:attr:`Phase.DETECT_STATIC_OBSTACLES` phase.
-    
-    :meta hide-value:
+    CARLA's Enums have a `values` entry that is not part of the python enum.Enum class.
+    This abstract class adds this method.
     """
-    
-    BLOCKED_OTHER = auto()          #: :meta hide-value:
-    
-    REVERSE = auto()                #: :meta hide-value:
-    
-    OVERTAKING = auto()             #: :meta hide-value:
-    
-    AGAINST_LANE_DIRECTION = auto() #: :meta hide-value:
-    
-    PARKED = _parked | STOPPED # we want this to be a combination of the two
-    """Includes :py:attr:`STOPPED`"""
-    
-    BLOCKED = BLOCKED_OTHER | BLOCKED_BY_VEHICLE | BLOCKED_RED_LIGHT | BLOCKED_BY_STATIC
+
+    values : ClassVar[Dict[int, Self]]
+    names  : ClassVar[Dict[str, Self]]
+
+    def __init_subclass__(cls):
+        cls.values : dict[int, cls]
+        cls.names  : dict[str, cls]
+
+
+class RssLogLevelStub(_CarlaIntEnum):
+    """Enum declaration used in carla.RssSensor to set the log level."""
+    trace = 0
+    debug = 1
+    info = 2
+    warn = 3
+    err = 4
+    critical = 5
+    off = 6
+
+
+class RssRoadBoundariesModeStub(_CarlaIntEnum):
     """
-    Combination of :python:`BLOCKED_OTHER | BLOCKED_BY_VEHICLE | BLOCKED_RED_LIGHT | BLOCKED_BY_STATIC`
-    
-    :meta hide-value:
+    Enum declaration used in carla.RssSensor to enable or disable the stay on road feature. 
+    In summary, this feature considers the road boundaries as virtual objects.
+    The minimum safety distance check is applied to these virtual walls, 
+    in order to make sure the vehicle does not drive off the road. 
     """
-    
-    # Maybe more states like CAR_IN_FRONT <- data matrix
+    Off = 0
+    On = 1
+
+# assert that the stubs are correct
+if AD_RSS_AVAILABLE:
+    for value, name in carla.RssRoadBoundariesMode.values.items():
+        assert RssRoadBoundariesModeStub[str(name)] == value
         
+    for value, name in carla.RssLogLevel.values.items():
+        assert RssLogLevelStub[str(name)] == value
+    
+if TYPE_CHECKING:
+    RssLogLevelAlias: TypeAlias = Union[carla.RssLogLevel, RssLogLevelStub]
+    RssRoadBoundariesModeAlias: TypeAlias = Union[carla.RssRoadBoundariesMode, RssRoadBoundariesModeStub]
+# Correct at Runtime, correct time needed for OmegaConf
+elif AD_RSS_AVAILABLE:  # noqa
+    RssLogLevelAlias = carla.RssLogLevel
+    RssRoadBoundariesModeAlias = carla.RssRoadBoundariesMode
+else:
+    RssLogLevelAlias = RssLogLevelStub
+    RssRoadBoundariesModeAlias = RssRoadBoundariesModeStub
+
+# Non type variant
+if AD_RSS_AVAILABLE:
+    RssLogLevel = carla.RssLogLevel
+    RssRoadBoundariesMode = carla.RssRoadBoundariesMode
+else:
+    RssLogLevel = RssLogLevelStub
+    RssRoadBoundariesMode = RssRoadBoundariesModeStub
+
+#  ----------------- RuleResult -----------------
+    
+class RuleResult(Enum):
+    """Special :python:`objects` that indicate special return values a :py:class:`.Rule`"""
+    
+    NO_RESULT = object()
+    """
+    Indicates the the rule returned no result, e.g. because an exception was raised.
+    
+    :meta hide-value:
+    """
+    
+    NOT_APPLICABLE = object()
+    """
+    Object that indicates that no action was executed, e.g. because the rule is on cooldown or blocked.
+    
+    :meta hide-value:
+    """
+ 
+# ----------------- DetectionMatrix -----------------
+
+class StreetType(str, Enum):
+    """Used by the :py:class:`.DetectionMatrix` to interpret the street type."""
+    
+    ON_HIGHWAY = "On highway"
+    NON_HIGHWAY_STREET = "Non highway street"
+    ON_JUNCTION = "On junction"
+    ON_HIGHWAY_ENTRY = "On highway entry"
+    ON_HIGHWAY_EXIT = "On highway exit"
+    JUNCTION_AHEAD = "Junction ahead"
+    HIGHWAY_TRAFFIC_LIGHT = "Highway traffic light"
+    HIGHWAY_WITH_ENTRY_AND_EXIT = "Highway with entry/exit"
+    
+class StreetOccupation(IntEnum):
+    """
+    Enum to interpret the results of the :py:class:`DetectionMatrix`
+    """
+    NO_CAR = 0
+    EGO = 1
+    CAR = 2
+    NO_ROAD = 3
+    
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f"{s:^7}" # center the word
+    
 

@@ -20,7 +20,7 @@ from typing import (Any, ClassVar, FrozenSet, List, Set, Tuple, TypeVar, Union, 
                     Callable, Optional, Dict, Hashable, TYPE_CHECKING, cast)
 from typing_extensions import (overload, TypeAlias, Self, ParamSpec, Annotated, Concatenate,
                                TypedDict, Literal, NoReturn, Unpack, NotRequired, Required)
-from weakref import ProxyType, WeakSet, proxy
+from weakref import CallableProxyType, WeakSet, proxy
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -559,7 +559,7 @@ class Rule(_GroupRule):
     Declaring an :code:`__init__` method in the class has the same effect as setting :code:`_auto_init_` to False.
     
     Note:
-        Using :python:`class NewRuleType(metaclass=Rule)` is nearly equivalent to :python:`_auto_init_=False`, but is not inherited.
+        Using :python:`class NewRuleType(metarule=Rule)` is nearly equivalent to :python:`_auto_init_=False`, but is not inherited.
     """
     
     NOT_APPLICABLE : ClassVar[Literal[RuleResult.NOT_APPLICABLE]] = RuleResult.NOT_APPLICABLE
@@ -702,8 +702,7 @@ class Rule(_GroupRule):
         Further check for metaclass initialization, else this is a normal instance creation.
         
         Parameters: 
-            kwargs: When using :python:`metaclass=Rule`, :python:`Rule(some_class)` these will be 
-            passed to :python:`__init_subclass__`.
+            kwargs: These will be passed to :python:`__init_subclass__`.
         """
         # @Rule
         # class NewRuleInstance:
@@ -723,7 +722,7 @@ class Rule(_GroupRule):
             
             return super().__new__(new_decorated_class)
         
-        # class NewRuleType(metaclass=Rule)
+        # class NewRuleType(metaclass=Rule) # deprecated
         if isinstance(phases, str):
             try:
                 logger.warning("Using NewRule(metaclass=Rule) is deprecated. Use NewRule(Rule, metarule=True) instead.")
@@ -935,11 +934,8 @@ class Rule(_GroupRule):
         class-interface to create rule classes.
         
         By setting :python:`_auto_init_ = False` in the class definition, the automatic __init__ 
-        creation is disabled. Similarly, this is also the case if :python:`metaclass=Rule` is used
+        creation is disabled. Similarly, this is also the case if :python:`metarule=Rule` is used
         for the class creation.
-        
-        Parameters:
-
         """
         if hasattr(cls, "phases") and hasattr(cls, "phase") and cls.phases and cls.phase:
             raise ValueError(f"Both 'phases' and 'phase' are set in class {cls.__name__}. Use only one. %s, %s" % (cls.phases, cls.phase))
@@ -1043,7 +1039,7 @@ class Rule(_GroupRule):
                 if "missing" in str(e):
                     logger.error("Class %s has likely missing attributes that cannot be passed to init. Check if all required attributes are set in the class definition.", cls.__name__)
                 raise e
-        new_init = cast(Callable[Concatenate[Self, Optional[Iterable[Phase]], ...], None], partial_init)
+        new_init = cast("Callable[Concatenate[Self, Optional[Iterable[Phase]], ...], None]", partial_init)
         cls.__init__ = new_init # type: ignore
     
     @__init__.register(_CountdownRule)
@@ -1506,7 +1502,7 @@ class BlockingRule(Rule, metarule=True):
     This meta rule allows to define rules that are able to takeover the agent's workflow
     """
 
-    _gameframework: ClassVar[Union["GameFramework", "ProxyType[GameFramework]", None]] = None
+    _gameframework: ClassVar[Union["GameFramework", "CallableProxyType[GameFramework]", None]] = None
     """
     Set when a :py:class:`GameFramework` is initialized.
     Alternatively can be set when any BlockingRule is created.
@@ -1598,7 +1594,7 @@ class BlockingRule(Rule, metarule=True):
             dm_render_conf = OmegaConf.select(world_model._args, "camera.hud.data_matrix", default=None)  # pyright: ignore[reportPrivateUsage]
 
             if dm_render_conf and ctx.agent:
-                ctx.agent._render_detection_matrix(display, dm_render_conf) # pyright: ignore[reportPrivateUsage]
+                ctx.agent._render_detection_matrix(display, **dm_render_conf)  # pyright: ignore[reportPrivateUsage]
             world_model.finalize_render(display)
         pygame.display.flip()
 

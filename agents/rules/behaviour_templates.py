@@ -355,10 +355,10 @@ if __name__ == "__main__" or DEBUG_RULES:
         
     assert CheckDescription.description == """This is my description"""
     cd_rule = CheckDescription(Phase.END, action=lambda ctx: assert_type(ctx, Context), condition=lambda self, ctx: (assert_type(self, Rule)))
-    print(cd_rule.phases)
+    #print(cd_rule.phases)
     phase = list(cd_rule.phases).pop() # does not work with frozenset
     cd_rule.phases = set() # type: ignore
-    print(cd_rule.phases, cd_rule.phase)
+    #print(cd_rule.phases, cd_rule.phase)
     assert phase == Phase.END, f"Expected {Phase.END} but got {phase}"
     assert not cd_rule.phases
     assert cd_rule.description == """This is my description"""

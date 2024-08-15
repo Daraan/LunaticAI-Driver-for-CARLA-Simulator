@@ -7,7 +7,6 @@
 class CarlaOriginalBehavior:
     pass
 
-#￿TODO: does not work currently
 
 class Cautious(CarlaOriginalBehavior):
     """Class for Cautious agent."""
@@ -67,4 +66,4 @@ class BadAndRisky(Aggressive):
 
 # Gather all classes in this file
 
-behavior_types = dict(filter(lambda kv: not kv[0].startswith("_"), vars().items()))
+behavior_types = dict(filter(lambda kv: not kv[0].startswith("_"), vars().items())) # type: dict[str, CarlaOriginalBehavior] 

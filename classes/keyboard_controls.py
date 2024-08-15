@@ -246,7 +246,7 @@ class RSSKeyboardControl(KeyboardControl):
     def controlled_externally(self):
         return self._autopilot_enabled or self._agent_controlled
 
-    def render(self, display):
+    def render(self, display: pygame.Surface) -> None:
         if self._mouse_steering_center:
             display.blit(
                 self._surface, (self._mouse_steering_center[0] - self.MOUSE_STEERING_RANGE, self._mouse_steering_center[1] - self.MOUSE_STEERING_RANGE))

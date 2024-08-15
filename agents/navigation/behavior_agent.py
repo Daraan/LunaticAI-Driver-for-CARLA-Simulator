@@ -17,7 +17,7 @@ from agents.navigation.behavior_types import CarlaOriginalBehavior, Cautious, Ag
 from agents.navigation.local_planner import RoadOption
 from agents.tools.misc import get_speed, positive
 
-behavior_types = vars(_behavior_types)
+behavior_types = vars(_behavior_types) # type: dict[str, CarlaOriginalBehavior] # type: ignore
 
 
 class BehaviorAgent(BasicAgent):
@@ -34,6 +34,7 @@ class BehaviorAgent(BasicAgent):
     """
 
     def __init__(self, vehicle, behavior='normal', opt_dict={}, map_inst=None, grp_inst=None):
+        # type: (carla.Actor, str | CarlaOriginalBehavior, dict, carla.Map | None, GlobalRoutePlanner) -> None
         """
         Constructor method.
 
@@ -213,6 +214,7 @@ class BehaviorAgent(BasicAgent):
         return walker_state, walker, distance
 
     def car_following_manager(self, vehicle, distance, debug=False):
+        # type: (carla.Actor, float, bool) -> carla.VehicleControl
         """
         Module in charge of car-following behaviors when there's
         someone in front of us.

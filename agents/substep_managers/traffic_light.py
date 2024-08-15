@@ -23,7 +23,6 @@ if TYPE_CHECKING:
 
 _A = TypeVar("_A", bound=carla.Actor)
 _ActorList : TypeAlias = Union[carla.ActorList, Sequence[_A]]
-Self = TypeVar("Self", bound="LunaticAgent")
 
 
 def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
@@ -40,10 +39,11 @@ def affected_by_traffic_light(self : "LunaticAgent",
     """
     Method to check if there is a red light affecting the vehicle.
 
-        :param lights_list (list of carla.TrafficLight): list containing TrafficLight objects.
-            If None, all traffic lights in the scene are used
-        :param max_distance (float): max distance for traffic lights to be considered relevant.
-            If None, the base threshold value is used
+    Parameters:
+        lights_list: list containing traffic light objects.
+            If None, all traffic lights in the scene are used.
+        max_distance: max distance for a traffic lights to be considered relevant.
+            If None, the base threshold value is used.
     """
     if self.config.obstacles.ignore_traffic_lights:
         return TrafficLightDetectionResult(False, None)

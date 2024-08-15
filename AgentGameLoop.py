@@ -1,11 +1,9 @@
-#!/usr/bin/env python
 """
 Example of a game loop for the :py:class:`.LunaticAgent` class.
 """
-from __future__ import print_function  # for python 2.7 compatibility
+
 
 import random
-from typing import List
 from pprint import pprint
 
 import hydra
@@ -64,11 +62,11 @@ def game_loop(args: LaunchConfig):
     The `.GameFramework`:py:class: context manager takes care of the simulation tick,
     and camera updates.
     """
-    # Avoid name errors
-    game_framework : GameFramework = None         # Set for finally block
-    world_model : WorldModel = None               # Set for finally block
-    agent : LunaticAgent = None                   # Set for finally block
-    ego : carla.Vehicle = None                    # Set for finally block
+    # Avoid name errors in final block
+    game_framework : GameFramework = None
+    world_model : WorldModel = None
+    agent : LunaticAgent = None
+    ego: carla.Vehicle = None
 
     # -- Load Settings Agent --
 
@@ -86,7 +84,7 @@ def game_loop(args: LaunchConfig):
         # -- Spawn Vehicles --
         spawn_points = launch_tools.csv_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
         
-        ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints(game_framework.world)
+        ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints()
         
         # Spawn Others
         CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3", 
@@ -98,7 +96,7 @@ def game_loop(args: LaunchConfig):
         
         # Spawn Ego
         start : carla.libcarla.Transform = spawn_points[EGO_SPAWN_IDX]
-        ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)
+        ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)  # type: ignore[assignment]
         
         logger.info("Creating agent and WorldModel ...")
         agent, world_model, global_planner, controller \
@@ -124,7 +122,7 @@ def game_loop(args: LaunchConfig):
         # Set initial destination
         wp_start = world_model.map.get_waypoint(start.location)
 
-        next_wps: List[carla.Waypoint] = wp_start.next(25)
+        next_wps: "list[carla.Waypoint]" = wp_start.next(25)
         last_wp = next_wps[-1]
         left_last_wp = last_wp.get_left_lane()
         print(left_last_wp, world_model.map.get_waypoint(left_last_wp.transform.location))
@@ -293,5 +291,6 @@ def main(args: LaunchConfig):
     else:
         return result
 
+# pyright: reportAssignmentType=none
 if __name__ == '__main__':
     main()
