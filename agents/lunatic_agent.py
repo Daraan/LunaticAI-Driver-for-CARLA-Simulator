@@ -267,8 +267,8 @@ class LunaticAgent(BehaviorAgent):
             rule : The rule to add
             position : 
                 The position to insert the rule at. 
-                If None the rule list will be sorted by priority.
-                Defaults to None.
+                If :python:`None` the rule list will be sorted by priority.
+                Defaults to :python:`None`.
         """
         for p in rule.phases:
             if p not in self.rules:
@@ -279,8 +279,9 @@ class LunaticAgent(BehaviorAgent):
                 self.rules[p].sort(key=lambda r: r.priority, reverse=True)
             else:
                 self.rules[p].insert(position, rule)
+
     
-    def add_rules(self, rules : List[Rule]):
+    def add_rules(self, rules : "Rule | Iterable[Rule]"):
         """Add a list of rules and sort the agents rules by priority."""
         if isinstance(rules, Rule):
             rules = [rules]
@@ -297,16 +298,18 @@ class LunaticAgent(BehaviorAgent):
         if config is None:
             config = self.config
         rule_list : List[RuleCreatingParameters]
-        if "rules" in config.keys():
+        if isinstance(config, (AgentConfig, DictConfig)) and "rules" in config.keys():
             try:
                 rule_list = config.rules
             except omegaconf.MissingMandatoryValue:
                 logger.debug("`rules` key was missing, skipping rule addition.")
                 return
         else:
-            rule_list = config
+            rule_list : List[RuleCreatingParameters] = config  # type: ignore[assignment]
         logger.debug("Adding rules from config:\n%s", OmegaConf.to_yaml(rule_list))
         for rule in rule_list:
+            self.add_rules(rule_from_config(rule))  # each call could produce one or more rules
+            
             self.add_rules(rule_from_config(rule)) # each call could produce one or more rules
 
     #  --------------------- Properties ------------------------
@@ -510,78 +513,6 @@ class LunaticAgent(BehaviorAgent):
     
             
     # ------------------ Step & Loop Logic ------------------ #
-
-
-    def add_rule(self, rule : Rule, position:Union[int, None]=None):
-        """
-        Add a rule to the agent. The rule will be inserted at the given position.
-        
-        Args:
-            rule : The rule to add
-            position : 
-                The position to insert the rule at. 
-                If :python:`None` the rule list will be sorted by priority.
-                Defaults to :python:`None`.
-        """
-        for p in rule.phases:
-            if p not in self.rules:
-                logger.warning("Phase %s from Rule %s is not a default phase. Adding a new phase.", p, rule)
-                self.rules[p] = []
-            if position is None:
-                self.rules[p].append(rule)
-                self.rules[p].sort(key=lambda r: r.priority, reverse=True)
-            else:
-                self.rules[p].insert(position, rule)
-        
-    def add_rule(self, rule : Rule, position:Union[int, None]=None):
-        """
-        Add a rule to the agent. The rule will be inserted at the given position.
-        
-        Args:
-            rule (Rule): The rule to add
-            position (Union[int, None], optional): 
-                The position to insert the rule at. 
-                If None the rule list will be sorted by priority.
-                Defaults to None.
-        """
-        for p in rule.phases:
-            if p not in self.rules:
-                logger.warning("Phase %s from Rule %s is not a default phase. Adding a new phase.", p, rule)
-                self.rules[p] = []
-            if position is None:
-                self.rules[p].append(rule)
-                self.rules[p].sort(key=lambda r: r.priority, reverse=True)
-            else:
-                self.rules[p].insert(position, rule)
-    
-    def add_rules(self, rules : "Rule | Iterable[Rule]"):
-        """Add a list of rules and sort the agents rules by priority."""
-        if isinstance(rules, Rule):
-            rules = [rules]
-        for rule in rules:
-            for phase in rule.phases:
-                self.rules[phase].append(rule)
-        for phase in self.rules.keys():
-            self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
-            
-    def add_config_rules(self, config: Optional[Union[LunaticAgentSettings, List[RuleCreatingParameters]]]=None):
-        """
-        Adds rules 
-        """
-        if config is None:
-            config = self.config
-        rule_list : List[RuleCreatingParameters]
-        if isinstance(config, (AgentConfig, DictConfig)) and "rules" in config.keys():
-            try:
-                rule_list = config.rules
-            except omegaconf.MissingMandatoryValue:
-                logger.debug("`rules` key was missing, skipping rule addition.")
-                return
-        else:
-            rule_list : List[RuleCreatingParameters] = config # type: ignore
-        logger.debug("Adding rules from config:\n%s", OmegaConf.to_yaml(rule_list))
-        for rule in rule_list:
-            self.add_rules(rule_from_config(rule))
     
     def execute_phase(self, phase : Phase, *, prior_results: Any, update_controls:Optional[carla.VehicleControl]=None) -> Context:
         """
