@@ -1,16 +1,14 @@
-#!/usr/bin/env python
+# pyright: strict
+"""
+Example of automatic vehicle control from client side
 
-# Copyright (c) 2018 Intel Labs.
-# authors: German Ros (german.ros@intel.com)
-#
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
-
-"""Example of automatic vehicle control from client side."""
+Based on original CARLA example by German Ros
+"""
 import os
 import math
-from typing import ClassVar, Optional, Union
+from typing import ClassVar, Iterable, Optional, Union
 from datetime import timedelta
+from typing_extensions import Literal
 
 import carla
 import pygame
@@ -22,11 +20,12 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
+    from pygame._common import ColorValue  # noqa # type: ignore
 
 FONT_SIZE = 20
 
 
-def get_actor_display_name(actor : carla.Actor, truncate=250):
+def get_actor_display_name(actor : carla.Actor, truncate:int=250):
     """Method to get actor display name"""
     name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
     return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
@@ -61,8 +60,9 @@ class HUD(object):
         self._info_text = []
         self._server_clock = pygame.time.Clock()
         # RSS
-        self.original_vehicle_control = None
-        self.restricted_vehicle_control = None
+        self.original_vehicle_control: Optional[carla.VehicleControl] = None
+        # Not None if original_vehicle_control is not None
+        self.restricted_vehicle_control: carla.VehicleControl = None # type: ignore[assignment]
         self.allowed_steering_ranges = []
         self.rss_state_visualizer = RssStateVisualizer(self.dim, self._font_mono, self._world)
 
@@ -72,9 +72,9 @@ class HUD(object):
         self.server_fps = self._server_clock.get_fps()
         # self.frame = timestamp.frame_count # NON- RSS Example
         self.frame = timestamp.frame
-        self.simulation_time = timestamp.elapsed_seconds
+        self.simulation_time = timestamp.timestamp.elapsed_seconds
 
-    def tick(self, world : "WorldModel", clock: pygame.time.Clock, obstacles: Optional["list[carla.Actor]"]=None):
+    def tick(self, world : "WorldModel", clock: pygame.time.Clock, obstacles: Optional[Iterable[carla.Actor]]=None):
         """
         HUD method for every tick
         
@@ -84,12 +84,12 @@ class HUD(object):
         self._notifications.tick(clock)
         if not self._show_info:
             return
-        player : carla.Vehicle = world.player
+        player : carla.Actor = world.player
         
         transform = player.get_transform()
         location = transform.location
         vel = player.get_velocity()
-        control = player.get_control()
+        control: Union[carla.VehicleControl, carla.WalkerControl] = player.get_control()
         heading = 'N' if abs(transform.rotation.yaw) < 89.5 else ''
         heading += 'S' if abs(transform.rotation.yaw) > 90.5 else ''
         heading += 'E' if 179.5 > transform.rotation.yaw > 0.5 else ''
@@ -98,11 +98,20 @@ class HUD(object):
         collision = [colhist[x + self.frame - 200] for x in range(0, 200)]
         max_col = max(1.0, max(collision))
         collision = [x / max_col for x in collision]
-        obstacles : "list[carla.Actor] | carla.ActorList" = obstacles or world.world.get_actors().filter('vehicle.*')
+        obstacles = obstacles or world.world.get_actors().filter('vehicle.*')
         
         # TODO: could also get ready distances from InformationManager, needs access to agent instance
         # cached info would also prevent x from being destroyed in a different thread
         obstacles_distances: "list[tuple[float, carla.Actor]]" = [(x.get_location().distance(location), x) for x in obstacles if x.id != world.player.id and x.is_alive]
+
+        self._info_text : list[Union[
+            str,
+            tuple[str, bool],
+            #Sequence[Union[str, float]],
+            tuple[str, float, float, float], # min value max
+            tuple[str, float, float, float, float],
+            tuple[str, float, float, float, float, list[list[float]]], # steering
+            list[float]]]
 
         self._info_text = [
             'Server:  % 16.0f FPS' % self.server_fps,
@@ -172,7 +181,7 @@ class HUD(object):
         """Error text"""
         self._notifications.set_text('Error: %s' % text, (255, 0, 0))
 
-    def render(self, display):
+    def render(self, display: pygame.Surface):
         """Render for HUD class"""
         if self._show_info:
             info_surface = pygame.Surface((220, self.dim[1]))
@@ -224,7 +233,9 @@ class HUD(object):
                                 else:
                                     rect = pygame.Rect((bar_h_offset + 1, v_offset + 3), (f * bar_width, 12))
                                 pygame.draw.rect(display, (255, 0, 0), rect)
-
+                                                                                    
+                        if TYPE_CHECKING:
+                            assert len(item) > 2 # narrow some types
                         f = (item[1] - item[2]) / (item[3] - item[2])
                         rect = None
                         if item[2] < 0.0:
@@ -257,7 +268,7 @@ class HUD(object):
 class FadingText(object):
     """ Class for fading text """
 
-    def __init__(self, font, dim, pos):
+    def __init__(self, font: pygame.font.Font, dim: tuple[int, int], pos: tuple[int, int]):
         """Constructor method"""
         self.font = font
         self.dim = dim
@@ -265,7 +276,7 @@ class FadingText(object):
         self.seconds_left = 0
         self.surface = pygame.Surface(self.dim)
 
-    def set_text(self, text, color=(255, 255, 255), seconds=2.0):
+    def set_text(self, text: str, color:"ColorValue"=(255, 255, 255), seconds:float=2.0):
         """Set fading text"""
         text_texture = self.font.render(text, True, color)
         self.surface = pygame.Surface(self.dim)
@@ -273,13 +284,13 @@ class FadingText(object):
         self.surface.fill((0, 0, 0, 0))
         self.surface.blit(text_texture, (10, 11))
 
-    def tick(self, clock):
+    def tick(self, clock: pygame.time.Clock):
         """Fading text method for every tick"""
         delta_seconds = 1e-3 * clock.get_time()
         self.seconds_left = max(0.0, self.seconds_left - delta_seconds)
         self.surface.set_alpha(500.0 * self.seconds_left) # type: ignore[arg-type]
 
-    def render(self, display):
+    def render(self, display: pygame.Surface):
         """Render fading text method"""
         display.blit(self.surface, self.pos)
 
@@ -292,7 +303,7 @@ class FadingText(object):
 class HelpText(object):
     """Helper class to handle text output using pygame"""
 
-    def __init__(self, font, width, height, doc:Optional[Union[str, bool]] = None):
+    def __init__(self, font: pygame.font.Font, width:int, height:int, doc:Optional[Union[str, bool]] = None):
         """Constructor method"""
         self.line_space = 18
         self.font = font
@@ -300,12 +311,14 @@ class HelpText(object):
         self._width = width
         self._height = height
         if doc is not False:
-            self.create_surface(doc or __doc__) # Use doc of THIS file, analog to carla examples.
+            doc = doc or __doc__ if doc is not True else __doc__
+            assert doc, "No docstring available for help text."
+            self.create_surface(doc) # Use doc of THIS file, analog to carla examples.
         else:
             self.surface = None
         self._render = False
         
-    def create_surface(self, doc):
+    def create_surface(self, doc:str):
         """Create surface method"""
         lines = doc.split('\n')
         self.dim = (780, len(lines) * self.line_space + 12)
@@ -325,7 +338,7 @@ class HelpText(object):
             return
         self._render = not self._render
 
-    def render(self, display):
+    def render(self, display: pygame.Surface):
         """Render help text method"""
         if self._render:
             display.blit(self.surface, self.pos)

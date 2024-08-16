@@ -116,7 +116,7 @@ class RssStateVisualizer(object):
             v_offset += 14
             self._surface = state_surface
 
-    def render(self, display, v_offset):
+    def render(self, display: pygame.Surface, v_offset: int):
         if self._surface:
             display.blit(self._surface, (0, v_offset))
 
@@ -171,7 +171,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
         self._world : carla.World = world
         self._parent_actor = parent_actor
         self._display_dimensions = display_dimensions
-        self._camera = None
+        self._camera = None  # type: ignore[assignment]
         self._mode = RssUnstructuredSceneVisualizerMode.disabled
         self._gamma = gamma_correction
 
@@ -185,13 +185,13 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
     def sensor(self, value):
         # Needed for SensorInterface.destroy
         if value is None:
-            self._camera = None
+            self._camera = None  # type: ignore[assignment]
         else:
             raise ValueError("Cannot set sensor of RssUnstructuredSceneVisualizer. Use _camera instead.")
 
     def destroy(self):
         super().destroy()
-        self._camera = None
+        self._camera = None  # type: ignore[assignment]
 
     def restart(self, mode):
         # setup up top down camera
