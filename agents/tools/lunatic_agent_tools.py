@@ -1,3 +1,5 @@
+
+from __future__ import annotations
 # pyright: strict
 # pyright: reportUnnecessaryIsInstance=information
 # pyright: reportPrivateUsage=false
@@ -9,8 +11,6 @@ from the original CARLA agents that have been simplified and outsourced to this
 module.
 """
 
-from __future__ import annotations
-
 import sys
 from inspect import isclass
 from operator import attrgetter
@@ -19,7 +19,7 @@ from shapely.geometry import Polygon
 from functools import partial, wraps
 
 import carla
-from classes._type_protocols import HasBaseSettings, AgentConfigT
+from classes.type_protocols import CallableT, HasBaseSettings, AgentConfigT
 from classes.constants import RoadOption
 from agents.tools.config_creation import AgentConfig 
 from agents.tools.hints import ObstacleDetectionResult
@@ -31,7 +31,7 @@ from classes.constants import Phase
 from classes.exceptions import EmergencyStopException, LunaticAgentException
 from launch_tools import CarlaDataProvider, Literal
 from typing import TYPE_CHECKING, Any, Callable, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
-from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never, Protocol
+from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
@@ -57,17 +57,17 @@ def result_to_context(key: str):
     Decorator to use for the agent. Sets the **key** attribute of the 
     :py:class:`.Context`.
     """
-    def decorator(func: _AgentFunction[_P, _T]):
+    def decorator(func: CallableT) -> CallableT:
         @wraps(func)
-        def wrapper(self : "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs) -> _T:
+        def wrapper(self : "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
             result = func(self, *args, **kwargs)
             setattr(self.ctx, key, result)
             return result
-        return wrapper
+        return wrapper  # type: ignore[return-value]
         
     return decorator
 
-def must_clear_hazard(func: _AgentFunction[_P, _T]):
+def must_clear_hazard(func: CallableT) -> CallableT:
     """
     Decorator which raises an EmergencyStopException if self.detected_hazards
     is not empty after the function call.
@@ -76,12 +76,12 @@ def must_clear_hazard(func: _AgentFunction[_P, _T]):
         EmergencyStopException: If self.detected_hazards is not empty after the function call.
     """
     @wraps(func)
-    def wrapper(self : "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs) -> _T:
+    def wrapper(self : "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
         result = func(self, *args, **kwargs)
         if self.detected_hazards:
             raise EmergencyStopException(self.detected_hazards)
         return result
-    return wrapper
+    return wrapper  # type: ignore[return-value]
 
 def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], None] = None, 
                       on_exit: Union[Phase, Callable[['LunaticAgent'], Any], None] = None, 

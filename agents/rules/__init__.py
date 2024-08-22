@@ -90,17 +90,17 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
     # Else user needs to provide the full path
     
     # Fix phase as string from yaml
-    if "phases" not in cfg or OmegaConf.is_missing(cfg, "phases") or isinstance(cfg.phases, Phase):
+    if "phases" not in cfg or OmegaConf.is_missing(cfg, "phases") or isinstance(cfg.phases, Phase):  # type: ignore[attr-defined]
         # Target refers to a function or this will throw an error when applied to a Rule
         pass
-    elif isinstance(cfg.phases, str):
-        cfg.phases = Phase.from_string(cfg.phases)
-    elif isinstance(cfg.phases, Iterable):
-        cfg.phases = [Phase.from_string(phase) if isinstance(phase, str) else phase for phase in cfg.phases]
+    elif isinstance(cfg.phases, str):                      # pyright: ignore[reportAttributeAccessIssue]
+        cfg.phases = Phase.from_string(cfg.phases)  # pyright: ignore[reportAttributeAccessIssue]
+    elif isinstance(cfg.phases, Iterable):                 # pyright: ignore[reportAttributeAccessIssue]
+        cfg.phases = [Phase.from_string(phase) if isinstance(phase, str) else phase for phase in cfg.phases]  # pyright: ignore[reportAttributeAccessIssue]
     
     # Throw out all keys that are not valid for the target, i.e. MISSING
-    valid_keys = {k for k in cfg.keys() if not OmegaConf.is_missing(cfg, k)} # _target_ is kept for instantiate
-    clean_cfg : RuleCreatingParameters = OmegaConf.masked_copy(cfg, valid_keys)
+    valid_keys = list({k for k in cfg.keys() if not OmegaConf.is_missing(cfg, k)})  # _target_ is kept for instantiate
+    clean_cfg : RuleCreatingParameters = OmegaConf.masked_copy(cfg, valid_keys)  # pyright: ignore[reportArgumentType]
     
     if "_args_" in clean_cfg and clean_cfg._args_ is None:
         logger.error("_args_ argument for %s should be a list, not None", cfg._target_)
@@ -122,7 +122,8 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
                     # Alternatively could escape all interpolations as strings and recreate the interpolations afterwards,
                     # however, need to assume that all interpolation like stings are meant as interpolations.
                     from agents.tools.config_creation import LunaticAgentSettings
-                    parent : LunaticAgentSettings = OmegaConf.create(LunaticAgentSettings(rules=[]), flags={"allow_objects": True})
+                    parent : LunaticAgentSettings = OmegaConf.structured(LunaticAgentSettings(rules=[]), 
+                                                                         flags={"allow_objects": True})
                     for key in parent.live_info.keys():
                         if key == "executed_direction":
                             parent.live_info[key] = "VOID"
@@ -138,12 +139,14 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
             rule: Rule = instantiate(clean_cfg, _convert_="none")
             if "self_config" in clean_cfg:
                 rule.self_config.merge_with(clean_cfg.self_config) # Interpolations are resolved, adding them back as strings
+            return rule
         else:
-            rule : Union[Rule, Iterable[Rule]] = call(clean_cfg, _convert_="none")
+            rule_or_rules : Union[Rule, Iterable[Rule]] = call(clean_cfg, _convert_="none")
+            return rule_or_rules
     except hydra.errors.InstantiationException:
         logger.error("Could not instantiate rule. The _target_ must exist in %s or you need to provide a global _target_.module.submodule... path ", __file__)
         raise
-    return rule
+
 
 # Add rules to extracted schema
 import agents.tools.config_creation as __config_creation

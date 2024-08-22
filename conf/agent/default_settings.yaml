@@ -174,7 +174,7 @@ obstacles:
   # If the the agent will treat a yellow light like a red light. If False will not detect them.
   #  
   # Rules must decide how to handle yellow lights.
-  detect_yellow_tlighs: true
+  detect_yellow_tlights: true
 
   # Base distance to traffic lights to check if they affect the vehicle
   #     

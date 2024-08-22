@@ -107,9 +107,9 @@ class InformationManager:
     # AgentState detection
     
     #@staticmethod # not possible in python3.7
-    def _check_state(state : AgentState):
+    def _check_state(state: AgentState): # pyright: ignore[reportSelfClsParameterName, reportGeneralTypeIssues]
         """
-        Updates the state counter and the state checked dict when the function is called
+        Updates the state counter and the state checked dict when the function is called.
         """
         def wrapper(func : Callable[Concatenate[Self,_P], _T]) ->  Callable[Concatenate[Self,_P], _T]:# -> _Wrapped[Callable[Concatenate[Self, _P], Any], bool | Non...:
             @wraps(func)
@@ -192,10 +192,11 @@ class InformationManager:
         self.relevant_traffic_light = CarlaDataProvider.get_next_traffic_light(self._vehicle)
         if self.relevant_traffic_light:
             self._relevant_traffic_light_location = self.relevant_traffic_light.get_location()
-            self.relevant_traffic_light_distance = self._relevant_traffic_light_location.distance(CarlaDataProvider.get_location(self._vehicle))
+            self.relevant_traffic_light_distance = self._relevant_traffic_light_location.distance(
+                CarlaDataProvider.get_location(self._vehicle))  # pyright: ignore[reportArgumentType]
         else:
-            # Is at an intersection
-            self._relevant_traffic_light_location = None
+            # Is at an intersection; always check for tlight or distance
+            self._relevant_traffic_light_location = None  # type: ignore[assignment]
             self.relevant_traffic_light_distance = float('inf')
         return self.relevant_traffic_light
     
@@ -247,9 +248,10 @@ class InformationManager:
         # - Location -
         # NOTE: That transform.location and location are similar but not identical.
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
-        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not cleaned
+        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not cleaned # noqa: E501
         # Only exact waypoint. TODO: update in agent
-        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet.
+        # Comment should be visible in traceback. 
+        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet. # noqa: E501 # pyright: ignore[reportCallIssue]
         
         # Traffic Light
         # NOTE: Must be AFTER the location update
@@ -265,7 +267,7 @@ class InformationManager:
             if not v.is_alive:
                 logger.warning("Actor is not alive - this should not happen.")
                 return _v_filter_dist # filter out
-            return v.get_location().distance(_current_loc)
+            return v.get_location().distance(_current_loc)  # pyright: ignore[reportArgumentType]
         
         # Filter nearby
         # Vehicles
@@ -430,9 +432,9 @@ class InformationManager:
                 print("KeyError", actor_id)
                 continue
             if fnmatch(actor.type_id, "vehicle*"):
-                InformationManager.vehicles.append(actor)
+                InformationManager.vehicles.append(actor)  # pyright: ignore[reportArgumentType]]
             elif fnmatch(actor.type_id, "walker.pedestrian*"):
-                InformationManager.walkers.append(actor)
+                InformationManager.walkers.append(actor)  # pyright: ignore[reportArgumentType]
             # TODO: we could assume that these actors are mostly constant and only created in slow intervals
             elif fnmatch(actor.type_id, InformationManager.OBSTACLE_FILTER):
                 InformationManager.static_obstacles.append(actor)

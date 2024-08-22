@@ -3,8 +3,7 @@ import carla
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from agents.lunatic_agent import LunaticAgent
-    from classes._type_protocols import HasPlannerWithConfig
+    from classes.type_protocols import HasPlannerWithConfig
     from agents.tools.config_creation import BehaviorAgentSettings
 
 

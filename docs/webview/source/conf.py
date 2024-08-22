@@ -182,6 +182,7 @@ autodoc_mock_imports = ["leaderboard", "pygame", "shapely",
                                    "hydra", "carla"]
 
 from docs.webview.source._autodoc_type_aliases import autodoc_type_aliases
+autodoc_type_aliases = autodoc_type_aliases
 
 autodoc_typehints="both"
 

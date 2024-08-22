@@ -274,7 +274,9 @@ def remove_submodules():
 
 def remove_init():
     module : "dict[str, list[str | tuple[str, str | None]]]" = {
-                              "classes" : [("classes.evaluation_function", "__add__, __and__, __or__, __invert__" )],
+                              "classes" : [("classes.evaluation_function", "__add__, __and__, __or__, __invert__" ),
+                                           ("classes.type_protocols", None),
+                                           ],
                               "classes.carla_originals" : [("classes.carla_originals", None)],
                               "agents.tools" : [("agents.tools.hints", "__bool__")],
               }

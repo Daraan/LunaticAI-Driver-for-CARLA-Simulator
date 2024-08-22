@@ -153,8 +153,11 @@ def distance(p1, p2):
     """
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2 + (p1.z - p2.z) ** 2)
 
-def create_city_matrix(ego_vehicle_location, road_lane_ids, world_map, ghost=False, ego_on_bad_highway_street=False) -> Optional[dict[str | tuple[int, int], list[int]]]:
-    # type: (carla.Location, set[RoadLaneId], carla.Map, bool, bool) -> Optional[dict[str | tuple[int, int], list[int]]]
+def create_city_matrix(ego_vehicle_location: carla.Location, 
+                       road_lane_ids: "set[RoadLaneId]", 
+                       world_map: carla.Map, 
+                       ghost:bool=False, 
+                       ego_on_bad_highway_street:bool=False) -> Optional["dict[str | tuple[int, int], list[int]]"]:
     """
     Create a matrix representing the lanes around the ego vehicle.
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-# pyright: reportIndexIssue=information, reportCallIssue=information, reportGeneralTypeIssues=information
+# pyright: strict
+# pyright: reportIndexIssue=information, reportCallIssue=information
+# pyright: reportGeneralTypeIssues=warning
 # pyright: reportUnusedFunction=information, reportUnusedImport=information
 # pyright: reportUnnecessaryIsInstance=false, reportUnnecessaryComparison=false
 # pyright: reportPrivateUsage=none
@@ -9,14 +11,17 @@ import random
 import inspect
 from collections.abc import Mapping
 from dataclasses import is_dataclass
-from functools import partial, wraps
+from functools import partial, update_wrapper, wraps
+import sys
 
+from classes.type_protocols import ConditionFunctionLike, ConditionFunctionLikeT, CallableAction, RuleT
 from launch_tools import CarlaDataProvider, singledispatchmethod
+import carla  # pyright: ignore[reportMissingTypeStubs]
 import pygame
 
 from inspect import isclass
 from itertools import accumulate
-from typing import (Any, ClassVar, FrozenSet, List, Set, Tuple, TypeVar, Union, Iterable,
+from typing import (Any, ClassVar, Container, FrozenSet, List, Set, TypeVar, Union, Iterable,
                     Callable, Optional, Dict, Hashable, TYPE_CHECKING, cast)
 from typing_extensions import (overload, TypeAlias, Self, ParamSpec, Annotated, Concatenate,
                                TypedDict, Literal, NoReturn, Unpack, NotRequired, Required)
@@ -25,18 +30,14 @@ from weakref import CallableProxyType, WeakSet, proxy
 from omegaconf import DictConfig, OmegaConf
 
 from agents.tools.logging import logger
-from classes.exceptions import DoNotEvaluateChildRules, LunaticAgentException, SkipInnerLoopException, UnblockRuleException
+from classes.exceptions import DoNotEvaluateChildRules, UnblockRuleException
 from classes.worldmodel import GameFramework
 from classes.constants import Hazard, HazardSeverity, Phase, RulePriority, RuleResult
 from classes.evaluation_function import ConditionFunction
 from data_gathering.information_manager import InformationManager
 
 
-# TODO: XXX marks locations related to a pyright bug that need to be addressed in the future
-
 if TYPE_CHECKING:
-    from typing import type_check_only
-    import carla
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import LiveInfo, RuleConfig, ContextSettings
     # NOTE: gameframework.py adds GameFramework to this module's variables
@@ -45,27 +46,8 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 _H = TypeVar("_H", bound=Hashable)
 _P = ParamSpec("_P")
-
 _Rule = TypeVar("_Rule", bound="Rule")
-_T2 = TypeVar("_T2")  # XXX
 
-ConditionFunctionLike : TypeAlias = Union[ConditionFunction[_T2, _P, _H], # XXX
-                                          Callable[["Context"], _H], 
-                                          Callable[[_Rule, "Context"], _H]]
-"""
-Callable that uses a :py:class:`Context` object as a single argument,
-or alternatively a :py:class:`Rule` and a :py:class:`Context` object (in this order).
-
-The function must return a :term:`Hashable` value.
-"""
-
-
-CallableAction : TypeAlias = Union[Callable[[_Rule, "Context"], _T],
-                                   Callable[["Context"], _T]]
-"""
-Callable that uses a :py:class:`Context` object as a single argument,
-or alternatively a :py:class:`Rule` and a :py:class:`Context` object (in this order).
-"""
 
 class Context(CarlaDataProvider):
     """
@@ -84,35 +66,31 @@ class Context(CarlaDataProvider):
     config : "ContextSettings"
     """A copy of the agents config. Overwritten by the condition's settings."""
     
-    evaluation_results : Dict["Phase", Hashable] # ambiguous wording, which result? here evaluation result
+    evaluation_results : Dict[Phase, Hashable] # ambiguous wording, which result? here evaluation result
     """
     Stores the result from the :py:meth:`Rule.condition` of the last rule that was evaluated in a phase.
     
     .. deprecated:: in consideration
     """
         
-    action_results : Dict["Phase", Any] 
+    action_results : Dict[Phase, Any] 
     """
     Stores the result from the :py:meth:`action` of the last rule that was applicable in a phase.
     
     .. deprecated:: in consideration
     """
     
-    if False: # noqa # here for information
-        control : Optional["carla.VehicleControl"]
-        """
-        Current control the agent should use. Set by :py:meth:`execute_phase(update_controls=...) <.LunaticAgent.execute_phase>`. 
-        Safeguarded to be not set to None. Setting it to :code:`None` is discouraged. 
-        Use :py:meth:`set_control` if setting it to :code:`None` is really needed.
-        """
+    _control : Optional[carla.VehicleControl]
+    """
+    Current control the agent should use.
     
-    _control : Optional["carla.VehicleControl"]
-    """Current control the agent should use."""
+    Accessible from the :py:attr:`control` property.
+    """
     
     prior_result : Optional[Any] # TODO: maybe rename
     """Result of the current phase."""
     
-    phase_results : Dict["Phase", Any]
+    phase_results : Dict[Phase, Any]
     """
     Stores the results of the phases the agent has been in. 
     By default the keys are set to :py:attr:`Context.PHASE_NOT_EXECUTED`.
@@ -172,12 +150,12 @@ class Context(CarlaDataProvider):
         self.action_results = {}
 
     @property
-    def current_phase(self) -> "Phase":
-        """Current phase the agent is in."""
+    def current_phase(self) -> Phase:
+        """Current :py:class:`Phase` the agent is in."""
         return self.agent.current_phase
     
     @property
-    def control(self) -> Union["carla.VehicleControl", None]:
+    def control(self) -> Union[carla.VehicleControl, None]:
         """
         Current control the agent should use. Set by :py:meth:`execute_phase(update_controls=...) <.LunaticAgent.execute_phase>`. 
 
@@ -188,16 +166,17 @@ class Context(CarlaDataProvider):
         return self._control
     
     @control.setter
-    def control(self, control : "carla.VehicleControl"):
+    def control(self, control: carla.VehicleControl):
         if control is None:         # type: ignore[comparison]
-            raise ValueError("Context.control must not be None. To set it to None explicitly use set_control.")
+            raise ValueError("Context.control must not be None. "
+                             "To set it to None explicitly use set_control.")
         self._control = control
         
-    def set_control(self, control : Optional["carla.VehicleControl"]):
+    def set_control(self, control : Optional[carla.VehicleControl]):
         """Set the control, allows to set it to None."""
         self._control = control
         
-    def get_or_calculate_control(self) -> "carla.VehicleControl":
+    def get_or_calculate_control(self) -> carla.VehicleControl:
         """
         Get the control if it is set, otherwise calculate it by 
         executing the local planner.
@@ -298,15 +277,18 @@ class Context(CarlaDataProvider):
     def active_blocking_rules(self) -> Set["BlockingRule"]:
         return self.agent._active_blocking_rules  # pyright: ignore[reportPrivateUsage]
     
-   
+#@ConditionFunction["Rule", [], Literal[True]] # python 3.9+ syntax
 @ConditionFunction
-def always_execute(ctx : Context): # pylint: disable=unused-argument
+def always_execute(ctx : Context) -> Literal[True]: # pylint: disable=unused-argument
     """
     This is an :py:class:`.ConditionFunction` that always returns :python:`True`. It can be used to always execute an action.
     """
     return True
 
-def _use_temporary_config(func: Callable[Concatenate[_Rule, "Context", Optional[Dict[str, Any]], _P], _T]) -> Callable[Concatenate[_Rule, "Context", Optional[Dict[str, Any]], _P], _T]:
+def _use_temporary_config(func: Callable[Concatenate[_Rule, 
+                                                     "Context", 
+                                                     Optional[Dict[str, Any]], _P], _T]
+    ) -> Callable[Concatenate[_Rule, "Context", Optional[Dict[str, Any]], _P], _T]:
     """During the condition evaluation the ctx.config should have the overwrite settings applied but not in a permanent way."""
     
     @wraps(func)
@@ -594,17 +576,17 @@ class Rule(_GroupRule):
     description : str
     """Description of what this rule should do"""
     
-    phases : FrozenSet["Phase"]
+    phases : FrozenSet[Phase]
     """
     The phase or phases in which the rule should be evaluated.
     For instantiation the phases attribute can be any :term:`Iterable` [:py:class:`.Phase`].
     """
     
-    phase : "Phase"
+    phase : Phase
     """For the Class API the phase attribute be set to a single Phase object."""
     
-    if False:
-        condition : ConditionFunctionLike[Self, ..., Hashable, Self] # XXX
+    if TYPE_CHECKING: # noqa
+        condition : ConditionFunctionLike[Self, [], Hashable]
         """
         The condition that determines if the rule's actions should be executed.
         
@@ -619,15 +601,15 @@ class Rule(_GroupRule):
             The readthedocs description is set in the __init__ function.
         """
     
-    actions : Dict[Any, CallableAction[Self, Any]]
+    actions : Dict[Any, CallableAction[Self, [], Any]]
     """Dictionary that maps rule results to the action that should be executed."""
     
-    action : Annotated[CallableAction[Self, Any], "attribute not available on instance -> merged into `actions`"]
+    action : Annotated[CallableAction[Self, [], Any], "attribute not available on instance -> merged into `actions`"]
     """
     Action that should be executed if the rule is True. If `actions` is set, this is ignored.
     """
     
-    false_action : Annotated[CallableAction[Self, Any], "attribute not available on instance -> merged into `actions`"]
+    false_action : Annotated[CallableAction[Self, [], Any], "attribute not available on instance -> merged into `actions`"]
     """Action that should be executed if the rule is False. May not be set if `actions` is set."""
     
     #group : Optional[str]
@@ -677,23 +659,23 @@ class Rule(_GroupRule):
         return self.__class__(self) # Make use over overloaded __init__
 
     @overload
-    def __new__(cls, phases: "type[Any] | Self") -> "Self": ...
-        # Rule.copy(other_rule)
+    def __new__(cls, phases: Union[Phase, Iterable[Phase], None]=None) -> "Self": ...
+        # No argument call; should be redundant
+    
+    @overload
+    def __new__(cls, phases: Union[Phase, Iterable[Phase], None]=None, **kwargs: Unpack[_InitParameters]) -> "Self": ...
+        # argument call
         
     @overload
     def __new__(cls, **kwargs: Unpack[_InitParametersComplete]) -> "Self": ...
         # Normal init
     
     @overload
-    def __new__(cls, phases: Union["Phase", Iterable["Phase"], None]=None) -> "Self": ...
-        # No argument call
-        
-    @overload
-    def __new__(cls, phases: Union["Phase", Iterable["Phase"], None]=None, **kwargs: Unpack[_InitParameters]) -> "Self": ...
-        # argument call
+    def __new__(cls, phases: "type[Any] | Self") -> "Self": ...
+        # Rule.copy(other_rule)
     
     def __new__(cls, 
-                phases: Optional[Union["Phase", Iterable["Phase"], None, "type[Any]", Self, str]]=None, 
+                phases: Optional[Union[Phase, Iterable[Phase], None, "type[Any]", Self, str]]=None, 
                 bases: Optional[tuple[type[Any], ...]]=None, 
                 clsdict: Optional[dict[str, Any]]=None,
                 **kwargs: Any):
@@ -740,33 +722,39 @@ class Rule(_GroupRule):
         return super().__new__(cls)
 
     if TYPE_CHECKING:
-        class _InitParameters(_GroupRule._InitParameters): # pyright: ignore[reportPrivateUsage]
+        class _InitParameters(_GroupRule._InitParameters, total=False, closed=False): # pyright: ignore[reportPrivateUsage]
             """Dict describing the parameters of the __init__ of the class method."""
-            #phases:    Union["Phase", Iterable["Phase"]] # leave this and use explicitly later on
-            #condition: Optional[ConditionFunctionLike[Rule, ..., Hashable, Rule]] # XXX
-            action: NotRequired[Optional[Union[CallableAction[Rule, Any], Dict[Any, CallableAction[Rule, Any]]]]]
-            false_action: NotRequired[Optional[CallableAction[Rule, Any]]]
-            actions: NotRequired[Optional[Dict[Any, CallableAction[Rule, Any]]]]
-            description: Required[str]
-            overwrite_settings: NotRequired[Optional[Dict[str, Any]]]
-            self_config: NotRequired[Optional[Dict[str, Any]]]
-            priority: NotRequired[RulePriority]
+            #phases:    Union[Phase, Iterable[Phase]] # leave this and use explicitly later on
+            #condition: Optional[ConditionFunctionLike[Rule, ..., Hashable]]
+            action: Optional[Union[CallableAction[Rule, [], Any], Dict[Any, CallableAction[Rule, [], Any]]]]
+            false_action: Optional[CallableAction[Rule, [], Any]]
+            actions: Optional[Dict[Any, CallableAction[Rule, [], Any]]]
+            description: str
+            overwrite_settings: Optional[Dict[str, Any]]
+            self_config: Optional[Dict[str, Any]]
+            priority: RulePriority
             
         class _InitParametersComplete(_InitParameters):
             """Dict describing the parameters of the __init__ of the class method."""
-            phases: Required[Union["Phase", Iterable["Phase"]]]
-            condition : Required[Optional[ConditionFunctionLike[Rule, ..., Hashable, Rule]]]
-
+            phases: Required[Union[Phase, Iterable[Phase]]]
+            condition : NotRequired[Optional[ConditionFunctionLike[Rule, ..., Hashable]]]
+            
+        class _CallKwargs(TypedDict, closed=True):
+            ignore_phase: bool
+            """Default False"""
+            ignore_cooldown: bool
+            """Default False"""
+            
 
     @singledispatchmethod
     def __init__(self, 
-                 phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
+                 phases : Union[Phase, Iterable[Phase]], # iterable of Phases
                  #/, # phases must be positional; python3.8+ only
-                 condition : Optional[ConditionFunctionLike[Self, _P, _H, Self]]=None, # XXX
-                 action: Optional[Union[CallableAction[Self, _T], Dict[Any, CallableAction[Self, Any]]]] = None,
-                 false_action: Optional[CallableAction[Self, _T]] = None,
+                 condition : Optional[ConditionFunctionLikeT]=None,
+                 action: Optional[Union[CallableAction[Self, []], Dict[Any, CallableAction[Self, []]]]] = None,
+                 false_action: Optional[CallableAction[Self, []]] = None,
                  *, 
-                 actions : Optional[Dict[Any, CallableAction[Self, Any]]] = None,
+                 actions : Optional[Dict[Any, CallableAction[Self, []]]] = None,
                  description: str = "What does this rule do?",
                  overwrite_settings: Optional[Dict[str, Any]] = None,
                  self_config: Optional[Dict[str, Any]] = None,
@@ -828,9 +816,8 @@ class Rule(_GroupRule):
         if condition is None and not hasattr(self, "condition"):
             raise TypeError("%s.__init__() missing 1 required positional argument: 'condition'. Alternatively the class must implement a `condition` function." % self.__class__.__name__)
         
-        if TYPE_CHECKING:
-            assert condition
-            self.condition = condition
+        if False and TYPE_CHECKING:
+            self.condition: Any = ... 
             """
             The condition that determines if the rule's actions should be executed.
             
@@ -841,12 +828,19 @@ class Rule(_GroupRule):
             Advanced Variant:
                 return a :term:`Hashable` value that is used as key in the :py:attr:`actions` dict.
             """
+            if condition is not None:
+                self.condition = condition
+            else:
+                self.condition = self.__class__.condition
+
         if condition is not None:
             if not hasattr(self, "condition"):
                 self.condition = condition
             else:
                 # Warn if cls.condition and passes condition are different
-                self_func = getattr(self.condition, "__func__", getattr(self.condition, "func", self.condition))
+                self_func = getattr(self.condition, 
+                                    "__func__", 
+                                    getattr(self.condition, "func", self.condition))
                 if self_func != condition: # Compare method with function
                     logger.warning(f"Warning 'condition' argument passed but class {self.__class__.__name__} already implements a different function 'self.condition'. Overwriting {self.condition} with passed condition {getattr(condition, '__name__', str(condition))}. This might lead to undesired results.")
                 
@@ -894,7 +888,8 @@ class Rule(_GroupRule):
         for key, func in self.actions.items():
             if not callable(func):
                 raise ValueError(f"Action for key {key} must be callable, not {type(func)}")
-            if len(inspect.signature(func).parameters) >= 2:
+            multiple_parameters = len(inspect.signature(func).parameters) >= 2
+            if multiple_parameters and getattr(func, "use_self", True):
                 # NOTE: could use types.MethodType
                 self.actions[key] = partial(func, self) # bind to self
         
@@ -942,8 +937,10 @@ class Rule(_GroupRule):
         
         for attr in cls._PROPERTY_MEMBERS:
             if hasattr(cls, attr) and not hasattr(getattr(cls, attr), "__get__"):
-                raise ValueError(f"Class {cls.__name__} has overwritten property {attr} with {getattr(cls, attr)}. You may only overwrite the following attributes with properties: {cls._PROPERTY_MEMBERS}."
-                                 "Did you mean `start_cooldown` or `cooldown_reset_value` instead of `cooldown`?")
+                raise ValueError(
+                    f"Class {cls.__name__} has overwritten property {attr} with {getattr(cls, attr)}."
+                    " You may only overwrite the following attributes with properties: {cls._PROPERTY_MEMBERS}."
+                    "Did you mean `start_cooldown` or `cooldown_reset_value` instead of `cooldown`?")
         if not cls._auto_init_ or metarule: # TODO: Check for multirule, should _auto_init_ be set to False?
             return
         
@@ -952,23 +949,27 @@ class Rule(_GroupRule):
         else:
             custom_init = False
             
+        # Members that are not overwritten and passed as default arguments (None) into the __init__
         do_not_overwrite = ["phases"]
+        
         if hasattr(cls, "condition"):
             # Check if the condition should be treated as a method or function
-            rule_func : ConditionFunctionLike[Self, ..., Hashable, Self]
+            rule_func : ConditionFunctionLike[Self, ..., Hashable]
             if isinstance(cls.condition, ConditionFunction):
-                rule_func = cls.condition.evaluation_function
+                rule_func = cls.condition.evaluation_function  # pyright: ignore[reportUnknownMemberType, reportAssignmentType]
             else:
                 rule_func = cls.condition
+            if isinstance(rule_func, staticmethod):
+                rule_func = rule_func.__func__
             
             # Decide method(self, ctx) vs. function(ctx)
-            if hasattr(cls.condition, "use_self") and cls.condition.use_self is not None: # type: ignore[attr-defined]
-                condition_as_method = cls.condition.use_self                  # type: ignore[attr-defined]
+            if hasattr(cls.condition, "use_self") and cls.condition.use_self is not None:   # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportFunctionMemberAccess,  reportAttributeAccessIssue]
+                condition_as_method: bool = cls.condition.use_self  # type: ignore[attr-defined]
             else:
                 params = len(inspect.signature(rule_func).parameters)
                 if params >= 2:
                     if params > 2:
-                        logger.warning(f"Rule {getattr(cls.condition, '__name__', cls.condition)}"
+                        logger.warning(f"Rule {getattr(cls.condition, '__name__', cls.condition)}"  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
                                 "has more than 2 parameters. "
                                 "Treating it as a method(self, ctx, **kwargs) with self argument!"
                                 "To avoid this message or to use it as a function use"
@@ -980,14 +981,14 @@ class Rule(_GroupRule):
                 logger.debug("Implementing %s as method(self, ctx) - "
                                 "If you need it as a function(ctx, *args) decorate it with "
                                 "@ConditionFunction(use_self=False).", 
-                            getattr(cls.condition, '__name__', cls.condition))
+                            getattr(cls.condition, '__name__', cls.condition))  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
                 do_not_overwrite.append("condition")
             else:
                 # If the signature has only one parameter its a function; else its user decision.
                 logger.debug("Implementing %s as function(ctx) without a self argument "
                                 "- If you need it as a method(self, ctx, *args) decorate it with "
                                 "@ConditionFunction(use_self=True).", 
-                             getattr(cls.condition, '__name__', cls.condition))
+                             getattr(cls.condition, '__name__', cls.condition))  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
             
             # Actions provided by condition.actions, e.g. ConditionFunction.register_action
             if hasattr(cls.condition, "actions") and cls.condition.actions: # type: ignore[attr-defined]
@@ -1009,8 +1010,7 @@ class Rule(_GroupRule):
         
         # TODO: to be lazy Rule arguments need to be added to params so that "k in params" works
         
-        @wraps(cls.__init__)
-        def partial_init(self: Self, phases:Optional[Iterable[Phase]]=None, *args, **kwargs):
+        def partial_init(self: Self, phases:Optional[Iterable[Phase]]=None, *args, **kwargs: Rule._InitParameters):  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
             # Need phases as first argument
             cls_phases = getattr(cls, "phases", None) # allow for both wordings
             cls_phase = getattr(cls, "phase", None)
@@ -1018,7 +1018,7 @@ class Rule(_GroupRule):
                 # Using @Rule phases as first argument is the class
                 phases = cls_phases or cls_phase
             else:
-                if phases is None: # NOTE: Could be Phase.NONE
+                if phases is None:  # NOTE: Could be Phase.NONE
                     phases = cls_phases or cls_phase
             if phases is None:
                 raise ValueError(f"`phases` or `phase` must be provided for class {cls.__name__}")
@@ -1039,12 +1039,12 @@ class Rule(_GroupRule):
                 if "missing" in str(e):
                     logger.error("Class %s has likely missing attributes that cannot be passed to init. Check if all required attributes are set in the class definition.", cls.__name__)
                 raise e
-        new_init = cast("Callable[Concatenate[Self, Optional[Iterable[Phase]], ...], None]", partial_init)
-        cls.__init__ = new_init # type: ignore
-    
+        update_wrapper(partial_init, cls.__init__)  # pyright: ignore[reportUnknownArgumentType]
+        cls.__init__ = partial_init  # pyright: ignore[reportIncompatibleMethodOverride, reportAttributeAccessIssue]
+
     @__init__.register(_CountdownRule)
     @__init__.register(type)
-    def __init_by_decorating_class(self, cls: "Rule"): # pylint: disable=unused-variable
+    def __init_by_decorating_class(self, cls: "Rule"):  # pyright: ignore[reportUnusedFunction]
         """
         Initialize by passing a Rule or class object to the __init__ method.
         
@@ -1053,31 +1053,44 @@ class Rule(_GroupRule):
         phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow for spelling mistake
         cooldown_reset_value = getattr(cls, "cooldown_reset_value", getattr(cls, "max_cooldown", None))
         
-        # TODO: Automate this via inspect.signature
-        
-        self.__init__(phases, cls.condition, getattr(cls, "action", None), getattr(cls, "false_action", None), actions=getattr(cls, "actions", None), description=cls.description, overwrite_settings=getattr(cls, "overwrite_settings", None), self_config=getattr(cls, "self_config", None), priority=getattr(cls, "priority", RulePriority.NORMAL), cooldown_reset_value=cooldown_reset_value, group=getattr(cls, "group", None), enabled=getattr(cls, "enabled", True))
+        # TODO: Automate this via inspect.signature or TypedDict of the __init__ signature
+        self.__init__(phases,
+                      cls.condition,
+                      getattr(cls, "action", None),
+                      getattr(cls, "false_action", None),
+                      actions=getattr(cls, "actions", None),
+                      description=cls.description,
+                      overwrite_settings=getattr(cls, "overwrite_settings", None),
+                      self_config=getattr(cls, "self_config", None),
+                      priority=getattr(cls, "priority", RulePriority.NORMAL),
+                      cooldown_reset_value=cooldown_reset_value,
+                      group=getattr(cls, "group", None),
+                      enabled=getattr(cls, "enabled", True))
         
     @__init__.register(Mapping)
-    def __init_from_mapping(self, cls: "_InitParametersComplete"): # pylint: disable=unused-variable
+    def __init_from_mapping(self, source: "_InitParametersComplete"):  # pyright: ignore[reportUnusedFunction]
         # NOTE: This is weakly tested and not much supported.
-        self.__init__(cls.get("phases", cls.get("phase")), 
-                      cls["condition"], 
-                      cls.get("action"), 
-                      cls.get("false_action"), 
-                      actions=cls.get("actions"),
-                      description=cls["description"],
-                      overwrite_settings=cls.get("overwrite_settings"),
-                      self_config=cls.get("self_config"),
-                      priority=cls.get("priority", RulePriority.NORMAL),
-                      cooldown_reset_value=cls.get("cooldown_reset_value"),
-                      group=cls.get("group"),
-                      enabled=cls.get("enabled", True))        
+        condition = source.get("condition", None)
+        if condition is not None:
+            condition = getattr(self, "condition", None)
+        self.__init__(source.get("phases", source.get("phase")), 
+                      condition, 
+                      source.get("action"), 
+                      source.get("false_action"), 
+                      actions=source.get("actions"),
+                      description=source.get("description", self.description),
+                      overwrite_settings=source.get("overwrite_settings"),
+                      self_config=source.get("self_config"),
+                      priority=source.get("priority", RulePriority.NORMAL),
+                      cooldown_reset_value=source.get("cooldown_reset_value"),
+                      group=source.get("group"),
+                      enabled=source.get("enabled", True))        
 
 
     # -----------------------
     
     @classmethod
-    def get_init_signature(cls):
+    def _get_init_signature(cls):
         """
         Get the signature of the __init__ function.
         
@@ -1089,23 +1102,33 @@ class Rule(_GroupRule):
         return inspect.signature(cls.__init__).parameters.keys()
 
     
-
-    def execute_phase(self, *args, **kwargs):
+    def execute_phase(self, 
+                      phase: Phase, *, 
+                      prior_results: Any = None, 
+                      update_controls: Optional[carla.VehicleControl]=None):
         """
-        Helper function to execute a phase from within a rule,
-        wrapper of :py:meth:`agents.lunatic_agent.LunaticAgent.execute_phase`.  
-        **Use with care to avoid loops or recursions.**
+        Attention:
+            - **Use with care to avoid loops or recursions.**
             
-        Raises:
-            AttributeError: If the weak proxy pointing to the :py:class:`Context` object has been deleted.
+            - If a :py:class:`.Context` is available prefer using 
+              :py:meth:`ctx.agent.execute_phase <.LunaticAgent.execute_phase>` instead.
+        
+        Helper function to execute a phase from within a rule,
+        wrapper of :py:meth:`agents.lunatic_agent.LunaticAgent.execute_phase`.
+            
+        Warns:
+            ReferenceError: If the weak proxy pointing to the :py:class:`Context` object has been 
+                deleted. The phase will not be executed.
             
         See Also:
             - :py:meth:`.LunaticAgent.execute_phase`
         """
         try:
-            self._ctx.agent.execute_phase(*args, **kwargs) # type: ignore
-        except AttributeError:
-            logger.exception("Error in Rule.execute_phase. Weakproxy might have been deleted")
+            self._ctx.agent.execute_phase(phase=phase,  # pyright: ignore[reportOptionalMemberAccess]
+                                          prior_results=prior_results, 
+                                          update_controls=update_controls) 
+        except ReferenceError:
+            logger.error("ReferenceError in Rule.execute_phase. Weakproxy deleted.")
             
 
     # -----------------------
@@ -1113,30 +1136,61 @@ class Rule(_GroupRule):
     # -----------------------
 
     @_use_temporary_config
-    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, "Literal[RuleResult.NO_RESULT]"]: # pylint: ignore=unused-argument
+    def evaluate(self, ctx : Context, 
+                 overwrite: Optional[Dict[str, Any]] = None  # pylint: ignore=unused-argument
+                 ) -> Union[bool, Hashable, "Literal[RuleResult.NO_RESULT]"]:
         """
-        Executes the condition function of the rule, should be called from a rule's :py:meth:`__call__` method.
+        Note:
+            This is an **interface** function of rules that is executed during :py:meth:`__call__`.
+            This method does not check if a rule is applicable.
+            i.e. if the rule is in the correct phase of if it py:meth:`is_ready`
+            this is done in :py:meth:`__call__`.
+            
+            Meta rules with children should overwrite this method and call
+            :py:meth:`evaluate_children` from here.
+        
+        Executes the :py:attr:`condition` function of the rule.
         The decorator automatically takes care of temporarily setting the :py:attr:`overwrite_settings`.
+        
+        Parameters:
+            ctx: The context object that is passed to the condition function.
+            overwrite: A dictionary of settings that will overwrite the agent's setting for this Rule.
+              Used by the :code:`@_use_temporary_config` decorator.
         
         :meta private:
         """
         self._ctx = proxy(ctx)      # use with care and access over function
-        result = self.condition(ctx) # type: ignore[correct-call]
+        result = self.condition(ctx)
         return result
     
     def evaluate_children(self, ctx : Context) -> "NoReturn": # pylint: disable=unused-argument
-        """NotImplemented for this rule class"""
+        """
+        Not implemented for this rule class.
+        
+        Note:
+            This is an **interface** function of meta rules 
+            that is executed during :py:meth:`__call__` to call further rules.
+        """
         raise NotImplementedError("This method should be implemented in a subclass")
 
-    def __call__(self, ctx : Context, overwrite: Optional[Dict[str, Any]]=None, 
+    def __call__(self,
+                 ctx : Context,
+                 overwrite: Optional[Dict[str, Any]]=None, 
                  *, 
                  ignore_phase: bool=False, 
-                 ignore_cooldown: bool=False) -> Any:
+                 ignore_cooldown: bool=False):
         """
-        1. First checks if the rule is *applicable*, i.e. is its :py:attr:`cooldown` 0, if not returns :py:attr:`NOT_APPLICABLE`.
+        1. First checks if the rule is *applicable*, i.e. is its :py:attr:`cooldown == 0 <cooldown>`,
+           if not returns :py:attr:`NOT_APPLICABLE`.
         2. Afterwards evaluates the rules :py:meth:`condition` function.
             - if the result is not in :py:attr:`actions` returns :py:attr:`NOT_APPLICABLE`.
             - otherwise merges the :py:attr:`overwrite_settings` with the py:attr:`.Context.config` and executes the action.
+            
+        Parameters:
+            ctx: The context object that is passed to the condition function.
+            overwrite: Extends :py:attr:`overwrite_settings` for this call only. Defaults to :code:`None`.
+            ignore_phase: If :python:`True` the phase check is skipped. Defaults to :code:`False`.
+            ignore_cooldown: If True the cooldown check is skipped. Defaults to :code:`False`.
         """
         
         # Check phase
@@ -1172,20 +1226,34 @@ class Rule(_GroupRule):
                 self.reset_cooldown() # 
                 raise exception
     
-    
     def __str__(self) -> str:
         try:
             if isinstance(self.condition, partial):
-                return self.__class__.__name__ + f"(description='{self.description}', phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, condition={self.condition.func}, cooldown={self.cooldown})"
-            return self.__class__.__name__ + f"(description='{self.description}', phases={self.phases}, group={self.group}, priority={self.priority}, actions={self.actions}, condition={self.condition.__name__}, cooldown={self.cooldown})" 
+                return (self.__class__.__name__ 
+                        + f"(description='{self.description}', "
+                          f"phases={self.phases}, group={self.group}, "
+                          f"priority={self.priority}, "
+                          f"actions={self.actions}, "
+                          f"condition={self.condition.func}, " # pyright: ignore[reportUnknownMemberType]
+                          f"cooldown={self.cooldown})"
+                )
+            return (self.__class__.__name__ 
+                        + f"(description='{self.description}', "
+                          f"phases={self.phases}, group={self.group}, "
+                          f"priority={self.priority}, "
+                          f"actions={self.actions}, "
+                          f"condition={self.condition.__name__}, "
+                          f"cooldown={self.cooldown})"
+                )
         except AttributeError as e:
             logger.info("Error during string creation: " + str(e))
-            return self.__class__.__name__ + "(Error in condition.__str__: Rule has not been initialized correctly. Missing attributes: " + str(e) + ")"
+            return (self.__class__.__name__ 
+                    + "(Error in condition.__str__: Rule has not been initialized correctly. "
+                      "Missing attributes: " + str(e) + ")" )
 
     def __repr__(self) -> str:
         return str(self)
 
-    
 
 class MultiRule(Rule, metarule=True):
 
@@ -1219,10 +1287,10 @@ class MultiRule(Rule, metarule=True):
     
     @singledispatchmethod
     def __init__(self, 
-                 phases: Union["Phase", Iterable["Phase"]], 
+                 phases: Union[Phase, Iterable[Phase]], 
                  #/, # phases must be positional; python3.8+ only
                  rules: List[Rule], 
-                 condition : Optional[ConditionFunctionLike[Self, _P, _H, Self]] = None,
+                 condition : Optional[ConditionFunctionLikeT] = None,
                  *,
                  description: str = "If its own condition is true calls the passed rules.",
                  priority: RulePriority = RulePriority.NORMAL, 
@@ -1257,9 +1325,11 @@ class MultiRule(Rule, metarule=True):
                 enabled (bool, optional): Flag indicating whether the rule is enabled after creation. Defaults to :python:`True`.
             """
             self.ignore_phase = ignore_phase
-            if rules is None: # type: ignore
+            if rules is None:  # type: ignore
                 logger.warning("Warning: No rules passed to %s: %s. You can still add rules to the rules attribute later.", self.__class__.mro()[1].__name__, self.__class__.__name__) 
                 rules = []
+            if len(rules) == 0:
+                logger.debug("Rules list is empty. %s will always return NOT_APPLICABLE.", self.__class__.__name__)
             self.rules = rules
             self.execute_all_rules = execute_all_rules
             if sort_rules:
@@ -1270,9 +1340,11 @@ class MultiRule(Rule, metarule=True):
             else:
                 action = self.evaluate_children # will be called elsewhere
             if condition is None and not hasattr(self, "condition"):
-                condition = always_execute
+                condition_arg = always_execute
+            else:
+                condition_arg = condition
             super().__init__(phases, 
-                             condition=condition, 
+                             condition=condition_arg, 
                              action=action, 
                              description=description, 
                              overwrite_settings=overwrite_settings,
@@ -1285,10 +1357,9 @@ class MultiRule(Rule, metarule=True):
     @__init__.register(_CountdownRule) # For similar_rule = Rule(some_rule), easier cloning
     @__init__.register(type) # For @Rule class MyRule: ...
     def __init_by_decorating_class(self, cls: "MultiRule"):   # pyright: ignore[reportUnusedFunction]
-        phases = getattr(cls, "phases", getattr(cls, "phase", None)) # allow both
-        cooldown_reset_value = getattr(cls, 
-                                       "cooldown_reset_value", 
-                                       getattr(cls, "max_cooldown", None)) 
+        phases = getattr(cls, "phases", getattr(cls, "phase", None))  # allow both
+        cooldown_reset_value = getattr(cls, "cooldown_reset_value", 
+                                                        getattr(cls, "max_cooldown", None)) 
         assert hasattr(cls, "condition"), f"Class {cls} has no condition attribute. It must be provided."
         self.__init__(phases, cls.rules,
                       cls.condition, # type: ignore
@@ -1305,11 +1376,10 @@ class MultiRule(Rule, metarule=True):
     
     @__init__.register(Mapping)
     def __init_from_mapping(self, cls: "_InitParameters"):  # pyright: ignore[reportUnusedFunction]
-        self.__init__(cls.get("phases",
-                      cls.get("phase")),
+        self.__init__(cls.get("phases", cls.get("phase")),
                       cls["rules"],
                       cls.get("condition"),
-                      description=cls["description"],
+                      description=cls.get("description", self.description),
                       overwrite_settings=cls.get("overwrite_settings"),
                       self_config=cls.get("self_config"),
                       priority=cls.get("priority", RulePriority.NORMAL),
@@ -1382,7 +1452,7 @@ class RandomRule(MultiRule, metarule=True):
     
     @singledispatchmethod
     def __init__(self, 
-                 phases : Union["Phase", Iterable["Phase"]], #/, # phases must be positional; python3.8+ only
+                 phases : Union[Phase, Iterable[Phase]], #/, # phases must be positional; python3.8+ only
                  rules : Union[Dict[Rule, float], List[Rule]], 
                  repeat_if_not_applicable : bool = True,
                  condition : Optional[Callable[[Context], Any]] = None, 
@@ -1438,8 +1508,8 @@ class RandomRule(MultiRule, metarule=True):
         
         assert hasattr(cls, "condition"), f"Class {cls} has no condition attribute. It must be provided."
         self.__init__(phases, cls.rules, repeat_if_not_applicable=cls.repeat_if_not_applicable, 
-                      condition=cls.condition,  # type XXX: ignore[attr-defined]
-                      description=cls.description,  # type XXX: ignore[attr-defined]
+                      condition=cls.condition,
+                      description=cls.description,
                       overwrite_settings=getattr(cls, "overwrite_settings", None),
                       self_config=getattr(cls, "self_config", None),
                       priority=getattr(cls, "priority", RulePriority.NORMAL),
@@ -1450,11 +1520,11 @@ class RandomRule(MultiRule, metarule=True):
     
     @__init__.register(Mapping)
     def __init_from_mapping(self, cls: "_InitParameters"):  # pyright: ignore[reportUnusedFunction]
-        self.__init__(cls.get("phases"), 
+        self.__init__(cls.get("phases", cls.get("phase")), 
                       cls["rules"], 
                       repeat_if_not_applicable=cls.get("repeat_if_not_applicable", True), 
                       condition=cls.get("condition"), 
-                      description=cls["description"], 
+                      description=cls.get("description", self.description), 
                       overwrite_settings=cls.get("overwrite_settings"), 
                       self_config=cls.get("self_config"), 
                       priority=cls.get("priority", RulePriority.NORMAL), 
@@ -1474,6 +1544,9 @@ class RandomRule(MultiRule, metarule=True):
         For `self.repeat_if_not_applicable=False` possible rules are evaluated in a random fashion
         until one rule was applicable.
         """
+        if len(self.rules) == 0:
+            logger.warning("No rules to evaluate in %s. Returning NOT_APPLICABLE.", self.__class__.__name__)
+            return RuleResult.NOT_APPLICABLE
         if self.repeat_if_not_applicable:
             rules = self.rules.copy()
             weights = self.weights.copy()
@@ -1481,6 +1554,7 @@ class RandomRule(MultiRule, metarule=True):
             rules = self.rules
             weights = self.weights
 
+        result = RuleResult.NOT_APPLICABLE
         while rules:
             rule = random.choices(rules, cum_weights=weights, k=1)[0]
             try:
@@ -1499,7 +1573,9 @@ class RandomRule(MultiRule, metarule=True):
 
 class BlockingRule(Rule, metarule=True):
     """
-    This meta rule allows to define rules that are able to takeover the agent's workflow
+    This meta rule allows to define rules that are able to takeover the agent's workflow and
+    apply the :py:class:`.VehicleControl` directly from withhin the rule.
+    
     """
 
     _gameframework: ClassVar[Union["GameFramework", "CallableProxyType[GameFramework]", None]] = None
@@ -1512,23 +1588,35 @@ class BlockingRule(Rule, metarule=True):
     """Count how many ticks have been performed by this rule and blocked the agent."""
     
     MAX_TICKS = 5000 # 5000 * 1/20 = 250 seconds
+    """
+    The amount of ticks that can be performed by this rule before it is automatically disabled.
+    If the rule has looped for this amount of ticks if will then call :py:attr:`max_tick_callback`
+    and raise an :py:exc:`.UnblockRuleException` afterwards.
+    
+    As a hack :py:attr:`max_tick_callback` can change :py:attr:`ticks_passed` to prevent the
+    exception and continue the rule.
+    """
     
     max_tick_callback : Optional[Callable[[Self, Context], Any]] = None
+    """
+    An optional callback that is executed when :py:attr:`ticks_passed` reaches :py:attr:`MAX_TICKS`.
+    """
 
     if TYPE_CHECKING:
         class _InitParameters(Rule._InitParameters):   # pyright: ignore[reportPrivateUsage]
-            gameframework: Required[Optional["GameFramework"]]
+            gameframework: Required[Optional[GameFramework]]
 
     @singledispatchmethod
     def __init__(self, 
-                 phases : Union["Phase", Iterable["Phase"]], # iterable of Phases
+                 phases : Union[Phase, Iterable[Phase]], # iterable of Phases
                  #/, # phases must be positional; python3.8+ only
-                 condition : Optional[ConditionFunctionLike[Self, _P, _H, Self]]=None,  # XXX
-                 action: Optional[Union[CallableAction[Self, _T], Dict[Any, CallableAction[Self, _T]]]] = None,
-                 false_action: Optional[Callable[[Context], Any]] = None,
+                 condition : Optional[ConditionFunctionLikeT]=None,
+                 action: Optional[Union[CallableAction[Self, []], 
+                                        Dict[Any, CallableAction[Self, []]]]] = None,
+                 false_action: Optional[CallableAction[Self, []]] = None,
                  *, 
-                 gameframework: Optional["GameFramework"],
-                 actions :Optional[Dict[Any, CallableAction[Rule, Any]]] = None,
+                 gameframework: Optional[GameFramework],
+                 actions :Optional[Dict[Any, CallableAction[Rule, []]]] = None,
                  description: str = "What does this rule do?",
                  overwrite_settings: Optional[Dict[str, Any]] = None,
                  self_config: Optional[Dict[str, Any]] = None,
@@ -1600,14 +1688,17 @@ class BlockingRule(Rule, metarule=True):
 
 
     @overload
-    def loop_agent(self, ctx: Context, control: Optional["carla.VehicleControl"]=None, *, execute_planner: Literal[True], execute_phases:Any) -> "carla.VehicleControl":
+    def loop_agent(self, ctx: Context, control: Optional[carla.VehicleControl]=None, 
+                   *, execute_planner: Literal[True], execute_phases:Any) -> carla.VehicleControl:
         ...
         
     @overload
-    def loop_agent(self, ctx: Context, control: Optional["carla.VehicleControl"]=None, *, execute_planner: Literal[False], execute_phases:Any) -> None:
+    def loop_agent(self, ctx: Context, control: Optional[carla.VehicleControl]=None, 
+                   *, execute_planner: Literal[False], execute_phases:Any) -> None:
         ...
 
-    def loop_agent(self, ctx: Context, control: Optional["carla.VehicleControl"]=None, *, execute_planner: bool, execute_phases:Any=True) -> "carla.VehicleControl | None":
+    def loop_agent(self, ctx: Context, control: Optional[carla.VehicleControl]=None, 
+                   *, execute_planner: bool, execute_phases:Any=True) -> "carla.VehicleControl | None":
         """
         A combination of `LunaticAgent.parse_keyboard_input`, `LunaticAgent.apply_control`, `BlockingRule.update_world`,
         and `Context.get_or_calculate_control` to advance agent and world.
@@ -1639,11 +1730,12 @@ class BlockingRule(Rule, metarule=True):
         return None
 
     @staticmethod
-    def get_world() -> "carla.World":
+    def get_world() -> carla.World:
+        """Method to access the world object"""
         return CarlaDataProvider.get_world()
 
     def _begin_tick(self, ctx: Context):
-        self._gameframework.clock.tick() # self.args.fps)  # type: ignore[attr-defined]
+        self._gameframework.clock.tick()  # self.args.fps)  # type: ignore[attr-defined]
         frame = None
         if self._gameframework and self._gameframework._args.handle_ticks: # i.e. no scenario runner doing it for us
             if CarlaDataProvider.is_sync_mode():
@@ -1675,7 +1767,7 @@ class BlockingRule(Rule, metarule=True):
         ctx.set_control(None)
         self.ticks_passed += 1
 
-    def update_world(self, ctx: Context, *, execute_phases=True) -> "carla.VehicleControl | None":
+    def update_world(self, ctx: Context, *, execute_phases: Union[bool, Container[Phase]]=True) -> "carla.VehicleControl | None":
         """
         Ticks the world and takes care of the rendering.
     
@@ -1684,9 +1776,10 @@ class BlockingRule(Rule, metarule=True):
             - :py:meth:`.LunaticAgent.update_information`, with or without executing the phases, depending on **execute_phases**.
 
         Args:
-            ctx (Context): The context to use
-            execute_update_information (bool, optional): 
-                Whether to execute the :python:`Phase.UPDATE_INFORMATION | Phase.[BEGIN|END]` with this function. 
+            ctx: The context to use
+            execute_update_information: 
+                Whether to execute the :python:`Phase.UPDATE_INFORMATION | Phase.[BEGIN|END]` with this function.
+                Can also be a container containing one of both of these phases.
                 Defaults to :python:`True`.
 
         Raises:
@@ -1696,14 +1789,13 @@ class BlockingRule(Rule, metarule=True):
             The usage with Leaderboard_ is working but experimental.
             The scenario expects the agent to return a control object in every step, however as this rule
             takes over the ticks completely an outside ScenarioManager might not work as expected.
-        
         """
         self._begin_tick(ctx)
         ctx.agent.execute_phase(Phase.CUSTOM_CYCLE | Phase.BEGIN, prior_results=self)
 
         # Update the agent's information
-        if execute_phases:
-            ctx.agent.execute_phase(Phase.UPDATE_INFORMATION | Phase.BEGIN, prior_results=self)
+        if execute_phases and (execute_phases is True or Phase.UPDATE_INFORMATION | Phase.BEGIN in execute_phases):
+                ctx.agent.execute_phase(Phase.UPDATE_INFORMATION | Phase.BEGIN, prior_results=self)
         ctx.agent._update_information()
         if execute_phases and Phase.UPDATE_INFORMATION | Phase.END not in self.phases:
             ctx.agent.execute_phase(Phase.UPDATE_INFORMATION | Phase.END, prior_results=self)
@@ -1711,21 +1803,28 @@ class BlockingRule(Rule, metarule=True):
             logger.info("Rule %s has passed its max_ticks %s, calling max_tick_callback and unblocking it", self, self.MAX_TICKS)
             if self.max_tick_callback:
                 self.max_tick_callback(ctx)
-            raise UnblockRuleException()
+                if self.ticks_passed > self.MAX_TICKS:
+                    raise UnblockRuleException()
+                # max_tick_callback can override the ticks passed
+            else:
+                raise UnblockRuleException()
         
         self._render_everything(ctx)
 
-    def __call__(self, ctx: Context, overwrite: Optional[Dict[str, Any]]=None, in_loop=False, **kwargs):
+    def __call__(self, ctx: Context, overwrite: Optional[Dict[str, Any]]=None, in_loop: bool=False, 
+                 *, # Kwargs from Rule.__call__
+                 ignore_phase: bool=False,
+                 ignore_cooldown: bool=False) -> Union[Any, Literal[RuleResult.NOT_APPLICABLE]]:
         if not in_loop:
             self.ticks_passed = 0
         else:
-            kwargs.setdefault("ignore_phase", True)
-            kwargs.setdefault("ignore_cooldown", True)
+            ignore_phase = True
+            ignore_cooldown = True
         if self in ctx.agent._active_blocking_rules:
             logger.warning("Rule %s is already blocking the agent, this is a recursive call. Not executing the rule.", self)
             return Rule.NOT_APPLICABLE
         try:
-            return super().__call__(ctx, overwrite, **kwargs)
+            return super().__call__(ctx, overwrite, ignore_phase=ignore_phase, ignore_cooldown=ignore_cooldown)
         except UnblockRuleException as e:
             return e.result
         finally:
@@ -1743,9 +1842,3 @@ import classes.evaluation_function as __evaluation_function
 __evaluation_function.Rule = Rule
 __evaluation_function.Context = Context
 del __evaluation_function
-
-# Why is this one needed?
-import classes.constants as __constants
-__constants.Rule = Rule         
-__constants.Context = Context
-del __constants

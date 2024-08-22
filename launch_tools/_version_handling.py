@@ -3,21 +3,21 @@
 This submodule provides necessary imports that are not available in all python versions.
 """
 import sys
-from typing import TYPE_CHECKING
 __all__ = ['singledispatchmethod', 'Literal', 'ast_parse']
 
 
 # singledispatchmethod
 
 if sys.version_info >= (3, 8):
-    from functools import singledispatchmethod # Python 3.8+
+    from functools import singledispatchmethod # Python 3.8+    
 else:
     from functools import singledispatch, update_wrapper
-    from typing import Callable, TypeVar
+    from typing import Callable, TypeVar, Any
     from typing_extensions import ParamSpec
     _T = TypeVar('_T')
     _P = ParamSpec('_P')
-    def singledispatchmethod(func : Callable[_P, _T]) -> Callable[_P, _T]:
+    _C = TypeVar("_C", bound=Callable[..., Any])
+    def singledispatchmethod(func : _C) -> _C:
         """
         Works like :py:class:`functools.singledispatch`, but for methods.
         Backward compatible code of :py:class:`functools.singledispatchmethod`
@@ -65,7 +65,7 @@ else:
 
 
 # Monkey patch for Concatenate in Python3.7
-if sys.version_info < (3, 8):
+if False and sys.version_info < (3, 8):
     from typing_extensions import ParamSpec, TypeVar
     from typing import _GenericAlias
     import typing_extensions

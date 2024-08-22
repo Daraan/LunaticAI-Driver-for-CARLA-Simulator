@@ -1067,7 +1067,7 @@ class BasicAgentObstacleSettings(AgentConfig):
     See `BasicAgent._vehicle_obstacle_detected`
     """
     
-    detect_yellow_tlighs : bool = True
+    detect_yellow_tlights : bool = True
     """
     If the the agent will treat a yellow light like a red light. If False will not detect them.
     

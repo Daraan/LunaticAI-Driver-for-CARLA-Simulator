@@ -113,6 +113,18 @@ classes.rule module
    :special-members: __call__
 
 
+.. _classes/type_protocols:
+
+classes.type\_protocols module
+------------------------------
+
+.. automodule:: classes.type_protocols
+   :members:
+   :no-special-members:
+   :undoc-members:
+   :show-inheritance:
+
+
 .. _classes/worldmodel:
 
 classes.worldmodel module

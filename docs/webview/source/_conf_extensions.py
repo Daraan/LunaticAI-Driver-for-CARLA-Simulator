@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 
 check_doctree = None
 IGNORE_INCLUDE_MD = True
+"""
+_include.md is a template for small snippets that need to be parsed by myst and included in rst
+files. If this is true the include event listener will ignore this file which is recommended.
+"""
 
 RE_MATCH_FILE = re.compile(r"^(?P<path>[a-zA-Z0-9_/.]*/)(?P<file>[a-zA-Z0-9_.]+\.(?P<ext>\w+))?(?P<fragment>#.*)?$")
 """Pattern for ./path/to/file.md#fragment"""
@@ -67,7 +71,7 @@ def doctree_read_listener(app, doctree : "docutils.nodes.document"):
 
 def _fix_node_targets(nodes : "Iterable[docutils.nodes.Node]"):
     for node in nodes:
-        FileResolver.fix_taget_of_node(node)
+        FileResolver.fix_target_of_node(node)
 
 class FileResolver(post_transforms.ReferencesResolver):
 
@@ -84,7 +88,7 @@ class FileResolver(post_transforms.ReferencesResolver):
         return [node for node in FileResolver._py_node if node.attributes.get("refdoc", False) == document]
 
     @staticmethod
-    def fix_taget_of_node(node : sphinx.addnodes.pending_xref):
+    def fix_target_of_node(node : sphinx.addnodes.pending_xref):
         """
         Assure that .py and .md links in markdown point to the correct target.
         """
@@ -185,7 +189,7 @@ class FileResolver(post_transforms.ReferencesResolver):
                 continue
             if target in ("genindex", "modindex", "search"):
                 continue
-            self.fix_taget_of_node(node)
+            self.fix_target_of_node(node)
 
     def run(self, **kwargs):
         global check_doctree
@@ -247,20 +251,37 @@ def autodoc_skip_member(app : "sphinx.application.Sphinx",
 from _autodoc_type_aliases import autodoc_type_aliases
 
 _convert = {
-    '_ActionType[_Rule, _P, _T]' : autodoc_type_aliases["_ActionType"],
-    '_ConditionType[_Rule, _CP, _CH]' : autodoc_type_aliases["_ConditionType"],
-    '_CallableCondition[_Rule, _CP, _CH]' : autodoc_type_aliases["_ConditionType"],
-    '_ActionTypeAlias' : autodoc_type_aliases["_ActionType"],
+    #'_ActionType[_Rule, _P, _T]' : autodoc_type_aliases["_ActionType"],
+    #'_ActionTypeAlias' : autodoc_type_aliases["_ActionType"],
+    'CallableAction[_Rule, _P, _T]' : autodoc_type_aliases["CallableAction"],
+    'CallableAction[Self, [], Any]' : autodoc_type_aliases["CallableAction"],
+    'CallableAction' : autodoc_type_aliases["CallableAction"],
+    #'_CallableAction[_Rule, _P, _T]' : autodoc_type_aliases["_ActionType"],
+    'CallableCondition[RuleT, _CP, _CH]' : autodoc_type_aliases["CallableCondition"],
+    'CallableCondition' : autodoc_type_aliases["CallableCondition"],
+    
+    '_ActionsDictValues' : 'AnyCallableAction',
+    '_RegisterActionDecorator' : "typing.Callable[[CallableT], CallableT]",
+    
+    #'_ConditionType[_Rule, _CP, _CH]' : autodoc_type_aliases["_ConditionType"],
+    #'_CallableCondition[_Rule, _CP, _CH]' : autodoc_type_aliases["_ConditionType"],
+    #'ConditionFunctionLike[Self, _P, _H]' : autodoc_type_aliases["_ConditionType"],
     '_ActorList' : 'list',
-    'CallableAction' : autodoc_type_aliases["_ActionType"],
-    'ConditionFunctionLike[Self, _P, _H]' : autodoc_type_aliases["_ConditionType"],
     'NoReturn' : 'typing.NoReturn',
     'Iterable' : 'typing.Iterable',
+    'ClassVar' : 'typing.ClassVar',
+    "[_Rule, _P, _T]" : "",
+    "_P.kwargs" : "typing.ParamSpecKwargs",
+    "Hashable" : "typing.Hashable",
 }
 
 
+_patterns = {k : re.compile(rf"\b{k}(?<!{v})\b") 
+             for k, v in _convert.items()}
+
+
 # autodoc-before-process-signature
-def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_method : bool):
+def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_method: bool):
     """
     Process object signature
     
@@ -279,9 +300,10 @@ def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_m
                     signature = signature.replace(replace_th, new_hint)
                 elif keyword == "return":
                     if isinstance(signature.return_annotation, str):
-                        signature.replace(return_annotation=signature.return_annotation.replace(replace_th, new_hint))
+                        signature.replace(return_annotation=
+                                          _patterns[replace_th].sub(new_hint, signature.return_annotation))
                 elif isinstance(signature.parameters[keyword].annotation, str):
-                    signature.parameters[keyword]._annotation = signature.parameters[keyword]._annotation.replace(replace_th, new_hint)
+                    signature.parameters[keyword]._annotation = _patterns[replace_th].sub(new_hint, signature.parameters[keyword]._annotation)  # pyright: ignore[reportAttributeAccessIssue]
                 else:
                     continue
             
@@ -291,9 +313,6 @@ def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_m
             setattr(obj, "__signature__", signature)
     except Exception as e:
         print("Error in before_type_hint_cleaner", e)
-        #breakpoint()
-
-import re
 
 
 # autodoc-process-signature
@@ -305,11 +324,19 @@ def type_hint_cleaner(app : sphinx.application.Sphinx,
                       options : dict, 
                       signature : Optional[str], 
                       return_annotation : Optional[str]):
+    #if what in ("class", "attribute"):
+    #    breakpoint()
+    #if "register_action" in name:
+    #    breakpoint()
+    
+    if not signature and not return_annotation:
+        return None, None
     
     for replace_th, new_hint in _convert.items():
+        # prevent double substitution
         if return_annotation:
-            return_annotation = return_annotation.replace(replace_th, new_hint)
+            return_annotation = _patterns[replace_th].sub(new_hint, return_annotation)
         if signature:
-            signature = signature.replace(replace_th, new_hint)
+            signature = _patterns[replace_th].sub(new_hint, signature)
 
-    return signature, return_annotation
+    return signature or None, return_annotation or None

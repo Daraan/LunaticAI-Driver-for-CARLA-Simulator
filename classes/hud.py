@@ -268,7 +268,7 @@ class HUD(object):
 class FadingText(object):
     """ Class for fading text """
 
-    def __init__(self, font: pygame.font.Font, dim: tuple[int, int], pos: tuple[int, int]):
+    def __init__(self, font: pygame.font.Font, dim: "tuple[int, int]", pos: "tuple[int, int]"):
         """Constructor method"""
         self.font = font
         self.dim = dim

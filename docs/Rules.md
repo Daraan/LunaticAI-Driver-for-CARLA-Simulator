@@ -4,6 +4,11 @@
 .. Note this is a MyST Markdown file to be used with Sphinx and will not render completely on GitHub. Build the documentation or refer to the online documentation at Read The Docs.
 ```
 
+```{seealso}
+For the API documentation see the [Rule class](#Rule) definition.
+```
+
+
 Rules have three main components
 
 - a condition

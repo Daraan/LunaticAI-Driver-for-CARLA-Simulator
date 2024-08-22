@@ -48,7 +48,7 @@ def affected_by_traffic_light(self : "LunaticAgent",
     if self.config.obstacles.ignore_traffic_lights:
         return TrafficLightDetectionResult(False, None)
 
-    detect_yellow_tlighs = self.config.obstacles.detect_yellow_tlighs
+    detect_yellow_tlighs = self.config.obstacles.detect_yellow_tlights
 
     # Currently affected by a traffic light
     if self._last_traffic_light:

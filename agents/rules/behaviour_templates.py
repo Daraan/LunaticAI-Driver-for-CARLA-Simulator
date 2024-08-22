@@ -5,12 +5,12 @@ from omegaconf._impl import select_node
 
 import carla
 
-
 from classes.constants import Phase, READTHEDOCS
 from classes.rule import Rule, ConditionFunction, Context, always_execute
 from agents.tools.logging import logger
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
+from typing_extensions import Self
 
 _debug_rules = True # TODO: Turn off again
 DEBUG_RULES = not READTHEDOCS and _debug_rules
@@ -65,6 +65,7 @@ class SlowDownAtIntersectionRule(Rule):
     action = set_default_intersection_speed
     overwrite_settings = {"speed": {"intersection_speed_decrease": 10}}
     description = "Set speed to intersection speed"
+
 
 # -----
 
@@ -172,8 +173,11 @@ class ConfigBasedRSSUpdates(Rule):
 
 # ----------- Tests -----------
 
-
+# pyright: basic
 if __name__ == "__main__" or DEBUG_RULES:
+    
+    
+    from typing_extensions import TypeVar, Callable, assert_type, Literal  # noqa
     
     x = ConfigBasedRSSUpdates()
     assert x.description == ConfigBasedRSSUpdates.__doc__
@@ -188,7 +192,8 @@ if __name__ == "__main__" or DEBUG_RULES:
     inst = ConditionFunction(int) # type: ignore # just test
     assert isinstance(inst, ConditionFunction)
     
-    def assert_type(instance, cls):
+    
+    def _check_type(instance, cls):
         assert isinstance(instance, cls)
         return instance
     
@@ -202,40 +207,39 @@ if __name__ == "__main__" or DEBUG_RULES:
         return True
     
     @ConditionFunction
-    def eval_context_method(self: Rule, ctx : "Context") -> bool:
+    def eval_context_method(self: Rule, ctx : "Context") -> int:
         assert isinstance(self, Rule)
         assert isinstance(ctx, Context)
-        return True
+        return 2
 
     @ConditionFunction
-    def eval_context_function(ctx : "Context") -> bool:
+    def eval_context_function(ctx : "Context") -> int:
         assert isinstance(ctx, Context)
-        return True
+        return 1
     
     def ctx_action(ctx : Context):
-        assert_type(ctx, Context)
+        foo = _check_type(ctx, Context)
         
     def ctx_self_action(self, ctx : Context):
-        assert_type(self, Rule)
-        assert_type(ctx, Context)
+        _check_type(self, Rule)
+        _check_type(ctx, Context)
     
-    # Is this still relevant and not fixed? # Untested
-    # TODO: # CRITICAL: >1 argument, treated as method
     def ctx_action_kwargs(ctx : Context, arg1):
         assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
-        assert_type(ctx, Context)
+        _check_type(ctx, Context)
         
     def ctx_self_action_kwargs(self, ctx : Context, arg1):
-        assert_type(self, Rule)
+        _check_type(self, Rule)
         assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
-        assert_type(ctx, Context)
+        _check_type(ctx, Context)
 
     @Rule
     class SimpleRule1:
         phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
         condition = context_function
-        action = lambda ctx: assert_type(ctx, Context)
+        action = lambda ctx: _check_type(ctx, Context)
         description = "Simple Rule 1"
+    
     
     class SimpleRule(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN # type: ignore[assignment]
@@ -248,7 +252,7 @@ if __name__ == "__main__" or DEBUG_RULES:
         
         @staticmethod
         def action(ctx : Context): 
-            assert_type(ctx, Context)
+            _check_type(ctx, Context)
             ctx.control.reverse = True   # type: ignore[arg-type]
     
     @Rule
@@ -257,10 +261,10 @@ if __name__ == "__main__" or DEBUG_RULES:
         condition = eval_context_function.copy() # TODO: can I copy this via a __set__
         condition.register_action(ctx_self_action_kwargs, arg1="arg1")
         
-    class SimpleRule2B:
-        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
+    class SimpleRule2B(Rule):
+        phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
         condition = eval_context_function.copy() # TODO: can I copy this via a __set__
-        condition.register_action(ctx_action_kwargs, arg1="arg1")
+        condition.register_action(ctx_action_kwargs, use_self=False, arg1="arg1")
     
     class SimpleRuleB(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN # type: ignore[assignment]
@@ -272,18 +276,61 @@ if __name__ == "__main__" or DEBUG_RULES:
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN  # type: ignore[assignment]
         
         @ConditionFunction("AlwaysTrue")
-        def condition(self, ctx : "Context") -> bool:
+        def condition(self, ctx : "Context") -> int:
             assert isinstance(ctx, Context)
             assert isinstance(self, DebugRuleWithEval)
-            return True
+            return 1
+        
+        if TYPE_CHECKING:
+            assert_type(condition, ConditionFunction[[], int])
         
         @condition.register_action(True, arg1="arg1")
-        def true_action(self, ctx : "Context", arg1:str) -> None:
+        def true_action(self, ctx: "Context", arg1:str) -> None:
             assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
             assert isinstance(ctx, Context)
             assert isinstance(self, DebugRuleWithEval)
+            return None
+        
+        if TYPE_CHECKING:
+            assert_type(true_action, Callable[[Self, Context], None])
+        
+    class DebugRuleWithEval2(Rule):
+        phases = Phase.UPDATE_INFORMATION | Phase.BEGIN  # type: ignore[assignment]
+        
+        @ConditionFunction
+        def condition(self, ctx : "Context") -> int:
+            assert isinstance(ctx, Context)
+            assert isinstance(self, DebugRuleWithEval)
+            return 1
+        
+        if TYPE_CHECKING:
+            assert_type(condition, ConditionFunction[[], int])
+        
+        deco = condition.register_action(True, arg1="arg1")
+        @deco
+        def true_action(self, ctx: "Context", arg1:str) -> float:
+            assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
+            assert isinstance(ctx, Context)
+            assert isinstance(self, DebugRuleWithEval)
+            return 1.0
             
-    DebugRuleWithEval.true_action
+    if TYPE_CHECKING:
+        from typing import cast  # noqa
+        c = cast(Context, None)
+        res_eval_context_func = eval_context_function(c)
+        res_eval_context_method = eval_context_method(c)
+        assert_type(res_eval_context_func, int)
+        assert_type(res_eval_context_method, int)
+        
+        rule = DebugRuleWithEval2()
+        result = rule.condition(c)
+        assert_type(result, int)
+        result2 = rule(c)
+        a_result = rule.true_action(c)
+        assert_type(a_result, float)
+        rule.true_action(c) 
+        o_rule = cast(Rule, rule)
+        assert_type(DebugRuleWithEval2.true_action(rule, c), float)
 
         
     class Another(Rule):
@@ -291,15 +338,16 @@ if __name__ == "__main__" or DEBUG_RULES:
         
         condition = always_execute
         
-        actions = {True: lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context)),
-                False: lambda ctx: assert_type(ctx, Context)}
+        actions = {True: lambda self, ctx: (_check_type(self, Rule), _check_type(ctx, Context)),
+                False: lambda ctx: _check_type(ctx, Context)}
+        
     
     a = Another()
     
     class CustomInitRule(Rule):        
         def __init__(self, phases:Optional[Phase]=None):
             # NOTE: The 
-            super().__init__(phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, condition=always_execute, action=lambda ctx: assert_type(ctx, Context))
+            super().__init__(phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, condition=always_execute, action=lambda ctx: _check_type(ctx, Context))
             self._custom = True
         
         phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
@@ -307,8 +355,8 @@ if __name__ == "__main__" or DEBUG_RULES:
         _cooldown = 0
         condition = lambda ctx: [][1] # This should not be executed, overwritten in the custom Init
         
-        actions = {True: lambda self, ctx: (assert_type(self, Rule), assert_type(ctx, Context)),
-                False: lambda ctx: assert_type(ctx, Context)}
+        actions = {True: lambda self, ctx: (_check_type(self, Rule), _check_type(ctx, Context)),
+                False: lambda ctx: _check_type(ctx, Context)}
         
     class RuleAttributes(Another):
         DEFAULT_COOLDOWN_RESET = 10
@@ -321,6 +369,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     #new_rule.action
     simple_rule = SimpleRule()
     simple_ruleB = SimpleRuleB(Phase.UPDATE_INFORMATION | Phase.BEGIN)
+    simple_rule2B = SimpleRule2B(Phase.UPDATE_INFORMATION | Phase.BEGIN)
     another_rule = Another()
     
     def _test_custom_init_Rule():
@@ -354,7 +403,9 @@ if __name__ == "__main__" or DEBUG_RULES:
         phase = Phase.BEGIN
         
     assert CheckDescription.description == """This is my description"""
-    cd_rule = CheckDescription(Phase.END, action=lambda ctx: assert_type(ctx, Context), condition=lambda self, ctx: (assert_type(self, Rule)))
+    cd_rule = CheckDescription(Phase.END, # type: ignore[reportCallIssue]
+                               action=lambda ctx: _check_type(ctx, Context), 
+                               condition=lambda self, ctx: (_check_type(self, Rule)))
     #print(cd_rule.phases)
     phase = list(cd_rule.phases).pop() # does not work with frozenset
     cd_rule.phases = set() # type: ignore
@@ -363,4 +414,4 @@ if __name__ == "__main__" or DEBUG_RULES:
     assert not cd_rule.phases
     assert cd_rule.description == """This is my description"""
 
-    debug_rules = [test, simple_rule, simple_ruleB, another_rule, custom_rule, new_rule, cd_rule]
+    debug_rules = [test, simple_rule, simple_ruleB, simple_rule2B, another_rule, custom_rule, new_rule, cd_rule]

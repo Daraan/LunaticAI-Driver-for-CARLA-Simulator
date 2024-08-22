@@ -49,6 +49,13 @@ Values:
 """
 
 class AgentState(Flag):
+    """
+    High-level states that the agent currently can be in.
+    
+    Used with :py:attr:`.LunaticAgent.current_states` 
+    and :py:attr:`.InformationManager.state_counter`.
+    """
+    
     DRIVING = auto()   #: :meta hide-value:
     STOPPED = auto()   #: :meta hide-value:
     _parked = auto()   # hidden it to avoid confusion, used further down for PARKED
@@ -57,7 +64,11 @@ class AgentState(Flag):
     BLOCKED_RED_LIGHT = auto()     #: :meta hide-value:
     BLOCKED_BY_STATIC = auto()
     """
-    Static obstacle. Not updated by the information manager but in the :py:attr:`Phase.DETECT_STATIC_OBSTACLES` phase.
+    Static obstacle. 
+    
+    Attention:
+        Not updated by the information manager 
+        but in the :py:attr:`Phase.DETECT_STATIC_OBSTACLES` phase.
     
     :meta hide-value:
     """
@@ -85,7 +96,8 @@ class AgentState(Flag):
 
 class RulePriority(IntEnum):
     """
-    Priority of a :py:class:`Rule <classes.rule.Rule>`. The higher a value, the higher the priority.
+    Priority of a :py:class:`Rule <classes.rule.Rule>`.
+    The higher a value, the higher the priority.
     Rules are sorted by their priority before being applied.
     """
     NULL = 0
@@ -315,7 +327,8 @@ class Phase(Flag):
     Can be used to indicate that the phase change is currently handled by the user.
     
     Warning:
-        :any:`LunaticAgent.execute_phase` checks for exact match, i.e. a phase :python:`UPDATE_INFORMATION | BEGIN | END`
+        :any:`LunaticAgent.execute_phase` checks for exact match, 
+        i.e. a phase :python:`UPDATE_INFORMATION | BEGIN | END`
         will not be executed in the normal loop.
     
     See Also:
@@ -343,7 +356,8 @@ class Phase(Flag):
     """
     
 
-    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE | TERMINATING
+    EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION \
+                     | CAR_DETECTED | DONE | TERMINATING
     """
     Combination of :python:`HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION | CAR_DETECTED | DONE | TERMINATING`
     

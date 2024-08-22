@@ -33,12 +33,13 @@ class PassYellowTrafficLightRule(Rule):
         """The speed the agent should try to pass the yellow light."""
     
     @ConditionFunction
-    def condition(ctx: Context):
+    @staticmethod
+    def condition(ctx: Context) -> "None | carla.TrafficLightState":
         """Executes if a traffic light is the only hazard"""
-        traffic_light = ctx.agent.current_traffic_light
-        if not traffic_light:
+        if not ctx.agent.current_traffic_light:
             return None
         return ctx.agent.current_traffic_light.state
+    
     
     @condition.register_action(carla.TrafficLightState.Yellow)
     def yellow_action(self, ctx: Context):
@@ -85,7 +86,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         max_throttle : float = II("divide:${controls.max_throttle},4")
         """Max throttle that should be applied when below the target speed."""
     
-    @phase_callback(on_exit = Phase.CUSTOM_CYCLE | Phase.END, on_exit_exceptions=LunaticAgentException)
+    #@phase_callback(on_exit=Phase.CUSTOM_CYCLE | Phase.END, on_exit_exceptions=LunaticAgentException)
     def action(self, ctx: Context):
         # Remove triggering hazard
         logger.info("Entering DriveSlowTowardsTrafficLight rule.")
@@ -106,7 +107,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         
         # Smaller list of lights to check, however calls the simulator!
         
-        affected = True
+        affected: TrafficLightDetectionResult | bool = True
         while affected and distance <= last_distance + 1/1000:            
             # You should always use ctx.agent.calculate_control() before self.loop_agent
             # This will move the planned waypoint queue forward.
@@ -126,7 +127,8 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
                 ctx.config.speed.target_speed = min(ctx.config.speed.target_speed, distance * 2)
                 ctx.config.controls.max_brake = self.self_config.max_brake 
                 ctx.config.controls.max_throttle = self.self_config.max_throttle
-                print("Target Speed: ", ctx.config.speed.target_speed, "current speed: ", ctx.live_info.current_speed)
+                #print("Target Speed: ", ctx.config.speed.target_speed, 
+                #      "current speed: ", ctx.live_info.current_speed)
                 # # calculate it now
                 control = ctx.get_or_calculate_control()
             else:
@@ -176,7 +178,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
                     ctx.agent.add_hazard(Hazard.OBSTACLE)
                 break # End loop -> Other Emergency Rule
             
-            affected: TrafficLightDetectionResult = ctx.agent.detect_traffic_light(traffic_light_group)
+            affected = ctx.agent.detect_traffic_light(traffic_light_group)
             if affected.traffic_light_was_found:
                 ctx.add_hazard(Hazard.TRAFFIC_LIGHT)
                 affected = True
@@ -196,4 +198,4 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         else:
             ctx.config.speed.target_speed = 0.0
             ctx.get_or_calculate_control()
-        raise SkipInnerLoopException(ctx.control)
+        raise SkipInnerLoopException(ctx.control)  # type: ignore[arg-type]
