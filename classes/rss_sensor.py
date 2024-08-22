@@ -9,6 +9,7 @@
 # pyright: reportUnknownArgumentType=information
 # pyright: reportUnknownParameterType=information
 # pyright: reportTypeCommentUsage=none
+# pyright: reportAttributeAccessIssue=information
 
 import math
 from typing import List, Tuple, cast as assure_type, TYPE_CHECKING
@@ -22,7 +23,7 @@ from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisuali
 
 from agents.tools.logging import logger
 
-from classes.constants import AD_RSS_AVAILABLE
+from classes.constants import AD_RSS_AVAILABLE, RssLogLevel, RssLogLevelAlias
 if AD_RSS_AVAILABLE:
     from carla import ad
 
@@ -83,8 +84,17 @@ class RssStateInfo(object):
 
 class RssSensor(CustomSensorInterface):
 
-    def __init__(self, parent_actor : carla.Vehicle, world, unstructured_scene_visualizer:"RssUnstructuredSceneVisualizer", bounding_box_visualizer, state_visualizer, *, visualizer_mode=RssDebugVisualizationMode.Off, routing_targets=None, log_level=carla.RssLogLevel.warn if AD_RSS_AVAILABLE else "warn"):
-        self.sensor = None
+    def __init__(self, 
+                 parent_actor : carla.Vehicle,
+                 unstructured_scene_visualizer: "RssUnstructuredSceneVisualizer", 
+                 bounding_box_visualizer, 
+                 state_visualizer, 
+                 *,
+                 visualizer_mode=RssDebugVisualizationMode.Off, 
+                 routing_targets=None,
+                 log_level: RssLogLevelAlias=RssLogLevel.off):
+        world = CarlaDataProvider.get_world()
+        assert world
         self.unstructured_scene_visualizer = unstructured_scene_visualizer
         self.bounding_box_visualizer = bounding_box_visualizer
         self._parent = parent_actor
@@ -111,9 +121,9 @@ class RssSensor(CustomSensorInterface):
                 self._max_steer_angle = wheel.max_steer_angle
         self._max_steer_angle = math.radians(self._max_steer_angle)
 
-        world = CarlaDataProvider.get_world()
         bp = CarlaDataProvider._blueprint_library.find('sensor.other.rss')
-        self.sensor: carla.RssSensor = assure_type(carla.RssSensor, world.spawn_actor(bp, carla.Transform(carla.Location()), attach_to=self._parent)) # for correct type hint
+        self.sensor: carla.RssSensor = assure_type(carla.RssSensor, 
+            world.spawn_actor(bp, carla.Transform(), attach_to=self._parent))
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
 
@@ -131,7 +141,8 @@ class RssSensor(CustomSensorInterface):
         self.sensor.register_actor_constellation_callback(self._on_actor_constellation_request)
 
         self.sensor.listen(self._on_rss_response)
-        assert isinstance(log_level, carla.RssLogLevel)
+        assert isinstance(self.log_level, carla.RssLogLevel)
+        assert isinstance(self.map_log_level, carla.RssLogLevel)
         logger.info("Setting log level to {}".format(log_level))
         self.sensor.set_log_level(self.log_level)
         self.sensor.set_map_log_level(self.map_log_level)
@@ -410,8 +421,8 @@ class RssSensor(CustomSensorInterface):
         for heading_range in self._allowed_heading_ranges:
             ranges.append(
                 (
-                    (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.begin)) / self._max_steer_angle,
-                    (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.end)) / self._max_steer_angle)
+                    (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.begin)) / self._max_steer_angle,  # pyright: ignore
+                    (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.end)) / self._max_steer_angle)    # pyright: ignore
             )
         return ranges
 
@@ -433,7 +444,7 @@ class RssSensor(CustomSensorInterface):
             # calculate the allowed heading ranges:
             if response.proper_response.headingRanges:
                 heading = float(response.ego_dynamics_on_route.ego_heading)
-                heading_ranges = response.proper_response.headingRanges
+                heading_ranges: list["ad.rss.state.HeadingRange"] = response.proper_response.headingRanges
                 steering_range = ad.rss.state.HeadingRange()
                 steering_range.begin = - self._max_steer_angle + heading
                 steering_range.end = self._max_steer_angle + heading

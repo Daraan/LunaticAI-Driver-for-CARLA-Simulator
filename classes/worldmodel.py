@@ -7,7 +7,7 @@ from collections.abc import Mapping
 import os
 import sys
 import weakref
-from typing import Any, ClassVar, Dict, List, Optional, Union, cast as assure_type, TYPE_CHECKING, TypeVar, overload
+from typing import Any, ClassVar, Dict, List, Optional, Sequence, Union, cast as assure_type, TYPE_CHECKING, TypeVar, overload
 
 import numpy as np
 import hydra
@@ -251,7 +251,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             import inspect
             frame = inspect.stack()[-1]
             module = inspect.getmodule(frame[0])
-            name = module.__file__ if module else "unknown"
+            name = module.__file__ if module and module.__file__ else "unknown"
             return GameFramework.initialize_hydra(config_dir, config_name, job_name=name)
             
     
@@ -362,7 +362,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.agent.verify_settings(strictness=-1) # NOTE: Here live info is already available and will throw some errors
         return self.agent, self.world_model, self.global_planner, controller
     
-    def make_world_model(self, config:"LunaticAgentSettings", player: Optional[carla.Vehicle]=None, map_inst:Optional[carla.Map]=None):
+    def make_world_model(self, config:"LunaticAgentSettings", 
+                         player: Optional[carla.Vehicle]=None) -> "WorldModel":
         """
         Creates a :py:class:`WorldModel` with a backreference to the GameFramework.
         """
@@ -370,7 +371,10 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_model.game_framework = weakref.proxy(self)
         return self.world_model
     
-    def make_controller(self, world_model: "WorldModel", controller_class: "type[_ControllerClass]"=RSSKeyboardControl, **kwargs):
+    def make_controller(self, 
+                        world_model: "WorldModel",
+                        controller_class: "type[_ControllerClass]"=RSSKeyboardControl,
+                        **kwargs):
         """
         Creates a keyboard controller and attaches it to the world model.
         
@@ -457,13 +461,14 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     def render_everything(self):
         """Update render and hud"""
-        self.world_model.tick(self.clock) # NOTE: Ticks WorldMODEL not CARLA WORLD!
-        self.world_model.render(self.display, finalize=False)
+        self.world_model.tick(self.clock)  # NOTE: Ticks WorldMODEL not CARLA WORLD!
+        self.world_model.render(self.display, finalize=False)  # pyright: ignore[reportOptionalMemberAccess]
         self.controller.render(self.display)
-        dm_render_conf : "DetectionMatrix.RenderOptions" = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
+        dm_render_conf: "DetectionMatrix.RenderOptions" \
+            = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
         if dm_render_conf and self.agent:
             self.agent._render_detection_matrix(self.display, **dm_render_conf)
-        self.world_model.finalize_render(self.display)
+        self.world_model.finalize_render(self.display)  # pyright: ignore[reportOptionalMemberAccess]
         
     @staticmethod
     def skip_rest_of_loop(message="GameFramework.end_loop"):
@@ -545,9 +550,11 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.render_everything()
         pygame.display.flip()
 
-    
     @class_or_instance_method
-    def cleanup(cls_or_self, *, disable_sync:bool=True, quit_pygame:bool=True):
+    def cleanup(cls_or_self: "type[Self] | Self", 
+                *, 
+                disable_sync: bool=True, 
+                quit_pygame: bool=True):
         """
         Cleans up resources and actors.
         
@@ -565,11 +572,11 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         try:
             # Should only work for instance version, but maybe future Singleton support
             try:
-                if cls_or_self.agent:
-                    cls_or_self.agent.destroy()
+                if cls_or_self.agent:            # pyright: ignore[reportAttributeAccessIssue]
+                    cls_or_self.agent.destroy()  # pyright: ignore[reportAttributeAccessIssue]
             finally:
-                if cls_or_self.world_model:
-                    cls_or_self.world_model.destroy()
+                if cls_or_self.world_model:            # pyright: ignore[reportAttributeAccessIssue]
+                    cls_or_self.world_model.destroy()  # pyright: ignore[reportAttributeAccessIssue]
             if disable_sync and cls_or_self.traffic_manager:
                 try:
                     cls_or_self.traffic_manager.set_synchronous_mode(False)
@@ -594,8 +601,6 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     :meta hide-value:
     """
-    
-
 
 
 # ==============================================================================
@@ -750,7 +755,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 raise ValueError("Passed `player` and `agent._vehicle` are not the same.")
             self.player = player
         else:
-            self.player = player
+            # If player is None here, will set in in restart()
+            self.player = player  # pyright: ignore[reportAttributeAccessIssue]
 
         assert self.player is not None or self.external_actor # Note: Former optional. Player set in restart
 
@@ -911,7 +917,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             external_actor = self._find_external_actor(self.world, self.actor_role_name, actor_list)
             if self.player is None:
                 if external_actor:
-                    self.player = external_actor
+                    self.player = assure_type(carla.Vehicle, external_actor)
                 else:
                     self.player = assure_type(carla.Vehicle, 
                                     self._wait_for_external_actor(timeout=20))
@@ -1011,7 +1017,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 except Exception as e:
                     raise KeyError("Could not convert '%s' to RssLogLevel must be in %s" % (log_level, list(carla.RssLogLevel.names.keys()))) from e
                 logger.info("Carla Log level was not a RssLogLevel")
-            self.rss_sensor = RssSensor(self.player, self.world,
+            self.rss_sensor = RssSensor(self.player,
                                     self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer,
                                     visualizer_mode=self._config.rss.debug_visualization_mode,
                                     log_level=log_level)
@@ -1147,10 +1153,10 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             self.rss_sensor = None
         if self.rss_unstructured_scene_visualizer:
             self.rss_unstructured_scene_visualizer.destroy()
-            self.rss_unstructured_scene_visualizer = None
+            self.rss_unstructured_scene_visualizer = None  # type: ignore
         if self.camera_manager is not None:
             self.camera_manager.destroy()
-            self.camera_manager = None
+            self.camera_manager = None  # type: ignore
         if self.radar_sensor is not None:
             self.toggle_radar() # destroys it if not None
 
@@ -1168,7 +1174,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         
         #logger.info("to destroy %s", list(map(str, self.actors)))
         # Batch destroy in one simulation step
-        real_actors: List[carla.Actor] = [actor for actor in self.actors if isinstance(actor, carla.Actor)]
+        real_actors: Sequence[carla.Actor] = [actor for actor in self.actors if isinstance(actor, carla.Actor)]
         GameFramework.destroy_actors(real_actors)
         
         other_actors = [actor for actor in self.actors if not isinstance(actor, carla.Actor)]
@@ -1200,10 +1206,12 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         self.hud.original_vehicle_control = vehicle_control
         self.hud.restricted_vehicle_control = vehicle_control
-        if not AD_RSS_AVAILABLE:
+        if not AD_RSS_AVAILABLE or not self.rss_sensor:
             return None
         
-        if self.rss_sensor.log_level <= carla.RssLogLevel.warn and self.rss_sensor and self.rss_sensor.ego_dynamics_on_route and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route:
+        if (self.rss_sensor.log_level <= carla.RssLogLevel.warn 
+            and self.rss_sensor.ego_dynamics_on_route 
+            and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route):
             logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route)[:97] + "...")
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None

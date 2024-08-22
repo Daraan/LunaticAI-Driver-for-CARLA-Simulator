@@ -1,14 +1,13 @@
-# pyright: strict
 """
 Example of automatic vehicle control from client side
 
 Based on original CARLA example by German Ros
 """
+
 import os
 import math
-from typing import ClassVar, Iterable, Optional, Union
+from typing import ClassVar, Iterable, List, Optional, Tuple, Union, cast
 from datetime import timedelta
-from typing_extensions import Literal
 
 import carla
 import pygame
@@ -63,7 +62,7 @@ class HUD(object):
         self.original_vehicle_control: Optional[carla.VehicleControl] = None
         # Not None if original_vehicle_control is not None
         self.restricted_vehicle_control: carla.VehicleControl = None # type: ignore[assignment]
-        self.allowed_steering_ranges = []
+        self.allowed_steering_ranges: List[Tuple[float, float]] = []
         self.rss_state_visualizer = RssStateVisualizer(self.dim, self._font_mono, self._world)
 
     def on_world_tick(self, timestamp : carla.WorldSnapshot):
@@ -84,12 +83,12 @@ class HUD(object):
         self._notifications.tick(clock)
         if not self._show_info:
             return
-        player : carla.Actor = world.player
+        player = cast("carla.Walker | carla.Vehicle", world.player)
         
         transform = player.get_transform()
         location = transform.location
         vel = player.get_velocity()
-        control: Union[carla.VehicleControl, carla.WalkerControl] = player.get_control()
+        control = player.get_control()
         heading = 'N' if abs(transform.rotation.yaw) < 89.5 else ''
         heading += 'S' if abs(transform.rotation.yaw) > 90.5 else ''
         heading += 'E' if 179.5 > transform.rotation.yaw > 0.5 else ''
@@ -110,7 +109,8 @@ class HUD(object):
             #Sequence[Union[str, float]],
             tuple[str, float, float, float], # min value max
             tuple[str, float, float, float, float],
-            tuple[str, float, float, float, float, list[list[float]]], # steering
+            #tuple[str, float, float, float, float, list[list[float]]], # 
+            tuple[str, float, float, float, float, list[tuple[float, float]]], # steering
             list[float]]]
 
         self._info_text = [
@@ -149,10 +149,11 @@ class HUD(object):
                 ('Hand brake:', control.hand_brake),
                 ('Manual:', control.manual_gear_shift),
                 'Gear:        %s' % {-1: 'R', 0: 'N'}.get(control.gear, control.gear)]
-        elif isinstance(control, carla.WalkerControl):
+        elif isinstance(control, carla.WalkerControl):  # pyright: ignore[reportUnnecessaryIsInstance]
             self._info_text += [
                 ('Speed:', control.speed, 0.0, 5.556),
                 ('Jump:', control.jump)]
+        # else unknown control type
         self._info_text += [
             '',
             'Collision:',
@@ -173,11 +174,11 @@ class HUD(object):
         """Toggle info on or off"""
         self._show_info = not self._show_info
 
-    def notification(self, text: str, seconds=2.0):
+    def notification(self, text: str, seconds: float=2.0):
         """Notification text"""
         self._notifications.set_text(text, seconds=seconds)
 
-    def error(self, text):
+    def error(self, text: str):
         """Error text"""
         self._notifications.set_text('Error: %s' % text, (255, 0, 0))
 
@@ -303,7 +304,7 @@ class FadingText(object):
 class HelpText(object):
     """Helper class to handle text output using pygame"""
 
-    def __init__(self, font: pygame.font.Font, width:int, height:int, doc:Optional[Union[str, bool]] = None):
+    def __init__(self, font: pygame.font.Font, width:int, height:int, doc: Optional[Union[str, bool]] = None):
         """Constructor method"""
         self.line_space = 18
         self.font = font
@@ -313,12 +314,12 @@ class HelpText(object):
         if doc is not False:
             doc = doc or __doc__ if doc is not True else __doc__
             assert doc, "No docstring available for help text."
-            self.create_surface(doc) # Use doc of THIS file, analog to carla examples.
+            self.create_surface(doc)  # Use doc of THIS file, analog to carla examples.
         else:
             self.surface = None
         self._render = False
         
-    def create_surface(self, doc:str):
+    def create_surface(self, doc: str):
         """Create surface method"""
         lines = doc.split('\n')
         self.dim = (780, len(lines) * self.line_space + 12)
@@ -334,11 +335,12 @@ class HelpText(object):
     def toggle(self):
         """Toggle on or off the render help"""
         if self.surface is None:
-            print("Warning: No help text available - Initialized with doc=False. Cannot display help. Call create_surface first.")
+            print("Warning: No help text available - Initialized with doc=False. "
+                  "Cannot display help. Call create_surface first.")
             return
         self._render = not self._render
 
     def render(self, display: pygame.Surface):
         """Render help text method"""
         if self._render:
-            display.blit(self.surface, self.pos)
+            display.blit(self.surface, self.pos)  # type: ignore

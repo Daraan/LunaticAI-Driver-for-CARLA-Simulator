@@ -52,8 +52,8 @@ class CameraManager(CustomSensorInterface):
         :py:meth:`set_sensor` should be called after init to set :py:attr:`sensor`
         and :py:attr:`index` to a valid value.
         """
-        self.sensor = None
-        self.index : int = None
+        self.sensor = None  # Needs call to set_sensor
+        self.index : int = None  # Needs call to set_sensor
         
         self.surface : Optional[pygame.Surface] = None # set on _parse_image, # type: ignore
         self._parent = parent_actor
@@ -104,13 +104,12 @@ class CameraManager(CustomSensorInterface):
             except AttributeError:
                 self.sensors[i] = CameraBlueprint(item[0], item[1], item[2], blp)
 
-
     def toggle_camera(self):
         """Activate a camera"""
         self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
         self.set_sensor(self.index, notify=False, force_respawn=True)
 
-    def set_sensor(self, index : int, notify=True, force_respawn=False):
+    def set_sensor(self, index: int, notify=True, force_respawn=False):
         """Set the sensor that should be used for the camera output"""
         index = index % len(self.sensors)
         needs_respawn = True if self.index is None else (
@@ -128,7 +127,7 @@ class CameraManager(CustomSensorInterface):
             # We need to pass the lambda a weak reference to
             # self to avoid circular reference.
             weak_self = weakref.ref(self)
-            self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image)) # type: ignore[arg-type]
+            self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))  # type: ignore[arg-type]
         if notify:
             self.hud.notification(self.sensors[index][2])
         self.index = index
@@ -153,7 +152,7 @@ class CameraManager(CustomSensorInterface):
             display.blit(self.surface, (0, 0))
 
     @staticmethod
-    def _parse_image(weak_self: "weakref.ref[CameraManager]", image:carla.Image):
+    def _parse_image(weak_self: "weakref.ref[CameraManager]", image: carla.Image):
         self = weak_self()
         if not self:
             return

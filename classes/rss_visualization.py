@@ -1,6 +1,7 @@
 #
 # Copyright (c) 2020 Intel Corporation
 #
+# pyright: reportAttributeAccessIssue=warning
 
 from enum import Enum
 import math
@@ -8,19 +9,18 @@ import numpy as np
 import pygame
 import weakref
 
-from typing import Tuple, Union, cast as assure_type
+from typing import Optional, Tuple, TYPE_CHECKING, Union, cast as assure_type
 
 import carla
 
 from launch_tools import CarlaDataProvider
 
 from classes._sensor_interface import CustomSensorInterface
-try:
+from classes.constants import AD_RSS_AVAILABLE
+if AD_RSS_AVAILABLE:
     from carla import ad
-    AD_RSS_AVAILABLE = True
-except ImportError:
-    AD_RSS_AVAILABLE = False
-
+if TYPE_CHECKING:
+    assert ad  # remove Unbound type # type: ignore
 
 
 class RssStateVisualizer(object):
@@ -166,7 +166,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
     def __init__(self, parent_actor, world, display_dimensions, gamma_correction=2.2):
         self._last_rendered_frame = -1
         self._surface = None
-        self._current_rss_surface : Tuple[int, pygame.Surface] = None
+        self._current_rss_surface : Optional[Tuple[int, pygame.Surface]] = None
         self.current_camera_surface : Tuple[int, pygame.Surface] = (0, None)
         self._world : carla.World = world
         self._parent_actor = parent_actor
@@ -229,7 +229,9 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
             weak_self = weakref.ref(self)
-            self._camera.listen(lambda image: self._parse_image(weak_self, image))
+            self._camera.listen(
+                lambda image: self._parse_image(weak_self, image)  # type: ignore[arg-type]
+                )
 
     def update_surface(self, cam_frame : Union[int, None], rss_frame: Union[int, None]):
         if self._mode == RssUnstructuredSceneVisualizerMode.disabled:
@@ -244,7 +246,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
 
         if render:
             surface = self.current_camera_surface[1]
-            surface.blit(self._current_rss_surface[1], (0, 0))
+            surface.blit(self._current_rss_surface[1], (0, 0))  # pyright: ignore[reportOptionalSubscript]
             rect = pygame.Rect((0, 0), (2, surface.get_height()))
             pygame.draw.rect(surface, (0, 0, 0), rect, 0)
             rect = pygame.Rect((0, 0), (surface.get_width(), 2))
@@ -265,7 +267,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
             self.restart(RssUnstructuredSceneVisualizerMode.window)
 
     @staticmethod
-    def _parse_image(weak_self : "weakref.ReferenceType[RssUnstructuredSceneVisualizer]", image : carla.Image):
+    def _parse_image(weak_self : "weakref.ReferenceType[RssUnstructuredSceneVisualizer]", image: carla.Image):
         self = weak_self()
         if not self:
             return

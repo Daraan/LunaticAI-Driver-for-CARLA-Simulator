@@ -125,7 +125,7 @@ class LunaticAgent(BehaviorAgent):
                                sim_world : carla.World,
                                settings_archetype: "Optional[type[AgentConfig]]"=None, 
                                agent_config: Optional["LunaticAgentSettings"]=None, 
-                               overwrites: Dict[str, Any]={}
+                               overwrites: Optional[Dict[str, Any]]={}
                                ) -> tuple[Self, WorldModel, GlobalRoutePlanner]:
         """
         Setup function to create the agent from the :py:class:`LaunchConfig` settings.
@@ -135,7 +135,9 @@ class LunaticAgent(BehaviorAgent):
               instantiate the agent, only use this method if you try not do create a 
               :py:class:`GameFramework` object.
         """
-        
+        if overwrites is None:
+            overwrites = {}
+
         if agent_config is None:
             if hasattr(args, "agent"):
                 if settings_archetype is not None:
