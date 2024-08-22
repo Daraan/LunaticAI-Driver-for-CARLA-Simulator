@@ -12,18 +12,17 @@ import inspect
 from collections.abc import Mapping
 from dataclasses import is_dataclass
 from functools import partial, update_wrapper, wraps
-import sys
 
-from classes.type_protocols import ConditionFunctionLike, ConditionFunctionLikeT, CallableAction, RuleT
+from classes.type_protocols import ConditionFunctionLike, ConditionFunctionLikeT, CallableAction
 from launch_tools import CarlaDataProvider, singledispatchmethod
-import carla  # pyright: ignore[reportMissingTypeStubs]
+import carla
 import pygame
 
 from inspect import isclass
 from itertools import accumulate
 from typing import (Any, ClassVar, Container, FrozenSet, List, Set, TypeVar, Union, Iterable,
                     Callable, Optional, Dict, Hashable, TYPE_CHECKING, cast)
-from typing_extensions import (overload, TypeAlias, Self, ParamSpec, Annotated, Concatenate,
+from typing_extensions import (overload, Self, ParamSpec, Annotated, Concatenate,
                                TypedDict, Literal, NoReturn, Unpack, NotRequired, Required)
 from weakref import CallableProxyType, WeakSet, proxy
 
@@ -1838,7 +1837,7 @@ class BlockingRule(Rule, metarule=True):
 
 # Provide necessary imports for the evaluation_function module and prevents circular imports
 
-import classes.evaluation_function as __evaluation_function
+import classes.evaluation_function as __evaluation_function  # noqa
 __evaluation_function.Rule = Rule
 __evaluation_function.Context = Context
 del __evaluation_function

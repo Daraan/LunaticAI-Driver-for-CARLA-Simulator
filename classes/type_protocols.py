@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     import carla  # type: ignore
     from agents.tools.config_creation import AgentConfig
     from agents.navigation.local_planner import LocalPlanner
-    from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner
+    from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner  # noqa: F401
     from classes.rule import Rule, Context
     from classes.evaluation_function import ConditionFunction
 

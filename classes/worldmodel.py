@@ -286,7 +286,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             pygame.init()
             pygame.font.init()
             GameFramework.clock = pygame.time.Clock()
-            if not "READTHEDOCS" in os.environ:
+            if "READTHEDOCS" not in os.environ:
                 GameFramework.display = pygame.display.set_mode(
                     (args.width, args.height) if args else (1280, 720),
                     pygame.HWSURFACE | pygame.DOUBLEBUF)
@@ -1166,7 +1166,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         if self.world_tick_id and self.world:
             self.world.remove_on_tick(self.world_tick_id)
         self.destroy_sensors()
-        if destroy_ego and not self.player in self.actors: # do not destroy external actors.
+        if destroy_ego and self.player not in self.actors: # do not destroy external actors.
             logger.debug("Adding player to destruction list.")
             self.actors.append(self.player)
         elif not destroy_ego and self.player in self.actors:
