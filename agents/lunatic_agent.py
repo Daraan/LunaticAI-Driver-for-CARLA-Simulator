@@ -586,9 +586,16 @@ class LunaticAgent(BehaviorAgent):
         rules_to_check = self.rules.get(phase, ()) # use get if a custom phase is added, without a rule
         try:
             for rule in rules_to_check: # todo: maybe dict? grouped by phase?
-                #todo check here for the phase instead of in the rule
                 assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
                 rule(self.ctx)
+                # NOTE: Blocking rules can change the and above assertion will fail.
+                if phase != self.current_phase:
+                    logger.warning("Phase was changed by rule %s to %s. "
+                        "Resting self.current_phase to %s. "
+                        "To prevent his raise an exception in the rule or adjust the phase.",
+                        rule, self.current_phase, phase)
+                    self.current_phase = phase
+                    
         except NoFurtherRulesException:
             pass
         except omegaconf.ReadonlyConfigError:
@@ -782,7 +789,6 @@ class LunaticAgent(BehaviorAgent):
             # If no Rule with Phase.EMERGENCY | BEGIN clears pedestrians_or_traffic_light
             # An EmergencyStopException is raised
             # ----------------------------
-
             self.react_to_hazard(pedestrians_and_tlight_hazard) # Optional[NoReturn]
     
         # -----------------------------
