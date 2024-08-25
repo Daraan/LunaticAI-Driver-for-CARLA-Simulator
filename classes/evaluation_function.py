@@ -121,6 +121,8 @@ class ConditionFunction(Generic[_CP, _CH]):
     Mapping of return values to actions to be executed.
     If this dictionary is not empty it will be used as the :py:attr:`.Rule.actions` dictionary.
     """
+    if READTHEDOCS and not TYPE_CHECKING:
+        actions: Dict[Hashable, AnyCallableAction] = {}
     
     _INVALID_NAMES: "ClassVar[set[str]]" = {'action', 'actions', 'false_action'}
     """Forbidden names for action functions."""
@@ -326,7 +328,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         def action_function_with_kwargs(*args: _P.args, **kwargs: _P.kwargs) -> _T:
              # inserts args when called and kwargs from check action
              # allows overrides
-            return action_function(*args, **preset_kwargs, **kwargs)
+            return action_function(*args, **preset_kwargs, **kwargs)  # type: ignore
         if use_self is not None:
             setattr(action_function_with_kwargs, "use_self", use_self)
         return action_function_with_kwargs

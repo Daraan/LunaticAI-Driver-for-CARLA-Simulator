@@ -444,7 +444,7 @@ class RssSensor(CustomSensorInterface):
             # calculate the allowed heading ranges:
             if response.proper_response.headingRanges:
                 heading = float(response.ego_dynamics_on_route.ego_heading)
-                heading_ranges: list["ad.rss.state.HeadingRange"] = response.proper_response.headingRanges
+                heading_ranges: "list[ad.rss.state.HeadingRange] | ad.rss.state.HeadingRangeVector" = response.proper_response.headingRanges
                 steering_range = ad.rss.state.HeadingRange()
                 steering_range.begin = - self._max_steer_angle + heading
                 steering_range.end = self._max_steer_angle + heading

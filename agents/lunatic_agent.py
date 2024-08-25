@@ -1143,7 +1143,10 @@ class LunaticAgent(BehaviorAgent):
         # TODO: # CRITICAL: Keep old global plan if it is some end goal -> Restore it.
         
     # TODO: Use generate_lane_change_path to finetune 
-    def make_lane_change(self, order: Sequence[Literal["left", "right"]]=["left", "right"], up_angle_th:int=180, low_angle_th:int=0):
+    def make_lane_change(self, 
+                         order: Sequence[Literal["left", "right"]]=["left", "right"], 
+                         up_angle_th: int=180, 
+                         low_angle_th: int=0) -> "None | Literal[True]":
         """
         Move to the left/right lane if possible
 
@@ -1228,7 +1231,7 @@ class LunaticAgent(BehaviorAgent):
             
     def verify_settings(self, config: Optional[LunaticAgentSettings] =None, *, 
                         verify_dataclass: Union["type[AgentConfig]", bool] =True, 
-                        strictness:Literal[-1, 0, 1, 2, 3, 4]=0):
+                        strictness: Literal[-1, 0, 1, 2, 3, 4]=0):
         """
         Verifies the settings of the LunaticAgent.
         Foremost this checks if the :py:obj:`.planner.dt` value has been set

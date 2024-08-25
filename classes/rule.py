@@ -875,7 +875,7 @@ class Rule(_GroupRule):
                 raise ValueError("When passing a dict to action, false_action and actions must be None")
         else:
             # NOTE: Might overwrite actions attribute
-            self.actions = {}
+            self.actions = {}  # type: ignore
             if action is not None:
                 self.actions[True] = action
             if false_action is not None:

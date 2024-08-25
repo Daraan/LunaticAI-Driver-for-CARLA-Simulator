@@ -24,7 +24,7 @@ from classes.hud import HUD, get_actor_display_name
 
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import (CollisionSensor, LaneInvasionSensor, RadarSensor,
-                                             GnssSensor, IMUSensor) # pylint: disable=unused-import
+                                             GnssSensor, IMUSensor)
 
 from classes import exceptions as _exceptions
 from classes.exceptions import AgentDoneException, ContinueLoopException
@@ -834,12 +834,15 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         if road_boundaries_mode is None:
             road_boundaries_mode = self._config.rss.use_stay_on_road_feature
         else:
-            if AD_RSS_AVAILABLE:
-                self._config.rss.use_stay_on_road_feature = carla.RssRoadBoundariesMode.On if road_boundaries_mode else carla.RssRoadBoundariesMode.Off
+            # Depending on AD_RSS_AVAILABLE this uses carla.RssRoadBoundariesMode or the alias
+            if road_boundaries_mode:
+                self._config.rss.use_stay_on_road_feature = RssRoadBoundariesMode.On
             else:
-                self._config.rss.use_stay_on_road_feature = RssRoadBoundariesMode.On if road_boundaries_mode else RssRoadBoundariesMode.Off
+                self._config.rss.use_stay_on_road_feature = RssRoadBoundariesMode.Off
         if self.rss_sensor:
-            self.rss_sensor.sensor.road_boundaries_mode = carla.RssRoadBoundariesMode.On if road_boundaries_mode else carla.RssRoadBoundariesMode.Off
+            self.rss_sensor.sensor.road_boundaries_mode = (carla.RssRoadBoundariesMode.On 
+                                                           if road_boundaries_mode 
+                                                           else carla.RssRoadBoundariesMode.Off)
         else:
             print("Warning: RSS Road Boundaries Mode not set. RSS sensor not found.")
 
