@@ -465,7 +465,8 @@ class ECEFPoint():
     def z(self) -> ECEFCoordinate: ...
 
 
-class ENUCoordinate():
+class ENUCoordinate(ad._FloatLike):
+
     @property
     def Valid(self) -> bool: ...
 
@@ -616,7 +617,9 @@ class ENUEdgeCache():
     def enuVersion(self) -> int: ...
 
 
-class ENUHeading():
+class ENUHeading(ad._FloatLike):
+    def __float__(self) -> float: ...
+    
     @property
     def Valid(self) -> bool: ...
 
@@ -687,7 +690,7 @@ class ENUHeading():
         ...
 
 
-class ENUPoint():
+class ENUPoint(ad._FloatLike):
     def assign(self, arg1: ENUPoint, other: ENUPoint) -> ENUPoint:
         '''
 
@@ -706,6 +709,8 @@ class ENUPoint():
 
     @property
     def z(self) -> ENUCoordinate: ...
+    
+
 
 
 class GeoEdge():
@@ -818,7 +823,7 @@ class Geometry():
     def private_enuEdgeCache(self) -> ENUEdgeCache: ...
 
 
-class Latitude():
+class Latitude(ad._FloatLike):
     @property
     def Valid(self) -> bool: ...
 
@@ -889,7 +894,7 @@ class Latitude():
         ...
 
 
-class Longitude():
+class Longitude(ad._FloatLike):
     @property
     def Valid(self) -> bool: ...
 

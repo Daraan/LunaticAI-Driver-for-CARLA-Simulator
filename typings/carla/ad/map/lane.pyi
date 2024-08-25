@@ -1,3 +1,16 @@
+from . import *
+from carla import ad
+
+# TODO constants and functions
+
+def getLane(laneId: LaneId) -> Lane:
+    '''
+    getLane( (LaneId)laneId) -> Lane :
+
+        C++ signature :
+            ad::map::lane::Lane getLane(ad::map::lane::LaneId)
+    '''
+    ...
 
 class ContactLane():
     def assign(self, arg1: ContactLane, other: ContactLane) -> ContactLane:

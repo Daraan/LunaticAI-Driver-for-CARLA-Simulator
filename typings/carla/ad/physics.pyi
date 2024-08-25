@@ -1,4 +1,8 @@
 
+from typing import Any
+from collections.abc import MutableSequence, Sequence, Container
+
+
 class Acceleration():
     @property
     def Valid(self) -> bool: ...
@@ -68,9 +72,24 @@ class Acceleration():
                 ad::physics::Acceleration getPrecision()
         '''
         ...
+        
+    def __float__(self) -> float: ...
+    
+    def __gt__(self, other: float | Acceleration) -> bool: ...
+    
+    def __ge__(self, other: float | Acceleration) -> bool: ...
+    
+    def __lt__(self, other: float | Acceleration) -> bool: ...
+    
+    def __le__(self, other: float | Acceleration) -> bool: ...
+    
+    def __eq__(self, other: float | Acceleration) -> bool: ...
+
 
 
 class Acceleration3D():
+    def __float__(self) -> float: ...
+    
     def assign(self, arg1: Acceleration3D, other: Acceleration3D) -> Acceleration3D:
         '''
 
@@ -89,6 +108,7 @@ class Acceleration3D():
 
     @property
     def z(self) -> Acceleration: ...
+    
 
 
 class Acceleration3DList():
@@ -2455,7 +2475,7 @@ class Speed():
         ...
 
 
-class SpeedList():
+class SpeedList(MutableSequence[Speed]):
     def append(self, arg1: SpeedList, arg2: Speed) -> None:
         '''
 

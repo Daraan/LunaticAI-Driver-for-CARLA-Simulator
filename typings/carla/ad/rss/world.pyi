@@ -111,7 +111,7 @@ class Object():
     def velocity(self) -> Velocity: ...
 
 
-class ObjectIdVector():
+class ObjectIdVector(ad._Vector[object]):
     def append(self, arg1: ObjectIdVector, arg2: object) -> None:
         '''
 
@@ -246,7 +246,7 @@ class OccupiedRegion():
     def segmentId(self) -> int: ...
 
 
-class OccupiedRegionVector():
+class OccupiedRegionVector(ad._Vector[OccupiedRegion]):
     def append(self, arg1: OccupiedRegionVector, arg2: OccupiedRegion) -> None:
         '''
 
@@ -475,7 +475,7 @@ class Scene():
     def situationType(self) -> situation.SituationType: ...
 
 
-class SceneVector():
+class SceneVector(ad._Vector[Scene]):
     def append(self, arg1: SceneVector, arg2: Scene) -> None:
         '''
 

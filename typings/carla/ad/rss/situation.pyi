@@ -1,4 +1,7 @@
 
+from carla import ad
+
+
 class LateralRelativePosition(int,):
     AtLeft = 0
 
@@ -114,7 +117,7 @@ class SituationType(int,):
     Unstructured = 6
 
 
-class SituationVector():
+class SituationVector(ad._Vector[Situation]):
     def append(self, arg1: SituationVector, arg2: Situation) -> None:
         '''
 

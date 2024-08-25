@@ -4,7 +4,7 @@ from typing import (Callable, Iterable, Iterator, Sequence, Union, Optional, ove
                     Any, TypeVar, type_check_only)
 
 from . import command
-
+from . import ad
 
 if sys.version_info >= (3, 11):
     from typing import Self

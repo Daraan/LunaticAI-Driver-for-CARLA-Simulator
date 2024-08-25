@@ -1,4 +1,17 @@
 
+from carla import ad
+from . import *
+
+
+def isDangerous(rssState: RssState) -> bool:
+    ...
+    
+def isLateralSafe(rssState: RssState) -> bool:
+    ...
+    
+def isLongitudinalSafe(rssState: RssState) -> bool:
+    ...
+
 class AccelerationRestriction():
     def assign(self, arg1: AccelerationRestriction, other: AccelerationRestriction) -> AccelerationRestriction:
         '''
@@ -38,7 +51,7 @@ class HeadingRange():
     def end(self) -> ad.physics.Angle: ...
 
 
-class HeadingRangeVector():
+class HeadingRangeVector(ad._Vector[HeadingRange]):
     def append(self, arg1: HeadingRangeVector, arg2: HeadingRange) -> None:
         '''
 
@@ -303,7 +316,7 @@ class RssStateSnapshot():
     def unstructuredSceneEgoInformation(self) -> UnstructuredSceneStateInformation: ...
 
 
-class RssStateVector():
+class RssStateVector(ad._Vector[RssState]):
     def append(self, arg1: RssStateVector, arg2: RssState) -> None:
         '''
 
@@ -363,6 +376,7 @@ class RssStateVector():
                 void reverse(std::vector<ad::rss::state::RssState, std::allocator<ad::rss::state::RssState> > {lvalue})
         '''
         ...
+        
 
 
 class UnstructuredSceneResponse(int,):

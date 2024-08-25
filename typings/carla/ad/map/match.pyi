@@ -1,3 +1,6 @@
+from typing import overload
+from carla import ad
+from . import *
 
 class AdMapMatching():
     @property
@@ -6,7 +9,11 @@ class AdMapMatching():
     @property
     def RouteHintFactor(self) -> float: ...
 
-    def addHeadingHint(self, arg1: AdMapMatching, headingHint: ECEFHeadingarg1: AdMapMatching, yaw: ENUHeading, enuReferencePoint: GeoPoint) -> None:
+    @overload
+    def addHeadingHint(self, arg1: AdMapMatching, yaw: point.ENUHeading, enuReferencePoint: point.GeoPoint) -> None: ...
+
+    @overload
+    def addHeadingHint(self, arg1: AdMapMatching, headingHint: point.ECEFHeading) -> None:
         '''
 
         addHeadingHint( (AdMapMatching)arg1, (ECEFHeading)headingHint) -> None :
@@ -21,7 +28,7 @@ class AdMapMatching():
         '''
         ...
 
-    def addRouteHint(self, arg1: AdMapMatching, routeHint: FullRoute) -> None:
+    def addRouteHint(self, arg1: AdMapMatching, routeHint: route.FullRoute) -> None:
         '''
 
         addRouteHint( (AdMapMatching)arg1, (FullRoute)routeHint) -> None :
@@ -71,7 +78,8 @@ class AdMapMatching():
         '''
         ...
 
-    def findLanes(self, ecefPoint: ECEFPoint, distance: Distance, relevantLanes: LaneIdSet, geoPoint: GeoPoint, distance: Distance, relevantLanes: LaneIdSet) -> vector_less_ad_scope_map_scope_match_scope_MapMatchedPosition_greater_:
+    @overload
+    def findLanes(self, ecefPoint: point.ECEFPoint, distance: ad.physics.Distance, relevantLanes: lane.LaneIdSet, geoPoint: point.GeoPoint, distance: ad.physics.Distance, relevantLanes: LaneIdSet) -> vector_less_ad_scope_map_scope_match_scope_MapMatchedPosition_greater_:
         '''
 
         findLanes( (ECEFPoint)ecefPoint, (Distance)distance [, (LaneIdSet)relevantLanes=<lane.LaneIdSet object at 0x79ee2c74fbe0>]) -> vector_less_ad_scope_map_scope_match_scope_MapMatchedPosition_greater_ :
@@ -86,7 +94,7 @@ class AdMapMatching():
         '''
         ...
 
-    def findRouteLanes(self, ecefPoint: ECEFPoint, route: FullRoute) -> vector_less_ad_scope_map_scope_match_scope_MapMatchedPosition_greater_:
+    def findRouteLanes(self, ecefPoint: point.ECEFPoint, route: route.FullRoute) -> vector_less_ad_scope_map_scope_match_scope_MapMatchedPosition_greater_:
         '''
 
         findRouteLanes( (ECEFPoint)ecefPoint, (FullRoute)route) -> vector_less_ad_scope_map_scope_match_scope_MapMatchedPosition_greater_ :
@@ -329,6 +337,16 @@ class LaneOccupiedRegionList():
                 void reverse(std::vector<ad::map::match::LaneOccupiedRegion, std::allocator<ad::map::match::LaneOccupiedRegion> > {lvalue})
         '''
         ...
+        
+    def __getitem__(self, key: int) -> LaneOccupiedRegion: ...
+    
+    def __contains__(self, item: LaneOccupiedRegion) -> bool: ...
+    
+    def __delitem__(self, key: int) -> None: ...
+    
+    def __hash__(self) -> int: ...
+    
+    def __setitem__(self, key: int, value: LaneOccupiedRegion) -> None: ...
 
 
 class LanePoint():
