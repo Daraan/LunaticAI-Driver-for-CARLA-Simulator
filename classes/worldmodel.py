@@ -7,7 +7,9 @@ from collections.abc import Mapping
 import os
 import sys
 import weakref
-from typing import Any, ClassVar, Dict, List, Optional, Sequence, Union, cast as assure_type, TYPE_CHECKING, TypeVar, overload
+from typing import (Any, ClassVar, Dict, List, Optional, Sequence, Union, cast as assure_type,
+                    TYPE_CHECKING, TypeVar, overload)
+from typing_extensions import NoReturn
 
 import numpy as np
 import hydra
@@ -112,7 +114,7 @@ class AccessCarlaMixin:
 class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     clock : ClassVar[pygame.time.Clock] = None
     display : ClassVar[pygame.Surface] = None
-    controller: "weakref.ProxyType[RSSKeyboardControl] | RSSKeyboardControl"# TODO: is proxy a good idea, must be set bound outside
+    controller: "weakref.ProxyType[RSSKeyboardControl] | RSSKeyboardControl"
     
     traffic_manager : Optional[carla.TrafficManager] = None
     
@@ -280,20 +282,47 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         
         BlockingRule._gameframework = weakref.proxy(self)
         
-    @staticmethod
-    def init_pygame(args:Optional["LaunchConfig"]=None, recreate=False):
-        if recreate or GameFramework.clock is None or GameFramework.display is None:  
-            pygame.init()
-            pygame.font.init()
+    @class_or_instance_method
+    def init_pygame(cls_or_self: "Self | type[Self]", launch_config: Optional["LaunchConfig"]=None, 
+                    recreate=False) -> tuple[pygame.time.Clock, pygame.Surface]:
+        """
+        Parameters:
+            launch_config: Will use the :py:attr:`width<.LaunchConfig.width>` and
+                :py:attr:`height<.LaunchConfig.height> attributes of this object if set the
+                :py:mod:`pygame` windows size. Otherwise will use :python:`(1280, 720)`.
+                Defaults to :code:`None`.
+                
+            recreate: If :python:`True`, will reinitialize pygame a second time if this function is
+                called.
+                
+        .. experimental; returns None, None if launch_config.pygame is False.
+        """
+        if recreate or GameFramework.clock is None or GameFramework.display is None:
+            if launch_config is None:
+                launch_config = getattr(cls_or_self, "_args", None) # get from inst.
+            if getattr(launch_config, "pygame", True):
+                pygame.init()
+                pygame.font.init()
             GameFramework.clock = pygame.time.Clock()
-            if "READTHEDOCS" not in os.environ:
+            if getattr(launch_config, "pygame", True) and "READTHEDOCS" not in os.environ:
                 GameFramework.display = pygame.display.set_mode(
-                    (args.width, args.height) if args else (1280, 720),
-                    pygame.HWSURFACE | pygame.DOUBLEBUF)
+                    size=(launch_config.width, launch_config.height) 
+                         if launch_config else (1280, 720),
+                    flags=pygame.HWSURFACE | pygame.DOUBLEBUF)
         return GameFramework.clock, GameFramework.display
     
     @staticmethod
-    def init_carla(args: Optional["LaunchConfig"]=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+    def init_carla(args: Optional["LaunchConfig"]=None, 
+                   timeout: float =10.0, 
+                   worker_threads: int=0, *, 
+                   map_layers: carla.MapLayer=carla.MapLayer.All) -> carla.WorldSettings:
+        """
+        Initializes the :py:class:`carla.Client` and the connects it to the simulator.
+        
+        See Also:
+            :py:class:`carla.Client`
+            :py:meth:`carla.Client.load_world`
+        """
         # Note: This sets up the CarlaDataProvider
         if args is None:
             carla_service.initialize_carla(timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
@@ -461,7 +490,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     def render_everything(self):
         """Update render and hud"""
-        self.world_model.tick(self.clock)  # NOTE: Ticks WorldMODEL not CARLA WORLD!
+        self.world_model.tick(self.clock)  # NOTE: Ticks WorldMODEL not CARLA WORLD!  # pyright: ignore[reportOptionalMemberAccess]
         self.world_model.render(self.display, finalize=False)  # pyright: ignore[reportOptionalMemberAccess]
         self.controller.render(self.display)
         dm_render_conf: "DetectionMatrix.RenderOptions" \
@@ -471,7 +500,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_model.finalize_render(self.display)  # pyright: ignore[reportOptionalMemberAccess]
         
     @staticmethod
-    def skip_rest_of_loop(message="GameFramework.end_loop"):
+    def skip_rest_of_loop(message="GameFramework.end_loop") -> NoReturn:
         """
         Terminates the current iteration and exits the GameFramework by raising a :py:exc:`.ContinueLoopException`.
         
@@ -809,6 +838,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             self._restrictor = None
 
             logger.info("Calling WorldModel.restart()")
+        self._first_start = True
+        """Indicate that restart was called for the first time."""
         self.restart()
         assert self.player is not None
         self._vehicle_physics = self.player.get_physics_control()
@@ -933,7 +964,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             # Get a random blueprint.
             if self.player is None or self.camera_manager is not None:
                 # First pass without a player or second pass -> new player
-                blueprint : carla.ActorBlueprint = assure_type(carla.ActorBlueprint, random.choice(get_actor_blueprints(self._actor_filter, self._actor_generation))) # type: ignore
+                blueprint: carla.ActorBlueprint = assure_type(carla.ActorBlueprint, 
+                    random.choice(get_actor_blueprints(self._actor_filter, self._actor_generation)))  # type: ignore[arg-type]
                 blueprint.set_attribute('role_name', self.actor_role_name) # type: ignore
                 if blueprint.has_attribute('color'):
                     color = random.choice(blueprint.get_attribute('color').recommended_values)
@@ -976,13 +1008,16 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 self.show_vehicle_telemetry = False
                 self.modify_vehicle_physics(self.player)
 
-        if self.external_actor:
+        # Clean external actors restarting a second time
+        if self.external_actor and self._args.restart_clean_sensors is not False \
+           and not self._first_start or self._args.restart_clean_sensors is True:
             ego_sensors : List[carla.Actor] = []
             for actor in self.world.get_actors():
                 if actor.parent == self.player:
                     ego_sensors.append(actor)
 
-            for ego_sensor in ego_sensors: # TODO: Why we do this
+            # Remove all old sensors
+            for ego_sensor in ego_sensors:
                 if ego_sensor is not None:
                     ego_sensor.destroy()
 
@@ -1027,6 +1062,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
         else: 
             self.rss_sensor = None
+        self._first_start = False
         self.tick_server_world()
 
     def tick_server_world(self) -> "int | carla.WorldSnapshot | None":
@@ -1207,6 +1243,9 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             
         
     def rss_check_control(self, vehicle_control : carla.VehicleControl) -> Union[carla.VehicleControl, None]:
+        """
+        Checks the vehicle control against the RSS restrictions and possibly proposes an alternative.
+        """
         self.hud.original_vehicle_control = vehicle_control
         self.hud.restricted_vehicle_control = vehicle_control
         if not AD_RSS_AVAILABLE or not self.rss_sensor:
@@ -1220,8 +1259,11 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:
             # adjust the controls
-            proposed_vehicle_control = self._restrictor.restrict_vehicle_control(
-                            vehicle_control, rss_proper_response, self.rss_sensor.ego_dynamics_on_route, self._vehicle_physics)
+            proposed_vehicle_control = self._restrictor.restrict_vehicle_control(  # pyright: ignore[reportOptionalMemberAccess]
+                            vehicle_control,
+                            rss_proper_response,
+                            self.rss_sensor.ego_dynamics_on_route,
+                            self._vehicle_physics)
             self.hud.restricted_vehicle_control = proposed_vehicle_control
             self.hud.allowed_steering_ranges = self.rss_sensor.get_steering_ranges()     
             return proposed_vehicle_control

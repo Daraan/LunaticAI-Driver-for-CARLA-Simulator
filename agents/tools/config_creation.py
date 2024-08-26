@@ -1971,6 +1971,9 @@ class CameraConfig(AgentConfig):
     gamma: float = 2.2
     """Gamma correction of the camera"""
     
+    spectator: bool = False
+    """If True will update the engines spectator camera"""
+    
     # NotImplemented
     
     if TYPE_CHECKING:
@@ -2151,6 +2154,18 @@ class LaunchConfig(AgentConfig):
     
     camera : CameraConfig = field(default_factory=CameraConfig)
     """.. <take doc|CameraConfig>"""
+    
+    pygame: bool = True
+    """
+    Deactivates the pygame window and interface.
+    
+    Attention:
+        Experimental
+    
+    :meta private:
+    """
+    
+    # ---
     
     hydra : Annotated[HydraConf, "Key not guaranteed to be present or complete."] \
         = field(default=MISSING, compare=False, hash=False)

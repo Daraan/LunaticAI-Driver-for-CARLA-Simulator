@@ -9,7 +9,7 @@ import carla
 from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
 from data_gathering.car_detection_matrix.matrix_wrap import get_car_coords
 from data_gathering.car_detection_matrix.run_matrix import AsyncDetectionMatrix, DetectionMatrix
-from classes.camera_manager import camera_function
+from classes.camera_manager import spectator_follow_actor
 from classes.experimental.vehicle_spawner import VehicleSpawner
 
 spawner = None
@@ -37,7 +37,7 @@ def main():
 
     # Create a thread for the camera functionality
     try:
-        camera_thread = threading.Thread(target=camera_function, args=(ego_vehicle, ))
+        camera_thread = threading.Thread(target=spectator_follow_actor, args=(ego_vehicle, ))
         camera_thread.start()
 
         # Initialize matrix thread
@@ -93,6 +93,7 @@ def main():
                 continue
 
     finally:
+        spectator_follow_actor.stop()  # type: ignore[attr-defined]
         data_matrix.stop()
         camera_thread.join()
 

@@ -6,10 +6,12 @@ import pygame
 from carla import ColorConverter as cc
 
 from typing import TYPE_CHECKING, ClassVar, List, Optional, cast
+from typing_extensions import NoReturn, Self
+from threading import Event, Thread
 
 from agents.tools.hints import CameraBlueprint
 from classes._sensor_interface import CustomSensorInterface
-from launch_tools import CarlaDataProvider
+from launch_tools import CarlaDataProvider, class_or_instance_method
 
 if TYPE_CHECKING:
     from classes.hud import HUD
@@ -35,15 +37,39 @@ CameraBlueprintsSimple: List[CameraBlueprint] = [CameraBlueprints['Camera RGB']]
 # -- CameraManager -------------------------------------------------------------
 # ==============================================================================
 
+_follow_car_event = Event()
+"""Use the :py:meth:`treading.Event.set` method to stop the thread."""
+
+# Solutions see: https://stackoverflow.com/questions/69107143/how-to-end-a-while-loop-in-another-thread
+def spectator_follow_actor(actor : carla.Actor) -> NoReturn:
+    """
+    Continuously follow the ego vehicle with the spectator view.
+    
+    Attention:
+        - Needs to be run in a separate thread.
+        - Does not allow for thread.join() to stop the thread, before calling :py:meth:`stop`.
+        
+    Methods:
+        stop: Stop following the actor.
+        
+    See Also:
+        - :py:meth:`CameraManager.follow_actor`
+    """
+    while not _follow_car_event.is_set():
+        _spectator_to_actor(actor)
+
+spectator_follow_actor.stop = lambda: _follow_car_event.set()  # type: ignore[attr-defined]
+
 
 class CameraManager(CustomSensorInterface):
     """ Class for camera management"""
 
     default_blueprints: ClassVar[List[CameraBlueprint]] = list(CameraBlueprints.values())
 
-    def __init__(self, parent_actor : carla.Actor, 
+    def __init__(self, 
+                 parent_actor: carla.Actor, 
                  hud : "HUD",
-                 args:"LaunchConfig",
+                 args: "LaunchConfig",
                  sensors:Optional[List[CameraBlueprint]]=CameraBlueprintsSimple,
                  ):
         """
@@ -55,9 +81,9 @@ class CameraManager(CustomSensorInterface):
         self.sensor = None  # Needs call to set_sensor
         self.index : int = None  # Needs call to set_sensor
         
-        self.surface : Optional[pygame.Surface] = None # set on _parse_image, # type: ignore
+        self._surface : Optional[pygame.Surface] = None # set on _parse_image, # type: ignore
         self._parent = parent_actor
-        self.hud : "HUD" = hud
+        self._hud : "HUD" = hud
         self.current_frame = -1
         self.recording = False
         self._args = args
@@ -66,17 +92,23 @@ class CameraManager(CustomSensorInterface):
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
-        attachment = carla.AttachmentType
+        
+        from carla import AttachmentType # noqa
         # Maybe use args.camera.camera_blueprints
         self._camera_transforms = [
             (carla.Transform(carla.Location(x=-2.0 * bound_x, y=+0.0 * bound_y, z=2.0 * bound_z),
-                             carla.Rotation(pitch=8.0)), attachment.SpringArmGhost),
-            (carla.Transform(carla.Location(x=+0.8 * bound_x, y=+0.0 * bound_y, z=1.3 * bound_z)), attachment.Rigid),
+                             carla.Rotation(pitch=8.0)),
+                AttachmentType.SpringArmGhost),
+            (carla.Transform(carla.Location(x=+0.8 * bound_x, y=+0.0 * bound_y, z=1.3 * bound_z)),
+                AttachmentType.Rigid),
             (carla.Transform(carla.Location(x=+1.9 * bound_x, y=+1.0 * bound_y, z=1.2 * bound_z)),
-             attachment.SpringArmGhost),
+                AttachmentType.SpringArmGhost),
             (carla.Transform(carla.Location(x=-2.8 * bound_x, y=+0.0 * bound_y, z=4.6 * bound_z),
-                             carla.Rotation(pitch=6.0)), attachment.SpringArmGhost),
-            (carla.Transform(carla.Location(x=-1.0, y=-1.0 * bound_y, z=0.4 * bound_z)), attachment.Rigid)]
+                             carla.Rotation(pitch=6.0)),
+                AttachmentType.SpringArmGhost),
+            (carla.Transform(carla.Location(x=-1.0, y=-1.0 * bound_y, z=0.4 * bound_z)), 
+                AttachmentType.Rigid)
+        ]
 
         self.transform_index = 1
         # TODO: These are remnants from the original code, for our purpose most sensors are not relevant
@@ -103,6 +135,9 @@ class CameraManager(CustomSensorInterface):
                 self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
             except AttributeError:
                 self.sensors[i] = CameraBlueprint(item[0], item[1], item[2], blp)
+                
+        if args.camera.spectator:
+            self.follow_actor(self._parent)
 
     def toggle_camera(self):
         """Activate a camera"""
@@ -117,7 +152,7 @@ class CameraManager(CustomSensorInterface):
         if needs_respawn:
             if self.sensor is not None:
                 self.destroy()
-                self.surface = None
+                self._surface = None
             self.sensor = cast(carla.Sensor, CarlaDataProvider.get_world().spawn_actor(
                 self.sensors[index][-1], # type: ignore
                 self._camera_transforms[self.transform_index][0],
@@ -129,7 +164,7 @@ class CameraManager(CustomSensorInterface):
             weak_self = weakref.ref(self)
             self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))  # type: ignore[arg-type]
         if notify:
-            self.hud.notification(self.sensors[index][2])
+            self._hud.notification(self.sensors[index][2])
         self.index = index
 
     def next_sensor(self) -> None:
@@ -139,17 +174,17 @@ class CameraManager(CustomSensorInterface):
     def toggle_recording(self) -> None:
         """Toggle recording on or off"""
         self.recording = not self.recording
-        self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
+        self._hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
 
     def destroy(self):
         super().destroy()
         self.index = None   # type: ignore
-        self.surface = None # type: ignore
+        self._surface = None # type: ignore
 
     def render(self, display : pygame.surface.Surface) -> None:
         """Renders method the current camera image"""
-        if self.surface is not None:
-            display.blit(self.surface, (0, 0))
+        if self._surface is not None:
+            display.blit(self._surface, (0, 0))
 
     @staticmethod
     def _parse_image(weak_self: "weakref.ref[CameraManager]", image: carla.Image):
@@ -160,31 +195,56 @@ class CameraManager(CustomSensorInterface):
             points = np.frombuffer(image.raw_data, dtype=np.dtype('f4'))
             points = np.reshape(points, (int(points.shape[0] / 4), 4))
             lidar_data = np.array(points[:, :2])
-            lidar_data *= min(self.hud.dim) / 100.0
-            lidar_data += (0.5 * self.hud.dim[0], 0.5 * self.hud.dim[1])
+            lidar_data *= min(self._hud.dim) / 100.0
+            lidar_data += (0.5 * self._hud.dim[0], 0.5 * self._hud.dim[1])
             lidar_data = np.fabs(lidar_data)  # pylint: disable=assignment-from-no-return
             lidar_data = lidar_data.astype(np.int32)
             lidar_data = np.reshape(lidar_data, (-1, 2))
-            lidar_img_size = (self.hud.dim[0], self.hud.dim[1], 3)
+            lidar_img_size = (self._hud.dim[0], self._hud.dim[1], 3)
             lidar_img = np.zeros(lidar_img_size)
             lidar_img[tuple(lidar_data.T)] = (255, 255, 255)
-            self.surface = pygame.surfarray.make_surface(lidar_img)
+            self._surface = pygame.surfarray.make_surface(lidar_img)
         else:
             image.convert(self.sensors[self.index][1]) # apply color converter
             array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (image.height, image.width, 4))
             array = array[:, :, :3]
             array = array[:, :, ::-1]
-            self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+            self._surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
         if self.recording and (
                 (image.frame % self._frame_interval) == 0
                 or self.current_frame + self._frame_interval < image.frame):
             print("Saving image to disk", self.outpath % image.frame)
             image.save_to_disk(self.outpath % image.frame)
         self.current_frame = image.frame
+     
+    _spectator_thread : Thread
+    """Thread for the spectator to follow the ego vehicle.""" 
+     
+    @class_or_instance_method
+    def follow_actor(cls_or_self: "Self | type[Self]", 
+                     actor: Optional[carla.Actor]=None, 
+                     updater=spectator_follow_actor):
+        """
+        Follows the actor with the spectator view.
+        
+        Parameters:
+            actor: The actor to follow. Defaults to the **parent_actor**.
+            updater: The function to update the camera view. Defaults to :py:func:`camera_follow_actor`.
+        """
+        actor = actor or getattr(cls_or_self, "_parent", None)
+        if actor is None:
+            raise ValueError("No actor to follow")
+        cls_or_self._spectator_thread = Thread(target=updater, args=(actor, ))
+        
+    @staticmethod
+    def stop_following_actor():
+        _follow_car_event.set()
+        
+# ==============================================================================
 
 
-def follow_car(ego_vehicle : carla.Actor):
+def _spectator_to_actor(actor: carla.Actor):
     """
     Set the spectator's view to follow the ego vehicle.
 
@@ -204,7 +264,7 @@ def follow_car(ego_vehicle : carla.Actor):
         None: The function does not return any value.
     """
     # Calculate the desired spectator transform
-    vehicle_transform = ego_vehicle.get_transform()
+    vehicle_transform = actor.get_transform()
     spectator_transform = vehicle_transform
     spectator_transform.location -= (
         vehicle_transform.get_forward_vector() * 10
@@ -218,8 +278,3 @@ def follow_car(ego_vehicle : carla.Actor):
     CarlaDataProvider.get_world().get_spectator().set_transform(spectator_transform)
 
 
-# TODO: # CRITICAL: this does not allow thread.join!
-# Solutions see: https://stackoverflow.com/questions/69107143/how-to-end-a-while-loop-in-another-thread
-def camera_function(ego_vehicle : carla.Actor):
-    while True:
-        follow_car(ego_vehicle)
