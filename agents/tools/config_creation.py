@@ -78,12 +78,12 @@ from typing_extensions import TypeAlias, Never, overload, Literal, Self, Annotat
 from agents.tools._config_tools import (_T, _M, _NestedStrDict, ConfigType,
                                         OverwriteDictTypes, DictConfigAlias, DictConfigLike,
                                         
-                                        AsDictConfig, extract_annotations, get_commented_yaml, 
+                                        AsDictConfig, export_options, extract_annotations, get_commented_yaml, 
                                         set_readonly_interpolations, set_readonly_keys,
 
                                         config_path, config_store,
                                         
-                                        NestedConfigDict, MISSING as _MISSING, _NOTSET)
+                                        NestedConfigDict, MISSING as _MISSING, _NOTSET, to_yaml)
 
 if TYPE_CHECKING:
     from classes.rule import Rule
@@ -179,9 +179,9 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
     """Overwrites of nested dictionaries for used for the initialization of the config."""
     
     @classmethod
-    def get_defaults(cls) -> "AgentConfig":
+    def get_defaults(cls) -> "Self":
         """Returns the global default options."""
-        return cls()    # type: ignore                            
+        return cls()  # type: ignore[call-arg]                  
     
     @class_or_instance_method
     def export_options(cls_or_self: Union[Type[Self], Self],
@@ -204,22 +204,10 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         Returns:
             None
         """
-        if inspect.isclass(cls_or_self):
-            options = cls_or_self()  # type: ignore[call-arg]
-        else:
-            options = cls_or_self
-        if with_comments:
-            string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True, detailed_rules=detailed_rules,
-                                        include_private=include_private)
-            os.makedirs(os.path.split(path)[0], exist_ok=True)
-            with open(path, "w") as f:
-                f.write(string)
-            return
-        if not isinstance(options, DictConfig):
-            # TODO: look how we can do this directly from dataclass
-            options = OmegaConf.create(options, flags={"allow_objects": True})  # type: ignore
-        OmegaConf.save(options, path, resolve=resolve)  # NOTE: This might raise if options is structured, for export structured this is actually not necessary. # type: ignore[argument-type]
-    
+        export_options(cls_or_self, path, resolve=resolve, 
+                       with_comments=with_comments, 
+                       detailed_rules=detailed_rules, 
+                       include_private=include_private)
 
     @class_or_instance_method
     def to_yaml(cls_or_self : Union[Type[Self], Self], resolve:bool=False, yaml_commented:bool=True, 
@@ -236,111 +224,9 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         Returns:
             str: The YAML string representation of the options.
         """
-        
-        """
-        # Draft a dumper
-        from omegaconf._utils import get_omega_conf_dumper
-        Dumper = get_omega_conf_dumper()
-        org_func = Dumper.str_representor
-        def str_representor(dumper, data: str):
-            result = org_func(dumper, data)
-            return result
-        
-        Dumper.add_representor(str, str_representor)
-        string = yaml.dump(  # type: ignore
-            container,
-            default_flow_style=False,
-            allow_unicode=True,
-            sort_keys=kwargs.get("sort_keys", False),
-            Dumper=Dumper,
-        )
-        """
-        import yaml
-        from omegaconf._utils import get_omega_conf_dumper
-        cfg : DictConfig = OmegaConf.structured(cls_or_self, flags={"allow_objects": True})
-
-        if isinstance(cls_or_self, LunaticAgentSettings) or inspect.isclass(cls_or_self) and issubclass(cls_or_self, LunaticAgentSettings):
-            with open_dict(cfg):
-                del cfg["self"]
-                del cfg["current_rule"]
-        if "rules" in cfg:
-            # Validate and remove missing keys for the yaml export
-            if TYPE_CHECKING:
-                assert isinstance(cfg, LunaticAgentSettings)
-            rules :  List[RuleCreatingParameters] = cfg.rules
-            masked_rules : list[DictConfig] = []
-            for rule_cfg in rules:
-                if "phases" in rule_cfg.keys():
-                    if TYPE_CHECKING:
-                        assert isinstance(rule_cfg, CreateRuleFromConfig)
-                    # > CreateRuleFromConfig
-                    if detailed_rules:
-                        # Circular import can only call this after agents.rules
-                        try:
-                            from agents.rules import rule_from_config
-                        except ImportError:
-                            print("Could not import agents.rules.rule_from_config. Set detailed_rules=False to avoid this error. Call this function somewhere else.")
-                            raise
-                        rule: Rule = rule_from_config(rule_cfg) 
-                        self_config: RuleConfig = rule.self_config 
-                        if OmegaConf.is_missing(rule_cfg, "phases"):
-                            rule_cfg.phases = list(self_config.instance.phases)[0] # only support one atm
-                        with open_dict(self_config):
-                            del self_config["instance"]
-                        if OmegaConf.is_missing(rule_cfg, "self_config"):
-                            rule_cfg.self_config = OmegaConf.to_container(self_config, enum_to_str=True) # type: ignore
-                        else:
-                            try:
-                                rule_cfg.self_config.update(self_config)
-                            except:
-                                with open_dict(rule_cfg):
-                                    rule_cfg.self_config = OmegaConf.to_container(OmegaConf.merge(self_config, rule_cfg.self_config), enum_to_str=True) # type: ignore
-                    
-                    if "phases" in rule_cfg and not isinstance(rule_cfg.phases, str):
-                        assert isinstance(rule_cfg.phases, Phase), "Currently only supports a Phase as string or Phase object."
-                        rule_cfg.phases = str(rule_cfg.phases)
-                    
-                    if detailed_rules:
-                        assert not OmegaConf.is_missing(rule_cfg, "phases")
-                    
-                # NOTE: For some reason "_args_" in rule does NOT WORK
-                elif "_args_" in rule_cfg.keys() and OmegaConf.is_missing(rule_cfg, key="_args_"):
-                    # check > CallFunctionFromConfig
-                    raise ValueError("%s has no phase or (positional) `_args_` key. Did you forget to add a phase?"
-                                        "If the _target_ is a function, still prove an empty `_args_ = []` key." % str(rule_cfg))
-                missing_keys = {k for k in rule_cfg.keys() if OmegaConf.is_missing(rule_cfg, k)}
-                clean_rule = OmegaConf.masked_copy(rule_cfg, set(rule_cfg.keys()) - missing_keys)  # pyright: ignore[reportArgumentType]
-                masked_rules.append(clean_rule)
-            cfg.rules = masked_rules # type: ignore[attr-defined]
-            
-        container: Dict[str, Any] = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True) # pyright: ignore[reportAssignmentType]
-        if AD_RSS_AVAILABLE:
-            def replace_carla_enum(content: _T) -> _T:
-                # retrieve name from the stubs
-                if isinstance(content, carla.RssLogLevel):
-                    return RssLogLevelStub(content).name
-                if isinstance(content, carla.RssRoadBoundariesMode):
-                    return RssRoadBoundariesModeStub(content).name
-                return content
-            
-            def recursive_replace(content: _T) -> _T:
-                if isinstance(content, dict):
-                    return {k: recursive_replace(v) for k, v in content.items()} # type: ignore
-                if isinstance(content, list):
-                    return [recursive_replace(v) for v in content]               # type: ignore
-                return replace_carla_enum(content)
-            container = recursive_replace(container)
-        string = yaml.dump(
-            container,
-            default_flow_style=False,
-            allow_unicode=True,
-            sort_keys=False,
-            Dumper=get_omega_conf_dumper(),
-        )
-        if not yaml_commented:
-            return string
-        # Extend
-        return get_commented_yaml(cls_or_self, string, container)  # type: ignore[arg-type]
+        return to_yaml(cls_or_self, resolve=resolve, 
+                       yaml_commented=yaml_commented, detailed_rules=detailed_rules, 
+                       include_private=include_private)
         
     @classmethod
     def from_yaml(cls, path: str, *, merge:bool =True) -> Self:
@@ -570,7 +456,6 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
             set_readonly_interpolations(conf)
         if lock_fields:
             set_readonly_keys(conf, lock_fields)
-        
         return conf
     
     def copy(self) -> "Self":

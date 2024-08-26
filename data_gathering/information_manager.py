@@ -3,9 +3,9 @@ Aim of this module is to provide a less convoluted access to information,
 i.e. distill the information from the data and return high level information
 """
 
-# pyright: strict
 # pyright: reportUnknownMemberType=warning
 # pyright: reportUnusedExpression=warning
+# pyright: reportPrivateUsage=none
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from __future__ import annotations
 from fnmatch import fnmatch
 from functools import wraps
 from typing import (ClassVar, TYPE_CHECKING, 
-                    NamedTuple, Optional, Union, Dict, List, Callable, TypeVar)
-from typing_extensions import Literal, Self, ParamSpec, Concatenate
+                    NamedTuple, Optional, Union, Dict, List, Callable, TypeVar, cast)
+from typing_extensions import Self, ParamSpec, Concatenate
 from cachetools import cached
 import carla
 
@@ -260,7 +260,7 @@ class InformationManager:
         self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not cleaned # noqa: E501 # type: ignore
         # Only exact waypoint. TODO: update in agent
         # Comment should be visible in traceback. 
-        current_waypoint: carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet. # noqa: E501 # pyright: ignore[reportCallIssue, reportArgumentType]
+        current_waypoint = cast(carla.Waypoint, CarlaDataProvider.get_map().get_waypoint(_current_loc)) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet. # noqa: E501 # pyright: ignore[reportCallIssue, reportArgumentType]
         
         # Traffic Light
         # NOTE: Must be AFTER the location update
@@ -432,9 +432,11 @@ class InformationManager:
         # Use copy and check for None because of updates could be done by threads in parallel
         for actor_id in CarlaDataProvider._carla_actor_pool.copy():
             try:
-                actor = CarlaDataProvider._carla_actor_pool[actor_id] # might be deleted in parallel
-                if actor is None or not actor.is_alive:
-                    logger.debug("Detected dead actor in the pool. %s", (actor.id, actor.type_id, actor.attributes))
+                actor = CarlaDataProvider._carla_actor_pool[actor_id]  # might be deleted in parallel
+                if actor is None or not actor.is_alive:  # pyright: ignore[reportUnnecessaryComparison]
+                    logger.debug("Detected dead actor in the pool. %s", (actor.id, 
+                                                                         actor.type_id, 
+                                                                         actor.attributes))  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
                     del CarlaDataProvider._carla_actor_pool[actor_id]
                     continue
             except KeyError:

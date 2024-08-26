@@ -19,17 +19,20 @@ from dataclasses import is_dataclass
 from enum import IntEnum
 
 import omegaconf.errors
-from omegaconf import MISSING, DictConfig, ListConfig, MissingMandatoryValue, OmegaConf, SCMode
+from omegaconf import MISSING, DictConfig, ListConfig, MissingMandatoryValue, OmegaConf, SCMode, open_dict
 from omegaconf._utils import is_structured_config
 from hydra.core.config_store import ConfigStore
 
+from classes.constants import AD_RSS_AVAILABLE, Phase, RssLogLevelStub, RssRoadBoundariesModeStub
 from launch_tools import ast_parse
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast, get_type_hints
-from typing_extensions import TypeAlias, TypeVar, Self, TypeAliasType
+from typing_extensions import TypeAlias, TypeVar, TypeAliasType
 
 if TYPE_CHECKING:
-    from agents.tools.config_creation import AgentConfig
+    from agents.tools.config_creation import (AgentConfig, LunaticAgentSettings, 
+                                    RuleCreatingParameters, CreateRuleFromConfig, RuleConfig)
+    from classes.rule import Rule
 
 #from types import MappingProxyType
 #ALLOW_OBJECTS = cast(Dict[str, Literal[True]], MappingProxyType({"allow_objects" : True}))
@@ -426,6 +429,165 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
             entry = parts[0]+":"
             string = re.sub(fr"^{entry}$", entry + " null", string, flags=re.MULTILINE)
     return string
+
+
+def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=False, yaml_commented:bool=True, 
+            detailed_rules:bool=False, *, include_private:bool = False) -> str:
+    """
+    Convert the options to a YAML string representation.
+
+    Args:
+        resolve : Whether to resolve interpolations. Defaults to False.
+        yaml_commented : Whether to include comments in the YAML output. Defaults to True.
+        detailed_rules : Whether to include detailed rules in the YAML output. Defaults to False.
+        include_private : Whether to include fields that are marked as private. Defaults to False.
+
+    Returns:
+        str: The YAML string representation of the options.
+    """
+    
+    """
+    # Draft a dumper
+    from omegaconf._utils import get_omega_conf_dumper
+    Dumper = get_omega_conf_dumper()
+    org_func = Dumper.str_representor
+    def str_representor(dumper, data: str):
+        result = org_func(dumper, data)
+        return result
+    
+    Dumper.add_representor(str, str_representor)
+    string = yaml.dump(  # type: ignore
+        container,
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=kwargs.get("sort_keys", False),
+        Dumper=Dumper,
+    )
+    """
+    import yaml
+    from omegaconf._utils import get_omega_conf_dumper
+    cfg : DictConfig = OmegaConf.structured(cls_or_self, flags={"allow_objects": True})
+
+    if ((inspect.isclass(cls_or_self) and cls_or_self.__name__ == "LunaticAgentSettings")
+        or (isinstance(cls_or_self, object) and cls_or_self.__class__.__name__ == "LunaticAgentSettings")):
+        with open_dict(cfg):
+            del cfg["self"]
+            del cfg["current_rule"]
+    if "rules" in cfg:
+        # Validate and remove missing keys for the yaml export
+        if TYPE_CHECKING:
+            assert isinstance(cfg, LunaticAgentSettings)
+        rules :  List[RuleCreatingParameters] = cfg.rules
+        masked_rules : list[DictConfig] = []
+        for rule_cfg in rules:
+            if "phases" in rule_cfg.keys():
+                if TYPE_CHECKING:
+                    assert isinstance(rule_cfg, CreateRuleFromConfig)
+                # > CreateRuleFromConfig
+                if detailed_rules:
+                    # Circular import can only call this after agents.rules
+                    try:
+                        from agents.rules import rule_from_config
+                    except ImportError:
+                        print("Could not import agents.rules.rule_from_config. Set detailed_rules=False to avoid this error. Call this function somewhere else.")
+                        raise
+                    rule: Rule = rule_from_config(rule_cfg) 
+                    self_config: RuleConfig = rule.self_config 
+                    if OmegaConf.is_missing(rule_cfg, "phases"):
+                        rule_cfg.phases = list(self_config.instance.phases)[0] # only support one atm
+                    with open_dict(self_config):
+                        del self_config["instance"]
+                    if OmegaConf.is_missing(rule_cfg, "self_config"):
+                        rule_cfg.self_config = OmegaConf.to_container(self_config, enum_to_str=True) # type: ignore
+                    else:
+                        try:
+                            rule_cfg.self_config.update(self_config)
+                        except:
+                            with open_dict(rule_cfg):
+                                rule_cfg.self_config = OmegaConf.to_container(OmegaConf.merge(self_config, rule_cfg.self_config), enum_to_str=True) # type: ignore
+                
+                if "phases" in rule_cfg and not isinstance(rule_cfg.phases, str):
+                    assert isinstance(rule_cfg.phases, Phase), "Currently only supports a Phase as string or Phase object."
+                    rule_cfg.phases = str(rule_cfg.phases)
+                
+                if detailed_rules:
+                    assert not OmegaConf.is_missing(rule_cfg, "phases")
+                
+            # NOTE: For some reason "_args_" in rule does NOT WORK
+            elif "_args_" in rule_cfg.keys() and OmegaConf.is_missing(rule_cfg, key="_args_"):
+                # check > CallFunctionFromConfig
+                raise ValueError("%s has no phase or (positional) `_args_` key. Did you forget to add a phase?"
+                                    "If the _target_ is a function, still prove an empty `_args_ = []` key." % str(rule_cfg))
+            missing_keys = {k for k in rule_cfg.keys() if OmegaConf.is_missing(rule_cfg, k)}
+            clean_rule = OmegaConf.masked_copy(rule_cfg, set(rule_cfg.keys()) - missing_keys)  # pyright: ignore[reportArgumentType]
+            masked_rules.append(clean_rule)
+        cfg.rules = masked_rules # type: ignore[attr-defined]
+        
+    container: Dict[str, Any] = OmegaConf.to_container(cfg, resolve=resolve, enum_to_str=True) # pyright: ignore[reportAssignmentType]
+    if AD_RSS_AVAILABLE:
+        def replace_carla_enum(content: _T) -> _T:
+            # retrieve name from the stubs
+            if isinstance(content, carla.RssLogLevel):
+                return RssLogLevelStub(content).name
+            if isinstance(content, carla.RssRoadBoundariesMode):
+                return RssRoadBoundariesModeStub(content).name
+            return content
+        
+        def recursive_replace(content: _T) -> _T:
+            if isinstance(content, dict):
+                return {k: recursive_replace(v) for k, v in content.items()} # type: ignore
+            if isinstance(content, list):
+                return [recursive_replace(v) for v in content]               # type: ignore
+            return replace_carla_enum(content)
+        container = recursive_replace(container)
+    string = yaml.dump(
+        container,
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=False,
+        Dumper=get_omega_conf_dumper(),
+    )
+    if not yaml_commented:
+        return string
+    # Extend
+    return get_commented_yaml(cls_or_self, string, container)  # type: ignore[arg-type]
+
+def export_options(cls_or_self: Union[type[AgentConfig], AgentConfig],
+                    path: Union[str, "os.PathLike[str]"],
+                    *,
+                    resolve: bool = False,
+                    with_comments: bool = False,
+                    detailed_rules: bool = False,
+                    include_private: bool = False) -> None:
+    """
+    Exports the options to a YAML file. With the :py:meth:`to_yaml` method.
+
+    Args:
+        path : The path for the exported YAML file.
+        resolve : Whether to resolve the options before exporting. Defaults to False.
+        with_comments : Whether to include comments in the exported YAML file. Defaults to False.
+        detailed_rules : Whether to include detailed rules in the exported YAML file. Defaults to False.
+        include_private : Whether to include private fields in the exported YAML file. Defaults to False.
+
+    Returns:
+        None
+    """
+    if inspect.isclass(cls_or_self):
+        options = cls_or_self()  # type: ignore[call-arg]
+    else:
+        options = cls_or_self
+    if with_comments:
+        string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True, detailed_rules=detailed_rules,
+                                    include_private=include_private)
+        os.makedirs(os.path.split(path)[0], exist_ok=True)
+        with open(path, "w") as f:
+            f.write(string)
+        return
+    if not isinstance(options, DictConfig):
+        # TODO: look how we can do this directly from dataclass
+        options = OmegaConf.create(options, flags={"allow_objects": True})  # type: ignore
+    OmegaConf.save(options, path, resolve=resolve)  # NOTE: This might raise if options is structured, for export structured this is actually not necessary. # type: ignore[argument-type]
+
             
 # --------------- Other Tools -----------------
 
