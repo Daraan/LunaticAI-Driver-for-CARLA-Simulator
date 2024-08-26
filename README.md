@@ -2,7 +2,8 @@
 
 [![Documentation Status](https://readthedocs.org/projects/lunaticai-driver-for-carla-simulator/badge/?version=latest)](https://lunaticai-driver-for-carla-simulator.readthedocs.io/?badge=latest)
 
-The full documentation can be found online at [ReadTheDocs](https://lunaticai-driver-for-carla-simulator.readthedocs.io/).
+The full documentation is hosted online at [ReadTheDocs](https://lunaticai-driver-for-carla-simulator.readthedocs.io/). Click [here](https://lunaticai-driver-for-carla-simulator.readthedocs.io/latest/modules.html)
+for the API documentation.
 
 ---
 

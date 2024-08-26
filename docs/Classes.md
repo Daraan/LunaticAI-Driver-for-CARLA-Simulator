@@ -53,7 +53,7 @@ It is a extension of the [{external:class}`carla.World`]{.external-icon} class a
 
 The {py:class}`.HUD` is a modification of the `HUD` classes used in the [manual_control_rss.py example of Carla](https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/rss/manual_control_rss.py){.external-icon}.
 
-It closely combines with the [](#classes.camera_manager.CameraManager) to provide the visual human interface for the pygame window.
+It closely combines with the {py:class}`classes.camera_manager.CameraManager` to provide the visual human interface for the pygame window.
 
 ## Rules
 

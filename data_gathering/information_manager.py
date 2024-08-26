@@ -3,13 +3,17 @@ Aim of this module is to provide a less convoluted access to information,
 i.e. distill the information from the data and return high level information
 """
 
+# pyright: strict
+# pyright: reportUnknownMemberType=warning
+# pyright: reportUnusedExpression=warning
+
 from __future__ import annotations
 
 # todo: maybe find another name for this module
 
 from fnmatch import fnmatch
 from functools import wraps
-from typing import (Any, ClassVar, TYPE_CHECKING, 
+from typing import (ClassVar, TYPE_CHECKING, 
                     NamedTuple, Optional, Union, Dict, List, Callable, TypeVar)
 from typing_extensions import Literal, Self, ParamSpec, Concatenate
 from cachetools import cached
@@ -52,7 +56,12 @@ class InformationManager:
     Is float('inf') if :py:attr:`relevant_traffic_light` is None.
     """
     
-    _relevant_traffic_light_location : carla.Location = None
+    _relevant_traffic_light_location: carla.Location = None # type: ignore[assignment]
+    """
+    Note:
+        Is None if :py:attr:`relevant_traffic_light` is :code:`None` 
+        or :py:attr:`relevant_traffic_light_distance` is :python:`float('inf')`
+    """
     
     state_counter: Dict[AgentState, int]
     """
@@ -93,7 +102,7 @@ class InformationManager:
         self._agent = agent
         self.live_info = agent.live_info
         
-        self._vehicle = agent._vehicle # maybe use a property
+        self._vehicle = agent._vehicle # maybe use a property # noqa # pyright: ignore[reportPrivateUsage]
         
         # Share the dict
         if getattr(agent, "current_states", None) is not None:
@@ -162,7 +171,7 @@ class InformationManager:
         """
         :meta private:
         """
-        self._agent._current_waypoint.lane_id # positive or negative
+        self._agent._current_waypoint.lane_id # positive or negative   # noqa # pyright: ignore[reportPrivateUsage]
         # TODO: How detect if the heading is against this direction?
         # Need to also account for reverse state.
         NotImplemented
@@ -247,11 +256,11 @@ class InformationManager:
         
         # - Location -
         # NOTE: That transform.location and location are similar but not identical.
-        self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)
-        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not cleaned # noqa: E501
+        self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)  # pyright: ignore[reportAttributeAccessIssue]
+        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not cleaned # noqa: E501 # type: ignore
         # Only exact waypoint. TODO: update in agent
         # Comment should be visible in traceback. 
-        current_waypoint : carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet. # noqa: E501 # pyright: ignore[reportCallIssue]
+        current_waypoint: carla.Waypoint = CarlaDataProvider.get_map().get_waypoint(_current_loc) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet. # noqa: E501 # pyright: ignore[reportCallIssue, reportArgumentType]
         
         # Traffic Light
         # NOTE: Must be AFTER the location update
@@ -279,7 +288,7 @@ class InformationManager:
         self.vehicles_nearby = sorted(self.vehicles_nearby, key=dist)
         
         # Static obstacles
-        self.static_obstacles_nearby = []
+        self.static_obstacles_nearby: list[carla.Actor] = []
         for o in self.static_obstacles:
             if dist(o) < _v_filter_dist:
                 self.static_obstacles_nearby.append(o)
@@ -287,7 +296,7 @@ class InformationManager:
         
         # Walkers
         _v_filter_dist = self._agent.config.obstacles.nearby_walkers_max_distance # in case of a different distance for walkers.
-        self.walkers_nearby = []
+        self.walkers_nearby: list[carla.Walker] = []
         for w in self.walkers:
             if dist(w) < _v_filter_dist:
                 self.walkers_nearby.append(w)
@@ -299,7 +308,8 @@ class InformationManager:
         
         # Nearby Traffic lights
         # By default this checks for 5 seconds range + 10 m
-        self.traffic_lights_nearby = [tl for tl, trans in InformationManager.get_traffic_lights().items() if dist(tl) < self._agent.config.obstacles.nearby_tlights_max_distance]
+        self.traffic_lights_nearby = [tl for tl in InformationManager.get_traffic_lights()
+                                      if dist(tl) < self._agent.config.obstacles.nearby_tlights_max_distance]
         self.traffic_lights_nearby = sorted(self.traffic_lights_nearby, key=dist)
         
         self.check_states()

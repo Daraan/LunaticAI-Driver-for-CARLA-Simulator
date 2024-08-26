@@ -142,6 +142,20 @@ For all other cases, you can apply the patch manually at the error location; exc
 + for elem in list(scenario):
 ```
 
+### ImportError: cannot import '...' from 'agents'
+
+This indicates that another `agents` module is in your `PYTHONPATH` and is imported instead of the
+one from this repository. Make sure that the path to the cloned repository is in your `PYTHONPATH`
+before any other path. Modules that interfere are likely `PythonAPI/carla/agents` but also
+the `leaderboard` or `scenario_runner` might try to import the `agents` module before the one from
+this repository.
+
+```python
+# A quick hack is to add the path to the repository at the beginning of your script
+import sys
+sys.path.insert(0, 'path to this project')
+```
+
 ### RuntimeError: Spawn failed because of collision at spawn position
 
 An actor is spawned at a blocked position. Restart your simulation and try again.
@@ -155,3 +169,7 @@ ImportError: ./lib/libstdc++.so.6: version 'GLIBCXX_3.4.30' not found (required 
 ```
 
 This issue is tracked [here](https://github.com/carla-simulator/carla/issues/7862#issuecomment-2194905685).
+
+### Rule Troubleshooting
+
+For rules there is a separate <project:./Rules.md#troubleshooting> section.

@@ -81,7 +81,8 @@ except:
 |:warning:|
 ```
 
- The `LunaticChallenger` is easier to setup, however its usage and customization are, limited as it complies with the `AutonomousAgent` interface from [`leaderboard-2.0`](https://leaderboard.carla.org/get_started/). So far, it only supports a limited amount of features mentioned in the [Configuration](conf/ConfigFiles.md#command-line) section. For example, changing settings over the command line is not supported as the configuration is loaded in `agent.setup` rather than a `@hydra.main` wrapped entry point.
+The `LunaticChallenger` is easier to setup, however its usage and customization are, limited as it complies with the `AutonomousAgent` interface from [`leaderboard-2.0`](https://leaderboard.carla.org/get_started/).
+So far, it only supports a limited amount of features mentioned in the [Configuration](conf/ConfigFiles.md#launching-customized-experiments) section. For example, changing settings over the command line is not supported as the configuration is loaded in `agent.setup` rather than a `@hydra.main` wrapped entry point.
 :::
 
 ## Adding Rules

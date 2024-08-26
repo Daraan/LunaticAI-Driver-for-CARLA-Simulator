@@ -327,10 +327,27 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         if args is None:
             carla_service.initialize_carla(timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
         else:
-            carla_service.initialize_carla(args.map, args.host, args.port, timeout=timeout, worker_threads=worker_threads, map_layers=map_layers, sync=args.sync, fps=args.fps)
+            carla_service.initialize_carla(args.map, 
+                                           args.host, args.port, 
+                                           timeout=timeout, 
+                                           worker_threads=worker_threads, 
+                                           map_layers=map_layers, 
+                                           sync=args.sync,
+                                           fps=args.fps)
         return CarlaDataProvider.get_world().get_settings()
     
-    def init_traffic_manager(self, port=None) -> carla.TrafficManager:
+    def init_traffic_manager(self, port: Optional[int]=None) -> carla.TrafficManager:
+        """
+        Returns an instance of the :py:class:`carla.TrafficManager` 
+        related to the specified port. If it does not exist, this will be created.
+        
+        See Also:
+            :py:meth:`carla.Client.get_trafficmanager`
+            
+        Parameters:
+            port: The port to use. If :code:`None`, will use the port from
+                :py:meth:`.CarlaDataProvider.get_traffic_manager_port`, which defaults to :code:`8000`.
+        """
         if port is None:
             port = CarlaDataProvider.get_traffic_manager_port()
         traffic_manager = self.client.get_trafficmanager(port)
@@ -372,9 +389,6 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             config: The configuration of the agent. If :code:`None` the 
                     :py:attr:`.agent_class.BASE_SETTINGS <.LunaticAgent.BASE_SETTINGS>` are used.
             overwrites: Additional overwrites to the configuration.
-            
-        
-        
         """
         if ego is None and not self._args.externalActor:
             raise ValueError("`ego` must be passed if ``externalActor` is not set.")
@@ -891,10 +905,12 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         Pauses the simulation by setting the world to synchronous mode.
         
         Attention:
-            Only works reliable in **asynchronous mode**.
-            
-        :meta private:
+            Only works reliable in **asynchronous mode** (:py:attr:`sync=False <.LaunchConfig.sync>`)
+            and might lead to unexpected behavior in synchronous mode.
         """
+        if self._args.sync:
+            logger.warning("Pause simulation only works in asynchronous mode.")
+        
         settings = self.world.get_settings()
         if pause and not settings.synchronous_mode:
             settings.synchronous_mode = True
@@ -906,17 +922,30 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             self.world.apply_settings(settings)
 
     @staticmethod
-    def _find_external_actor(world:carla.World, role_name:str, actor_list: Optional[carla.ActorList]=None) -> Union[None, carla.Actor]:
+    def _find_external_actor(world: carla.World, 
+                             role_name: str,
+                             actor_list: Optional[carla.ActorList]=None) -> Optional[carla.Actor]:
+        """
+        Looks to find an actor with a matching **role_name**.
+        """
         player = None
         for actor in actor_list or world.get_actors():
             if actor.attributes.get('role_name') == role_name:
                 if player is not None:
-                    logger.error("Multiple actors with role_name `%s` found. id: %s. Returning the first one found.", role_name, actor.id)
+                    logger.error("Multiple actors with role_name `%s` found. id: %s. "
+                                 "Returning the first one found.", role_name, actor.id)
                 else:
                     player = actor
         return player
 
     def _wait_for_external_actor(self, timeout=20, sleep=3) -> carla.Actor:
+        """
+        Does not resume the script until an external actor with the role name is found.
+        
+        Raises:
+            AssertionError: If :py:attr:`actor_role_name` is not set.
+            SystemExit: If the actor is not found within the time period.
+        """
         assert self.actor_role_name
         import time
         self.tick_server_world() # Tick the world?
@@ -926,7 +955,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             player = self._find_external_actor(self.world, self.actor_role_name)
             if player is not None:
                 return player
-            logger.info("...External actor not found. Waiting to find external actor named `%s`", self.actor_role_name)
+            logger.info("...External actor not found. Waiting to find external actor named `%s`",
+                        self.actor_role_name)
             time.sleep(sleep) # Note if on same thread, nothing will happen. Put function into thread?
             self.tick_server_world() # Tick the world?
             t = time.time()
@@ -939,10 +969,17 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         Restart the world and sets up the :py:class:`.HUD` sensors.
         If :py:attr:`player` is not set or :py:attr:`external_actor` is set, 
         looks for an actor with the role name, or spawns a new actor.
+        
+        Note:
+            Called during :py:meth:`__init__`.
         """
         # Keep same camera config if the camera manager exists.
-        cam_index = assure_type(int, self.camera_manager.index if self.camera_manager is not None else 0)
-        cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
+        cam_index = assure_type(int, self.camera_manager.index
+                                          if self.camera_manager is not None
+                                          else 0)
+        cam_pos_id = (self.camera_manager.transform_index
+                      if self.camera_manager is not None
+                      else 0)
         if self.external_actor:
             # Check whether there is already an actor with defined role name
             if not self.actor_role_name:
@@ -956,7 +993,9 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     self.player = assure_type(carla.Vehicle, 
                                     self._wait_for_external_actor(timeout=20))
             elif external_actor and self.player.id != external_actor.id: # NOTE: even with same id different instances and hashes.
-                logger.warning("External actor found with role_name `%s` but different id. Keeping the current actor (%s) and ignoring the external actor (%s)", self.actor_role_name, self.player.id, external_actor.id)
+                logger.warning("External actor found with role_name `%s` but different id. "
+                               "Keeping the current actor (%s) and ignoring the external actor (%s)",
+                               self.actor_role_name, self.player.id, external_actor.id)
             if TYPE_CHECKING:
                 self.player = assure_type(carla.Vehicle, self.player)
             
@@ -1002,7 +1041,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     sys.exit(1)
                 spawn_points  = self.map.get_spawn_points()
                 spawn_point : carla.Transform = random.choice(spawn_points) if spawn_points else carla.Transform() # type: ignore
-                self.player = assure_type(carla.Vehicle, self.world.try_spawn_actor(blueprint, spawn_point))
+                self.player = assure_type(carla.Vehicle, 
+                                          self.world.try_spawn_actor(blueprint, spawn_point))
                 # From Interactive:
                 # See: https://carla.readthedocs.io/en/latest/tuto_G_control_vehicle_physics/            
                 self.show_vehicle_telemetry = False
@@ -1042,8 +1082,13 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(text=actor_type)
         
-        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player, self.world, self.dim, gamma_correction=self._gamma) # TODO: use args instead of gamma
-        self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, self.world, self.camera_manager.sensor)
+        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player,
+                                                                                self.world,
+                                                                                self.dim,
+                                                                                gamma_correction=self._gamma) # TODO: use args instead of gamma
+        self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim, 
+                                                                    self.world, 
+                                                                    self.camera_manager.sensor)
         if AD_RSS_AVAILABLE and self._config.rss and self._config.rss.enabled:
             log_level = self._config.rss.log_level
             if not isinstance(log_level, carla.RssLogLevel):
@@ -1053,10 +1098,13 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     else:
                         log_level = carla.RssLogLevel(log_level)
                 except Exception as e:
-                    raise KeyError("Could not convert '%s' to RssLogLevel must be in %s" % (log_level, list(carla.RssLogLevel.names.keys()))) from e
+                    raise KeyError("Could not convert '%s' to RssLogLevel must be in %s" \
+                                   % (log_level, list(carla.RssLogLevel.names.keys()))) from e
                 logger.info("Carla Log level was not a RssLogLevel")
             self.rss_sensor = RssSensor(self.player,
-                                    self.rss_unstructured_scene_visualizer, self.rss_bounding_box_visualizer, self.hud.rss_state_visualizer,
+                                    self.rss_unstructured_scene_visualizer,
+                                    self.rss_bounding_box_visualizer,
+                                    self.hud.rss_state_visualizer,
                                     visualizer_mode=self._config.rss.debug_visualization_mode,
                                     log_level=log_level)
             self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)
@@ -1083,7 +1131,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         """Method for every tick"""
         self.hud.tick(self, clock, InformationManager.obstacles)
 
-    def next_weather(self, reverse=False):
+    def next_weather(self, reverse: bool =False) -> None:
         """Get next weather setting"""
         self._weather_index += -1 if reverse else 1
         self._weather_index %= len(self._weather_presets)
@@ -1092,13 +1140,13 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self.player.get_world().set_weather(preset[0])
         self.weather = preset[1]
 
-    def next_map_layer(self, reverse=False):
+    def next_map_layer(self, reverse: bool =False) -> None:
         self.current_map_layer += -1 if reverse else 1
         self.current_map_layer %= len(self.map_layer_names)
         selected = self.map_layer_names[self.current_map_layer]
         self.hud.notification('LayerMap selected: %s' % selected)
 
-    def load_map_layer(self, unload=False):
+    def load_map_layer(self, unload: bool=False):
         selected = self.map_layer_names[self.current_map_layer]
         if unload:
             self.hud.notification('Unloading map layer: %s' % selected)
@@ -1111,7 +1159,9 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         """
         Start recording images from the camera output.
         
-        Saved in :py:attr:`LaunchConfig.camera.recorder.output_path <.CameraConfig.RecorderSettings.output_path>` with the current frame number.
+        Saved in
+        :py:attr:`LaunchConfig.camera.recorder.output_path <.CameraConfig.RecorderSettings.output_path>`
+        with the current frame number.
         """
         if not self.recording:
             self._has_recorded = True
@@ -1192,12 +1242,12 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             self.rss_sensor = None
         if self.rss_unstructured_scene_visualizer:
             self.rss_unstructured_scene_visualizer.destroy()
-            self.rss_unstructured_scene_visualizer = None  # type: ignore
+            self.rss_unstructured_scene_visualizer = None  # type: ignore[assignment]
         if self.camera_manager is not None:
             self.camera_manager.destroy()
-            self.camera_manager = None  # type: ignore
+            self.camera_manager = None  # type: ignore[assignment]
         if self.radar_sensor is not None:
-            self.toggle_radar() # destroys it if not None
+            self.toggle_radar()  # destroys it if not None
 
     def destroy(self, destroy_ego=False):
         """Destroys all actors"""
@@ -1209,14 +1259,18 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             logger.debug("Adding player to destruction list.")
             self.actors.append(self.player)
         elif not destroy_ego and self.player in self.actors:
-            logger.warning("destroy_ego=False, but player is in actors list. Destroying the actor from within WorldModel.destroy.")
+            logger.warning("destroy_ego=False, but player is in actors list. "
+                           "Destroying the actor from within WorldModel.destroy.")
         
         #logger.info("to destroy %s", list(map(str, self.actors)))
         # Batch destroy in one simulation step
-        real_actors: Sequence[carla.Actor] = [actor for actor in self.actors if isinstance(actor, carla.Actor)]
+        real_actors: Sequence[carla.Actor] = [actor for actor in self.actors
+                                              if isinstance(actor, carla.Actor)]
         GameFramework.destroy_actors(real_actors)
         
-        other_actors = [actor for actor in self.actors if not isinstance(actor, carla.Actor)]
+        # e.g. CustomSensorInterface
+        other_actors = [actor for actor in self.actors
+                        if not isinstance(actor, carla.Actor)]
         while other_actors:
             actor = other_actors.pop(0)
             if actor is not None:
@@ -1238,7 +1292,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             runtime_dir = GameFramework.get_hydra_config().runtime.output_dir
             for dir_name_formatted in self._recording_dirs:
                 dirname = os.path.split(dir_name_formatted)[1]
-                os.system(f'ffmpeg -an -sn -i "{dir_name_formatted}/%08d.bmp" -framerate 1 -vcodec mpeg4 -r 60 "{os.path.join(runtime_dir, dirname)}.avi"')
+                os.system(f'ffmpeg -an -sn -i "{dir_name_formatted}/%08d.bmp" -framerate 1 -vcodec mpeg4 -r 60 "{os.path.join(runtime_dir, dirname)}.avi"')  # noqa: E501
                 print("Recording saved in %s.avi" % os.path.join(runtime_dir, dirname))
             
         

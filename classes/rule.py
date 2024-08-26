@@ -190,8 +190,7 @@ class Context(CarlaDataProvider):
             This is equivalent to ending the inner step of the agent.
         
         See Also:
-            :any:`LunaticAgent._calculate_control`
-        
+            :py:meth:`LunaticAgent._calculate_control`
         """
         if self.control:
             return self.control
@@ -288,10 +287,13 @@ def _use_temporary_config(func: Callable[Concatenate[_Rule,
                                                      "Context", 
                                                      Optional[Dict[str, Any]], _P], _T]
     ) -> Callable[Concatenate[_Rule, "Context", Optional[Dict[str, Any]], _P], _T]:
-    """During the condition evaluation the ctx.config should have the overwrite settings applied but not in a permanent way."""
+    """
+    During the condition evaluation the ctx.config should have the overwrite settings applied 
+    but not in a permanent way.
+    """
     
     @wraps(func)
-    def wrapper(self: _Rule, ctx : Context, overwrite: Optional[Dict[str, Any]] = None, *args: _P.args, **kwargs: _P.kwargs) -> _T:
+    def wrapper(self: _Rule, ctx: Context, overwrite: Optional[Dict[str, Any]] = None, *args: _P.args, **kwargs: _P.kwargs) -> _T:
         settings = self.overwrite_settings.copy() # Dict with "self" : SelfConfig
         if overwrite:
             settings.update(overwrite)
@@ -901,14 +903,18 @@ class Rule(_GroupRule):
         
         self.overwrite_settings = overwrite_settings or {}
         if not isinstance(self.overwrite_settings, dict):
-            self.overwrite_settings = dict(self.overwrite_settings) # NOTE: If DictConfig only the outermost will be a dict, i.e. this could be dict[str,DictConfig]
+            # NOTE: If DictConfig only the outermost will be a dict,
+            # i.e. this could be dict[str, DictConfig]
+            self.overwrite_settings = dict(self.overwrite_settings)
         if self_config and "self" in self.overwrite_settings and self.overwrite_settings["self"] != self_config:
             logger.debug("Warning: self_config and self.overwrite_settings['self'] must be the same object.")
         
         default_self_config = cast("RuleConfig", getattr(self, "self_config", getattr(self, "SelfConfig", {})))
         if isclass(default_self_config):
             if not is_dataclass(default_self_config):
-                logger.warning(f"Class {self.__class__.__name__} has a self_config class that is not a dataclass. This might lead to undesired results, i.e. missing keys in the config.")
+                logger.warning(
+                    f"Class {self.__class__.__name__} has a self_config class that is not a dataclass. "
+                    "This might lead to undesired results, i.e. missing keys in the config.")
             default_self_config = default_self_config()
         if not isinstance(default_self_config, DictConfig):
             default_self_config = cast("RuleConfig", OmegaConf.create(default_self_config, flags={"allow_objects": True})) # type: ignore
@@ -1162,7 +1168,7 @@ class Rule(_GroupRule):
         result = self.condition(ctx)
         return result
     
-    def evaluate_children(self, ctx : Context) -> "NoReturn": # pylint: disable=unused-argument
+    def evaluate_children(self, ctx: Context) -> "NoReturn": # pylint: disable=unused-argument
         """
         Not implemented for this rule class.
         
@@ -1177,7 +1183,7 @@ class Rule(_GroupRule):
                  overwrite: Optional[Dict[str, Any]]=None, 
                  *, 
                  ignore_phase: bool=False, 
-                 ignore_cooldown: bool=False):
+                 ignore_cooldown: bool=False) ->Union[Any, Literal[RuleResult.NOT_APPLICABLE]]:
         """
         1. First checks if the rule is *applicable*, i.e. is its :py:attr:`cooldown == 0 <cooldown>`,
            if not returns :py:attr:`NOT_APPLICABLE`.
@@ -1196,9 +1202,9 @@ class Rule(_GroupRule):
         assert ignore_phase or ctx.agent.current_phase in self.phases
         
         if not self.is_ready() and not ignore_cooldown:
-            return self.NOT_APPLICABLE
+            return RuleResult.NOT_APPLICABLE
         if not ignore_phase and ctx.agent.current_phase not in self.phases: #NOTE: This is currently never False as checked in execute_phase and the agents dictionary.
-            return self.NOT_APPLICABLE # not applicable for this phase
+            return RuleResult.NOT_APPLICABLE # not applicable for this phase
 
         exception = None
         result = Rule.NO_RESULT
@@ -1218,7 +1224,7 @@ class Rule(_GroupRule):
                 action_result = self.actions[result](ctx) #todo allow priority, random chance
                 ctx.action_results[ctx.agent.current_phase] = action_result
                 return action_result
-            return self.NOT_APPLICABLE # No action was executed
+            return RuleResult.NOT_APPLICABLE  # No action was executed
         finally:
             self._ctx = None
             if exception:
@@ -1337,7 +1343,7 @@ class MultiRule(Rule, metarule=True):
             if action is not None:
                 action = self._wrap_action(action)
             else:
-                action = self.evaluate_children # will be called elsewhere
+                action = self.evaluate_children  # will be called elsewhere
             if condition is None and not hasattr(self, "condition"):
                 condition_arg = always_execute
             else:
@@ -1391,7 +1397,7 @@ class MultiRule(Rule, metarule=True):
                       ignore_phase=cls.get("ignore_phase", True))
 
     
-    def evaluate_children(self, ctx : Context) -> Union[List[Any], Any]: # pyright: ignore[reportIncompatibleMethodOverride]
+    def evaluate_children(self, ctx : Context) -> Union[List[Any], Any]:  # pyright: ignore[reportIncompatibleMethodOverride]
         """
         Evaluates the children rules of the current rule in the given context.
 
@@ -1670,7 +1676,7 @@ class BlockingRule(Rule, metarule=True):
         if self._gameframework:
             self._gameframework.render_everything()
         else:
-            world_model = ctx.agent._world_model        # pyright: ignore[reportPrivateUsage]
+            world_model = ctx.agent._world_model  # pyright: ignore[reportPrivateUsage]
             display = GameFramework.display
             world_model.tick(GameFramework.clock) # does not tick the world!
             world_model.render(display, finalize=False)
@@ -1829,7 +1835,7 @@ class BlockingRule(Rule, metarule=True):
         finally:
             ctx.agent._active_blocking_rules.discard(self)  # pyright: ignore[reportPrivateUsage]
             
-    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool,Hashable, Literal[RuleResult.NO_RESULT]]:
+    def evaluate(self, ctx : Context, overwrite: Optional[Dict[str, Any]] = None) -> Union[bool, Hashable, Literal[RuleResult.NO_RESULT]]:
         result = super().evaluate(ctx, overwrite)
         if result in self.actions:
             ctx.agent._active_blocking_rules.add(self) # pyright: ignore[reportPrivateUsage]

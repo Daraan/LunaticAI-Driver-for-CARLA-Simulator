@@ -49,7 +49,7 @@ By default all values are set to {py:attr}`.Context.PHASE_NOT_EXECUTED`.
 
 If the agent detects an emergency, i.e. a pedestrian in front of it. The agent will execute the phase `Phase.BEGIN | Phase.EMERGENCY`. If during this phase not all elements of the set {py:attr}`.LunaticAgent.detected_hazards` are cleared by rules an {py:class}`.EmergencyStopException` is raised.
 
-In general, if an `EmergencyStopException` is raised, which can also be done by [rule actions](#XXX), the {py:meth}`.LunaticAgent.emergency_manager` will calculate a response and afterwards executes `Phase.EMERGENCY | Phase.END`.
+In general, if an `EmergencyStopException` is raised, which can also be done by [rule actions](#registering-actions), the {py:meth}`.LunaticAgent.emergency_manager` will calculate a response and afterwards executes `Phase.EMERGENCY | Phase.END`.
 
 ```{note}
 - The check if {py:attr}`.LunaticAgent.detected_hazards` is empty is done during the workflow of the agent and not tied to the execution of the `Phase.BEGIN | Phase.EMERGENCY` itself.
@@ -274,12 +274,59 @@ Check the [workflow diagram](/index.rst#readme-workflow) for the phases where th
 |:exclamation:| Key points:\
 ```
 
-- The {py:attr}`.Context.config` is a **copy** of the agent's config **merged with the {py:attr}`overwrite_settings <.Rule.overwrite_settings>`** of the associated [Rule](#Class-API).
+- The {py:attr}`.Context.config` is a **copy** of the agent's config **merged with the {py:attr}`overwrite_settings <.Rule.overwrite_settings>`** of the associated [Rule](#class-api).
 - During the {py:attr}`condition <Rule.condition>` evaluation these changes are temporary.
   If a rule's action is executed the {py:attr}`overwrite_settings <.Rule.overwrite_settings>` are merged into the {py:attr}`.Context.config` for the rest of this tick. For permanent changes the agent's config needs to be adjusted separately.
 - **The {py:attr}`.Context.config` is the configuration used by the local planner to calculate the controls of this tick.**
 - The `ctx.control` object is used when {py:meth}`agent.apply_control() <.LunaticAgent.apply_control>` is used.
 :::
+
+### Creating a new Metarule
+
+Normal subclassing of a {py:class}`.Rule` class creates a custom {python}`__init__` wrapper around
+the {python}`__init__` of the parent class injecting the attributes defined in the class body.
+A rule class that should work as a new template for other rules should be created with the
+`metarule=True` keyword argument in its class definition. This will disable most automatics in the
+{python}`__init_subclass__` hook of the {py:class}`.Rule` class.
+
+Interface methods to overwrite with metarules are foremost 
+{py:meth}`.Rule.__init__`,  {py:meth}`.Rule.evaluate_children`, {py:meth}`.Rule.evaluate`, and
+{py:meth}`.Rule.__call__`. 
+
+```python
+
+class NewMetaRule(Rule, metarule=True)
+
+    def __init__(self, phases: Phase | Iterable[Phase], ...):
+        """Its recommended to keep phases and condition as the first two arguments"""
+        # Init the parent class
+        super().__init__(**keywords_for_Rule)
+
+    # use this decorator if you do not call super().evaluate
+    # Minimally the function should look like this.
+    @_use_temporary_config
+    def evaluate(self, ctx: Context, overwrite: dict) -> Hashable | Literal[RuleResult.NO_RESULT]:
+        """This should call the condition and return the result"""
+        self._ctx = proxy(ctx)
+        result = self.condition(ctx)
+
+    def evaluate_children(self, ctx: Context, ...) -> Any:
+        """
+        There are no strict requirements for this function, be aware that it is not called by the
+        Rule class itself. Changing __call__ might be necessary to execute this function.
+        """
+
+    def __call__(self,
+                 ctx : Context,
+                 overwrite: Optional[Dict[str, Any]]=None, 
+                 *, 
+                 ignore_phase: bool=False, 
+                 ignore_cooldown: bool=False) ->Union[Any, Literal[RuleResult.NOT_APPLICABLE]]:
+        # This will check if the rule is applicable, and if yes call self.evaluate
+        result = super().__call__(ctx, overwrite, ignore_phase, ignore_cooldown)
+        if result != RuleResult.NOT_APPLICABLE:
+            self.evaluate_children(ctx, overwrite)
+```
 
 ## Troubleshooting
 
