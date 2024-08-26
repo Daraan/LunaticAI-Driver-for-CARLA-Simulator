@@ -406,7 +406,7 @@ class BasicAgent(object):
                 target_polygon = Polygon(target_list)
 
                 if route_polygon.intersects(target_polygon):
-                    return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
+                    return ObstacleDetectionResult(True, target_vehicle, target_vehicle.get_location().distance(ego_location))
 
             # Simplified approach, using only the plan waypoints (similar to TM)
             else:
@@ -427,7 +427,7 @@ class BasicAgent(object):
                 )
 
                 if is_within_distance(target_rear_transform, ego_front_transform, max_distance, [low_angle_th, up_angle_th]):
-                    return ObstacleDetectionResult(True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
+                    return ObstacleDetectionResult(True, target_vehicle, target_transform.location.distance(ego_transform.location))
 
         return ObstacleDetectionResult(False, None, -1)
 

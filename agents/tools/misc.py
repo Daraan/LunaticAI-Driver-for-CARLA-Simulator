@@ -29,6 +29,8 @@ __all__ = [
     'positive'
 ]
 
+_EPS = np.finfo(float).eps
+
 if TYPE_CHECKING:
     from agents.tools.debug_drawing import draw_waypoints
 else:
@@ -169,14 +171,18 @@ def vector(location_1, location_2):
     Returns the unit vector from location_1 to location_2
 
         :param location_1, location_2: carla.Location objects
+    
+    Note:
+        Use (location_2 - location_1).make_unit_vector() instead.
+    
+    :meta private:
     """
     x = location_2.x - location_1.x
     y = location_2.y - location_1.y
     z = location_2.z - location_1.z
-    norm = np.linalg.norm([x, y, z]) + np.finfo(float).eps
+    norm = np.linalg.norm([x, y, z]) + _EPS
 
     return [x / norm, y / norm, z / norm] # type: ignore
-
 
 
 def compute_distance(location_1: carla.Vector3D, location_2: carla.Vector3D) -> float:
@@ -184,11 +190,16 @@ def compute_distance(location_1: carla.Vector3D, location_2: carla.Vector3D) -> 
     Euclidean distance between 3D points
 
         :param location_1, location_2: 3D points
+        
+    .. deprecated::
+        Use :func:`carla.Location.distance` instead.
+        
+    :meta private:
     """
     x = location_2.x - location_1.x
     y = location_2.y - location_1.y
     z = location_2.z - location_1.z
-    norm = np.linalg.norm([x, y, z]) + np.finfo(float).eps
+    norm = np.linalg.norm([x, y, z]) + _EPS
     return norm # type: ignore
 
 
