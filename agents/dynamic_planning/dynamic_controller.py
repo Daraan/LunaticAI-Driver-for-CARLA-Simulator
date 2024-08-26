@@ -14,6 +14,8 @@ from agents.navigation.controller import VehiclePIDController, PIDLongitudinalCo
 
 from typing import TYPE_CHECKING
 
+from classes.type_protocols import UseableWithDynamicPlanner
+
 if TYPE_CHECKING:
     from agents.tools.config_creation import BasicAgentSettings
     from agents.lunatic_agent import LunaticAgent
@@ -31,7 +33,7 @@ class DynamicVehiclePIDController(VehiclePIDController):
     def config(self):
         return self._agent.ctx.config
 
-    def __init__(self, agent : "LunaticAgent"):
+    def __init__(self, agent: "UseableWithDynamicPlanner"):
         """
         Constructor method.
 
@@ -117,7 +119,7 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
     def config(self):
         return self._agent.ctx.config
 
-    def __init__(self, agent: "LunaticAgent"):
+    def __init__(self, agent: "UseableWithDynamicPlanner"):
         """
         Constructor method.
 
@@ -184,7 +186,7 @@ class DynamicPIDLateralController(PIDLateralController):
     def config(self):
         return self._agent.ctx.config
 
-    def __init__(self, agent : "LunaticAgent"):
+    def __init__(self, agent: "UseableWithDynamicPlanner"):
         """
         Constructor method.
 

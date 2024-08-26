@@ -17,6 +17,7 @@ from agents.tools.misc import draw_waypoints, get_speed
 from classes.constants import RoadOption
 from classes.rss_sensor import RssSensor
 from agents.tools.config_creation import BasicAgentSettings
+from classes.type_protocols import UseableWithDynamicPlanner
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
@@ -39,7 +40,12 @@ class DynamicLocalPlanner(LocalPlanner):
     def config(self):
         return self._agent.ctx.config
 
-    def __init__(self, agent : "LunaticAgent", opt_dict : None, map_inst : carla.Map = None, world:carla.World = None):
+    def __init__(self, 
+                 agent : "UseableWithDynamicPlanner", 
+                 opt_dict: None, 
+                 map_inst: carla.Map = None,  # type: ignore # keep for compatibility, inform user
+                 world: carla.World = None    # type: ignore # keep for compatibility, inform user
+                 ):
         """
         :param vehicle: actor to apply to local planner logic onto
         :param opt_dict: 
@@ -202,7 +208,11 @@ class DynamicLocalPlanner(LocalPlanner):
   
 class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
     
-    def __init__(self, agent, opt_dict:None=None, map_inst=None, world=None, rss_sensor:Optional[RssSensor]=None):
+    def __init__(self, agent, 
+                 opt_dict:None=None, 
+                 map_inst: carla.Map=None, # type: ignore # keep for compatibility, inform user
+                 world: carla.World=None,  # type: ignore # keep for compatibility, inform user
+                 rss_sensor: Optional[RssSensor]=None):
         super().__init__(agent, opt_dict, map_inst, world)
         self._rss_sensor = rss_sensor
         
@@ -224,7 +234,7 @@ class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
 
         # Remake the waypoints queue if the new plan has a higher length than the queue
         new_plan_length = len(current_plan) + len(self._waypoints_queue)
-        if new_plan_length > self._waypoints_queue.maxlen:
+        if new_plan_length > self._waypoints_queue.maxlen:  # type: ignore # is bounded
             new_waypoint_queue : deque[Tuple[carla.Waypoint, RoadOption]]= deque(maxlen=new_plan_length)
             for wp in self._waypoints_queue:
                 new_waypoint_queue.append(wp)

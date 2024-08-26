@@ -13,8 +13,11 @@ See Also:
 from __future__ import annotations
 
 import sys
-from typing import Hashable, TYPE_CHECKING, Any, Union
-from typing_extensions import Protocol, ParamSpec, Callable, Concatenate, TypeAlias, TypeVar, TypeAliasType
+from typing import Collection, Hashable, TYPE_CHECKING, Any, Union
+from typing_extensions import (Protocol, ParamSpec, Callable, Concatenate, 
+                               TypeAlias, TypeVar, TypeAliasType, Literal)
+
+
 
 
 if TYPE_CHECKING:
@@ -24,6 +27,7 @@ if TYPE_CHECKING:
     from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner  # noqa: F401
     from classes.rule import Rule, Context
     from classes.evaluation_function import ConditionFunction
+    from agents.tools.config_creation import BasicAgentSettings  # noqa: F401
 
 __all__ = [
     "RuleT",
@@ -85,7 +89,7 @@ It can return an arbitrary value.
 CallableT = TypeVar("CallableT", bound=Callable[..., Any])
 """:py:class:`typing.TypeVar`: A type variable for a any callable."""
 
-AgentConfigT = TypeVar("AgentConfigT", bound="AgentConfig")
+AgentConfigT = TypeVar("AgentConfigT", bound="AgentConfig", default="BasicAgentSettings")
 """:py:class:`typing.TypeVar`: A type variable for a :py:class:`.AgentConfig` type."""
 
 ConditionFunctionLike = TypeAliasType("ConditionFunctionLike", 
@@ -175,7 +179,8 @@ class HasBaseSettings(Protocol[AgentConfigT]):
     
 class HasConfig(Protocol[AgentConfigT]):
     config: AgentConfigT
-
+    
+    
 _LocalPlannerT = TypeVar("_LocalPlannerT",
                          bound="LocalPlanner",
                          default="LocalPlanner",
@@ -194,6 +199,37 @@ class HasPlanner(Protocol[_LocalPlannerT]):
         """
         ...
 
-class HasPlannerWithConfig(HasPlanner["DynamicLocalPlanner"], HasConfig[AgentConfigT]):
+class HasPlannerWithConfig(HasPlanner["DynamicLocalPlanner"], HasConfig[AgentConfigT], Protocol):
+    ...
+    
+class HasContext(Protocol):
+    ctx: "Context"
+    
+class HasVehicle(Protocol):
+    _vehicle: carla.Vehicle
+    """
+    :meta public:
+    """
+    
+class UseableWithDynamicPlanner(HasPlannerWithConfig, HasVehicle, HasContext, Protocol):
+    """
+    Can be used with a dynamic local planner.
+    """
     ...
 
+class CanDetectObstacles(HasConfig, HasVehicle, HasPlanner, Protocol):
+    """
+    Can be used with :py:func:`lunatic_agent_tools.detect_obstacles`
+    """
+    ...
+    
+class CanDetectNearbyObstacles(CanDetectObstacles, Protocol):
+    """
+    Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`
+    """
+    
+    all_obstacles_nearby : Collection[carla.Actor] | carla.ActorList
+    """Actors that are considered to be near the actor."""
+
+    def max_detection_distance(self, lane: Literal["same_lane", "other_lane"]) -> float:
+        ...

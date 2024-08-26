@@ -19,24 +19,23 @@ from shapely.geometry import Polygon
 from functools import partial, wraps
 
 import carla
-from classes.type_protocols import CallableT, HasBaseSettings, AgentConfigT
+from classes.type_protocols import CallableT, CanDetectNearbyObstacles, CanDetectObstacles, HasBaseSettings, AgentConfigT, HasConfig
 from classes.constants import RoadOption
 from agents.tools.config_creation import AgentConfig 
 from agents.tools.hints import ObstacleDetectionResult
-from agents.tools.misc import (is_within_distance,
-                               compute_distance)
+from agents.tools.misc import is_within_distance
 from agents.tools.logging import logger
 
 from classes.constants import Phase
 from classes.exceptions import EmergencyStopException, LunaticAgentException
 from launch_tools import CarlaDataProvider, Literal
-from typing import TYPE_CHECKING, Any, Callable, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
+from typing import TYPE_CHECKING, Any, Callable, Collection, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
 from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     from classes.worldmodel import WorldModel
-    from classes.rule import Context
+    from agents.tools.config_creation import BehaviorAgentSettings 
 
 _T = TypeVar("_T")
 _P = ParamSpec('_P')
@@ -186,7 +185,7 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
 # Obstacle Detection
 # ------------------------------
 
-def max_detection_distance(self: Union["Context", "LunaticAgent"], 
+def max_detection_distance(self: HasConfig["BehaviorAgentSettings"], 
                            lane: Literal["same_lane", "other_lane", "overtaking", "tailgating"]) -> float:
     """
     Convenience function to be used with :py:func:`lunatic_agent_tools.detect_vehicles` and :any:`LunaticAgent.detect_obstacles_in_path`.
@@ -208,11 +207,11 @@ def max_detection_distance(self: Union["Context", "LunaticAgent"],
     """
     
     return max(self.config.obstacles.min_proximity_threshold,
-               self.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
+               self.config.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
 
 
-def detect_obstacles_in_path(self : "LunaticAgent", 
-                             obstacle_list: Optional[Union[Sequence[carla.Actor],\
+def detect_obstacles_in_path(self : "CanDetectNearbyObstacles", 
+                             obstacle_list: Optional[Union[Collection[carla.Actor], carla.ActorList,\
                                                            Literal['all']]]) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
@@ -237,37 +236,37 @@ def detect_obstacles_in_path(self : "LunaticAgent",
         obstacle_list = self.all_obstacles_nearby
 
     # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
-    if self.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
-        detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
+    if self.config.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
+        detection_result : ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
                                                         self.max_detection_distance("other_lane"),
                                                         up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
                                                         lane_offset=-1)
-    elif self.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
-        detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
+    elif self.config.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
+        detection_result : ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
                                                         self.max_detection_distance("other_lane"),
                                                         up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
                                                         lane_offset=1)
     else:
-        detection_result : ObstacleDetectionResult = detect_vehicles(self, obstacle_list,
+        detection_result : ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
                                                         self.max_detection_distance("same_lane"),
                                                         up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],)
     return detection_result
 
 
-def detect_vehicles(self: "LunaticAgent", 
-                    vehicle_list: Optional[Sequence[carla.Actor]]=None, # pyright: ignore[reportRedeclaration]
+def detect_obstacles(self: "CanDetectObstacles", 
+                    actor_list: Optional[Collection[carla.Actor] | carla.ActorList]=None,
                     max_distance: Optional[float]=None, 
-                    up_angle_th:float=90, 
-                    low_angle_th:float=0,
+                    up_angle_th: float=90, 
+                    low_angle_th: float=0,
                     *, 
-                    lane_offset:int=0) -> ObstacleDetectionResult:
+                    lane_offset: int=0) -> ObstacleDetectionResult:
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
 
     Parameters:
 
         self: The agent
-        vehicle_list: list containing vehicle objects.
+        actor_list: list containing relevant actors to check.
             If :code:`None`, all vehicle in the scene are used.
         max_distance: max free-space to check for obstacles.
             If :code:`None`, the :py:attr:`.LunaticAgentSettings.obstacles.base_vehicle_threshold` value 
@@ -288,11 +287,11 @@ def detect_vehicles(self: "LunaticAgent",
     if self.config.obstacles.ignore_vehicles:
         return ObstacleDetectionResult(False, None, -1)
     
-    if vehicle_list is None:
+    if actor_list is None:
         # NOTE: If empty list is passed e.g. for walkers this pulls all vehicles
         # TODO: Propose update to original carla
-        vehicle_list = self._world.get_actors().filter("*vehicle*") # type: Sequence[carla.Actor] # type: ignore
-    elif len(vehicle_list) == 0: # Case for no pedestrians
+        actor_list = self._vehicle.get_world().get_actors().filter("*vehicle*")
+    elif len(actor_list) == 0: # Case for no pedestrians
         return ObstacleDetectionResult(False, None, -1)
 
     if not max_distance:
@@ -344,7 +343,7 @@ def detect_vehicles(self: "LunaticAgent",
     # Get the route bounding box
     route_polygon = get_route_polygon()
 
-    for target_vehicle in vehicle_list:
+    for target_vehicle in actor_list:
         if target_vehicle.id == self._vehicle.id:
             continue
 
@@ -384,6 +383,7 @@ def detect_vehicles(self: "LunaticAgent",
             target_forward_vector = target_transform.get_forward_vector()
             target_extent = target_vehicle.bounding_box.extent.x
             target_rear_transform = target_transform
+            
             target_rear_transform.location -= carla.Location(
                 x=target_extent * target_forward_vector.x,
                 y=target_extent * target_forward_vector.y,
@@ -397,6 +397,40 @@ def detect_vehicles(self: "LunaticAgent",
                                                                 ego_front_transform.location))
 
     return ObstacleDetectionResult(False, None, -1)
+
+def detect_vehicles(self: "CanDetectObstacles", 
+                    vehicle_list: Optional[Collection[carla.Actor] | carla.ActorList]=None,
+                    max_distance: Optional[float]=None, 
+                    up_angle_th: float=90, 
+                    low_angle_th: float=0,
+                    lane_offset: int=0) -> ObstacleDetectionResult:
+    """
+    Method to check if there is a vehicle in front or around the agent blocking its path.
+
+    Parameters:
+
+        self: The agent
+        vehicle_list: list containing vehicle objects.
+            If :code:`None`, all vehicle in the scene are used.
+        max_distance: max free-space to check for obstacles.
+            If :code:`None`, the :py:attr:`.LunaticAgentSettings.obstacles.base_vehicle_threshold` value 
+            is used.
+        lane_offset: check a different lane than the one the agent is currently in.
+
+    The angle between the location and reference transform will also be taken into account. 
+    Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
+    **low_angle_th** < angle < **up_angle_th**.
+    
+    Tip: 
+        As the first argument is the agent, this function can be used as a method, i.e
+        it can be added / imported directly into the agent class' body.
+        
+    .. deprecated::
+        Use :py:func:`.detect_obstacles` instead.
+    """
+    return detect_obstacles(self, vehicle_list, max_distance, 
+                            up_angle_th, low_angle_th, 
+                            lane_offset=lane_offset)
 
 # Untested
 detect_obstacles_in_front = partial(detect_vehicles, up_angle_th=90, low_angle_th=0)
@@ -514,8 +548,8 @@ def generate_lane_change_path(waypoint : carla.Waypoint,
 
     return plan
     
-def create_agent_config(self: "HasBaseSettings[AgentConfigT]", 
-                        source: Union["type[AgentConfig]", AgentConfig, DictConfig, str, None]=None, 
+def create_agent_config(self: HasBaseSettings[AgentConfigT], 
+                        source: Union["type[AgentConfigT]", AgentConfigT, DictConfig, str, None]=None, 
                         world_model: Optional["WorldModel"]=None, 
                         overwrite_options: Optional[Dict[str, Any]]=None):
     """
