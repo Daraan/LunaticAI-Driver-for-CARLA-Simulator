@@ -76,7 +76,7 @@ from typing_extensions import TypeAlias, Never, overload, Literal, Self, Annotat
 
 # Type Annotations and Helpers
 from agents.tools._config_tools import (_T, _M, _NestedStrDict, ConfigType,
-                                        OverwriteDictTypes, DictConfigAlias, _DictConfigLike,
+                                        OverwriteDictTypes, DictConfigAlias, DictConfigLike,
                                         
                                         AsDictConfig, extract_annotations, get_commented_yaml, 
                                         set_readonly_interpolations, set_readonly_keys,
@@ -146,7 +146,7 @@ else:
 # Base Classes
 # ---------------------
 
-class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
+class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
     """
     Base interface for the agent settings. 
     
@@ -281,8 +281,8 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
                         except ImportError:
                             print("Could not import agents.rules.rule_from_config. Set detailed_rules=False to avoid this error. Call this function somewhere else.")
                             raise
-                        rule : Rule = rule_from_config(rule_cfg) 
-                        self_config : RuleConfig = rule.self_config 
+                        rule: Rule = rule_from_config(rule_cfg) 
+                        self_config: RuleConfig = rule.self_config 
                         if OmegaConf.is_missing(rule_cfg, "phases"):
                             rule_cfg.phases = list(self_config.instance.phases)[0] # only support one atm
                         with open_dict(self_config):
@@ -339,7 +339,7 @@ class AgentConfig( _DictConfigLike if TYPE_CHECKING else object):
         )
         if not yaml_commented:
             return string
-        # Extend 
+        # Extend
         return get_commented_yaml(cls_or_self, string, container)  # type: ignore[arg-type]
         
     @classmethod
@@ -1581,7 +1581,7 @@ class DetectionMatrixSettings(AgentConfig):
 # ---------------------
 
 @dataclass
-class RuleConfig(_DictConfigLike if TYPE_CHECKING else object):
+class RuleConfig(DictConfigLike if TYPE_CHECKING else object):
     """Subconfig for rules; can have arbitrary keys"""
         
     instance : object = MISSING             # pyright: ignore[reportRedeclaration, reportAssignmentType]
@@ -1593,7 +1593,7 @@ class RuleConfig(_DictConfigLike if TYPE_CHECKING else object):
 
 
 @dataclass
-class CallFunctionFromConfig(_DictConfigLike if TYPE_CHECKING else object):
+class CallFunctionFromConfig(DictConfigLike if TYPE_CHECKING else object):
     _target_ : str
     """
     The name of the function to call for generating one or more rules
@@ -1615,7 +1615,7 @@ class CallFunctionFromConfig(_DictConfigLike if TYPE_CHECKING else object):
     """For :py:func:`.create_default_rules`; Should the :py:class:`.RandomLaneChangeRule` be added"""
 
 @dataclass
-class CreateRuleFromConfig(_DictConfigLike if TYPE_CHECKING else object):
+class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
     """
     Keywords to instantiate Rule classes
     
@@ -2149,6 +2149,13 @@ class LaunchConfig(AgentConfig):
         enabled in the main script by the user to work.
     """
     
+    restart_clean_sensors: Optional[bool] = None
+    """
+    If None will remove all sensors from an externalActor, if :py:meth:`.WorldModel.restart` is 
+        called outside from the initialization, i.e. a second time.
+    Else will always/never remove the sensors when using :py:meth:`.WorldModel.restart`.
+    """
+    
     agent : LunaticAgentSettings = MISSING
     """The settings of the agent"""
     
@@ -2164,6 +2171,7 @@ class LaunchConfig(AgentConfig):
     
     :meta private:
     """
+    
     
     # ---
     

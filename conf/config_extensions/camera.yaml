@@ -6,6 +6,9 @@ height : ${height}
 # Gamma correction
 gamma : ${gamma}
 
+# If True will update the engines spectator camera
+spectator: false
+
 # Cameras that are attached to the ego vehicle.
 # TODO: Make a sensors config
 camera_blueprints:

@@ -228,7 +228,7 @@ if TYPE_CHECKING:
     DictConfigAlias : TypeAlias = Union[DictConfig, NestedConfigDict]
     OverwriteDictTypes : TypeAlias = Dict[str, Union[Dict[str, NestedConfigDict], "AgentConfig"]]
     
-    class _DictConfigLike(BaseContainer):
+    class DictConfigLike(DictConfig):
         """
         Duck-typed DictConfig still appears like a DictConfig.
         
@@ -241,7 +241,7 @@ else:
     # primitive type at runtime
     DictConfigAlias : TypeAlias = Dict[str, Any]
     OverwriteDictTypes : TypeAlias = Dict[str, Dict[str, Any]]
-    _DictConfigLike = object
+    DictConfigLike = object
 
 # --------------- YAML Export -----------------
 
@@ -401,16 +401,30 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     add_comments(container, data, cls_doc)  # pyright: ignore[reportArgumentType]
     # data.yaml_add_eol_comment(comment_txt, key = key)
 
+    import re
+    has_null_entry = re.findall(r"^\s*\w+: null$", string, re.MULTILINE)
+
     import io
     stream = io.StringIO()
     yaml2.dump(data, stream)
     stream.seek(0)
     string = stream.read()
+    # Fixes:
     if "rss" in data:
         start = string.find("use_stay_on_road_feature: ")
         end = string.find("\n", start)
-        # quote On/Off
+        # quote On/Off; to not be interpreted as boolean
         string = string[:start+len("use_stay_on_road_feature: ")] + "'" + string[start+len("use_stay_on_road_feature: "):end] + "'" + string[end:]
+        # entry: null has been replaced by entry: null
+    if has_null_entry:
+        entry: str
+        for entry in has_null_entry:
+            parts = entry.partition(":")
+            if parts[2] != " null":
+                breakpoint() # should not happen
+                continue
+            entry = parts[0]+":"
+            string = re.sub(fr"^{entry}$", entry + " null", string, flags=re.MULTILINE)
     return string
             
 # --------------- Other Tools -----------------

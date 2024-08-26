@@ -64,6 +64,11 @@ generation: 2
 #     This disables the usage of the LunaticAgent, however needs to be 
 #     enabled in the main script by the user to work.
 autopilot: false
+
+# If None will remove all sensors from an externalActor, if `WorldModel.restart` is 
+#     called outside from the initialization, i.e. a second time.
+# Else will always/never remove the sensors when using `WorldModel.restart`.
+restart_clean_sensors: null
 # The settings of the agent
 agent: ???
 
@@ -75,6 +80,8 @@ camera:
   height: 720
   # Gamma correction of the camera
   gamma: 2.2
+  # If True will update the engines spectator camera
+  spectator: false
   camera_blueprints:
   - NotImplemented
   # HUD settings: Not yet implemented. Future settings for the HUD.

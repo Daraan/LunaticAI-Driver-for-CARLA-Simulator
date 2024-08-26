@@ -49,6 +49,11 @@ interactive: False
 # If set to >= 2, will assert that during runtime the types are correct.
 strict_config: 3
 
+# If None will remove all sensors from an externalActor, if `WorldModel.restart` is 
+#     called outside from the initialization, i.e. a second time.
+# Else will always/never remove the sensors when using `WorldModel.restart`.
+restart_clean_sensors: null
+
 # -------------------------------------------------
 
 # Agent Settings

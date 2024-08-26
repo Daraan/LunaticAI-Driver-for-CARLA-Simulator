@@ -446,7 +446,7 @@ rules:
   self_config:
     max_brake: ${divide:${controls.max_brake},8}
     max_throttle: ${divide:${controls.max_throttle},4}
-  gameframework:
+  gameframework: null
 - _target_: agents.rules.obstacles.traffic_light_rules.PassYellowTrafficLightRule
   phases: Phase.DETECT_TRAFFIC_LIGHTS|END
   description: Speed up to pass a yellow traffic light.
