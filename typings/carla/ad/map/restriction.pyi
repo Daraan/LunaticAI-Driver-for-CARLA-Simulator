@@ -1,3 +1,4 @@
+import ad
 
 class Restriction():
     def assign(self, arg1: Restriction, other: Restriction) -> Restriction:

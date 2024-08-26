@@ -2434,12 +2434,20 @@ class Location(Vector3D):
     @property
     def x(self) -> float:
         """Distance from origin to spot on X axis (meter)."""
+    @x.setter
+    def x(self, value: float): ...
+
     @property
     def y(self) -> float:
         """Distance from origin to spot on Y axis (meter)."""
+    @y.setter
+    def y(self, value: float): ...
+
     @property
     def z(self) -> float:
         """Distance from origin to spot on Z axis. (meter)"""
+    @z.setter
+    def z(self, value: float): ...
     # endregion
 
     # region Methods
@@ -2485,6 +2493,10 @@ class Location(Vector3D):
     def __str__(self) -> str:
         """Parses the axis' values to string."""
         ...
+    
+    def __isub__(self, rhs: Vector3D) -> Location: ...
+    def __iadd__(self, rhs: Vector3D) -> Location: ...
+    
     # endregion
     pass
 
@@ -2981,15 +2993,27 @@ class Rotation():
     def pitch(self) -> float:
         """Y-axis rotation angle (degrees)."""
         ...
+    @pitch.setter
+    def pitch(self, value: float):
+        """Set the Y-axis rotation angle (degrees)."""
+        ...
 
     @property
     def yaw(self) -> float:
         """Z-axis rotation angle (degrees)."""
         ...
+    @yaw.setter
+    def yaw(self, value: float):
+        """Set the Z-axis rotation angle (degrees)."""
+        ...
 
     @property
     def roll(self) -> float:
         """X-axis rotation angle (degrees)."""
+        ...
+    @roll.setter
+    def roll(self, value: float):
+        """Set the X-axis rotation angle (degrees)."""
         ...
     # endregion
 
@@ -4195,7 +4219,7 @@ class Vector2D():
     def __eq__(self, other: Vector2D) -> bool:
         """Returns `True` if values for every axis are equal."""
 
-    def __mul__(self, other: Vector2D) -> float: ...
+    def __mul__(self, other: float) -> float: ...
 
     def __ne__(self, bool: Vector2D) -> bool:
         """Returns `True` if the value for any axis is different."""
@@ -4205,7 +4229,7 @@ class Vector2D():
         ...
 
     def __sub__(self, other: Vector2D) -> Vector2D: ...
-    def __truediv__(self, other: Vector2D): ...
+    def __truediv__(self, other: float) -> Vector2D: ...
 
     # endregion
 
@@ -4229,8 +4253,7 @@ class Vector3D():
     def __init__(self, x=0.0, y=0.0, z=0.0): ...
 
     def cross(self, vector: Vector3D) -> Vector3D:
-        """Computes the cross product between two vectors.
-"""
+        """Computes the cross product between two vectors."""
 
     def distance(self, vector: Vector3D) -> float:
         """Computes the distance between two vectors."""
@@ -4271,11 +4294,11 @@ class Vector3D():
 
     def __add__(self, other: Vector3D) -> Vector3D: ...
     def __eq__(self, other: Vector3D) -> bool: ...
-    def __mul__(self, other: Vector3D | float) -> Vector3D: ...
+    def __mul__(self, other: float) -> Vector3D: ...
     def __ne__(self, other: Vector3D) -> bool: ...
     def __str__(self) -> str: ...
-    def __sub__(self, other: Vector3D): ...
-    def __truediv__(self, other: Vector3D): ...
+    def __sub__(self, other: Vector3D) -> Vector3D: ...
+    def __truediv__(self, other: float) -> Vector3D: ...
     # endregion
 
 
