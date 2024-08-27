@@ -66,7 +66,7 @@ generation: 2
 autopilot: false
 
 # If None will remove all sensors from an externalActor, if `WorldModel.restart` is 
-#     called outside from the initialization, i.e. a second time.
+# called outside from the initialization, i.e. a second time.
 # Else will always/never remove the sensors when using `WorldModel.restart`.
 restart_clean_sensors: null
 # The settings of the agent

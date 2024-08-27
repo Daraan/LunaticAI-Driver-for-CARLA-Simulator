@@ -1,6 +1,9 @@
 """
 Interface classes between CARLA, the agent, and the user interface.
 """
+
+from __future__ import annotations
+
 # pyright: ignore[reportOptionalMemberAccess=warning]
 
 from collections.abc import Mapping
@@ -20,7 +23,7 @@ from omegaconf import DictConfig, OmegaConf, open_dict
 import carla
 import pygame
 import numpy.random as random
-from agents.tools.config_creation import LaunchConfig, RssLogLevel, RssRoadBoundariesMode
+from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, RssLogLevel, RssRoadBoundariesMode
 from launch_tools import class_or_instance_method
 from classes.hud import HUD, get_actor_display_name
 
@@ -41,7 +44,7 @@ if TYPE_CHECKING:
     from hydra.conf import HydraConf
     from agents.lunatic_agent import LunaticAgent
     from agents.navigation.global_route_planner import GlobalRoutePlanner
-    from agents.tools.config_creation import LunaticAgentSettings, RssRoadBoundariesModeAlias
+    from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, RssRoadBoundariesModeAlias
     from classes._sensor_interface import CustomSensorInterface
     from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 
@@ -114,14 +117,27 @@ class AccessCarlaMixin:
 class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     clock : ClassVar[pygame.time.Clock] = None
     display : ClassVar[pygame.Surface] = None
-    controller: "weakref.ProxyType[RSSKeyboardControl] | RSSKeyboardControl"
+    controller: weakref.ProxyType[RSSKeyboardControl] | RSSKeyboardControl
     
     traffic_manager : Optional[carla.TrafficManager] = None
+    
+    @property
+    def launch_config(self) -> LaunchConfig:
+        """:py:class:`.LaunchConfig` object that was used for the initialization (**args**)"""
+        return self._args
+    
+    @property
+    def agent_config(self) -> LunaticAgentSettings:
+        """
+        The configuration of the attached :py:attr:`agent`, if it exists otherwise the 
+        **agent** attribute of the stored :py:attr:`launch_config`.
+        """
+        return self.agent.config if self.agent else self._args.agent
     
     # ----- Init Functions -----
     
     @classmethod
-    def quickstart(cls, launch_config: Optional["LaunchConfig"]=None, *, logging=False) -> "Self":
+    def quickstart(cls, launch_config: Optional[LaunchConfig]=None, *, logging: bool=False) -> "Self":
         """
         Initializes Hydra_ in a limited way, i.e. does not allow for command line overrides.
         
@@ -257,12 +273,24 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             return GameFramework.initialize_hydra(config_dir, config_name, job_name=name)
             
     
-    def __init__(self, args: "LaunchConfig", config=None, timeout=10.0, worker_threads:int=0, *, map_layers=carla.MapLayer.All):
+    def __init__(self, args: "LaunchConfig", 
+                 config: Optional[DictConfig]=None, 
+                 timeout:float=10.0, 
+                 worker_threads:int =0, 
+                 *, map_layers=carla.MapLayer.All):
+        """
+        Parameters:
+            args: Configuration for the GameFramework.
+            config: Optional config for the agent (unused in this project)
+            timeout: Timeout for the :py:class:`carla.Client`.
+            worker_threads: See :py:class:`carla.Client`.
+            map_layers: See :py:meth:`carla.Client.load_world`
+        """
         if args.seed:
             random.seed(args.seed)
             np.random.seed(args.seed)
         self._args = args
-        self.world_settings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
+        self.world_settings: carla.WorldSettings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
         
         # These are class variables
         clock, display = self.init_pygame(args) # pylint: disable=unused-variable
@@ -283,8 +311,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         BlockingRule._gameframework = weakref.proxy(self)
         
     @class_or_instance_method
-    def init_pygame(cls_or_self: "Self | type[Self]", launch_config: Optional["LaunchConfig"]=None, 
-                    recreate=False) -> tuple[pygame.time.Clock, pygame.Surface]:
+    def init_pygame(cls_or_self: "Self | type[Self]", launch_config: Optional[LaunchConfig]=None, 
+                    recreate: bool=False) -> tuple[pygame.time.Clock, pygame.Surface]:
         """
         Parameters:
             launch_config: Will use the :py:attr:`width<.LaunchConfig.width>` and
@@ -312,7 +340,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         return GameFramework.clock, GameFramework.display
     
     @staticmethod
-    def init_carla(args: Optional["LaunchConfig"]=None, 
+    def init_carla(args: Optional[LaunchConfig]=None, 
                    timeout: float =10.0, 
                    worker_threads: int=0, *, 
                    map_layers: carla.MapLayer=carla.MapLayer.All) -> carla.WorldSettings:
@@ -320,12 +348,14 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         Initializes the :py:class:`carla.Client` and the connects it to the simulator.
         
         See Also:
-            :py:class:`carla.Client`
-            :py:meth:`carla.Client.load_world`
+            - :py:class:`carla.Client`
+            - :py:meth:`carla.Client.load_world`
         """
         # Note: This sets up the CarlaDataProvider
         if args is None:
-            carla_service.initialize_carla(timeout=timeout, worker_threads=worker_threads, map_layers=map_layers)
+            carla_service.initialize_carla(timeout=timeout, 
+                                           worker_threads=worker_threads, 
+                                           map_layers=map_layers)
         else:
             carla_service.initialize_carla(args.map, 
                                            args.host, args.port, 
@@ -360,11 +390,11 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         return traffic_manager
     
     def init_agent_and_interface(self,
-                                 ego: Optional[carla.Vehicle],
-                                 agent_class: "type[LunaticAgent]",
-                                 config: Optional["LunaticAgentSettings"]=None,
-                                 overwrites:Optional[Dict[str, Any]]=None
-                                 ) -> "tuple[LunaticAgent, WorldModel, GlobalRoutePlanner, RSSKeyboardControl]":
+            ego: Optional[carla.Vehicle],
+            agent_class: "type[LunaticAgent]",
+            config: Optional[LunaticAgentSettings]=None,
+            overwrites: Optional[dict[str, Any]]=None
+        ) -> "tuple[LunaticAgent, WorldModel, GlobalRoutePlanner, RSSKeyboardControl]":
         """
         Quick setup for the agent and the world model.
         
@@ -405,7 +435,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.agent.verify_settings(strictness=-1) # NOTE: Here live info is already available and will throw some errors
         return self.agent, self.world_model, self.global_planner, controller
     
-    def make_world_model(self, config:"LunaticAgentSettings", 
+    def make_world_model(self, config: "LunaticAgentSettings", 
                          player: Optional[carla.Vehicle]=None) -> "WorldModel":
         """
         Creates a :py:class:`WorldModel` with a backreference to the GameFramework.
@@ -451,12 +481,12 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         ...
 
     @staticmethod
-    def get_hydra_config(raw:bool=False) -> "HydraConfig | HydraConf":
+    def get_hydra_config(raw: bool=False) -> "HydraConfig | HydraConf":
         """
         Retrieves the Hydra_ configuration object.
         
         Parameters:
-            raw: If True, returns the :py:class:`hydra.conf.HydraConf` dataclass, otherwise the
+            raw: If :python:`True`, returns the :py:class:`hydra.conf.HydraConf` dataclass, otherwise the
                 :py:class:`hydra.core.hydra_config.HydraConfig` singleton. Default is :code:`False`.
                 
         Raises:
@@ -466,18 +496,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             return HydraConfig.instance()
         return HydraConfig.get()
     
-    @property
-    def launch_config(self):
-        """:py:class:`.LaunchConfig` object that was used for the initialization (**args**)"""
-        return self._args
-    
-    @property
-    def agent_config(self):
-        """
-        The configuration of the attached agent, if it exists otherwise the 
-        **agent** attribute of the stored :py:attr:`launch_config`.
-        """
-        return self.agent.config if self.agent else self._args.agent
+
     
     # ----- Setters -----
     
@@ -503,7 +522,12 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         return self.controller.parse_events(final_controls)
     
     def render_everything(self):
-        """Update render and hud"""
+        """
+        Update render and hud
+        
+        Note:
+            This is the preferred method to update the world and render the camera.
+        """
         self.world_model.tick(self.clock)  # NOTE: Ticks WorldMODEL not CARLA WORLD!  # pyright: ignore[reportOptionalMemberAccess]
         self.world_model.render(self.display, finalize=False)  # pyright: ignore[reportOptionalMemberAccess]
         self.controller.render(self.display)
@@ -523,7 +547,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             before calling this function, i.e. that the agent has a :py:class:`carla.VehicleControl` set.
         
         Raises: 
-            ContinueLoopException
+            ContinueLoopException: With the given **message**.
         """
         # TODO: add option that still allows for rss.
         raise ContinueLoopException(message)
@@ -663,7 +687,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     creation until the calling script continues.
     """
 
-    controller : Optional[Union[RSSKeyboardControl, "weakref.ProxyType[RSSKeyboardControl]"]] = None
+    controller : Optional[Union[RSSKeyboardControl, weakref.ProxyType[RSSKeyboardControl]]] = None
     """
     Set when controller is created. Uses weakref.proxy as backreference.
     This is not a :py:mod:`weakref` object, when
@@ -687,8 +711,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     """
 
     def __init__(self, config: "LunaticAgentSettings", 
-                 args: Union["LaunchConfig", "Mapping[str, Any]", "os.PathLike[str]", str] ="./conf/launch_config.yaml", 
-                 agent: Optional["LunaticAgent"] = None, 
+                 args: Union[LaunchConfig, Mapping[str, Any], "os.PathLike[str]", str] ="./conf/launch_config.yaml", 
+                 agent: Optional[LunaticAgent] = None, 
                  *, 
                  carla_world: Optional[carla.World] =None, 
                  player: Optional[carla.Vehicle] =None, 
@@ -726,7 +750,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
-        from agents.tools.config_creation import LaunchConfig         # circular import
+        from agents.tools.config_creation import LaunchConfig         # circular import # noqa
         if not isinstance(args, (Mapping, DictConfig, LaunchConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
@@ -743,7 +767,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
         self._args : LaunchConfig = assure_type(LaunchConfig, args)
         
-        self.hud = HUD(self._args.width, self._args.height, self.world)
+        self.hud: HUD = HUD(self._args.width, self._args.height, self.world)
         """The :py:class:`HUD` that is managed."""
         
         self.sync : Optional[bool] = self._args.sync
@@ -866,14 +890,22 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             logger.error("Traffic light map is empty") # should not have happened
             CarlaDataProvider.prepare_map()
 
-    def rss_set_road_boundaries_mode(self, 
-                                     road_boundaries_mode: Optional[Union["RssRoadBoundariesModeAlias", 
-                                                                          "carla.RssRoadBoundariesMode",
+    def rss_set_road_boundaries_mode(self,
+                                     road_boundaries_mode: Optional[Union['RssRoadBoundariesModeAlias', 
+                                                                          carla.RssRoadBoundariesMode,
                                                                           bool]]=None) -> None:
         """
         Choose wether or not to use the RSS road boundaries feature.
         
         Toggles: :py:attr:`.RssSettings.use_stay_on_road_feature`
+        
+        Parameters:
+            road_boundaries_mode: If :python:`None`, uses the value from the config.
+                If :python:`True`, sets to :py:attr:`carla.RssRoadBoundariesMode.On`.
+                If :python:`False`, sets to :py:attr:`carla.RssRoadBoundariesMode.Off`.
+                
+        See Also:
+            - :py:class:`carla.RssSensor`
         """
         # Called from KeyboardControl
         if road_boundaries_mode is None:
@@ -1217,7 +1249,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 logger.error("Could not save image format: `%s` % (self.recording_dir_num, self.recording_frame_num): %s", self.recording_file_format, e)
             self.recording_frame_num += 1
 
-    def render(self, display : "pygame.surface.Surface", finalize:bool=True):
+    def render(self, display : pygame.Surface, finalize:bool=True):
         """
         Render world
         
@@ -1249,8 +1281,14 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         if self.radar_sensor is not None:
             self.toggle_radar()  # destroys it if not None
 
-    def destroy(self, destroy_ego=False):
-        """Destroys all actors"""
+    def destroy(self, destroy_ego: bool=False):
+        """
+        Destroys all actors
+        
+        Parameters:
+            destroy_ego: If True, will destroy the :py:attr:`player` as well. Else assume that it
+                is destroyed by someone else.
+        """
         # stop from ticking
         if self.world_tick_id and self.world:
             self.world.remove_on_tick(self.world_tick_id)

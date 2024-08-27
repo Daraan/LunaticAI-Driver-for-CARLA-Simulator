@@ -1708,7 +1708,7 @@ class AutopilotBehavior(AgentConfig):
 
     update_vehicle_lights : bool = False
     """Sets if the Traffic Manager is responsible of updating the vehicle lights, or not."""
- 
+
 @dataclass
 class BasicAgentSettings(AgentConfig):
     """
@@ -2037,7 +2037,7 @@ class LaunchConfig(AgentConfig):
     restart_clean_sensors: Optional[bool] = None
     """
     If None will remove all sensors from an externalActor, if :py:meth:`.WorldModel.restart` is 
-        called outside from the initialization, i.e. a second time.
+    called outside from the initialization, i.e. a second time.
     Else will always/never remove the sensors when using :py:meth:`.WorldModel.restart`.
     """
     

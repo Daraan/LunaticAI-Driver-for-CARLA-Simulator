@@ -13,21 +13,21 @@ See Also:
 from __future__ import annotations
 
 import sys
-from typing import Collection, Hashable, TYPE_CHECKING, Any, Union
+from typing import Hashable, TYPE_CHECKING, Any, Optional, Sequence, Union
 from typing_extensions import (Protocol, ParamSpec, Callable, Concatenate, 
                                TypeAlias, TypeVar, TypeAliasType, Literal)
-
-
+import carla  # type: ignore
 
 
 if TYPE_CHECKING:
-    import carla  # type: ignore
     from agents.tools.config_creation import AgentConfig
     from agents.navigation.local_planner import LocalPlanner
     from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner  # noqa: F401
     from classes.rule import Rule, Context
     from classes.evaluation_function import ConditionFunction
-    from agents.tools.config_creation import BasicAgentSettings  # noqa: F401
+    from agents.tools.config_creation import BehaviorAgentSettings, LunaticAgentSettings  # noqa: F401
+    from classes.worldmodel import WorldModel
+    from classes.constants import AgentState
 
 __all__ = [
     "RuleT",
@@ -47,8 +47,17 @@ __all__ = [
     # Protocols
     "HasBaseSettings",
     "HasConfig",
+    "HasContext",
+    "Has_WorldModel",
+    "HasStates",
+    "Has_Vehicle",
     "HasPlanner",
     "HasPlannerWithConfig",
+    "UseableWithDynamicPlanner",
+    
+    "CanDetectObstacles",
+    "CanDetectNearbyObstacles",
+    "CanDetectNearbyTrafficLights",
 ]
 
 _T = TypeVar("_T", default=Any)
@@ -61,6 +70,8 @@ _CP = ParamSpec("_CP", default=[]) # Generic of ConditionFunction
 RuleT = TypeVar("RuleT", bound="Rule", default="Rule")
 """:py:class:`typing.TypeVar`: A type variable for a :py:class:`.Rule` type."""
 
+_A = TypeVar("_A", bound=carla.Actor)
+ActorList : TypeAlias = Union[carla.ActorList, Sequence[_A]]
 
 CallableCondition : TypeAlias = Union[
                         Callable[Concatenate[RuleT, "Context", _CP], _CH],  # With Rule
@@ -89,7 +100,8 @@ It can return an arbitrary value.
 CallableT = TypeVar("CallableT", bound=Callable[..., Any])
 """:py:class:`typing.TypeVar`: A type variable for a any callable."""
 
-AgentConfigT = TypeVar("AgentConfigT", bound="AgentConfig", default="BasicAgentSettings")
+AgentConfigT = TypeVar("AgentConfigT", bound="AgentConfig", default="AgentConfig",
+                         infer_variance=True)
 """:py:class:`typing.TypeVar`: A type variable for a :py:class:`.AgentConfig` type."""
 
 ConditionFunctionLike = TypeAliasType("ConditionFunctionLike", 
@@ -178,20 +190,32 @@ class HasBaseSettings(Protocol[AgentConfigT]):
     BASE_SETTINGS: type[AgentConfigT]
     
 class HasConfig(Protocol[AgentConfigT]):
-    config: AgentConfigT
-    
-    
+    @property # Note: Must be read-only, can be normal attribute when implemented
+    def config(self) -> AgentConfigT:
+        """
+        read-only attribute of a :py:class:`.AgentConfig` object; can also be a normal attribute.
+        """
+        ...
+
 _LocalPlannerT = TypeVar("_LocalPlannerT",
                          bound="LocalPlanner",
                          default="LocalPlanner",
-                         infer_variance=True)
+                         covariant=True)
 """:py:class:`typing.TypeVar`: A type variable for a :py:class:`.LocalPlanner` type."""
 
 class HasPlanner(Protocol[_LocalPlannerT]):
     """
     Uses a Local planner to calculate controls
     """
-    _local_planner: _LocalPlannerT #: :meta public:
+    
+    @property
+    def _local_planner(self) -> _LocalPlannerT: 
+        """
+        read-only attribute for a :py:class:`.LocalPlanner` object; can also be a normal attribute.
+        
+        :meta public:
+        """
+        ...
     
     def _calculate_control(self, debug: bool=False, *args, **kwargs) -> carla.VehicleControl:  # pyright: ignore
         """
@@ -200,24 +224,38 @@ class HasPlanner(Protocol[_LocalPlannerT]):
         ...
 
 class HasPlannerWithConfig(HasPlanner["DynamicLocalPlanner"], HasConfig[AgentConfigT], Protocol):
+    """
+    Uses a :py:class:`.DynamicLocalPlanner` that works with a :py:class:`.AgentConfig`
+    """
     ...
     
 class HasContext(Protocol):
     ctx: "Context"
+
+class Has_WorldModel(Protocol):
+    _world_model: "WorldModel"
+    """
+    :meta public:
+    """
     
-class HasVehicle(Protocol):
+class HasStates(Protocol):
+    current_states: dict["AgentState", int]
+    
+class Has_Vehicle(Protocol):
     _vehicle: carla.Vehicle
     """
     :meta public:
     """
     
-class UseableWithDynamicPlanner(HasPlannerWithConfig, HasVehicle, HasContext, Protocol):
+class UseableWithDynamicPlanner(HasPlannerWithConfig, Has_Vehicle, HasContext, Protocol):
     """
-    Can be used with a dynamic local planner.
+    Can be used with :py:class:`.DynamicLocalPlanner`
     """
     ...
 
-class CanDetectObstacles(HasConfig, HasVehicle, HasPlanner, Protocol):
+class CanDetectObstacles(Has_Vehicle, HasPlanner, 
+                         HasConfig["BehaviorAgentSettings | LunaticAgentSettings"], 
+                         Protocol):
     """
     Can be used with :py:func:`lunatic_agent_tools.detect_obstacles`
     """
@@ -228,8 +266,20 @@ class CanDetectNearbyObstacles(CanDetectObstacles, Protocol):
     Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`
     """
     
-    all_obstacles_nearby : Collection[carla.Actor] | carla.ActorList
+    all_obstacles_nearby : list[carla.Actor]
     """Actors that are considered to be near the actor."""
 
     def max_detection_distance(self, lane: Literal["same_lane", "other_lane"]) -> float:
         ...
+
+class CanDetectNearbyTrafficLights(CanDetectObstacles, HasStates, Has_WorldModel, Protocol):
+    """
+    Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`
+    """
+    
+    traffic_lights_nearby : list[carla.TrafficLight]
+    """Actors that are considered to be near the actor."""
+    
+    _last_traffic_light : Optional[carla.TrafficLight]
+    
+    _current_waypoint : carla.Waypoint

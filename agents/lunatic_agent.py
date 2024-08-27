@@ -25,16 +25,13 @@ from classes.constants import (AgentState, HazardSeverity, Phase, Hazard, RoadOp
 from classes.worldmodel import WorldModel, CarlaDataProvider
 from classes.rule import BlockingRule, Context, Rule
 
-import agents.tools
-import agents.tools.lunatic_agent_tools
-
 from agents.tools.config_creation import RssRoadBoundariesModeAlias
 from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.behavior_agent import BehaviorAgent
 
 from agents.tools.logging import logger
-from agents.tools.lunatic_agent_tools import (detect_vehicles, must_clear_hazard, replace_with,
+from agents.tools.lunatic_agent_tools import (detect_vehicles, must_clear_hazard,
                                               result_to_context,
                                               phase_callback, generate_lane_change_path) # type: ignore[unused-import]
 from agents.tools.misc import lanes_have_same_direction
@@ -141,17 +138,20 @@ class LunaticAgent(BehaviorAgent):
         if agent_config is None:
             if hasattr(args, "agent"):
                 if settings_archetype is not None:
-                    logger.warning("settings_archetype was passed but using args.agent. Ignoring settings_archetype.")
+                    logger.warning("settings_archetype was passed but using args.agent. "
+                                   "Ignoring settings_archetype.")
                 agent_config = args.agent
             elif settings_archetype is not None and isinstance(settings_archetype, object):
-                logger.warning("settings_archetype is an instance. To pass an instance use agent_config instead.")
-                agent_config = settings_archetype
+                logger.warning("settings_archetype is an instance. "
+                               "To pass an instance use agent_config instead.")
+                agent_config = settings_archetype  # type: ignore
             elif settings_archetype is not None:
                 logger.debug("Creating config from settings_archetype")
-                behavior = settings_archetype(overwrites) # type: ignore
+                behavior = settings_archetype(overwrites)
                 agent_config = cls.BASE_SETTINGS.cast(behavior.to_dict_config())
             else:
-                logger.debug("Using %s._base_settings %s to create config.", cls.__name__, cls.BASE_SETTINGS)
+                logger.debug("Using %s._base_settings %s to create config.", 
+                             cls.__name__, cls.BASE_SETTINGS)
                 agent_config = cls.BASE_SETTINGS.cast(cls.BASE_SETTINGS.to_dict_config())
             assert agent_config is not None
         else:
@@ -941,7 +941,7 @@ class LunaticAgent(BehaviorAgent):
     # ------------------ Hazard Detection & Reaction ------------------ #
 
     from agents.substep_managers import detect_traffic_light # -> TrafficLightDetectionResult
-    traffic_light_manager = detect_traffic_light 
+    traffic_light_manager = detect_traffic_light  # pyright: ignore[reportAssignmentType]
     """Alias of :py:meth:`detect_traffic_light`"""
     
     def detect_hazard(self) -> Set[Hazard]:
@@ -1068,7 +1068,7 @@ class LunaticAgent(BehaviorAgent):
 
     # Moved outside of the class for organization
     from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
-    from agents.substep_managers import car_following_manager # -> carla.VehicleControl
+    from agents.substep_managers import car_following_manager  # pyright: ignore[reportAssignmentType]
     from agents.substep_managers import emergency_manager
     
     # Subfunction of traffic_light_manager. In traffic_light_manager the parameters are chosen automatically
@@ -1261,7 +1261,7 @@ class LunaticAgent(BehaviorAgent):
         
         if self._world_model.world_settings.synchronous_mode:
             # Assure that dt is set
-            if isinstance(config, DictConfig):
+            if isinstance(config, DictConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
                 OmegaConf.select(config,
                     "planner.dt",
                     throw_on_missing=True
@@ -1405,21 +1405,10 @@ class LunaticAgent(BehaviorAgent):
     # ------------------ Overwritten & Outsourced functions ------------------ #
     
     from agents.tools.lunatic_agent_tools import max_detection_distance
-
-    # Compatibility with BehaviorAgent interface
-    @replace_with(agents.tools.lunatic_agent_tools.detect_vehicles)
-    def _vehicle_obstacle_detected(_):
-        """
-        **Unused**, kept for compatibility with BehaviorAgent interface.
-        Substituted by :py:func:`agents.tools.lunatic_agent_tools.detect_vehicles`.
-        """
- 
-    # Staticmethod that we outsource
-    @staticmethod
-    @replace_with(agents.tools.lunatic_agent_tools.generate_lane_change_path)
-    def _generate_lane_change_path(_):
-        """Substituted by :py:func:`agents.tools.lunatic_agent_tools.generate_lane_change_path`"""
-
+    from agents.tools.lunatic_agent_tools import detect_vehicles
+    # signature of parent is str and not Literal["left", "right"]
+    from agents.tools.lunatic_agent_tools import generate_lane_change_path as _generate_lane_change_path  # pyright: ignore[reportAssignmentType]
+   
     # NOTE: the original pedestrian_avoid_manager is still usable
     def pedestrian_avoid_manager(self, waypoint) -> NoReturn:  # noqa # type: ignore
         """

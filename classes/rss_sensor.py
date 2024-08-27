@@ -106,7 +106,7 @@ class RssSensor(CustomSensorInterface):
         self.world_model = None
         self.individual_rss_states = []
         self._allowed_heading_ranges = []
-        self.ego_dynamics_on_route = None
+        self.ego_dynamics_on_route: carla.RssEgoDynamicsOnRoute = None
         self.current_vehicle_parameters = self.get_default_parameters()
         self.route = None
         self.debug_visualizer = RssDebugVisualizer(parent_actor, world, visualizer_mode)

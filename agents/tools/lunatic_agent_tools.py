@@ -29,13 +29,13 @@ from agents.tools.logging import logger
 from classes.constants import Phase
 from classes.exceptions import EmergencyStopException, LunaticAgentException
 from launch_tools import CarlaDataProvider, Literal
-from typing import TYPE_CHECKING, Any, Callable, Collection, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
+from typing import TYPE_CHECKING, Any, Callable, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
 from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     from classes.worldmodel import WorldModel
-    from agents.tools.config_creation import BehaviorAgentSettings 
+    from agents.tools.config_creation import BehaviorAgentSettings, LunaticAgentSettings
 
 _T = TypeVar("_T")
 _P = ParamSpec('_P')
@@ -45,6 +45,8 @@ else:
     _AgentFunction = Callable[[Concatenate["LunaticAgent", _P]], _T]
     
 _C = TypeVar("_C", bound=Callable[..., Any])
+
+_Actor_co = TypeVar("_Actor_co", bound=carla.Actor, covariant=True)
 
 # ------------------------------
 # Decorators
@@ -185,7 +187,7 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
 # Obstacle Detection
 # ------------------------------
 
-def max_detection_distance(self: HasConfig["BehaviorAgentSettings"], 
+def max_detection_distance(self: HasConfig["BehaviorAgentSettings | LunaticAgentSettings"], 
                            lane: Literal["same_lane", "other_lane", "overtaking", "tailgating"]) -> float:
     """
     Convenience function to be used with :py:func:`lunatic_agent_tools.detect_vehicles` and :any:`LunaticAgent.detect_obstacles_in_path`.
@@ -210,8 +212,8 @@ def max_detection_distance(self: HasConfig["BehaviorAgentSettings"],
                self.config.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
 
 
-def detect_obstacles_in_path(self : "CanDetectNearbyObstacles", 
-                             obstacle_list: Optional[Union[Collection[carla.Actor], carla.ActorList,\
+def detect_obstacles_in_path(self: "CanDetectNearbyObstacles", 
+                             obstacle_list: Optional[Union[Sequence[carla.Actor], carla.ActorList,\
                                                            Literal['all']]]) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
@@ -254,7 +256,7 @@ def detect_obstacles_in_path(self : "CanDetectNearbyObstacles",
 
 
 def detect_obstacles(self: "CanDetectObstacles", 
-                    actor_list: Optional[Collection[carla.Actor] | carla.ActorList]=None,
+                    actor_list: Optional[Sequence[carla.Actor] | carla.ActorList]=None,
                     max_distance: Optional[float]=None, 
                     up_angle_th: float=90, 
                     low_angle_th: float=0,
@@ -398,8 +400,9 @@ def detect_obstacles(self: "CanDetectObstacles",
 
     return ObstacleDetectionResult(False, None, -1)
 
+
 def detect_vehicles(self: "CanDetectObstacles", 
-                    vehicle_list: Optional[Collection[carla.Actor] | carla.ActorList]=None,
+                    vehicle_list: Optional[Sequence[carla.Actor] | carla.ActorList]=None,
                     max_distance: Optional[float]=None, 
                     up_angle_th: float=90, 
                     low_angle_th: float=0,
@@ -603,20 +606,3 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
         opt_dict.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
     cfg = opt_dict  # pyright: ignore[reportUnknownVariableType]
     return self.BASE_SETTINGS.cast(cfg)  # duck-type it
-
-
-# ------------------------------
-
-# hack to replace the function    
-def replace_with(func: _C) -> Callable[..., _C]:
-    """
-    Decorator that exchanges the decorated function by the wrapped function.
-    
-    Warning:
-        This is a hack to make the decorated function the identical to the
-        function in the argument.
-        The decorated function will be lost and will not be called!
-    """
-    def decorator(*args: Any, **kwargs: Any) -> _C:
-        return func
-    return decorator

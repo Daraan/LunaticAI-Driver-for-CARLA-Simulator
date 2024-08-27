@@ -21,23 +21,12 @@ agents.substep\_managers.car\_following module
    :show-inheritance:
 
 
-.. _agents/substep_managers/collision:
+.. _agents/substep_managers/collision_callback:
 
-agents.substep\_managers.collision module
------------------------------------------
+agents.substep\_managers.collision\_callback module
+---------------------------------------------------
 
-.. automodule:: agents.substep_managers.collision
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-.. _agents/substep_managers/collision_and_car_avoidance:
-
-agents.substep\_managers.collision\_and\_car\_avoidance module
---------------------------------------------------------------
-
-.. automodule:: agents.substep_managers.collision_and_car_avoidance
+.. automodule:: agents.substep_managers.collision_callback
    :members:
    :undoc-members:
    :show-inheritance:
@@ -54,12 +43,23 @@ agents.substep\_managers.emergency module
    :show-inheritance:
 
 
-.. _agents/substep_managers/pedestrian_avoidance:
+.. _agents/substep_managers/obstacle_detection:
 
-agents.substep\_managers.pedestrian\_avoidance module
+agents.substep\_managers.obstacle\_detection module
+---------------------------------------------------
+
+.. automodule:: agents.substep_managers.obstacle_detection
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+.. _agents/substep_managers/pedestrian_detection:
+
+agents.substep\_managers.pedestrian\_detection module
 -----------------------------------------------------
 
-.. automodule:: agents.substep_managers.pedestrian_avoidance
+.. automodule:: agents.substep_managers.pedestrian_detection
    :members:
    :undoc-members:
    :show-inheritance:

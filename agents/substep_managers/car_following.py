@@ -4,16 +4,16 @@ import carla
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from classes.type_protocols import HasPlannerWithConfig
-    from agents.tools.config_creation import BehaviorAgentSettings
+    from agents.tools.config_creation import BehaviorAgentSettings, LunaticAgentSettings
 
 
 from agents.tools.misc import get_speed
 __epsilon = np.nextafter(0., 1.) # to not divide by 0
 
-def car_following_manager(self: "HasPlannerWithConfig[BehaviorAgentSettings]",
-                          vehicle : carla.Vehicle,
-                          distance:float,
-                          debug:bool=False) -> carla.VehicleControl:
+def car_following_manager(self: "HasPlannerWithConfig[BehaviorAgentSettings | LunaticAgentSettings]",
+                          vehicle: carla.Vehicle,
+                          distance: float,
+                          debug: bool=False) -> carla.VehicleControl:
     """
     Module in charge of car-following behaviors when there's
     someone in front of us.

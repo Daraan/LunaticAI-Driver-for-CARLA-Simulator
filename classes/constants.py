@@ -9,7 +9,7 @@ import os
 from enum import Enum, Flag, IntEnum, auto
 from functools import lru_cache, reduce
 from typing import TYPE_CHECKING, ClassVar, Dict, Union
-from typing_extensions import Self, TypeAlias, TypedDict
+from typing_extensions import Self, TypeAlias
 
 import carla
 
