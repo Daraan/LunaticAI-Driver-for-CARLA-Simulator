@@ -39,13 +39,13 @@ _T = TypeVar('_T')
 @type_check_only
 class _Vector(Protocol[_T]):
 
-    def __getitem__(self: _T, index: int) -> float:
+    def __getitem__(self, index: int) -> _T:
         ...
         
-    def __delitem__(self: _T, index: int) -> float:
+    def __delitem__(self, index: int):
         ...
 
-    def __setitem__(self: _T, index: int, value: float) -> None:
+    def __setitem__(self, index: int, value: _T) -> None:
         ...
 
     def __len__(self) -> int:
