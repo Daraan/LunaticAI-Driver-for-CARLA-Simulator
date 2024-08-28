@@ -529,7 +529,7 @@ class LunaticAgent(BehaviorAgent):
             self.live_info.incoming_waypoint, self.live_info.incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(  # pyright: ignore[reportAttributeAccessIssue]
                 steps=self._look_ahead_steps)
         else:
-            assert second_pass == False, "In the second pass the agent should have replanned and agent.done() should be False"
+            assert second_pass is False, "In the second pass the agent should have replanned and agent.done() should be False"
             # Assumes second_pass is False
             # Queue is empty
             self.live_info.incoming_waypoint = None

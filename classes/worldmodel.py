@@ -10,7 +10,7 @@ from collections.abc import Mapping
 import os
 import sys
 import weakref
-from typing import (Any, ClassVar, Dict, List, Optional, Sequence, Union, cast as assure_type,
+from typing import (Any, ClassVar, List, Optional, Sequence, Union, cast as assure_type,
                     TYPE_CHECKING, TypeVar, overload)
 from typing_extensions import NoReturn
 

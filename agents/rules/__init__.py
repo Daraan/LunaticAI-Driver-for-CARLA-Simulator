@@ -108,12 +108,12 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
         
     # Note: call is an alias for instantiate
     try:
-        if not "_args_" in clean_cfg:
+        if "_args_" not in clean_cfg:
             if "self_config" in clean_cfg:
                 try:
                     # Test. If this fails, then the instantiation will also fail -> fix it
                     OmegaConf.to_container(clean_cfg, resolve=True, throw_on_missing=True)
-                except (omegaconf.MissingMandatoryValue, omegaconf.errors.InterpolationKeyError) as e:
+                except (omegaconf.MissingMandatoryValue, omegaconf.errors.InterpolationKeyError):
                     logger.debug("Could not resolve all values for %s, will set up a dummy parent", cfg._target_)
                     # HACK:
                     # If this fails the instantiation, OmegaConf wants to resolve the values, but as there is no parent

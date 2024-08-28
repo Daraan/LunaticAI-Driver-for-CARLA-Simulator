@@ -31,7 +31,7 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
         return False
     # Detect if there is a car behind
     vehicle_list = ctx.agent.vehicles_nearby
-    check_behind = detect_vehicles(ctx.agent, vehicle_list,
+    check_behind: ObstacleDetectionResult = detect_vehicles(ctx.agent, vehicle_list,
                                    ctx.max_detection_distance("tailgating"),
                                    up_angle_th=180, low_angle_th=160)
 

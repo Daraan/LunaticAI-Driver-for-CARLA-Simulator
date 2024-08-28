@@ -1,14 +1,14 @@
-# Copyright (c) # Copyright (c) 2018-2020 CVC.
-#
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
+"""
+This module contains a flexible variant of the local planner provided by CARLA to perform low-level
+waypoint following based on PID controllers. 
+"""
 
-""" This module contains a local planner to perform low-level waypoint following based on PID controllers. """
+from __future__ import annotations
+
 from collections import deque
-import weakref
 import carla
 
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import List, Optional, Tuple
 
 from agents.navigation.local_planner import LocalPlanner, PlannedWaypoint
 
@@ -16,11 +16,7 @@ from agents.dynamic_planning.dynamic_controller import DynamicVehiclePIDControll
 from agents.tools.misc import draw_waypoints, get_speed
 from classes.constants import RoadOption
 from classes.rss_sensor import RssSensor
-from agents.tools.config_creation import BasicAgentSettings
 from classes.type_protocols import UseableWithDynamicPlanner
-
-if TYPE_CHECKING:
-    from agents.lunatic_agent import LunaticAgent
 
 
 class DynamicLocalPlanner(LocalPlanner):
@@ -52,7 +48,8 @@ class DynamicLocalPlanner(LocalPlanner):
             
             Attention:
                 .. deprecated:: _
-                    Do not use anymore. The agent's config is used instead.
+                    Do not use anymore. The agent's :py:attr:`config<.LunaticAgent.config>`
+                    is used instead.
              
             dictionary of arguments with different parameters:
             dt: time between simulation steps

@@ -299,7 +299,7 @@ class LocalPlanner(object):
             try:
                 wpt, direction = self._waypoints_queue[-1]
                 return wpt, direction
-            except IndexError as i:
+            except IndexError:
                 return None, RoadOption.VOID
 
     def get_plan(self):

@@ -9,7 +9,7 @@ import numpy as np
 from cachetools import cached, LRUCache
 from operator import attrgetter
 
-from agents.tools.logging import log, logger
+from agents.tools.logging import logger
 
 from launch_tools import CarlaDataProvider
 
@@ -521,7 +521,7 @@ def detect_surrounding_cars(
         pass
 
     # in the following, ignore cars that are on highway exit/entry lanes
-    if not highway_shape is None:
+    if highway_shape is not None:
         entry_wps = highway_shape[2] # Tuple with start and end waypoint of the entry: ([start_wp, start_wp..], [end_wp, end_wp..])
         exit_wps = highway_shape[3] # Tuple with start and end waypoint of the exit: ([start_wp, start_wp..], [end_wp, end_wp..])
 
@@ -556,7 +556,7 @@ def detect_surrounding_cars(
     # Update matrix based on the lane and position/distance to ego vehicle of other car
     if (
         on_highway
-        and (not highway_shape is None)
+        and (highway_shape is not None)
         and (
             ego_vehicle_road_id
             in entry_road_id
@@ -582,7 +582,7 @@ def detect_surrounding_cars(
         # ignore car on highway entry / Exit bc. considered in update_matrix()
         if (
             on_highway
-            and (not highway_shape is None)
+            and (highway_shape is not None)
             and (
                 other_car_road_id
                 in entry_road_id
@@ -634,7 +634,7 @@ def detect_surrounding_cars(
                         matrix[(ego_vehicle_road_id, other_car_lane_id)][
                             col
                         ] = 2
-                    except:
+                    except Exception:
                         pass
 
     return matrix, surrounding_cars_on_highway_entryExit
@@ -1219,7 +1219,7 @@ def detect_surrounding_cars_outside_junction(
             actor_location = actor.get_location()
             actor_waypoint = world_map.get_waypoint(actor_location)
 
-            if not (different_road_distance is None):
+            if different_road_distance is not None:
                 if different_road_distance > 0:
                     actor_waypoint_lane_id = actor_waypoint.next(
                         different_road_distance

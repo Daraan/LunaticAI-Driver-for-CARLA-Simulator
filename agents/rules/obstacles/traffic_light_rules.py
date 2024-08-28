@@ -1,17 +1,14 @@
 from dataclasses import dataclass
-from typing import Optional, Union, List
 import carla
-from omegaconf import II, SI
+from omegaconf import II
 
-from agents.rules.behaviour_templates import DEBUG_RULES
 from agents.tools.hints import TrafficLightDetectionResult
-from agents.tools.lunatic_agent_tools import phase_callback
 from agents.tools.logging import logger
 
 from agents.tools.misc import get_closest_tl_trigger_wp
 from classes.constants import Hazard, Phase, RulePriority
 from classes.evaluation_function import ConditionFunction
-from classes.exceptions import LunaticAgentException, SkipInnerLoopException
+from classes.exceptions import SkipInnerLoopException
 from classes.rule import BlockingRule, Context, Rule
 
 from agents.tools.config_creation import RuleConfig

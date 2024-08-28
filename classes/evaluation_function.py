@@ -156,7 +156,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         return instance
     
     if READTHEDOCS and not TYPE_CHECKING:
-        __new__.__annotations__["first_argument"] = Optional["str[name]" | AnyCallableCondition]
+        __new__.__annotations__["first_argument"] = Optional["str[name]" | AnyCallableCondition]  # noqa: 821
         #evaluation_function : typing.Callable[typing.Concatenate[RuleT, "Context", _CP], _CH] | typing.Callable[typing.Concatenate["Context", _CP], _CH]
     
     def __init__(self, 
@@ -177,7 +177,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         Uses the generic type hints :py:obj:`_CP`, :py:obj:`_CH` of the class.
         """
         if READTHEDOCS and not TYPE_CHECKING:
-            self.evaluation_function : CallableConditionT
+            self.evaluation_function : CallableConditionT  # noqa: 821
         
         self.truthy: bool = truthy
         if name != "ConditionFunction":
@@ -306,9 +306,9 @@ class ConditionFunction(Generic[_CP, _CH]):
             preset_kwargs: The kwargs to be preset.
         """
         if action_function.__name__ in ConditionFunction._INVALID_NAMES:
-            raise ValueError(f"When using ConditionFunction.add_action, the action function's name "
-                             "may not be in {ConditionFunction._INVALID_NAMES}, "
-                             "got '{action_function.__name__}'.")
+            raise ValueError("When using ConditionFunction.add_action, the action function's name "
+                             f"may not be in {ConditionFunction._INVALID_NAMES}, "
+                             f"got '{action_function.__name__}'.")
         if key in self.actions:
             print("Warning: Overwriting already registered action", self.actions[key],
                   "with key", f"'{key}'", "in", self.name)

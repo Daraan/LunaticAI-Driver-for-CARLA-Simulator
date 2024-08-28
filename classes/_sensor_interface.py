@@ -55,5 +55,5 @@ class CustomSensorInterface(object):
             if self.sensor is not None:
                 self.stop()
                 self.destroy()
-        except Exception as e:
+        except Exception:
             pass

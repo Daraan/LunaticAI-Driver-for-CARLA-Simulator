@@ -16,7 +16,6 @@ import inspect
 import logging
 
 from dataclasses import is_dataclass
-from enum import IntEnum
 
 import omegaconf.errors
 from omegaconf import MISSING, DictConfig, ListConfig, MissingMandatoryValue, OmegaConf, SCMode, open_dict

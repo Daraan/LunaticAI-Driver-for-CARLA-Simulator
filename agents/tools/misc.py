@@ -15,7 +15,7 @@ import math
 import numpy as np
 
 import carla
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 __all__ = [
     'draw_waypoints',

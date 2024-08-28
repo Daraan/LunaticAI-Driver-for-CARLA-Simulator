@@ -3,23 +3,19 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, List, Optional, TypeVar, Union, Sequence
-from typing_extensions import TypeAliasType, TypeAlias
+from typing import Optional
 
 import carla
 from carla import TrafficLightState
 from agents.tools.logging import logger
 from agents.tools.hints import TrafficLightDetectionResult
-from agents.tools.misc import (is_within_distance,
-                               get_trafficlight_trigger_location)
+from agents.tools.misc import is_within_distance
 
 from classes.constants import AgentState
-from classes.type_protocols import CanDetectNearbyTrafficLights
+from classes.type_protocols import CanDetectNearbyTrafficLights, ActorList
 from data_gathering.information_manager import InformationManager
 from launch_tools import CarlaDataProvider    
 
-_A = TypeVar("_A", bound=carla.Actor)
-_ActorList : TypeAlias = Union[carla.ActorList, Sequence[_A]]
 
 def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
     """Filter function to check if a traffic light is red."""
@@ -30,7 +26,7 @@ def _is_red_or_yellow(traffic_light : "carla.TrafficLight") -> bool:
     return traffic_light.state in (TrafficLightState.Red, TrafficLightState.Yellow)
 
 def affected_by_traffic_light(self : "CanDetectNearbyTrafficLights", 
-                              lights_list : Optional[_ActorList[carla.TrafficLight]]=None, 
+                              lights_list : Optional[ActorList[carla.TrafficLight]]=None, 
                               max_distance : Optional[float]=None) -> TrafficLightDetectionResult:
     """
     Method to check if there is a red light affecting the vehicle.
@@ -91,7 +87,8 @@ def affected_by_traffic_light(self : "CanDetectNearbyTrafficLights",
 
     return TrafficLightDetectionResult(False, None)
 
-def detect_traffic_light(self: CanDetectNearbyTrafficLights, traffic_lights : Optional[_ActorList[carla.TrafficLight]] = None) -> TrafficLightDetectionResult:
+def detect_traffic_light(self: CanDetectNearbyTrafficLights, 
+                         traffic_lights : Optional[ActorList[carla.TrafficLight]] =None) -> TrafficLightDetectionResult:
     """
     This method is in charge of behaviors for red lights.
     """

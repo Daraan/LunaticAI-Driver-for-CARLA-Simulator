@@ -64,9 +64,9 @@ class RssStateInfo(object):
             self.lateral_margin = rss_state.lateralStateLeft.rssStateInformation.currentDistance - rss_state.lateralStateLeft.rssStateInformation.safeDistance
         if rss_state.lateralStateRight.rssStateInformation.evaluator != "None":
             lateral_margin_right = rss_state.lateralStateRight.rssStateInformation.currentDistance - rss_state.lateralStateRight.rssStateInformation.safeDistance
-            if self.lateral_margin==None or self.lateral_margin > lateral_margin_right:
+            if self.lateral_margin is None or self.lateral_margin > lateral_margin_right:
                 self.lateral_margin=lateral_margin_right
-        if self.lateral_margin!=None and self.lateral_margin>0:
+        if self.lateral_margin is not None and self.lateral_margin>0:
             self.margin += self.lateral_margin
 
     def get_actor(self, world):
@@ -169,7 +169,7 @@ class RssSensor(CustomSensorInterface):
 
         actor_id = -1
         # actor_type_id = "none"
-        if actor_constellation_data.other_actor != None:
+        if actor_constellation_data.other_actor is not None:
             actor_id = actor_constellation_data.other_actor.id
             # actor_type_id = actor_constellation_data.other_actor.type_id
 

@@ -496,7 +496,7 @@ def detect_surrounding_cars(
         lanes_existed_before = True
 
     # in the following, ignore cars that are on highway exit/entry lanes bc. they are captured in update_matrix()
-    if not highway_shape is None:
+    if highway_shape is not None:
         entry_wps = highway_shape[2] # Tuple with start and end waypoint of the entry: ([start_wp, start_wp..], [end_wp, end_wp..])
         exit_wps = highway_shape[3] # Tuple with start and end waypoint of the exit: ([start_wp, start_wp..], [end_wp, end_wp..])
 
@@ -530,7 +530,7 @@ def detect_surrounding_cars(
     surrounding_cars_on_highway_entryExit = []
     if (
         on_highway
-        and (not highway_shape is None)
+        and (highway_shape is not None)
         and (
             ego_vehicle_road_id
             in entry_road_id
@@ -554,7 +554,7 @@ def detect_surrounding_cars(
         # ignore car on highway entry / Exit bc. considered in update_matrix()
         if (
             on_highway
-            and (not highway_shape is None)
+            and (highway_shape is not None)
             and (
                 other_car_road_id
                 in entry_road_id
@@ -604,7 +604,7 @@ def detect_surrounding_cars(
                         matrix[str(ego_vehicle_road_id) + "_" + str(other_car_lane_id)][
                             col
                         ] = 2
-                    except:
+                    except Exception:
                         pass
 
     return matrix, surrounding_cars_on_highway_entryExit
@@ -1497,7 +1497,7 @@ def get_cell_of_actor_outside_junction(actor_waypoint, different_road_distance, 
     """
     
     # get lane id of actor when we look forward/backward until the road_id of the road going into the junction
-    if not (different_road_distance is None): #  actor is not already on road_id of road going into junction
+    if different_road_distance is not None: #  actor is not already on road_id of road going into junction
         if different_road_distance > 0:
             actor_waypoint_lane_id = actor_waypoint.next(
                 different_road_distance
@@ -1935,13 +1935,13 @@ def group_waypoints(waypoints):
     for i in range(1, len(waypoints)):
         group_identified = False
         for group in groups:
-            if (group_identified == False) and (
+            if (not group_identified) and (
                 group[-1].transform.location.distance(waypoints[i].transform.location)
                 <= 6
             ):
                 group.append(waypoints[i])
                 group_identified = True
-        if group_identified == False:
+        if not group_identified:
             groups.append([waypoints[i]])
     return groups
 
@@ -3144,7 +3144,7 @@ def update_matrix(
         on_entry,
     )
     # if not yet found, look in front and search for entry/exit
-    if exit_entry_found == False:
+    if not exit_entry_found:
         _, col_entryExit, matrix = search_entry_or_exit(
             world_map,
             ego_location,
@@ -3683,7 +3683,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
                 "right_outer_lane": [3, 3, 3, 3, 2, 3, 3, 3]}
     """
     # create dictionary to store all the parameters - to be updated & returned in the end
-    if road_lane_ids == None:
+    if road_lane_ids is None:
         road_lane_ids = get_all_road_lane_ids(world_map=world.get_map())
     params = locals().copy()
     del params["ego_vehicle"] # not part of parameters in main 
@@ -3715,14 +3715,14 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
 
     # update some boolean variables for junction detection in the city and dynamic highway entry/exit detection, usually ego runs from case 1-5:
     # 5. case: as soon as ego is not on junction anymore, reset variables
-    if junctions_detected and not ego_waypoint.is_junction: 
+    if junctions_detected and not ego_waypoint.is_junction:
         junctions_detected = False 
         same_junction = False # reset same_junction variable to allow searching for new junction objects ahead 
     # 4. case: ego is on a junction object but junction already fully detected
     elif junctions_detected: 
         pass
     # 2. case: first tick ego is on junction object
-    elif ego_waypoint.is_junction and on_junction == False: 
+    elif ego_waypoint.is_junction and not on_junction: 
         on_junction = True
     # 3. case: second tick ego is on a junction object (and another junction was visited before)
     elif junction_id and on_junction: 
@@ -3881,11 +3881,11 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
             highway_shape = get_highway_shape(wps, junction, ego_waypoint, world_map)
             
             # print highway junction shape and number of straight highway lanes
-            if not highway_shape is None:
+            if highway_shape is not None:
                 print(highway_shape[0], highway_shape[1])
         
         # in case a junction object is ahead but the object is not relevant (e.g. on other lane direction) or is not detected properly, then use backuped junction object if available
-        if (highway_shape is None) and (not junction_old is None):
+        if (highway_shape is None) and (junction_old is not None):
             junction = junction_old
             wps = wps_old
             highway_shape = highway_shape_old
@@ -3903,9 +3903,9 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
                 ego_location, ego_vehicle, matrix, road_lane_ids, world, radius, ego_on_highway, highway_shape
             )
             # update matrix with highway entry/exit detection (including other cars)
-            if not highway_shape is None and (highway_shape[0] != "normal_highway" or wrong_shape):
+            if highway_shape is not None and (highway_shape[0] != "normal_highway" or wrong_shape):
                 matrix = update_matrix(world_map, ego_vehicle, ego_location, highway_shape, wps, matrix, junction, cars_on_entryExit, direction_angle) 
-                if not junction_old is None and junction_old.id != junction.id:
+                if junction_old is not None and junction_old.id != junction.id:
                     # update matrix with highway entry/exit detection for junction behind: dynamically move entry/exit out of matrix behind ego
                     matrix = update_matrix(world_map, ego_vehicle, ego_location, highway_shape_old, wps_old, matrix, junction_old, cars_on_entryExit, direction_angle) 
         
@@ -3937,7 +3937,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
 
         # update control parameters and save old junction objects 
         on_entry = True
-        if (highway_shape is None) and (not junction_old is None):
+        if (highway_shape is None) and (junction_old is not None):
             same_junction = False
             junction = junction_old
             wps = wps_old
@@ -3950,7 +3950,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
                 middle_location, ego_vehicle, matrix, road_lane_ids, world, radius, True, highway_shape, ghost=True
             )
 
-            if not highway_shape is None:
+            if highway_shape is not None:
                 matrix  = update_matrix(world_map, ego_vehicle, middle_location, highway_shape, wps, matrix, junction, cars_on_entryExit, direction_angle, ghost=True, on_entry=False) 
                 # if not junction_old is None and junction_old.id != junction.id:
                 #     matrix = update_matrix(world_map, ego_vehicle, middle_location, highway_shape_old, wps_old, matrix, closest_waypoint, junction_old, cars_on_entryExit, True, on_entry) 
@@ -3974,7 +3974,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
         highway_shape = get_highway_shape(wps, junction, ego_waypoint, world_map)
 
         # update control parameters and save old junction objects 
-        if (highway_shape is None) and (not junction_old is None):
+        if (highway_shape is None) and (junction_old is not None):
             same_junction = False
             junction = junction_old
             wps = wps_old
@@ -3987,7 +3987,7 @@ def get_car_detection_matrix(ego_vehicle, ego_waypoint, ego_location, world, jun
                 middle_location, ego_vehicle, matrix, road_lane_ids, world, radius, True, highway_shape, ghost=True
             )
 
-            if not highway_shape is None:
+            if highway_shape is not None:
                 matrix = update_matrix(world_map, ego_vehicle, middle_location, highway_shape, wps, matrix, junction, cars_on_entryExit, direction_angle, ghost=True, on_entry=True) 
 
     # 6. Normal Road

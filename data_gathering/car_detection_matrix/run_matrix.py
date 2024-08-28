@@ -8,8 +8,6 @@ import time
 from typing import Dict, List, TYPE_CHECKING, Any, Optional, Set
 from typing_extensions import TypedDict
 
-import threading
-import time
 
 import numpy as np
 import matplotlib.backends.backend_agg as agg

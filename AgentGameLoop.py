@@ -12,7 +12,7 @@ from omegaconf import OmegaConf
 # When you use an .egg file be sure to add it to your $PYTHONPATH
 try:
     import carla
-except ImportError as e:
+except ImportError:
     from launch_tools import carla
 
 import pygame
@@ -26,7 +26,7 @@ from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, AsD
 from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
 
 from classes.constants import Phase
-from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
+from classes.worldmodel import GameFramework, WorldModel
 
 from agents.tools.logging import logger
 from agents.tools.debug_drawing import debug_drawing

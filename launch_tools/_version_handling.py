@@ -31,14 +31,13 @@ else:
         return wrapper
 
 # Literal
- 
 try:
     # If installed, note that for python 3.10+ this is identical to the built-in typing.Literal
     from typing_extensions import Literal
 except ImportError:
     if sys.version_info >= (3, 8):
         # requires: python 3.8+
-        # However for < 3.10 there were some bugs, which is why typing_extensions is prefered
+        # However for < 3.10 there were some bugs, which is why typing_extensions is preferred
         from typing import Literal
     else:
         print("Warning: Literal not found. Literal requires python3.8+ or typing_extensions.")

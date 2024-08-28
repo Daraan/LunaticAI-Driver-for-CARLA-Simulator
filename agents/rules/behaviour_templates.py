@@ -7,9 +7,8 @@ import carla
 
 from classes.constants import Phase, READTHEDOCS
 from classes.rule import Rule, ConditionFunction, Context, always_execute
-from agents.tools.logging import logger
 
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 from typing_extensions import Self
 
 _debug_rules = True # TODO: Turn off again

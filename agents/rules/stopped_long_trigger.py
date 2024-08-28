@@ -6,7 +6,7 @@ from classes.rule import Rule, MultiRule, ConditionFunction, Context
 
 from agents.tools.logging import logger
 
-from typing import TYPE_CHECKING, List
+from typing import List
     
 class StoppedTooLongTrigger(MultiRule):
     """Triggers child rules if the agent has stopped for a too long time"""

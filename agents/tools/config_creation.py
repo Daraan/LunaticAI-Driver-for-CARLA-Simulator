@@ -46,17 +46,15 @@ from copy import deepcopy
 from dataclasses import dataclass, field, is_dataclass
 from functools import partial
 
-from omegaconf import DictConfig, ListConfig, OmegaConf, SCMode, open_dict
-from omegaconf.errors import InterpolationKeyError, MissingMandatoryValue
+from omegaconf import DictConfig, ListConfig, OmegaConf
+from omegaconf.errors import InterpolationKeyError
 
 from hydra.conf import HydraConf
 
 from launch_tools import class_or_instance_method, Literal
 from classes.constants import (Phase, RulePriority, RoadOption, AD_RSS_AVAILABLE, READTHEDOCS,
                                
-                               # replacements when RSS is not available
-                               RssLogLevelStub, RssRoadBoundariesModeStub,
-                               # Correct Runtime Classes, carla.RssLogLevel or RssLogLevelStub
+                               # Correct runtime versions, Stub or carla.RssLogLevel
                                RssLogLevel, RssRoadBoundariesMode,
                                # Union Types for both cases
                                RssLogLevelAlias, RssRoadBoundariesModeAlias,
@@ -75,11 +73,10 @@ from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Un
 from typing_extensions import TypeAlias, Never, overload, Literal, Self, Annotated
 
 # Type Annotations and Helpers
-from agents.tools._config_tools import (_T, _M, _NestedStrDict, ConfigType,
+from agents.tools._config_tools import (_T, _M, ConfigType,
                                         OverwriteDictTypes, DictConfigAlias, DictConfigLike,
                                         
-                                        AsDictConfig, export_options, extract_annotations, get_commented_yaml, 
-                                        set_readonly_interpolations, set_readonly_keys,
+                                        AsDictConfig, export_options, set_readonly_interpolations, set_readonly_keys,
 
                                         config_path, config_store,
                                         
@@ -325,7 +322,7 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
                 cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)# convert to class to check keys
                 behavior = settings   # stays duck-typed DictConfig # type: ignore
         else:
-            if as_dictconfig is None or as_dictconfig == SCMode.DICT:
+            if as_dictconfig is None:
                 logger.warning("Type `%s` of launch argument type `agent_settings` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)", type(settings))
             if inspect.isclass(settings):
                 behavior = settings() # be sure to have an instance

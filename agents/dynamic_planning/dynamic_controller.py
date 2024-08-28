@@ -10,15 +10,11 @@ import math
 import numpy as np
 import carla
 
-from agents.navigation.controller import VehiclePIDController, PIDLongitudinalController, PIDLateralController
-
-from typing import TYPE_CHECKING
-
+from agents.navigation.controller import (VehiclePIDController, PIDLongitudinalController, 
+                                          PIDLateralController)
 from classes.type_protocols import UseableWithDynamicPlanner
 
-if TYPE_CHECKING:
-    from agents.tools.config_creation import BasicAgentSettings
-    from agents.lunatic_agent import LunaticAgent
+
 
 STEERING_UPDATE_SPEED = 0.1
 

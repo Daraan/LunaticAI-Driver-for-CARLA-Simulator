@@ -3,7 +3,6 @@
 # Credits to https://github.com/carla-simulator/carla/commits?author=jackbart94
 # https://github.com/carla-simulator/carla/commit/4bc53a7f6c71551b466b8abdb48f24c48b295efc
 
-import carla
 
 from typing import TYPE_CHECKING
 

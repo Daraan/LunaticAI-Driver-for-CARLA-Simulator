@@ -49,7 +49,6 @@ if TYPE_CHECKING:
     #from scenario_runner.srunner.autoagents.sensor_interface import SensorInterface
     from leaderboard.envs.sensor_interface import SensorInterface
     from classes.constants import RoadOption
-    from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
     from agents.navigation.local_planner import LocalPlanner
 
 import logging

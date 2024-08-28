@@ -17,14 +17,12 @@ from pygame.locals import K_F5
 from pygame.locals import K_F6
 from pygame.locals import K_LEFT
 from pygame.locals import K_RIGHT
-from pygame.locals import K_SLASH
 from pygame.locals import K_SPACE
 from pygame.locals import K_UP
 from pygame.locals import K_a
 from pygame.locals import K_b
 from pygame.locals import K_d
 from pygame.locals import K_g
-from pygame.locals import K_h
 from pygame.locals import K_n
 from pygame.locals import K_p
 from pygame.locals import K_q
