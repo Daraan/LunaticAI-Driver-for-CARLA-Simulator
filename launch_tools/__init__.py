@@ -45,12 +45,13 @@ except ImportError:
 from typing import TYPE_CHECKING, Callable, Optional
 from typing_extensions import TypeVar, ParamSpec
 
-from ._import_carla_data_provider import CarlaDataProvider, GameTime # type: ignore[import]
-from ._version_handling import *
+from ._import_carla_data_provider import CarlaDataProvider, GameTime  # type: ignore[import]
+# These three need special handling depending on the python version
+from ._version_handling import singledispatchmethod, Literal, ast_parse
 
 from . import argument_parsing # type: ignore[import] # noqa: F401
 from . import blueprint_helpers
-from .csv_tools import *
+from .csv_tools import transform_to_pandas, vehicle_location_to_dataframe, csv_to_transformations
 
 # backwards compatibility
 prepare_blueprints = blueprint_helpers.get_contrasting_blueprints

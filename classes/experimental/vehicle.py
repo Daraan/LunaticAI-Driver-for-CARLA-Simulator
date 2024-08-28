@@ -1,5 +1,4 @@
 import math
-# COMMENT: do we need this?
 import time
 from cmath import sqrt
 from typing import List

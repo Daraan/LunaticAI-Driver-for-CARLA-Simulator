@@ -1,9 +1,9 @@
-# Functions which not yet have a good grouping in their own files
 """Contains snippets that can can import/export vehicle positions from/to csv files."""
-
 from __future__ import annotations
+# pyright: reportUnknownMemberType=none
+# pyright: reportUnknownVariableType=information
 
-from typing import List
+from os import PathLike
 import pandas as pd
 import carla
 
@@ -16,8 +16,8 @@ __all__ = ["transform_to_pandas",
 LOC_DF = pd.DataFrame(columns=["x", "y", "z", "pitch", "yaw", "roll"])
 
 # -----------------------------------
-
-def transform_to_pandas(transform : carla.Transform) -> pd.Series:
+# pyright: strict
+def transform_to_pandas(transform: carla.Transform) -> pd.Series[float]:
     """
     Format a :py:class:`carla.Transform` object to a :py:class:`pandas.Series`.
     """
@@ -28,7 +28,7 @@ def transform_to_pandas(transform : carla.Transform) -> pd.Series:
     return s
 
 
-def vehicle_location_to_dataframe(vehicles: list[carla.Actor]):
+def vehicle_location_to_dataframe(vehicles: list[carla.Actor]) -> pd.DataFrame:
     """
     Exports the locations of vehicles to a :py:class:`pandas.Dataframe`.
     """
@@ -38,16 +38,16 @@ def vehicle_location_to_dataframe(vehicles: list[carla.Actor]):
     return df
 
 
-def csv_to_transformations(path) -> List[carla.Transform]:
+def csv_to_transformations(path: str | PathLike[str]) -> list[carla.Transform]:
     """
     Read a csv file and return a list of Transform objects.
     Expected columns: :code:`x, y, z, pitch, yaw, roll`.
     """
-    df = pd.read_csv(path)
-    transformations = []
-    for _, data in df.iterrows():
-        loc = carla.Location(data.x, data.y, data.z)
-        rot = carla.Rotation(pitch=data.pitch, yaw=data.yaw, roll=data.roll)
+    df = pd.read_csv(path)  # pyright: ignore
+    transformations: list[carla.Transform] = []
+    for _, data in df.iterrows():  # pyright: ignore
+        loc = carla.Location(data.x, data.y, data.z)  # type: ignore[attr-defined]
+        rot = carla.Rotation(pitch=data.pitch, yaw=data.yaw, roll=data.roll)  # type: ignore[attr-defined]
         t = carla.Transform(loc, rot)
         transformations.append(t)
     return transformations

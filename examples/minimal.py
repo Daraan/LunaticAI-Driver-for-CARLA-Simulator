@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 # Be sure to be in the root-folder of the project
 if "agents" not in os.getcwd():
     print(os.getcwd())

@@ -4,7 +4,7 @@ Interface classes between CARLA, the agent, and the user interface.
 
 from __future__ import annotations
 
-# pyright: ignore[reportOptionalMemberAccess=warning]
+# pyright: reportOptionalMemberAccess=warning
 
 from collections.abc import Mapping
 import os

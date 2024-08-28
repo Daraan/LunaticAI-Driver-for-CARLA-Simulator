@@ -1,4 +1,4 @@
-import __allow_imports_from_root # pylint: disable=unused-import
+import __allow_imports_from_root # noqa # type: ignore
 
 import threading
 import time
@@ -8,7 +8,7 @@ import carla
 
 from data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
 from data_gathering.car_detection_matrix.matrix_wrap import get_car_coords
-from data_gathering.car_detection_matrix.run_matrix import AsyncDetectionMatrix, DetectionMatrix
+from data_gathering.car_detection_matrix.run_matrix import AsyncDetectionMatrix, DetectionMatrix  # noqa: F401
 from classes.camera_manager import spectator_follow_actor
 from classes.experimental.vehicle_spawner import VehicleSpawner
 

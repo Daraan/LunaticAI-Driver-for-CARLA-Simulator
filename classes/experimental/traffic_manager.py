@@ -2,17 +2,18 @@
 Uses the built in carla.TrafficManager to use the autopilot written in C.
 """
 
-from typing import ClassVar
+from typing import ClassVar, cast
 import carla
 
 from launch_tools import CarlaDataProvider
+from agents.tools.config_creation import AutopilotBehavior
 
 class TrafficManager:
-    tm : ClassVar[carla.TrafficManager] = None
+    tm : ClassVar[carla.TrafficManager] = None  # type: ignore[assignment]
 
-    def __init__(self, actor: carla.Actor, *,
-                 speed_limit_scale,
-                 min_front_distance,
+    def __init__(self, actor: carla.Vehicle, *,
+                 speed_limit_scale=AutopilotBehavior.vehicle_percentage_speed_difference,
+                 min_front_distance=AutopilotBehavior.distance_to_leading_vehicle,
                  seed=1):
         client = CarlaDataProvider.get_client()
         if client is None:
@@ -22,7 +23,8 @@ class TrafficManager:
             raise TypeError("`actor` must be a carla.Actor, not " + str(type(actor)))
         if TrafficManager.tm is None:
             # TrafficManager.tm : carla.TrafficManager =\
-            TrafficManager.tm = client.get_trafficmanager(port=CarlaDataProvider.get_traffic_manager_port()) # TODO: Should this be different ports? Maybe it is the same traffic manager underneath even if different python instances.
+            TrafficManager.tm = cast(carla.TrafficManager, 
+        client.get_trafficmanager(CarlaDataProvider.get_traffic_manager_port()))
             # TrafficManager.tm.set_random_device_seed(seed)
             TrafficManager.tm.set_random_device_seed(seed)
         self.min_front_distance = min_front_distance

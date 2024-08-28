@@ -5,8 +5,7 @@ import carla
 import launch_tools
 from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 from launch_tools.carla_service import initialize_carla
-# TODO: maybe we can merge these or make them more unfied
-from classes.experimental.driver import Driver
+#from classes.experimental.driver import Driver
 from classes.experimental.traffic_manager import TrafficManager
 from classes.experimental.vehicle import Vehicle
 
@@ -17,7 +16,7 @@ def main():
     global client
     client, world, world_map = initialize_carla("Town04", "127.0.0.1", 2000)
 
-    ego_bp, car_bp = launch_tools.prepare_blueprints(world)
+    ego_bp, car_bp = launch_tools.prepare_blueprints()
 
     spawn_points = launch_tools.csv_to_transformations("examples/highway_example_car_positions.csv")
 
