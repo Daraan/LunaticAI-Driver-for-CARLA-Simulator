@@ -70,8 +70,17 @@ _CP = ParamSpec("_CP", default=[]) # Generic of ConditionFunction
 RuleT = TypeVar("RuleT", bound="Rule", default="Rule")
 """:py:class:`typing.TypeVar`: A type variable for a :py:class:`.Rule` type."""
 
-_A = TypeVar("_A", bound=carla.Actor)
-ActorList : TypeAlias = Union[carla.ActorList, Sequence[_A]]
+_A = TypeVar("_A", bound=carla.Actor, default=carla.Actor)
+
+# NOTE: This requires a stub file where ActorList is Generic
+if TYPE_CHECKING:
+    _Generic_carlaActorList = carla.ActorList[_A]
+else:
+    _Generic_carlaActorList = TypeAliasType("_Generic_carlaActorList", carla.ActorList, type_params=(_A,))
+
+ActorList : TypeAlias = Union[_Generic_carlaActorList[_A], Sequence[_A]]
+"""Type alias for a sequence of carla actors."""
+
 
 CallableCondition : TypeAlias = Union[
                         Callable[Concatenate[RuleT, "Context", _CP], _CH],  # With Rule

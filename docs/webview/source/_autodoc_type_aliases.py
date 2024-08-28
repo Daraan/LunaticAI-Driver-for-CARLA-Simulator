@@ -41,6 +41,7 @@ autodoc_type_aliases = {
     '_ActionsDictValues' : 'AnyCallableAction',
     
     '_ActorList' : 'list',
+    '_Generic_carlaActorList' : 'carla.ActorList',
     
     #'ConditionFunctionLikeT' : "ConditionFunction | Callable[typing.Concatenate[Rule, Context, ...], typing.Any] | typing.Callable[typing.Concatenate[Context, ...], typing.Any]"
     #'Dict' : 'typing.Dict',
