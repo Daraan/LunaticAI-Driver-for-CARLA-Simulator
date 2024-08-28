@@ -1,9 +1,10 @@
 from enum import Enum, Flag, IntFlag
 import sys
-from typing import (Callable, Iterable, Iterator, Sequence, Union, Optional, overload, ClassVar, 
+from typing import (Callable, Iterable, Iterator, Sequence, Union, Optional, overload, 
                     Any, TypeVar, type_check_only)
 
 from . import command
+from . command import *  # noqa: F403
 from . import ad
 
 if sys.version_info >= (3, 11):
@@ -887,7 +888,10 @@ class Client():
             `list[command.Response]`\n
         """
 
-    def generate_opendrive_world(self, opendrive: str, parameters: OpendriveGenerationParameters = OpendriveGenerationParameters(2.0, 50.0, 1.0, 0.6, True, True), reset_settings=True):
+    def generate_opendrive_world(self, 
+                                 opendrive: str, 
+                                 parameters: OpendriveGenerationParameters = OpendriveGenerationParameters(2.0, 50.0, 1.0, 0.6, True, True),  # noqa: F821, F405
+                                 reset_settings=True):
         """Loads a new world with a basic 3D topology generated from the content of an OpenDRIVE file. This content is passed as a `string` parameter. It is similar to `client.load_world(map_name)` but allows for custom OpenDRIVE maps in server side. Cars can drive around the map, but there are no graphics besides the road and sidewalks.
 
         Args:
@@ -896,7 +900,7 @@ class Client():
             `reset_settings (bool, optional)`: Option to reset the episode setting to default values, set to false to keep the current settings. This is useful to keep sync mode when changing map and to keep deterministic scenarios. Defaults to True.\n
         """
 
-    def load_world(self, map_name: str, reset_settings=True, map_layers=MapLayer.All) -> World:
+    def load_world(self, map_name: str, reset_settings=True, map_layers=MapLayer.All) -> World:  # noqa: F821, F405
         """Creates a new world with default settings using `map_name` map. All actors in the current world will be destroyed.
 
         + Warning: `map_layers` are only available for "Opt" maps
@@ -923,7 +927,7 @@ class Client():
             `World`\n
         """
         
-    def load_world_if_different(self, map_name: str, reset_settings=True, map_layers=MapLayer.All):
+    def load_world_if_different(self, map_name: str, reset_settings=True, map_layers=MapLayer.All):  # noqa: F821, F405
         """"
         Creates a new world with default settings using `map_name` map only if it is a different map 
         from the currently loaded map.

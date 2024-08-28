@@ -5,12 +5,38 @@ and `carla.Client.apply_batch_sync`.
 
 from typing import Protocol, overload, type_check_only
 
-from .libcarla.command import *  # type: ignore
-from .libcarla import *
+from .libcarla.command import *  # type: ignore  # noqa
+from .libcarla import (Actor, ActorBlueprint, Transform, VehicleControl, VehiclePhysicsControl, 
+                       AckermannControllerSettings, VehicleLightState, Vector3D)
+from .libcarla import *  # noqa: F403
 
 @type_check_only
 class _IsCommand(Protocol):
     """Indicates a command from the command namespace."""
+
+__all__ = [
+    "ApplyAngularImpulse",
+    "ApplyForce",
+    "ApplyImpulse",
+    "ApplyTargetAngularVelocity",
+    "ApplyTargetVelocity",
+    "ApplyTorque",
+    "ApplyTransform",
+    "ApplyVehicleAckermannControl",
+    "ApplyVehicleControl",
+    "ApplyVehiclePhysicsControl",
+    "ApplyWalkerControl",
+    "ApplyWalkerState",
+    "DestroyActor",
+    "FutureActor",
+    "Response",
+    "SetAutopilot",
+    "SetEnableGravity",
+    "SetSimulatePhysics",
+    "SetVehicleLightState",
+    "ShowDebugTelemetry",
+    "SpawnActor"
+]
 
 class ApplyAngularImpulse(_IsCommand):
     """Command adaptation of `add_angular_impulse()` in `carla.Actor`. Applies an angular impulse to an actor.

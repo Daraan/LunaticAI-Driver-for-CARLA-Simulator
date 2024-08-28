@@ -1,27 +1,17 @@
+from carla import ad
+from . import *
 
 class DebugDrawing():
-    DebugLine = <class 'unstructured.DebugLine'>
-        '''
-        None
-        '''
+    class DebugLine:
         ...
 
-    DebugPoint = <class 'unstructured.DebugPoint'>
-        '''
-        None
-        '''
+    class DebugPoint:
         ...
 
-    DebugPolygon = <class 'unstructured.DebugPolygon'>
-        '''
-        None
-        '''
+    class DebugPolygon:
         ...
 
-    NullDeleter = <class 'unstructured.NullDeleter'>
-        '''
-        None
-        '''
+    class NullDeleter:
         ...
 
     def drawLine(self, arg1: DebugDrawing, line: object, color: str, ns: str) -> None:
@@ -95,7 +85,7 @@ class DebugDrawing():
 
 
 class vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugLine_greater_():
-    def append(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugLine_greater_, arg2: DebugLine) -> None:
+    def append(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugLine_greater_, arg2: DebugDrawing.DebugLine) -> None:
         '''
 
         append( (vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugLine_greater_)arg1, (DebugLine)arg2) -> None :
@@ -115,7 +105,7 @@ class vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_Debug
         '''
         ...
 
-    def insert(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugLine_greater_, arg2: int, arg3: DebugLine) -> None:
+    def insert(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugLine_greater_, arg2: int, arg3: DebugDrawing.DebugLine) -> None:
         '''
 
         insert( (vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugLine_greater_)arg1, (int)arg2, (DebugLine)arg3) -> None :
@@ -137,7 +127,7 @@ class vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_Debug
 
 
 class vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPoint_greater_():
-    def append(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPoint_greater_, arg2: DebugPoint) -> None:
+    def append(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPoint_greater_, arg2: DebugDrawing.DebugPoint) -> None:
         '''
 
         append( (vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPoint_greater_)arg1, (DebugPoint)arg2) -> None :
@@ -157,7 +147,7 @@ class vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_Debug
         '''
         ...
 
-    def insert(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPoint_greater_, arg2: int, arg3: DebugPoint) -> None:
+    def insert(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPoint_greater_, arg2: int, arg3: DebugDrawing.DebugPoint) -> None:
         '''
 
         insert( (vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPoint_greater_)arg1, (int)arg2, (DebugPoint)arg3) -> None :
@@ -179,7 +169,7 @@ class vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_Debug
 
 
 class vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPolygon_greater_():
-    def append(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPolygon_greater_, arg2: DebugPolygon) -> None:
+    def append(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPolygon_greater_, arg2: DebugDrawing.DebugPolygon) -> None:
         '''
 
         append( (vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPolygon_greater_)arg1, (DebugPolygon)arg2) -> None :
@@ -199,7 +189,7 @@ class vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_Debug
         '''
         ...
 
-    def insert(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPolygon_greater_, arg2: int, arg3: DebugPolygon) -> None:
+    def insert(self, arg1: vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPolygon_greater_, arg2: int, arg3: DebugDrawing.DebugPolygon) -> None:
         '''
 
         insert( (vector_less_ad_scope_rss_scope_unstructured_scope_DebugDrawing_scope_DebugPolygon_greater_)arg1, (int)arg2, (DebugPolygon)arg3) -> None :
