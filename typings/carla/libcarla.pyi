@@ -1,11 +1,16 @@
 from enum import Enum, Flag, IntFlag
 import sys
-from typing import (Callable, Iterable, Iterator, Sequence, Union, Optional, overload, 
+from typing import (Callable, Generic, Iterable, Iterator, Sequence, Union, Optional, overload, 
                     Any, TypeVar, type_check_only)
 
 from . import command
 from . command import *  # noqa: F403
 from . import ad
+
+if sys.version_info >= (3, 13):
+    from typing import TypeVar
+else:
+    from typing_extensions import TypeVar
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -27,7 +32,7 @@ else:
 __SensorData = TypeVar("__SensorData", bound=SensorData)
 """Generic that allows subclassing."""
 
-
+__Actor = TypeVar("__Actor", bound=Actor, default=Actor)  # noqa: F405
 
 @type_check_only
 class __CarlaEnum(Enum):
@@ -522,14 +527,14 @@ class ActorBlueprint():
     # endregion
 
 
-class ActorList():
+class ActorList(Generic[__Actor]):
     """
     A class that contains every actor present on the scene and provides access to them.
     The list is automatically created and updated by the server and it can be returned using `carla.World`.
     """
 
     # region Methods
-    def filter(self, wildcard_pattern: str) -> ActorList:
+    def filter(self, wildcard_pattern: str) -> ActorList[__Actor]:
         """Filters a list of Actors matching wildcard_pattern against their variable `type_id` (which identifies the blueprint used to spawn them). Matching follows fnmatch standard.
 
         Args:
@@ -540,7 +545,7 @@ class ActorList():
         """
         ...
 
-    def find(self, actor_id: int) -> Actor:
+    def find(self, actor_id: int) -> __Actor:
         """Finds an actor using its identifier and returns it or None if it is not present.
 
         Args:
@@ -553,11 +558,11 @@ class ActorList():
     # endregion
 
     # region Dunder methods
-    def __getitem__(self, pos: int) -> Actor:
+    def __getitem__(self, pos: int) -> __Actor:
         """Returns the actor corresponding to pos position in the list."""
         ...
 
-    def __iter__(self) -> Iterator[Actor]:
+    def __iter__(self) -> Iterator[__Actor]:
         """Iterate over the `carla.Actor` contained in the list."""
         ...
 
@@ -572,7 +577,9 @@ class ActorList():
 
 
 class ActorSnapshot():
-    """A class that comprises all the information for an actor at a certain moment in time. These objects are contained in a `carla.WorldSnapshot` and sent to the client once every tick.
+    """
+    A class that comprises all the information for an actor at a certain moment in time.
+    These objects are contained in a `carla.WorldSnapshot` and sent to the client once every tick.
     """
 
     # region Instance Variables
@@ -3109,11 +3116,11 @@ class RssActorConstellationResult():
         ...
 
     @property
-    def restrict_speed_limit_mode(self) -> "ad.rss.map.RestrictSpeedLimitMode":
+    def restrict_speed_limit_mode(self) -> "ad.rss.map.RssSceneCreation.RestrictSpeedLimitMode":
         """The mode for restricting speed limit."""
         ...
     @restrict_speed_limit_mode.setter
-    def restrict_speed_limit_mode(self, value: "ad.rss.map.RestrictSpeedLimitMode"):
+    def restrict_speed_limit_mode(self, value: "ad.rss.map.RssSceneCreation.RestrictSpeedLimitMode"):
         """Setter for restrict_speed_limit_mode property."""
         ...
 
@@ -5577,7 +5584,7 @@ class WorldSettings():
 
     @property
     def max_substep_delta_time(self) -> float:
-        """Maximum delta time of the substeps. If the carla.`WorldSettingsmax_substep` is high enough, the substep delta time would be always below or equal to this value. By default, the value is set to 0.01."""
+        """Maximum delta time of the substeps. If the carla.`WorldSettings.max_substep` is high enough, the substep delta time would be always below or equal to this value. By default, the value is set to 0.01."""
     @max_substep_delta_time.setter
     def max_substep_delta_time(self, value: float):
         ...
