@@ -13,6 +13,7 @@ import carla
 import pygame
 
 from launch_tools import CarlaDataProvider
+from agents.tools.logging import logger
 #from classes.constants import StreetType
 
 from data_gathering.car_detection_matrix.informationUtils import RoadLaneId, check_ego_on_highway, create_city_matrix, detect_surrounding_cars, get_all_road_lane_ids
@@ -64,8 +65,8 @@ def wrap_matrix_functionalities(ego_vehicle : carla.Actor,
     else:
         return None
     # Removes the information about "left_outer_lane" by replacing it with numeric values.
-    # Is this a good idea?
-    new_matrix = {i : v for i, v in enumerate(matrix.values())}
+    # TODO: Should possibly revert this.
+    new_matrix = dict(enumerate(matrix.values()))
     matrix = new_matrix
     return matrix
 
@@ -75,10 +76,10 @@ class DetectionMatrix:
     
     matrix : Dict[int, List[int]]
     """
-    A :py:class:`collections.OrderedDict`: An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id". 
+    A :py:class:`collections.OrderedDict`: An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id".
     For non-existing lanes different placeholder exist, e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction
     The values indicate whether a vehicle is present: 0 - No vehicle, 1 - Ego vehicle, 3 - No road.
-    Format example: 
+    Format example:
     
     .. code-block:: python
         
@@ -151,11 +152,11 @@ class DetectionMatrix:
             draw : bool
     
     def render(self,
-               display: pygame.Surface, 
-               imshow_settings: dict[str, Any]={'cmap':'jet'},
-               vertical: bool=True, 
+               display: pygame.Surface,
+               imshow_settings: dict[str, Any]={'cmap':'jet'},  # noqa: B006
+               vertical: bool=True,
                draw_values: bool=True,
-               text_settings: dict[str, Any]={'color':'orange'},
+               text_settings: dict[str, Any]={'color':'orange'},  # noqa: B006
                *,
                draw: bool=True):
         """
@@ -214,7 +215,7 @@ class DetectionMatrix:
             except Exception:
                 pass
 
-    def _signal_handler(self, signum: int, _):  # noqa
+    def _signal_handler(self, signum: int, _):
         """
         Signal handler for stopping the simulation, e.g. when pressing Ctrl+C
         in the terminal.
@@ -223,6 +224,7 @@ class DetectionMatrix:
         
         :meta private:
         """
+        logger.info(f"DetectionMatrix: signal {signum} received. Stopping.")
         self.stop()
         
     def _add_signal_handler(self):
@@ -232,7 +234,6 @@ class DetectionMatrix:
         :meta private:
         """
         signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
 
 class AsyncDetectionMatrix(DetectionMatrix):
     def __init__(self, ego_vehicle : carla.Actor, *, road_lane_ids=None, sleep_time=0.1):

@@ -6,7 +6,7 @@ and `carla.Client.apply_batch_sync`.
 from typing import Protocol, overload, type_check_only
 
 from .libcarla.command import *  # type: ignore  # noqa
-from .libcarla import (Actor, ActorBlueprint, Transform, VehicleControl, VehiclePhysicsControl, 
+from .libcarla import (Actor, ActorBlueprint, Transform, VehicleControl, VehiclePhysicsControl,
                        AckermannControllerSettings, VehicleLightState, Vector3D)
 from .libcarla import *  # noqa: F403
 
@@ -169,7 +169,7 @@ class ApplyTorque(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `torque (Vector3D)`: Torque vector in global coordinates (degrees). 
+            `torque (Vector3D)`: Torque vector in global coordinates (degrees).
         """
     # endregion
 
@@ -302,7 +302,7 @@ class ApplyWalkerState(_IsCommand):
 
     # region Methods
     def __init__(self, actor: Actor | int, transform: Transform, speed: float):
-        """Apply a state to the walker actor. 
+        """Apply a state to the walker actor.
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
@@ -329,10 +329,10 @@ class DestroyActor(_IsCommand):
         """
     # endregion
     
-class FutureActor():
+class FutureActor:
     """A utility object used to reference an actor that will be created in the command in the previous step, it has no parameters or methods."""
 
-class Response():
+class Response:
     """States the result of executing a command as either the ID of the actor to whom the command was applied to (when succeeded) or an error string (when failed). actor ID, depending on whether or not the command succeeded. The method `apply_batch_sync()` in c`arla.Client` returns a list of these to summarize the execution of a batch.
     """
 

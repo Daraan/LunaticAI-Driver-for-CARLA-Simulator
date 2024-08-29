@@ -36,7 +36,7 @@ def _setup_logger(name : str ="__main__", level : int = logging.DEBUG):
     logger.setLevel(logging.DEBUG)
 
     # NOTE: un-comment a line to adjust the format
-    form  = ("" 
+    form  = (""
     #+ "/////////////////////////\n"                          # When using multiple lines, e.g. for full path
     + "[%(levelname)s][%(filename)s:%(lineno)d, %(funcName)s]: %(message)s" # note blank space before filename for IDE support
     #+ "\nin %(pathname)s %(lineno)d, %(funcName)s"

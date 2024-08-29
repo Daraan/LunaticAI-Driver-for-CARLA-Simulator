@@ -12,8 +12,8 @@ def get_blueprint_library(world: Optional["carla.World"]=None):
     """
     Get the blueprint library of the given world.
     
-    .. deprecated:: 
-        Consider using :py:attr:`.CarlaDataProvider._blueprint_library` 
+    .. deprecated::
+        Consider using :py:attr:`.CarlaDataProvider._blueprint_library`
         or :py:meth:`.CarlaDataProvider.create_blueprint` instead.
     """
     if CarlaDataProvider._blueprint_library:
@@ -22,11 +22,11 @@ def get_blueprint_library(world: Optional["carla.World"]=None):
         world = CarlaDataProvider.get_world()
     return world.get_blueprint_library()
 
-def get_contrasting_blueprints(ego_vehicle: str="vehicle.lincoln.mkz_2020", 
+def get_contrasting_blueprints(ego_vehicle: str="vehicle.lincoln.mkz_2020",
                                ego_color: str="255,0,0") \
     -> Tuple[Annotated[carla.ActorBlueprint, "ego"], Annotated[carla.ActorBlueprint, "NPC"]]:
     """
-    Convenience function to acquire two different colored blueprints, 
+    Convenience function to acquire two different colored blueprints,
     e.g. for the ego and all other NPC vehicles.
 
     Parameters:

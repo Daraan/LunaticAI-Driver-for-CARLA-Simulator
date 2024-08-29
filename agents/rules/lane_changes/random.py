@@ -20,7 +20,7 @@ class RandomLaneChangeRule(Rule):
     start_cooldown = 25
     
     # ----------- Lane Change Rules -----------
-    # self_config can be defined as a normal dict, 
+    # self_config can be defined as a normal dict,
     # to have type-hint, auto-completion use a setup like this:
     # When the rule is initialized, the values are copied to the instance
     
@@ -31,13 +31,13 @@ class RandomLaneChangeRule(Rule):
         
         random_right_lanechange_percentage : float = 0.1
         """
-        Adjust probability that in each timestep the actor will perform a left/right lane change, 
+        Adjust probability that in each timestep the actor will perform a left/right lane change,
         dependent on lane change availability.
         """
         
         random_left_lanechange_percentage: float = 0.1
         """
-        Adjust probability that in each timestep the actor will perform a left/right lane change, 
+        Adjust probability that in each timestep the actor will perform a left/right lane change,
         dependent on lane change availability.
         """
 

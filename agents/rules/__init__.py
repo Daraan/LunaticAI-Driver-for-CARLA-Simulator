@@ -42,7 +42,7 @@ def create_default_rules(gameframework: Optional["GameFramework"]=None, random_l
     
     #slow_towards_traffic_light = DriveSlowTowardsTrafficLight(gameframework=gameframework) # Blocking Rule
 
-    default_rules: list[Rule] = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, 
+    default_rules: list[Rule] = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule,
                            simple_overtake_rule, set_close_waypoint_when_done, config_based_rss_updates,]
     if random_lane_change:
         default_rules.append(RandomLaneChangeRule())
@@ -128,7 +128,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
                     # Alternatively could escape all interpolations as strings and recreate the interpolations afterwards,
                     # however, need to assume that all interpolation like stings are meant as interpolations.
                     from agents.tools.config_creation import LunaticAgentSettings
-                    parent : LunaticAgentSettings = OmegaConf.structured(LunaticAgentSettings(rules=[]), 
+                    parent : LunaticAgentSettings = OmegaConf.structured(LunaticAgentSettings(rules=[]),
                                                                          flags={"allow_objects": True})
                     for key in parent.live_info.keys():
                         if key == "executed_direction":

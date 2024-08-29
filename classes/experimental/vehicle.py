@@ -1,7 +1,7 @@
 import math
 import time
 from cmath import sqrt
-from typing import List
+from typing import ClassVar, List
 
 import carla
 from carla import Vector3D
@@ -18,7 +18,7 @@ def calculateDistance(location1, location2):
 
 
 class VehicleBase:
-    instances: list = []  # for easier destruction later
+    instances: ClassVar[list] = []  # for easier destruction later
     actor : carla.Vehicle
 
     def __init__(self, world: carla.World, make=""):

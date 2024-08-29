@@ -6,7 +6,8 @@ import pygame
 from carla import ColorConverter as cc
 
 from typing import TYPE_CHECKING, ClassVar, List, Optional, cast
-from typing_extensions import NoReturn, Self
+from typing_extensions import Self
+from typing import NoReturn
 from threading import Event, Thread
 
 from agents.tools.hints import CameraBlueprint
@@ -66,8 +67,8 @@ class CameraManager(CustomSensorInterface):
 
     default_blueprints: ClassVar[List[CameraBlueprint]] = list(CameraBlueprints.values())
 
-    def __init__(self, 
-                 parent_actor: carla.Actor, 
+    def __init__(self,
+                 parent_actor: carla.Actor,
                  hud : "HUD",
                  args: "LaunchConfig",
                  sensors:Optional[List[CameraBlueprint]]=CameraBlueprintsSimple,
@@ -93,7 +94,7 @@ class CameraManager(CustomSensorInterface):
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
         
-        from carla import AttachmentType # noqa
+        from carla import AttachmentType
         # Maybe use args.camera.camera_blueprints
         self._camera_transforms = [
             (carla.Transform(carla.Location(x=-2.0 * bound_x, y=+0.0 * bound_y, z=2.0 * bound_z),
@@ -106,7 +107,7 @@ class CameraManager(CustomSensorInterface):
             (carla.Transform(carla.Location(x=-2.8 * bound_x, y=+0.0 * bound_y, z=4.6 * bound_z),
                              carla.Rotation(pitch=6.0)),
                 AttachmentType.SpringArmGhost),
-            (carla.Transform(carla.Location(x=-1.0, y=-1.0 * bound_y, z=0.4 * bound_z)), 
+            (carla.Transform(carla.Location(x=-1.0, y=-1.0 * bound_y, z=0.4 * bound_z)),
                 AttachmentType.Rigid)
         ]
 
@@ -218,11 +219,11 @@ class CameraManager(CustomSensorInterface):
         self.current_frame = image.frame
      
     _spectator_thread : Thread
-    """Thread for the spectator to follow the ego vehicle.""" 
+    """Thread for the spectator to follow the ego vehicle."""
      
     @class_or_instance_method
-    def follow_actor(cls_or_self: "Self | type[Self]", 
-                     actor: Optional[carla.Actor]=None, 
+    def follow_actor(cls_or_self: "Self | type[Self]",
+                     actor: Optional[carla.Actor]=None,
                      updater=spectator_follow_actor):
         """
         Follows the actor with the spectator view.

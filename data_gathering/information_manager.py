@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from fnmatch import fnmatch
 from functools import wraps
-from typing import (ClassVar, TYPE_CHECKING, 
+from typing import (ClassVar, TYPE_CHECKING,
                     NamedTuple, Optional, Union, Dict, List, Callable, TypeVar, cast)
 from typing_extensions import Self, ParamSpec, Concatenate
 from cachetools import cached
@@ -59,7 +59,7 @@ class InformationManager:
     _relevant_traffic_light_location: carla.Location = None # type: ignore[assignment]
     """
     Note:
-        Is None if :py:attr:`relevant_traffic_light` is :code:`None` 
+        Is None if :py:attr:`relevant_traffic_light` is :code:`None`
         or :py:attr:`relevant_traffic_light_distance` is :python:`float('inf')`
     """
     
@@ -102,7 +102,7 @@ class InformationManager:
         self._agent = agent
         self.live_info = agent.live_info
         
-        self._vehicle = agent._vehicle # maybe use a property # noqa # pyright: ignore[reportPrivateUsage]
+        self._vehicle = agent._vehicle # maybe use a property # pyright: ignore[reportPrivateUsage]
         
         # Share the dict
         if getattr(agent, "current_states", None) is not None:
@@ -174,14 +174,16 @@ class InformationManager:
         self._agent._current_waypoint.lane_id # positive or negative   # noqa # pyright: ignore[reportPrivateUsage]
         # TODO: How detect if the heading is against this direction?
         # Need to also account for reverse state.
-        NotImplemented
+        ...
+        # NotImplemented
     
     @_check_state(AgentState.OVERTAKING)
     def detect_overtaking_state(self):
         """
         :meta private:
         """
-        NotImplemented # Can probably not be done easily, and must be done from outside
+        ...
+        #NotImplemented # Can probably not be done easily, and must be done from outside
     
     def check_states(self):
         """
@@ -213,7 +215,7 @@ class InformationManager:
         """
         Set the :py:attr:`relevant_traffic_light` and :py:attr:`relevant_traffic_light_distance` if not set.
         
-        Note: 
+        Note:
             Does not check for planned path but current route along waypoints, might not be exact.
             
             **This function is automatically called in :py:meth:`tick`**
@@ -225,7 +227,7 @@ class InformationManager:
         
         # Search for a traffic light if none is given or if the distance to the current one increased
         # 1% tolerance to prevent permanent updates when far away from a traffic light
-        if not self.relevant_traffic_light or tlight_distance > self.relevant_traffic_light_distance * 1.01: 
+        if not self.relevant_traffic_light or tlight_distance > self.relevant_traffic_light_distance * 1.01:
             # Update if the distance increased, and we might need to target another one; # TODO: This might be circumvented by passing and intersection
             if self.relevant_traffic_light and tlight_distance > self.relevant_traffic_light_distance * 1.01:
                 logger.debug("Traffic light distance increased %s, did slow update.", self.relevant_traffic_light_distance)
@@ -259,7 +261,7 @@ class InformationManager:
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)  # pyright: ignore[reportAttributeAccessIssue]
         self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not cleaned # noqa: E501 # type: ignore
         # Only exact waypoint. TODO: update in agent
-        # Comment should be visible in traceback. 
+        # Comment should be visible in traceback.
         current_waypoint = cast(carla.Waypoint, CarlaDataProvider.get_map().get_waypoint(_current_loc)) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet. # noqa: E501 # pyright: ignore[reportCallIssue, reportArgumentType]
         
         # Traffic Light
@@ -272,7 +274,7 @@ class InformationManager:
         self.distances: Dict[carla.Actor, float] = {}
         
         @cached(cache=self.distances)
-        def dist(v : carla.Actor): 
+        def dist(v : carla.Actor):
             if not v.is_alive:
                 logger.warning("Actor is not alive - this should not happen.")
                 return _v_filter_dist # filter out
@@ -322,7 +324,7 @@ class InformationManager:
             current_speed= self.live_info.current_speed,
             current_states= self.state_counter,
             
-            relevant_traffic_light=self.relevant_traffic_light, 
+            relevant_traffic_light=self.relevant_traffic_light,
             relevant_traffic_light_distance=self.relevant_traffic_light_distance,
             
             vehicles= self.vehicles,
@@ -374,7 +376,7 @@ class InformationManager:
     OBSTACLE_FILTER : str  = "static.prop.[cistmw]*"
     """
     fnmatch for obstacles that the agent will consider in its path.
-    https://carla.readthedocs.io/en/latest/bp_library/#static 
+    https://carla.readthedocs.io/en/latest/bp_library/#static
     """
     
     @staticmethod
@@ -406,7 +408,7 @@ class InformationManager:
             - :py:attr:`frame`
         
         Parameters:
-            frame: The id of the current frame. If None retrieves the id from the current 
+            frame: The id of the current frame. If None retrieves the id from the current
                 :py:class:`carla.WorldSnapshot`. Multiple calls with the same frame are ignored.
                 (default: None)
         """
@@ -434,8 +436,8 @@ class InformationManager:
             try:
                 actor = CarlaDataProvider._carla_actor_pool[actor_id]  # might be deleted in parallel
                 if actor is None or not actor.is_alive:  # pyright: ignore[reportUnnecessaryComparison]
-                    logger.debug("Detected dead actor in the pool. %s", (actor.id, 
-                                                                         actor.type_id, 
+                    logger.debug("Detected dead actor in the pool. %s", (actor.id,
+                                                                         actor.type_id,
                                                                          actor.attributes))  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
                     del CarlaDataProvider._carla_actor_pool[actor_id]
                     continue

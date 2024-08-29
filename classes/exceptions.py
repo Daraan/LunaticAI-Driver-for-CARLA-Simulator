@@ -22,7 +22,7 @@ __all__ = [
 class UserInterruption(Exception):
     """
     Terminate the loop if user input is detected.
-    Allows the scenario runner and Leaderboard_ to exit gracefully, if 
+    Allows the scenario runner and Leaderboard_ to exit gracefully, if
     handled appropriately, e.g. by directly returning.
 
     Thrown by :py:meth:`LunaticAgent.parse_keyboard_input <agents.lunatic_agent.LunaticAgent.parse_keyboard_input>`.
@@ -52,7 +52,7 @@ class ContinueLoopException(LunaticAgentException):
 
     Note:
         Handled in :py:meth:`.LunaticAgent.run_step`, this exception should not propagate outside.
-        It can be caught by :py:class:`.GameFramework` and skip the current loop and not apply any controls, 
+        It can be caught by :py:class:`.GameFramework` and skip the current loop and not apply any controls,
         an error will be logged.
     """
 

@@ -33,7 +33,7 @@ def if_config(config_path, value):
     func = partial(_if_config_checker, config_path=config_path, value=value)
     func = update_wrapper(func, _if_config_checker)
     return ConditionFunction(func,
-                              name=f"Checks if {config_path} is {value}", 
+                              name=f"Checks if {config_path} is {value}",
                               use_self=False #NOTE: Has to be used as _if_config_checker has > 1 argument and no self usage.
                               )
 
@@ -51,7 +51,7 @@ def set_default_intersection_speed(ctx : "Context"):
     target_speed = min([
             ctx.config.speed.max_speed,
             ctx.config.live_info.current_speed_limit - ctx.config.speed.intersection_speed_decrease]
-            ) 
+            )
     # NOTE: could interpolate this in omega conf
     ctx.agent.config.speed.target_speed = target_speed
 
@@ -70,7 +70,7 @@ class SlowDownAtIntersectionRule(Rule):
 
 def set_default_speed(ctx : "Context"):
     """
-    Speed to apply when the car drives under normal circumstances, 
+    Speed to apply when the car drives under normal circumstances,
     i.e. no junctions, no obstacles, etc. detected.
     """
     # Read from config
@@ -82,7 +82,7 @@ def set_default_speed(ctx : "Context"):
 
 class NormalSpeedRule(Rule):
     """
-    Speed to apply when the car drives under normal circumstances, 
+    Speed to apply when the car drives under normal circumstances,
     i.e. no junctions, no obstacles, etc. detected.
     """
     phases = Phase.TAKE_NORMAL_STEP | Phase.BEGIN # type: ignore[assignment]
@@ -134,7 +134,7 @@ def set_next_waypoint_nearby(ctx : "Context"):
     ctx.agent.set_destination(destination)
     
 class SetNextWaypointNearby(Rule):
-    "Sets random waypoint when done to a nearby point ahead" 
+    "Sets random waypoint when done to a nearby point ahead"
     phases = Phase.DONE | Phase.BEGIN  # type: ignore[assignment]
     condition = is_agent_done
     action = set_next_waypoint_nearby
@@ -180,7 +180,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     
     x = ConfigBasedRSSUpdates()
     assert x.description == ConfigBasedRSSUpdates.__doc__
-    if not x.description == """Always accept RSS updates if :any:`rss.always_accept_update <LunaticAgentSettings.rss>` is set to True in the config.""":
+    if x.description != "Always accept RSS updates if :any:`rss.always_accept_update <LunaticAgentSettings.rss>` is set to True in the config.":
         print("Warning: Description not set correctly")
     
     test = AlwaysAcceptRSSUpdates()
@@ -250,7 +250,7 @@ if __name__ == "__main__" or DEBUG_RULES:
         condition = context_method
         
         @staticmethod
-        def action(ctx : Context): 
+        def action(ctx : Context):
             _check_type(ctx, Context)
             ctx.control.reverse = True   # type: ignore[arg-type]
     
@@ -268,7 +268,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     class SimpleRuleB(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN # type: ignore[assignment]
         condition = eval_context_method.copy()
-        condition.register_action(ctx_action) 
+        condition.register_action(ctx_action)
 
 
     class DebugRuleWithEval(Rule):
@@ -314,7 +314,7 @@ if __name__ == "__main__" or DEBUG_RULES:
             return 1.0
             
     if TYPE_CHECKING:
-        from typing import cast  # noqa
+        from typing import cast
         c = cast(Context, None)
         res_eval_context_func = eval_context_function(c)
         res_eval_context_method = eval_context_method(c)
@@ -327,7 +327,7 @@ if __name__ == "__main__" or DEBUG_RULES:
         result2 = rule(c)
         a_result = rule.true_action(c)
         assert_type(a_result, float)
-        rule.true_action(c) 
+        rule.true_action(c)
         o_rule = cast(Rule, rule)
         assert_type(DebugRuleWithEval2.true_action(rule, c), float)
 
@@ -343,9 +343,9 @@ if __name__ == "__main__" or DEBUG_RULES:
     
     a = Another()
     
-    class CustomInitRule(Rule):        
+    class CustomInitRule(Rule):
         def __init__(self, phases:Optional[Phase]=None):
-            # NOTE: The 
+            # NOTE: The
             super().__init__(phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, condition=always_execute, action=lambda ctx: _check_type(ctx, Context))
             self._custom = True
         
@@ -373,7 +373,7 @@ if __name__ == "__main__" or DEBUG_RULES:
     
     def _test_custom_init_Rule():
         """Suppress warning message when creating this invalid case"""
-        from contextlib import redirect_stderr  # noqa
+        from contextlib import redirect_stderr
         import io, sys, re  # noqa
         alt_out = io.StringIO()
         # suppress expected message
@@ -403,7 +403,7 @@ if __name__ == "__main__" or DEBUG_RULES:
         
     assert CheckDescription.description == """This is my description"""
     cd_rule = CheckDescription(Phase.END, # type: ignore[reportCallIssue]
-                               action=lambda ctx: _check_type(ctx, Context), 
+                               action=lambda ctx: _check_type(ctx, Context),
                                condition=lambda self, ctx: (_check_type(self, Rule)))
     #print(cd_rule.phases)
     phase = list(cd_rule.phases).pop() # does not work with frozenset

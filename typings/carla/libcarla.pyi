@@ -1,6 +1,6 @@
 from enum import Enum, Flag, IntFlag
 import sys
-from typing import (Callable, Generic, Iterable, Iterator, Sequence, Union, Optional, overload, 
+from typing import (Callable, Generic, Iterable, Iterator, Sequence, Union, Optional, overload,
                     Any, TypeVar, type_check_only)
 
 from . import command
@@ -32,12 +32,12 @@ else:
 __SensorData = TypeVar("__SensorData", bound=SensorData)
 """Generic that allows subclassing."""
 
-__Actor = TypeVar("__Actor", bound=Actor, default=Actor)  # noqa: F405
+__Actor = TypeVar("__Actor", bound=Actor, default=Actor)
 
 @type_check_only
 class __CarlaEnum(Enum):
     """
-    CARLA's Enums have a `values` and `names` attribute that are not part of the python `enum.Enum` 
+    CARLA's Enums have a `values` and `names` attribute that are not part of the python `enum.Enum`
     class. This abstract stub class adds these attributes.
     """
         
@@ -45,11 +45,11 @@ class __CarlaEnum(Enum):
     names  : dict[str, Self]
     
     def __init_subclass__(cls):
-        cls.values : dict[int, cls]
-        cls.names  : dict[str, cls]
+        cls.values : dict[int, cls]  # noqa: B032
+        cls.names  : dict[str, cls]  # noqa: B032
          
 
-class AckermannControllerSettings():
+class AckermannControllerSettings:
     """Manages the settings of the Ackermann PID controller."""
 
     # region Instance Variables
@@ -105,7 +105,7 @@ class AckermannControllerSettings():
     # endregion
 
 
-class Actor():
+class Actor:
     """CARLA defines actors as anything that plays a role in the simulation or can be moved around.
 
     That includes: pedestrians, vehicles, sensors and traffic signs (considering traffic lights as part of these). Actors are spawned in the simulation by `carla.World` and they need for a `carla.ActorBlueprint` to be created. These blueprints belong into a library provided by CARLA, find more about them here.
@@ -242,7 +242,7 @@ class Actor():
 
     # region Getters
     def get_acceleration(self) -> Vector3D:
-        """Returns the actor's 3D acceleration vector the client received during last tick. 
+        """Returns the actor's 3D acceleration vector the client received during last tick.
 
         The method does not call the simulator.
 
@@ -262,7 +262,7 @@ class Actor():
         ...
 
     def get_location(self) -> Location:
-        """Returns the actor's location the client received during last tick. 
+        """Returns the actor's location the client received during last tick.
 
         The method does not call the simulator.
 
@@ -367,7 +367,7 @@ class Actor():
     # endregion
 
 
-class ActorAttribute():
+class ActorAttribute:
     """CARLA provides a library of blueprints for actors that can be accessed as `carla.BlueprintLibrary`. Each of these blueprints has a series of attributes defined internally. Some of these are modifiable, others are not. A list of recommended values is provided for those that can be set.
     """
 
@@ -432,7 +432,7 @@ class ActorAttributeType(int, __CarlaEnum):
     # endregion
 
 
-class ActorBlueprint():
+class ActorBlueprint:
     """CARLA provides a blueprint library for actors that can be consulted through `carla.BlueprintLibrary`. Each of these consists of an identifier for the blueprint and a series of attributes that may be modifiable or not. This class is the intermediate step between the library and the actor creation. Actors need an actor blueprint to be spawned. These store the information for said blueprint in an object with its attributes and some tags to categorize them. The user can then customize some attributes and eventually spawn the actors through `carla.World`.
     """
 
@@ -576,7 +576,7 @@ class ActorList(Generic[__Actor]):
     # endregion
 
 
-class ActorSnapshot():
+class ActorSnapshot:
     """
     A class that comprises all the information for an actor at a certain moment in time.
     These objects are contained in a `carla.WorldSnapshot` and sent to the client once every tick.
@@ -638,51 +638,51 @@ class ActorState(int, __CarlaEnum):
 
 class AttachmentType(int, __CarlaEnum):
     """
-    Class that defines attachment options between an actor and its parent. 
-    When spawning actors, these can be attached to another actor so their 
-    position changes accordingly. This is specially useful for sensors. 
-    The snippet in `carla.World.spawn_actor` shows some sensors being 
+    Class that defines attachment options between an actor and its parent.
+    When spawning actors, these can be attached to another actor so their
+    position changes accordingly. This is specially useful for sensors.
+    The snippet in `carla.World.spawn_actor` shows some sensors being
     attached to a car when spawned.
 
     + Note that the attachment type is declared as an enum within the class."""
 
     # region Instance Variables
     Rigid = 0
-    """With this fixed attachment the object follow its parent position strictly. 
+    """With this fixed attachment the object follow its parent position strictly.
     This is the recommended attachment to retrieve precise data from the simulation."""
     
     SpringArm = 1
     """
-    An attachment that expands or retracts the position of the actor, 
-    depending on its parent. This attachment is only recommended to record 
-    videos from the simulation where a smooth movement is needed. SpringArms 
-    are an Unreal Engine component so check the UE docs to learn more about 
+    An attachment that expands or retracts the position of the actor,
+    depending on its parent. This attachment is only recommended to record
+    videos from the simulation where a smooth movement is needed. SpringArms
+    are an Unreal Engine component so check the UE docs to learn more about
     them.
 
     https://docs.unrealengine.com/5.3/en-US/using-spring-arm-components-in-unreal-engine/
 
-    + Warning: The `SpringArm` attachment presents weird behaviors when an 
+    + Warning: The `SpringArm` attachment presents weird behaviors when an
     actor is spawned with a relative translation in the Z-axis (e.g. `child_location = Location(0,0,2)`).
     """
 
     SpringArmGhost = 2
     """
-    An attachment like the previous one but that does not make the collision test, 
-    and that means that it does not expands or retracts the position of the actor. 
-    The term ghost is because then the camera can cross walls and other geometries. 
-    This attachment is only recommended to record videos from the simulation where 
-    a smooth movement is needed. SpringArms are an Unreal Engine component so 
+    An attachment like the previous one but that does not make the collision test,
+    and that means that it does not expands or retracts the position of the actor.
+    The term ghost is because then the camera can cross walls and other geometries.
+    This attachment is only recommended to record videos from the simulation where
+    a smooth movement is needed. SpringArms are an Unreal Engine component so
     check the UE docs to learn more about them.
 
     https://docs.unrealengine.com/5.3/en-US/using-spring-arm-components-in-unreal-engine/
 
-    + Warning: The `SpringArm` attachment presents weird behaviors when an actor is 
+    + Warning: The `SpringArm` attachment presents weird behaviors when an actor is
     spawned with a relative translation in the Z-axis (e.g. `child_location = Location(0,0,2)`).
     """
     # endregion
 
 
-class BlueprintLibrary():
+class BlueprintLibrary:
     """A class that contains the blueprints provided for actor spawning. Its main application is to return `carla.ActorBlueprint` objects needed to spawn actors. Each blueprint has an identifier and attributes that may or may not be modifiable. The library is automatically created by the server and can be accessed through `carla.World`.
 
     Here is a reference containing every available blueprint and its specifics.
@@ -738,7 +738,7 @@ class BlueprintLibrary():
     # endregion
 
 
-class BoundingBox():
+class BoundingBox:
     """Bounding boxes contain the geometry of an actor or an element in the scene. They can be used by `carla.DebugHelper` or a `carla.Client` to draw their shapes for debugging. Check out the snippet in `carla.DebugHelper.draw_box` where a snapshot of the world is used to draw bounding boxes for traffic lights.
     """
 
@@ -795,7 +795,7 @@ class BoundingBox():
         """Returns a list containing the locations of this object's vertices in world space.
 
         Args:
-            `transform (Transform)`: Contains location and rotation needed to convert this 
+            `transform (Transform)`: Contains location and rotation needed to convert this
                 object's local space to world space.\n
         """
         ...
@@ -815,8 +815,8 @@ class BoundingBox():
 
 class CityObjectLabel(int, __CarlaEnum):
     """
-    Enum declaration that contains the different tags available to filter the bounding boxes 
-    returned by carla.World.get_level_bbs(). 
+    Enum declaration that contains the different tags available to filter the bounding boxes
+    returned by carla.World.get_level_bbs().
     These values correspond to the semantic tag that the elements in the scene have.
     """
     NONE = 0
@@ -851,7 +851,7 @@ class CityObjectLabel(int, __CarlaEnum):
     Any = 255
 
 
-class Client():
+class Client:
     """The Client connects CARLA to the server which runs the simulation. Both server and client contain a CARLA library (libcarla) with some differences that allow communication between them. Many clients can be created and each of these will connect to the RPC server inside the simulation to send commands. The simulation runs server-side. Once the connection is established, the client will only receive data retrieved from the simulation. Walkers are the exception. The client is in charge of managing pedestrians so, if you are running a simulation with multiple clients, some issues may arise. For example, if you spawn walkers through different clients, collisions may happen, as each client is only aware of the ones it is in charge of.
 
     The client also has a recording feature that saves all the information of a simulation while running it. This allows the server to replay it at will to obtain information and experiment with it. Here is some information about how to use this recorder.
@@ -895,9 +895,9 @@ class Client():
             `list[command.Response]`\n
         """
 
-    def generate_opendrive_world(self, 
-                                 opendrive: str, 
-                                 parameters: OpendriveGenerationParameters = OpendriveGenerationParameters(2.0, 50.0, 1.0, 0.6, True, True),  # noqa: F821, F405
+    def generate_opendrive_world(self,
+                                 opendrive: str,
+                                 parameters: OpendriveGenerationParameters = OpendriveGenerationParameters(2.0, 50.0, 1.0, 0.6, True, True),
                                  reset_settings=True):
         """Loads a new world with a basic 3D topology generated from the content of an OpenDRIVE file. This content is passed as a `string` parameter. It is similar to `client.load_world(map_name)` but allows for custom OpenDRIVE maps in server side. Cars can drive around the map, but there are no graphics besides the road and sidewalks.
 
@@ -907,7 +907,7 @@ class Client():
             `reset_settings (bool, optional)`: Option to reset the episode setting to default values, set to false to keep the current settings. This is useful to keep sync mode when changing map and to keep deterministic scenarios. Defaults to True.\n
         """
 
-    def load_world(self, map_name: str, reset_settings=True, map_layers=MapLayer.All) -> World:  # noqa: F821, F405
+    def load_world(self, map_name: str, reset_settings=True, map_layers=MapLayer.All) -> World:
         """Creates a new world with default settings using `map_name` map. All actors in the current world will be destroyed.
 
         + Warning: `map_layers` are only available for "Opt" maps
@@ -934,19 +934,19 @@ class Client():
             `World`\n
         """
         
-    def load_world_if_different(self, map_name: str, reset_settings=True, map_layers=MapLayer.All):  # noqa: F821, F405
+    def load_world_if_different(self, map_name: str, reset_settings=True, map_layers=MapLayer.All):
         """"
-        Creates a new world with default settings using `map_name` map only if it is a different map 
+        Creates a new world with default settings using `map_name` map only if it is a different map
         from the currently loaded map.
         Otherwise this function returns `None`. All actors in the current world will be destroyed.
 
         Args:
-            `map_name (str)`: Name of the map to be used in this world. Accepts both full paths and map names, 
+            `map_name (str)`: Name of the map to be used in this world. Accepts both full paths and map names,
                     e.g.'/Game/Carla/Maps/Town01' or 'Town01'. Remember that these paths are dynamic.\n
             `reset_settings (bool, optional)`: Option to reset the episode setting to default values, set to false to keep the current settings.
-                    This is useful to keep sync mode when changing map and to keep deterministic scenarios. 
+                    This is useful to keep sync mode when changing map and to keep deterministic scenarios.
                     Defaults to True.\n
-            `map_layers (MapLayer, optional)`: Layers of the map that will be loaded. This parameter works like a flag mask. 
+            `map_layers (MapLayer, optional)`: Layers of the map that will be loaded. This parameter works like a flag mask.
                     Defaults to MapLayer.All.\n
 
         Returns:
@@ -1029,7 +1029,7 @@ class Client():
 
     # region Getters
     def get_available_maps(self) -> list[str]:
-        """Returns a list of strings containing the paths of the maps available on server. These paths are dynamic, they will be created during the simulation and so you will not find them when looking up in your files. One of the possible returns for this method would be: 
+        """Returns a list of strings containing the paths of the maps available on server. These paths are dynamic, they will be created during the simulation and so you will not find them when looking up in your files. One of the possible returns for this method would be:
 
         >>> ['/Game/Carla/Maps/Town01', '/Game/Carla/Maps/Town02', '/Game/Carla/Maps/Town03', '/Game/Carla/Maps/Town04', '/Game/Carla/Maps/Town05', '/Game/Carla/Maps/Town06', '/Game/Carla/Maps/Town07']
         """
@@ -1119,7 +1119,7 @@ class CollisionEvent(SensorData):
     # endregion
 
 
-class Color():
+class Color:
     """Class that defines a 32-bit RGBA color."""
 
     # region Instance Variables
@@ -1169,10 +1169,10 @@ class Color():
 
 class ColorConverter(int, __CarlaEnum):
     """
-    Class that defines conversion patterns that can be applied to a `carla.Image` in order to show 
-    information provided by `carla.Sensor`. Depth conversions cause a loss of accuracy, as sensors 
+    Class that defines conversion patterns that can be applied to a `carla.Image` in order to show
+    information provided by `carla.Sensor`. Depth conversions cause a loss of accuracy, as sensors
     detect depth as float that is then converted to a grayscale value between 0 and 255. Take a look
-    at the snippet in `carla.Sensor.listen` to see an example of how to create and save image data 
+    at the snippet in `carla.Sensor.listen` to see an example of how to create and save image data
     for `sensor.camera.semantic_segmentation`.
     """
 
@@ -1188,7 +1188,7 @@ class ColorConverter(int, __CarlaEnum):
     # endregion
 
 
-class DVSEvent():
+class DVSEvent:
     """Class that defines a DVS event. An event is a quadruple, so a tuple of 4 elements, with `x`, `y` pixel coordinate location, timestamp `t` and polarity `pol` of the event. Learn more about them here.
 
     https://carla.readthedocs.io/en/latest/ref_sensors/
@@ -1214,7 +1214,7 @@ class DVSEvent():
     # endregion
 
 
-class DVSEventArray():
+class DVSEventArray:
     """
     Class that defines a stream of events in `carla.DVSEvent`. Such stream is an array of arbitrary
     size depending on the number of events. This class also stores the field of view, the height and
@@ -1269,10 +1269,10 @@ class DVSEventArray():
     # endregion
 
 
-class DebugHelper():
+class DebugHelper:
     """
-    Helper class part of `carla.World` that defines methods for creating debug shapes. By default, 
-    shapes last one second. They can be permanent, but take into account the resources needed to do 
+    Helper class part of `carla.World` that defines methods for creating debug shapes. By default,
+    shapes last one second. They can be permanent, but take into account the resources needed to do
     so. Take a look at the snippets available for this class to learn how to debug easily in CARLA.
     """
 
@@ -1394,7 +1394,7 @@ class DebugHelper():
     # endregion
 
 
-class EnvironmentObject():
+class EnvironmentObject:
     """Class that represents a geometry in the level, this geometry could be part of an actor formed with other EnvironmentObjects (i.e.: buildings)."""
 
     # region Instance Variables
@@ -1431,7 +1431,7 @@ class EnvironmentObject():
     # endregion
 
 
-class FloatColor():
+class FloatColor:
     """Class that defines a float RGBA color."""
 
     # region Instance Variables
@@ -1530,7 +1530,7 @@ class GBufferTextureID(int, __CarlaEnum):
     # endregion
 
 
-class GearPhysicsControl():
+class GearPhysicsControl:
     """Class that provides access to vehicle transmission details by defining a gear and when to run on it. This will be later used by `carla.VehiclePhysicsControl` to help simulate physics.
     """
 
@@ -1568,7 +1568,7 @@ class GearPhysicsControl():
     # endregion
 
 
-class GeoLocation():
+class GeoLocation:
     """Class that contains geographical coordinates simulated data. The `carla.Map` can convert simulation locations by using the tag in the OpenDRIVE file."""
 
     # region Instance Variables
@@ -1714,7 +1714,7 @@ class Image(SensorData):
     # endregion
 
 
-class Junction():
+class Junction:
     """Class that embodies the intersections on the road described in the OpenDRIVE file according to OpenDRIVE 1.4 standards."""
 
     # region Instance Variables
@@ -1742,7 +1742,7 @@ class Junction():
     # endregion
 
 
-class LabelledPoint():
+class LabelledPoint:
     """Class that represent a position in space with a semantic label."""
 
     # region Instance Variables
@@ -1758,7 +1758,7 @@ class LabelledPoint():
     # endregion
 
 
-class Landmark():
+class Landmark:
     """Class that defines any type of traffic landmark or sign affecting a road. These class mediates between the OpenDRIVE 1.4 standard definition of the landmarks and their representation in the simulation. This class retrieves all the information defining a landmark in OpenDRIVE and facilitates information about which lanes does it affect and when. Landmarks will be accessed by `carla.Waypoint objects` trying to retrieve the regulation of their lane. Therefore some attributes depend on the waypoint that is consulting the landmark and so, creating the object."""
 
     # region Instance Variables
@@ -1868,7 +1868,7 @@ class Landmark():
 
     # region Getters
     def get_lane_validities(self) -> list[tuple[int, int]]:
-        """Returns which lanes the landmark is affecting to. As there may be specific lanes where the landmark is not effective, the return is a list of pairs containing ranges of the `lane_id` affected: 
+        """Returns which lanes the landmark is affecting to. As there may be specific lanes where the landmark is not effective, the return is a list of pairs containing ranges of the `lane_id` affected:
 
         Example: In a road with 5 lanes, being 3 not affected: [(from_lane1,to_lane2),(from_lane4,to_lane5)]."""
     # endregion
@@ -1967,7 +1967,7 @@ class LaneInvasionEvent(SensorData):
     # endregion
 
 
-class LaneMarking():
+class LaneMarking:
     """Class that gathers all the information regarding a lane marking according to OpenDRIVE 1.4 standard standard."""
 
     # region Instance Variables
@@ -2027,8 +2027,8 @@ class LaneMarkingType(int, __CarlaEnum):
 
 class LaneType(IntFlag, __CarlaEnum):
     """
-    Class that defines the possible lane types accepted by OpenDRIVE 1.4. 
-    This standards define the road information. The snippet in `carla.Map.get_waypoint` 
+    Class that defines the possible lane types accepted by OpenDRIVE 1.4.
+    This standards define the road information. The snippet in `carla.Map.get_waypoint`
     makes use of a waypoint to get the current and adjacent lane types.
     """
 
@@ -2059,7 +2059,7 @@ class LaneType(IntFlag, __CarlaEnum):
     # endregion
 
 
-class LidarDetection():
+class LidarDetection:
     """Data contained inside a `carla.LidarMeasurement`. Each of these represents one of the points in the cloud with its location and its associated intensity."""
     # region Instance Variables
     @property
@@ -2125,7 +2125,7 @@ class LidarMeasurement(SensorData):
     # endregion
 
 
-class Light():
+class Light:
     """This class exposes the lights that exist in the scene, except for vehicle lights. The properties of a light can be queried and changed at will. Lights are automatically turned on when the simulator enters night mode (sun altitude is below zero)."""
 
     # region Instance Variables
@@ -2218,7 +2218,7 @@ class LightGroup(int, __CarlaEnum):
     Other = 4
 
 
-class LightManager():
+class LightManager:
     """This class handles the lights in the scene. Its main use is to get and set the state of groups or lists of lights in one call. An instance of this class can be retrieved by the `carla.World.get_lightmanager()`.
 
     + Note. So far, though there is a `vehicle` group, vehicle lights are not available as `carla.Light` objects. These have to be managed using `carla.Vehicle` and `carla.VehicleLightState`.
@@ -2404,7 +2404,7 @@ class LightManager():
     # endregion
 
 
-class LightState():
+class LightState:
     """This class represents all the light variables except the identifier and the location, which are should to be static. Using this class allows to manage all the parametrization of the light in one call.
     """
 
@@ -2512,7 +2512,7 @@ class Location(Vector3D):
     pass
 
 
-class Map():
+class Map:
     """Class containing the road information and waypoint managing. Data is retrieved from an OpenDRIVE file that describes the road. A query system is defined which works hand in hand with `carla.Waypoint` to translate geometrical information from the .xodr to natural world points. CARLA is currently working with OpenDRIVE 1.4 standard."""
 
     # region Instance Variables
@@ -2616,7 +2616,7 @@ class Map():
         ...
 
     def get_topology(self) -> list[tuple[Waypoint, Waypoint]]:
-        """Returns a list of tuples describing a minimal graph of the topology of the OpenDRIVE file. The tuples contain pairs of waypoints located either at the point a road begins or ends. The first one is the origin and the second one represents another road end that can be reached. This graph can be loaded into NetworkX to work with. 
+        """Returns a list of tuples describing a minimal graph of the topology of the OpenDRIVE file. The tuples contain pairs of waypoints located either at the point a road begins or ends. The first one is the origin and the second one represents another road end that can be reached. This graph can be loaded into NetworkX to work with.
 
         Output could look like this: `[(w0, w1), (w0, w2), (w1, w3), (w2, w3), (w0, w4)]`.
         """
@@ -2714,7 +2714,7 @@ class ObstacleDetectionEvent(SensorData):
     # endregion
 
 
-class OpendriveGenerationParameters():
+class OpendriveGenerationParameters:
     """This class defines the parameters used when generating a world using an OpenDRIVE file."""
     # region Instance Variables
     @property
@@ -2753,11 +2753,11 @@ class OpendriveGenerationParameters():
         ...
     # endregion
     
-    # region Methods    
-    def __init__(self, vertex_distance: float =2.0, 
-                 max_road_length:float = 50.0, 
-                 wall_height:float = 1.0, 
-                 additional_width: float=0.6, 
+    # region Methods
+    def __init__(self, vertex_distance: float =2.0,
+                 max_road_length:float = 50.0,
+                 wall_height:float = 1.0,
+                 additional_width: float=0.6,
                  smooth_junctions: bool =True,
                  enable_mesh_visibility: bool=True,
                  enable_pedestrian_navigation: bool=True):
@@ -2806,7 +2806,7 @@ class OpticalFlowImage(SensorData):
     # endregion
 
 
-class OpticalFlowPixel():
+class OpticalFlowPixel:
     """Class that defines a 2 dimensional vector representing an optical flow pixel."""
 
     # region Instance Variables
@@ -2838,7 +2838,7 @@ class OpticalFlowPixel():
     # endregion
 
 
-class Osm2Odr():
+class Osm2Odr:
     """Class that converts an OpenStreetMap map to OpenDRIVE format, so that it can be loaded in CARLA. Find out more about this feature in the docs.
 
     https://carla.readthedocs.io/en/latest/tuto_G_openstreetmap/
@@ -2858,7 +2858,7 @@ class Osm2Odr():
     # endregion
 
 
-class Osm2OdrSettings():
+class Osm2OdrSettings:
     """Helper class that contains the parameterization that will be used by carla.Osm2Odr to convert an OpenStreetMap map to OpenDRIVE format. Find out more about this feature in the docs.
 
     https://carla.readthedocs.io/en/latest/tuto_G_openstreetmap/
@@ -2933,7 +2933,7 @@ class Osm2OdrSettings():
     # endregion
 
 
-class RadarDetection():
+class RadarDetection:
     """Data contained inside a `carla.RadarMeasurement`. Each of these represents one of the points in the cloud that a `sensor.other.radar` registers and contains the distance, angle and velocity in relation to the radar."""
 
     # region Instance Variables
@@ -2993,7 +2993,7 @@ class RadarMeasurement(SensorData):
     # endregion
 
 
-class Rotation():
+class Rotation:
     """Class that represents a 3D rotation and therefore, an orientation in space. CARLA uses the Unreal Engine coordinates system. This is a Z-up left-handed system.
 
     The constructor method follows a specific order of declaration: `(pitch, yaw, roll)`, which corresponds to `(Y-rotation,Z-rotation,X-rotation)`.
@@ -3065,7 +3065,7 @@ class Rotation():
     def __str__(self) -> str: ...
     # endregion
 
-class RssActorConstellationData():
+class RssActorConstellationData:
     """
     Data structure that is provided within the callback registered by RssSensor.register_actor_constellation_callback().
     """
@@ -3075,7 +3075,7 @@ class RssActorConstellationData():
     def ego_match_object(self) -> "ad.map.match.Object":
         """The ego map matched information."""
         
-    @property                                                                                                                                                                                              
+    @property
     def ego_route(self) -> "ad.map.route.FullRoute":
         """The ego route."""
     
@@ -3090,19 +3090,19 @@ class RssActorConstellationData():
     @property
     def other_actor(self) -> Actor | None:
         """
-        The other actor. 
+        The other actor.
         This is 'None' in case of query of default parameters or artificial objects of kind [ad.rss.world.ObjectType.ArtificialObject](https://intel.github.io/ad-rss-lib/doxygen/ad_rss/namespacead_1_1rss_1_1world.html#a6432f1ef8d0657b4f21ed5966aca1625)
-        with no dedicated 'carla.Actor' (as e.g. for the road boundaries at the moment; see RssSensor). 
+        with no dedicated 'carla.Actor' (as e.g. for the road boundaries at the moment; see RssSensor).
         """
         
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
     
-class RssActorConstellationResult():
+class RssActorConstellationResult:
     """
     Data structure that should be returned by the callback
-    registered by RssSensor.register_actor_constellation_callback(). 
+    registered by RssSensor.register_actor_constellation_callback().
     """
     
     # region Instance Variables
@@ -3156,10 +3156,10 @@ class RssActorConstellationResult():
     def __str__(self) -> str: ...
     # endregion
     
-class RssEgoDynamicsOnRoute():
+class RssEgoDynamicsOnRoute:
     """
-    Part of the data contained inside a carla.RssResponse describing the state of the vehicle. 
-    The parameters include its current dynamics, and how it is heading regarding the target route. 
+    Part of the data contained inside a carla.RssResponse describing the state of the vehicle.
+    The parameters include its current dynamics, and how it is heading regarding the target route.
     """
     
     # region Instance Variables
@@ -3241,17 +3241,17 @@ class RssLogLevel(int, __CarlaEnum):
 
 class RssResponse(SensorData):
     """
-    Class that contains the output of a carla.RssSensor. 
+    Class that contains the output of a carla.RssSensor.
     This is the result of the RSS calculations performed for the parent vehicle of the sensor.
     
-    A carla.RssRestrictor will use the data to modify the carla.VehicleControl of the vehicle. 
+    A carla.RssRestrictor will use the data to modify the carla.VehicleControl of the vehicle.
     """
 
     # region Instance Variables
     @property
     def response_valid(self) -> bool:
         """
-        States if the response is valid. 
+        States if the response is valid.
         It is False if calculations failed or an exception occurred.
         """
     
@@ -3280,16 +3280,16 @@ class RssResponse(SensorData):
     def __str__(self) -> str: ...
     # endregion
     
-class RssRestrictor():
+class RssRestrictor:
     """
-    These objects apply restrictions to a carla.VehicleControl. 
-    It is part of the CARLA implementation of the C++ Library for Responsibility Sensitive Safety. 
-    This class works hand in hand with a rss sensor, which provides the data of the restrictions to be applied. 
+    These objects apply restrictions to a carla.VehicleControl.
+    It is part of the CARLA implementation of the C++ Library for Responsibility Sensitive Safety.
+    This class works hand in hand with a rss sensor, which provides the data of the restrictions to be applied.
     """
     
     # region Methods
-    def restrict_vehicle_control(self, 
-                                 vehicle_control: VehicleControl, 
+    def restrict_vehicle_control(self,
+                                 vehicle_control: VehicleControl,
                                  proper_response: "ad.rss.state.ProperResponse",
                                  ego_dynamics_on_route : RssEgoDynamicsOnRoute,
                                  vehicle_physics : VehiclePhysicsControl
@@ -3298,13 +3298,13 @@ class RssRestrictor():
         Applies the safety restrictions given by a carla.RssSensor to a carla.VehicleCon
 
         Args:
-            vehicle_control (VehicleControl): 
+            vehicle_control (VehicleControl):
                 The input vehicle control to be restricted.
-            proper_response (ad.rss.state.ProperResponse): 
-                Part of the response generated by the sensor. Contains restrictions to be applied to the acceleration of the vehicle. 
-            ego_dynamics_on_route (RssEgoDynamicsOnRoute): 
+            proper_response (ad.rss.state.ProperResponse):
+                Part of the response generated by the sensor. Contains restrictions to be applied to the acceleration of the vehicle.
+            ego_dynamics_on_route (RssEgoDynamicsOnRoute):
                 Tart of the response generated by the sensor. Contains dynamics and heading of the vehicle regarding its route.
-            vehicle_physics (VehiclePhysicsControl): 
+            vehicle_physics (VehiclePhysicsControl):
                 The current physics of the vehicle. Used to apply the restrictions properly.
         Returns:
             VehicleControl: The restricted vehicle control.
@@ -3322,10 +3322,10 @@ class RssRestrictor():
 
 class RssRoadBoundariesMode(int, __CarlaEnum):
     """
-    Enum declaration used in carla.RssSensor to enable or disable the stay on road feature. 
+    Enum declaration used in carla.RssSensor to enable or disable the stay on road feature.
     In summary, this feature considers the road boundaries as virtual objects.
-    The minimum safety distance check is applied to these virtual walls, 
-    in order to make sure the vehicle does not drive off the road. 
+    The minimum safety distance check is applied to these virtual walls,
+    in order to make sure the vehicle does not drive off the road.
     """
     Off = 0
     On = 1
@@ -3336,10 +3336,10 @@ class RssSensor(Sensor):
     This sensor works a bit differently than the rest. Take look at the [specific documentation](https://carla.readthedocs.io/en/latest/adv_rss/),
     and the [rss sensor reference](https://carla.readthedocs.io/en/latest/ref_sensors/#rss-sensor) to gain full understanding of it.
     
-    The RSS sensor uses world information, and a [RSS library](https://github.com/intel/ad-rss-lib) to make safety checks on a vehicle. 
+    The RSS sensor uses world information, and a [RSS library](https://github.com/intel/ad-rss-lib) to make safety checks on a vehicle.
     The output retrieved by the sensor is a `carla.RssResponse`. This will be used
     by a `carla.RssRestrictor` to modify a `carla.VehicleControl` before applying
-    it to a vehicle. 
+    it to a vehicle.
     """
     
     # region Instance Variables
@@ -3347,21 +3347,21 @@ class RssSensor(Sensor):
     @property
     def ego_vehicle_dynamics(self) -> "ad.rss.world.RssDynamics":
         """
-        States the [RSS parameters](https://intel.github.io/ad-rss-lib/ad_rss/Appendix-ParameterDiscussion/) that the sensor will consider 
+        States the [RSS parameters](https://intel.github.io/ad-rss-lib/ad_rss/Appendix-ParameterDiscussion/) that the sensor will consider
         for the ego vehicle if no actor constellation callback is registered.
         """
     
     @property
     def other_vehicle_dynamics(self) -> "ad.rss.world.RssDynamics":
         """
-        States the [RSS parameters](https://intel.github.io/ad-rss-lib/ad_rss/Appendix-ParameterDiscussion/) that the sensor will consider 
+        States the [RSS parameters](https://intel.github.io/ad-rss-lib/ad_rss/Appendix-ParameterDiscussion/) that the sensor will consider
         for the rest of vehicles if no actor constellation callback is registered.
         """
     
     @property
     def pedestrian_dynamics(self) -> "ad.rss.world.RssDynamics":
         """
-        States the [RSS parameters](https://intel.github.io/ad-rss-lib/ad_rss/Appendix-ParameterDiscussion/) that the sensor will consider 
+        States the [RSS parameters](https://intel.github.io/ad-rss-lib/ad_rss/Appendix-ParameterDiscussion/) that the sensor will consider
         for pedestrians if no actor constellation callback is registered.
         """
     
@@ -3380,7 +3380,7 @@ class RssSensor(Sensor):
     # region Methods
     def append_routing_target(self, routing_target : Transform):
         """
-        Appends a new target position to the current route of the vehicle. 
+        Appends a new target position to the current route of the vehicle.
 
         Args:
             routing_target (Transform): New target point for the route. Choose these after the intersections to force the route to take the desired turn.
@@ -3388,20 +3388,20 @@ class RssSensor(Sensor):
     
     def drop_route(self):
         """
-        Discards the current route. 
+        Discards the current route.
         
-        If there are targets remaining in `routing_targets`, creates a new route using those. 
+        If there are targets remaining in `routing_targets`, creates a new route using those.
         Otherwise, a new route is created at random.
         """
         
     def register_actor_constellation_callback(self, callback: Callable[[RssActorConstellationData], RssActorConstellationResult]):
         """
-        Register a callback to customize a `carla.RssActorConstellationResult`. 
+        Register a callback to customize a `carla.RssActorConstellationResult`.
         By this callback the settings of RSS parameters are done per actor constellation
         and the settings (ego_vehicle_dynamics, other_vehicle_dynamics and pedestrian_dynamics) have no effect.
         
         Args:
-            callback (Callable): The function to be called whenever a RSS situation is about to be calculated. 
+            callback (Callable): The function to be called whenever a RSS situation is about to be calculated.
         """
         
     def reset_routing_targets(self):
@@ -3415,7 +3415,7 @@ class RssSensor(Sensor):
         """
     def set_map_log_level(self, log_level: RssLogLevel | int):
         """
-        Sets the map log level. 
+        Sets the map log level.
         """
     # endregion
 
@@ -3424,7 +3424,7 @@ class RssSensor(Sensor):
     # endregion
 
 
-class SemanticLidarDetection():
+class SemanticLidarDetection:
     """Data contained inside a `carla.SemanticLidarMeasurement`. Each of these represents one of the points in the cloud with its location, the cosine of the incident angle, index of the object hit, and its semantic tag."""
 
     # region Instance Variables
@@ -3503,21 +3503,21 @@ class Sensor(Actor):
 
     https://carla.readthedocs.io/en/latest/ref_sensors/
 
-    Receive data on every tick. 
-        - Depth camera. 
-        - Gnss sensor. 
-        - IMU sensor. 
-        - Lidar raycast. 
-        - SemanticLidar raycast. 
-        - Radar. 
-        - RGB camera. 
-        - RSS sensor. 
+    Receive data on every tick.
+        - Depth camera.
+        - Gnss sensor.
+        - IMU sensor.
+        - Lidar raycast.
+        - SemanticLidar raycast.
+        - Radar.
+        - RGB camera.
+        - RSS sensor.
         - Semantic Segmentation camera.
 
     Only receive data when triggered.
-        - Collision detector. 
+        - Collision detector.
         - Lane invasion detector.
-        - Obstacle detector.    
+        - Obstacle detector.
     """
 
     # region Instance Variables
@@ -3540,7 +3540,7 @@ class Sensor(Actor):
 
     def listen(self, callback: Callable[[__SensorData], Any]) -> None:
         """
-        The function the sensor will be calling to every time a new measurement is received. 
+        The function the sensor will be calling to every time a new measurement is received.
         This function needs for an argument containing an object type `carla.SensorData` to work with.
 
         Args:
@@ -3573,11 +3573,11 @@ class Sensor(Actor):
     # endregion
 
 
-class SensorData():
+class SensorData:
     """
-    Base class for all the objects containing data generated by a `carla.Sensor`. 
+    Base class for all the objects containing data generated by a `carla.Sensor`.
     This objects should be the argument of the function said sensor is listening to,
-     in order to work with them. Each of these sensors needs for a specific type of 
+     in order to work with them. Each of these sensors needs for a specific type of
      sensor data. Hereunder is a list of the sensors and their corresponding data.
      
     - Cameras (RGB, depth and semantic segmentation): `carla.Image`.
@@ -3608,9 +3608,9 @@ class SensorData():
     # endregion
 
 
-class TextureColor():
+class TextureColor:
     """
-    Class representing a texture object to be uploaded to the server. 
+    Class representing a texture object to be uploaded to the server.
     Pixel format is RGBA, uint8 per channel.
     """
     # region Instance Variables
@@ -3648,7 +3648,7 @@ class TextureColor():
     # endregion
 
 
-class TextureFloatColor():
+class TextureFloatColor:
     """
     Class representing a texture object to be uploaded to the server.
     Pixel format is RGBA, float per channel.
@@ -3678,7 +3678,7 @@ class TextureFloatColor():
     # endregion
 
 
-class Timestamp():
+class Timestamp:
     """
     Class that contains time information for simulated data. This information is automatically
     retrieved as part of the `carla.WorldSnapshot` the client gets on every frame, but  might also
@@ -3839,7 +3839,7 @@ class TrafficLightState(int, __CarlaEnum):
     Unknown = 4
 
 
-class TrafficManager():
+class TrafficManager:
     """The traffic manager is a module built on top of the CARLA API in C++. It handles any group of vehicles set to autopilot mode to populate the simulation with realistic urban traffic conditions and give the chance to user to customize some behaviours. The architecture of the traffic manager is divided in five different goal-oriented stages and a PID controller where the information flows until eventually, a `carla.VehicleControl` is applied to every vehicle registered in a traffic manager. In order to learn more, visit the documentation regarding this module.
 
     https://carla.readthedocs.io/en/latest/adv_traffic_manager/
@@ -4110,7 +4110,7 @@ class TrafficSign(Actor):
     # endregion
 
 
-class Transform():
+class Transform:
     """Class that defines a transformation, a combination of location and rotation, without scaling.
     """
 
@@ -4130,16 +4130,16 @@ class Transform():
         ...
     # endregion
 
-    # region Methods    
+    # region Methods
     def __init__(self, location: Location = Location(0,0,0), rotation: Rotation = Rotation(0,0,0)): ...
 
     def transform(self, in_point: Vector3D) -> Vector3D:
         """
-        Translates a 3D point from local to global coordinates using the current 
+        Translates a 3D point from local to global coordinates using the current
         transformation as frame of reference.
 
         Args:
-            in_point (Location): Location in the space to which the transformation will be applied. 
+            in_point (Location): Location in the space to which the transformation will be applied.
             
         Note:
             This operation transforms `in_point` in place.
@@ -4147,7 +4147,7 @@ class Transform():
     
     def inverse_transform(self, in_point: Vector3D) -> Vector3D:
         """
-        Applies the inverse of `transform` by translating a 3D point from global to local 
+        Applies the inverse of `transform` by translating a 3D point from global to local
         coordinates using the current transformation as frame of reference.
         
         Args:
@@ -4159,7 +4159,7 @@ class Transform():
 
     def transform_vector(self, in_point: Vector3D) -> Vector3D:
         """
-        Rotates a vector using the current transformation as frame of reference, 
+        Rotates a vector using the current transformation as frame of reference,
         without applying translation. Use this to transform, for example, a velocity.
 
         Args:
@@ -4199,7 +4199,7 @@ class Transform():
     # endregion
 
 
-class Vector2D():
+class Vector2D:
     """Helper class to perform 2D operations."""
 
     # region Instance Variables
@@ -4245,7 +4245,7 @@ class Vector2D():
     # endregion
 
 
-class Vector3D():
+class Vector3D:
     """Helper class to perform 3D operations."""
 
     # region Instance Variables
@@ -4474,7 +4474,7 @@ class Vehicle(Actor):
     # endregion
 
 
-class VehicleAckermannControl():
+class VehicleAckermannControl:
     """Manages the basic movement of a vehicle using Ackermann driving controls."""
 
     # region Instance Variables
@@ -4509,7 +4509,7 @@ class VehicleAckermannControl():
     # endregion
 
 
-class VehicleControl():
+class VehicleControl:
     """Manages the basic movement of a vehicle using typical driving controls."""
     # region Instance Variables
 
@@ -4627,7 +4627,7 @@ class VehicleLightState(IntFlag, __CarlaEnum):
     """All lights on."""
 
 
-class VehiclePhysicsControl():
+class VehiclePhysicsControl:
     """Summarizes the parameters that will be used to simulate a carla.Vehicle as a physical object. The specific settings for the wheels though are stipulated using `carla.WheelPhysicsControl`."""
 
     # region Instance Variables
@@ -4703,20 +4703,23 @@ class VehiclePhysicsControl():
 
     # region Methods
     def __init__(self,
-                 torque_curve=[[0.0, 500.0], [5000.0, 500.0]],
-                 max_rpm=5000.0,
-                 moi=1.0,
-                 damping_rate_full_throttle=0.15, damping_rate_zero_throttle_clutch_engaged=2.0, damping_rate_zero_throttle_clutch_disengaged=0.35, use_gear_autobox=True,
-                 gear_switch_time=0.5,
-                 clutch_strength=10.0,
-                 final_ratio=4.0,
-                 forward_gears=list(),
-                 drag_coefficient=0.3,
-                 center_of_mass=[0.0, 0.0, 0.0],
-                 steering_curve=[[0.0, 1.0], [10.0, 0.5]],
-                 wheels=list(),
-                 use_sweep_wheel_collision=False,
-                 mass=1000.0):
+                 torque_curve: list[Vector2D | Annotated[Sequence[float], "length 2"]]=[[0.0, 500.0], [5000.0, 500.0]],
+                 max_rpm: float=5000.0,
+                 moi: float=1.0,
+                 damping_rate_full_throttle: float=0.15,
+                 damping_rate_zero_throttle_clutch_engaged: float=2.0,
+                 damping_rate_zero_throttle_clutch_disengaged: float=0.35,
+                 use_gear_autobox: bool=True,
+                 gear_switch_time: float=0.5,
+                 clutch_strength: float=10.0,
+                 final_ratio: float=4.0,
+                 forward_gears: list[GearPhysicsControl]=[],
+                 drag_coefficient: float =0.3,
+                 center_of_mass: Location = Location(0.0, 0.0, 0.0),
+                 steering_curve: list[Vector2D | Annotated[Sequence[float], "length 2"]] = [[0.0, 1.0], [10.0, 0.5]],
+                 wheels=[],
+                 use_sweep_wheel_collision: bool=False,
+                 mass: float =1000.0):
         """VehiclePhysicsControl constructor.
 
         Args:
@@ -4868,7 +4871,7 @@ class WalkerAIController(Actor):
     # endregion
 
 
-class WalkerBoneControlIn():
+class WalkerBoneControlIn:
     """This class grants bone specific manipulation for walker. The skeletons of walkers have been unified for clarity and the transform applied to each bone are always relative to its parent. Take a look here to learn more on how to create a walker and define its movement.
 
     https://carla.readthedocs.io/en/latest/tuto_G_control_walker_skeletons/
@@ -4899,7 +4902,7 @@ class WalkerBoneControlIn():
     # endregion
 
 
-class WalkerBoneControlOut():
+class WalkerBoneControlOut:
     """This class is used to return all bone positions of a pedestrian. For each bone we get its name and its transform in three different spaces (world, actor and relative)."""
 
     # region Instance Variables
@@ -4920,7 +4923,7 @@ class WalkerBoneControlOut():
     # endregion
 
 
-class WalkerControl():
+class WalkerControl:
     """This class defines specific directions that can be commanded to a `carla.Walker` to control it via script.
 
     AI control can be settled for walkers, but the control used to do so is `carla.WalkerAIController`.
@@ -4939,7 +4942,7 @@ class WalkerControl():
     # endregion
 
     # region Methods
-    def __init__(self, direction=[1.0, 0.0, 0.0], speed=0.0, jump=False):
+    def __init__(self, direction=Vector3D(1.0, 0.0, 0.0), speed:float =0.0, jump: bool=False):
         """This class defines specific directions that can be commanded to a `carla.Walker` to control it via script.
 
         Args:
@@ -4956,7 +4959,7 @@ class WalkerControl():
     # endregion
 
 
-class Waypoint():
+class Waypoint:
     """Waypoints in CARLA are described as 3D directed points. They have a `carla.Transform` which locates the waypoint in a road and orientates it according to the lane. They also store the road information belonging to said point regarding its lane and lane markings.
 
     All the information regarding waypoints and the waypoint API is retrieved as provided by the OpenDRIVE file. Once the client asks for the map object to the server, no longer communication will be needed.
@@ -5101,7 +5104,7 @@ class Waypoint():
     # endregion
 
 
-class WeatherParameters():
+class WeatherParameters:
     """This class defines objects containing lighting and weather specifications that can later be applied in `carla.World`. So far, these conditions only intervene with `sensor.camera.rgb`. They neither affect the actor's physics nor other sensors.
 
     Each of these parameters acts independently from the rest. Increasing the rainfall will not automatically create puddles nor change the road's humidity. That makes for a better customization but means that realistic conditions need to be scripted. However an example of dynamic weather conditions working realistically can be found here.
@@ -5202,7 +5205,7 @@ class WeatherParameters():
     # endregion
 
 
-class WheelPhysicsControl():
+class WheelPhysicsControl:
     """Class that defines specific physical parameters for wheel objects that will be part of a `carla.VehiclePhysicsControl` to simulate vehicle it as a material object."""
 
     # region Instance Variables
@@ -5256,7 +5259,7 @@ class WheelPhysicsControl():
     # endregion
 
 
-class World():
+class World:
     """World objects are created by the client to have a place for the simulation to happen. The world contains the map we can see, meaning the asset, not the navigation map. Navigation maps are part of the `carla.Map` class. It also manages the weather and actors present in it. There can only be one world per simulation, but it can be changed anytime."""
 
     # region Instance Variables
@@ -5561,7 +5564,7 @@ class World():
     # endregion
 
 
-class WorldSettings():
+class WorldSettings:
     """The simulation has some advanced configuration options that are contained in this class and can be managed using carla.World and its methods. These allow the user to choose between client-server synchrony/asynchrony, activation of "no rendering mode" and either if the simulation should run with a fixed or variable time-step. Check this out if you want to learn about it.
 
     https://carla.readthedocs.io/en/latest/adv_synchrony_timestep/
@@ -5679,10 +5682,10 @@ class WorldSettings():
     # endregion
 
 
-class WorldSnapshot():
+class WorldSnapshot:
     """
-    This snapshot comprises all the information for every actor on scene at a certain moment of time. 
-    It creates and gives access to a data structure containing a series of `carla.ActorSnapshot`. 
+    This snapshot comprises all the information for every actor on scene at a certain moment of time.
+    It creates and gives access to a data structure containing a series of `carla.ActorSnapshot`.
     The client receives a new snapshot on every tick that cannot be stored.
     """
 

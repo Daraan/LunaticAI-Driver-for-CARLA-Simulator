@@ -13,7 +13,7 @@ def list_py_files(directory):
     Lists all .py files in the given directory and its subdirectories.
     """
     py_files = []
-    for root, dirs, files in os.walk(directory):
+    for root, dirs, files in os.walk(directory):  # noqa: B007
         for file in files:
             if file.endswith(".py") and not file.startswith("_") and file != "example_runner.py":
                 py_files.append(os.path.join(root, file))

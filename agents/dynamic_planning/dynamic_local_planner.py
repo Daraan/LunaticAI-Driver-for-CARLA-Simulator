@@ -1,6 +1,6 @@
 """
 This module contains a flexible variant of the local planner provided by CARLA to perform low-level
-waypoint following based on PID controllers. 
+waypoint following based on PID controllers.
 """
 
 from __future__ import annotations
@@ -36,15 +36,15 @@ class DynamicLocalPlanner(LocalPlanner):
     def config(self):
         return self._agent.ctx.config
 
-    def __init__(self, 
-                 agent : "UseableWithDynamicPlanner", 
-                 opt_dict: None, 
+    def __init__(self,
+                 agent : "UseableWithDynamicPlanner",
+                 opt_dict: None,
                  map_inst: carla.Map = None,  # type: ignore # keep for compatibility, inform user
                  world: carla.World = None    # type: ignore # keep for compatibility, inform user
                  ):
         """
         :param vehicle: actor to apply to local planner logic onto
-        :param opt_dict: 
+        :param opt_dict:
             
             Attention:
                 .. deprecated:: _
@@ -74,7 +74,7 @@ class DynamicLocalPlanner(LocalPlanner):
         self._vehicle = self._agent._vehicle
         assert self._vehicle, "The agent must have a vehicle to create a local planner"
         self._world = world or self._vehicle.get_world()
-        try: 
+        try:
             if map_inst:
                 if isinstance(map_inst, carla.Map):
                     self._map : carla.Map= map_inst
@@ -143,7 +143,7 @@ class DynamicLocalPlanner(LocalPlanner):
 
     @property # allows to use _compute_next_waypoints of parent
     def _sampling_radius(self):
-        return self.config.planner.sampling_radius 
+        return self.config.planner.sampling_radius
 
     # set_global_plan -> parent
 
@@ -205,8 +205,8 @@ class DynamicLocalPlanner(LocalPlanner):
   
 class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
     
-    def __init__(self, agent, 
-                 opt_dict:None=None, 
+    def __init__(self, agent,
+                 opt_dict:None=None,
                  map_inst: carla.Map=None, # type: ignore # keep for compatibility, inform user
                  world: carla.World=None,  # type: ignore # keep for compatibility, inform user
                  rss_sensor: Optional[RssSensor]=None):

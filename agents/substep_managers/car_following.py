@@ -24,7 +24,7 @@ def car_following_manager(self: "HasPlannerWithConfig[BehaviorAgentSettings | Lu
         debug: boolean for debugging
     
     Returns:
-        carla.VehicleControl: 
+        carla.VehicleControl:
             Calculates the control for the vehicle
             
             Assumes:

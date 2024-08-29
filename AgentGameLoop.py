@@ -53,7 +53,7 @@ PRINT_RULES = False
 
 def game_loop(args: LaunchConfig):
     """
-    Main loop of the simulation. 
+    Main loop of the simulation.
     
     It sets up the simulation, spawns the vehicles, and initializes the agent.
     In the :python:`while` loop, the agent calculates one `\`carla.VehicleControl\`:py:class:`:external-icon-parse:
@@ -87,11 +87,11 @@ def game_loop(args: LaunchConfig):
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints()
         
         # Spawn Others
-        CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3", 
-                                                    AMOUNT_ACTORS, 
-                                                    spawn_points=[sp for i, sp in enumerate(spawn_points[:AMOUNT_ACTORS+1]) 
-                                                                     if i != EGO_SPAWN_IDX], 
-                                                    autopilot=True, 
+        CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3",
+                                                    AMOUNT_ACTORS,
+                                                    spawn_points=[sp for i, sp in enumerate(spawn_points[:AMOUNT_ACTORS+1])
+                                                                     if i != EGO_SPAWN_IDX],
+                                                    autopilot=True,
                                                     tick=False)
         
         # Spawn Ego
@@ -101,7 +101,7 @@ def game_loop(args: LaunchConfig):
         logger.info("Creating agent and WorldModel ...")
         agent, world_model, global_planner, controller \
             = game_framework.init_agent_and_interface(ego=None if args.externalActor else ego, # Test externalActor
-                                                      agent_class=LunaticAgent, 
+                                                      agent_class=LunaticAgent,
                                                       config=agent_config)
         logger.debug("Created agent and WorldModel.\n")
         
@@ -172,7 +172,7 @@ def game_loop(args: LaunchConfig):
                     agent.parse_keyboard_input(allow_user_updates=True)
                     # -> Phase.APPLY_MANUAL_CONTROLS | Phase.END
                 except exceptions.UserInterruption:
-                    return    
+                    return
                 
                 # ------ Apply Control ------
                 
@@ -198,7 +198,7 @@ def game_loop(args: LaunchConfig):
             
             """
             Here is checked if the agent has reached its destination and has no
-            no rule or other function has done a replanning. A custom new destination 
+            no rule or other function has done a replanning. A custom new destination
             can be set here.
             """
             if args.loop and not game_framework.continue_loop and agent.done():
@@ -226,7 +226,7 @@ def game_loop(args: LaunchConfig):
             # Optional: final phase of agents lifetime; could be used for cleanup tasks.
         agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None)
 
-    # Adding exception block   
+    # Adding exception block
     except Exception as e:
         print("ERROR, exception in game loop", e)
         logger.error("Exception in game loop", exc_info=True)

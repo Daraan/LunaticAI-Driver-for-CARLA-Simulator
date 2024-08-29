@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
-    from pygame._common import ColorValue  # noqa # type: ignore
+    from pygame._common import ColorValue  # type: ignore
 
 FONT_SIZE = 20
 
@@ -27,14 +27,14 @@ FONT_SIZE = 20
 def get_actor_display_name(actor : carla.Actor, truncate:int=250):
     """Method to get actor display name"""
     name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
-    return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
+    return (name[:truncate - 1] + '\u2026') if len(name) > truncate else name
 
 # ==============================================================================
 # -- HUD -----------------------------------------------------------------------
 # ==============================================================================
 
 
-class HUD(object):
+class HUD:
     """Class for HUD text"""
     default_font : ClassVar[str] = 'ubuntumono'
 
@@ -50,7 +50,7 @@ class HUD(object):
         mono = pygame.font.match_font(mono)
         self._font_mono = pygame.font.Font(mono, 12 if os.name == 'nt' else 14)
         self._notifications = FadingText(font, (width, 40), (0, height - 40))
-        self.help = HelpText(pygame.font.Font(mono, FONT_SIZE), width, height, 
+        self.help = HelpText(pygame.font.Font(mono, FONT_SIZE), width, height,
                              doc=help_text if help_text is not None else False)
         self.server_fps = 0
         self.frame = 0
@@ -109,7 +109,7 @@ class HUD(object):
             #Sequence[Union[str, float]],
             tuple[str, float, float, float], # min value max
             tuple[str, float, float, float, float],
-            #tuple[str, float, float, float, float, list[list[float]]], # 
+            #tuple[str, float, float, float, float, list[list[float]]], #
             tuple[str, float, float, float, float, list[tuple[float, float]]], # steering
             list[float]]]
 
@@ -123,7 +123,7 @@ class HUD(object):
             'Simulation time: % 12s' % timedelta(seconds=int(self.simulation_time)),
             '',
             'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)),
-            u'Heading:% 16.0f\N{DEGREE SIGN} % 2s' % (transform.rotation.yaw, heading),
+            'Heading:% 16.0f\N{DEGREE SIGN} % 2s' % (transform.rotation.yaw, heading),
             #  TODO maybe 'Heading: % 20.2f' % math.radians(transform.rotation.yaw),
             'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (transform.location.x, transform.location.y)),
             'Height:  % 18.0f m' % transform.location.z,]
@@ -180,7 +180,7 @@ class HUD(object):
 
     def error(self, text: str):
         """Error text"""
-        self._notifications.set_text('Error: %s' % text, (255, 0, 0))
+        self._notifications.set_text(f'Error: {text}', (255, 0, 0))
 
     def render(self, display: pygame.Surface):
         """Render for HUD class"""
@@ -266,7 +266,7 @@ class HUD(object):
 # ==============================================================================
 
 
-class FadingText(object):
+class FadingText:
     """ Class for fading text """
 
     def __init__(self, font: pygame.font.Font, dim: "tuple[int, int]", pos: "tuple[int, int]"):
@@ -301,7 +301,7 @@ class FadingText(object):
 # ==============================================================================
 
 
-class HelpText(object):
+class HelpText:
     """Helper class to handle text output using pygame"""
 
     def __init__(self, font: pygame.font.Font, width:int, height:int, doc: Optional[Union[str, bool]] = None):

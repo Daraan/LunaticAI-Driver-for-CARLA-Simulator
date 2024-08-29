@@ -21,7 +21,7 @@ from functools import partial, wraps
 import carla
 from classes.type_protocols import CallableT, CanDetectNearbyObstacles, CanDetectObstacles, HasBaseSettings, AgentConfigT, HasConfig
 from classes.constants import RoadOption
-from agents.tools.config_creation import AgentConfig 
+from agents.tools.config_creation import AgentConfig
 from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.misc import is_within_distance
 from agents.tools.logging import logger
@@ -50,12 +50,12 @@ _Actor_co = TypeVar("_Actor_co", bound=carla.Actor, covariant=True)
 
 # ------------------------------
 # Decorators
-# ------------------------------    
+# ------------------------------
     
     
 def result_to_context(key: str):
     """
-    Decorator to use for the agent. Sets the **key** attribute of the 
+    Decorator to use for the agent. Sets the **key** attribute of the
     :py:class:`.Context`.
     """
     def decorator(func: CallableT) -> CallableT:
@@ -84,25 +84,25 @@ def must_clear_hazard(func: CallableT) -> CallableT:
         return result
     return wrapper  # type: ignore[return-value]
 
-def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], None] = None, 
-                      on_exit: Union[Phase, Callable[['LunaticAgent'], Any], None] = None, 
+def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], None] = None,
+                      on_exit: Union[Phase, Callable[['LunaticAgent'], Any], None] = None,
                       on_exit_exceptions: Union[Sequence["type[BaseException]"], bool, None] = (),
                       prior_result_getter: Optional[Union[Callable[['LunaticAgent'], Any], str]] = None):
     """
     Decorator function for defining phase callbacks that are executed at the start and end of a function.
 
     Args:
-        on_enter (Phase, optional): 
+        on_enter (Phase, optional):
             The phase to execute before the decorated function.
             Defaults to None.
-        on_exit: 
+        on_exit:
             Either the phase to execute after the decorated function or a callable.
             Defaults to None.
         on_exit_exceptions (Tuple[BaseException] | bool)):
-            If a non-empty sequence of exceptions is provided, the **on_exit** phase will 
+            If a non-empty sequence of exceptions is provided, the **on_exit** phase will
             **only be executed if one of the exceptions is raised.**
             
-            If :python:`True`, the **on_exit** phase will be executed if any 
+            If :python:`True`, the **on_exit** phase will be executed if any
             :py:exc:`LunaticAgentException` are raised.
             Defaults to :code:`False`.
             
@@ -111,13 +111,13 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
                   is raised.
                 - The **exception will be re-raised** after executing **on_exit**.
             
-        prior_result_getter: Can be the name of an attribute of the agent. If the 
+        prior_result_getter: Can be the name of an attribute of the agent. If the
             attribute is a callable, it will be called without arguments. Alternatively
             a callable can be passed. The result will be used as the **prior_results**
             argument for the :py:meth:`.LunaticAgent.execute_phase` method.
     
     Warns:
-        If **on_enter** and **on_exit** are not set, the decorator will print a 
+        If **on_enter** and **on_exit** are not set, the decorator will print a
         warning and ignore the decorator.
     """
     # Validate exception -> Tuple
@@ -140,8 +140,8 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
     def decorator(func : _AgentFunction[_P, _T]):
         if on_enter is None and on_exit is None:
             print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
-                    "decorator for function %s. Ignoring decorator." % func.__name__)
-            if TYPE_CHECKING: 
+                    f"decorator for function {func.__name__}. Ignoring decorator.")
+            if TYPE_CHECKING:
                 assert_never(func) # we ignore this # pyright: ignore
             return func
         @wraps(func)
@@ -188,7 +188,7 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
 # Obstacle Detection
 # ------------------------------
 
-def max_detection_distance(self: HasConfig["BehaviorAgentSettings | LunaticAgentSettings"], 
+def max_detection_distance(self: HasConfig["BehaviorAgentSettings | LunaticAgentSettings"],
                            lane: Literal["same_lane", "other_lane", "overtaking", "tailgating"]) -> float:
     """
     Convenience function to be used with :py:func:`lunatic_agent_tools.detect_vehicles` and :any:`LunaticAgent.detect_obstacles_in_path`.
@@ -197,7 +197,7 @@ def max_detection_distance(self: HasConfig["BehaviorAgentSettings | LunaticAgent
     
     .. code-block:: python
 
-        max(obstacles.min_proximity_threshold, 
+        max(obstacles.min_proximity_threshold,
             live_info.current_speed_limit / obstacles.speed_detection_downscale.[same|other]_lane)
     
     Args:
@@ -213,7 +213,7 @@ def max_detection_distance(self: HasConfig["BehaviorAgentSettings | LunaticAgent
                self.config.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
 
 
-def detect_obstacles_in_path(self: "CanDetectNearbyObstacles", 
+def detect_obstacles_in_path(self: "CanDetectNearbyObstacles",
                              obstacle_list: Optional[Union[Sequence[carla.Actor], carla.ActorList,\
                                                            Literal['all']]]) -> ObstacleDetectionResult:
     """
@@ -224,13 +224,13 @@ def detect_obstacles_in_path(self: "CanDetectNearbyObstacles",
         self : The agent
         obstacle_list : The list of obstacles that should be checked
 
-    Note: 
+    Note:
         - Distance to detect vehicles that hinder a lance change are calculated with the
           :py:func:`max_detection_distance` function.
-        - Former :code:`BehaviorAgent.collision_and_car_avoid_manager`, which evaded cars via the 
+        - Former :code:`BehaviorAgent.collision_and_car_avoid_manager`, which evaded cars via the
           tailgating function; this is now rule based.
         
-    Tip: 
+    Tip:
         As the first argument is the agent, this function can be used as a method, i.e
         it can be added / imported directly into the agent class' body.
     """
@@ -256,12 +256,12 @@ def detect_obstacles_in_path(self: "CanDetectNearbyObstacles",
     return detection_result
 
 
-def detect_obstacles(self: "CanDetectObstacles", 
+def detect_obstacles(self: "CanDetectObstacles",
                     actor_list: Optional[Sequence[carla.Actor] | carla.ActorList]=None,
-                    max_distance: Optional[float]=None, 
-                    up_angle_th: float=90, 
+                    max_distance: Optional[float]=None,
+                    up_angle_th: float=90,
                     low_angle_th: float=0,
-                    *, 
+                    *,
                     lane_offset: int=0) -> ObstacleDetectionResult:
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
@@ -272,15 +272,15 @@ def detect_obstacles(self: "CanDetectObstacles",
         actor_list: list containing relevant actors to check.
             If :code:`None`, all vehicle in the scene are used.
         max_distance: max free-space to check for obstacles.
-            If :code:`None`, the :py:attr:`.LunaticAgentSettings.obstacles.base_vehicle_threshold` value 
+            If :code:`None`, the :py:attr:`.LunaticAgentSettings.obstacles.base_vehicle_threshold` value
             is used.
         lane_offset: check a different lane than the one the agent is currently in.
 
-    The angle between the location and reference transform will also be taken into account. 
-    Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
+    The angle between the location and reference transform will also be taken into account.
+    Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy:
     **low_angle_th** < angle < **up_angle_th**.
     
-    Tip: 
+    Tip:
         As the first argument is the agent, this function can be used as a method, i.e
         it can be added / imported directly into the agent class' body.
     """
@@ -369,8 +369,8 @@ def detect_obstacles(self: "CanDetectObstacles",
             target_polygon = Polygon(target_list)
 
             if route_polygon.intersects(target_polygon):
-                return ObstacleDetectionResult(True, 
-                                               target_vehicle, 
+                return ObstacleDetectionResult(True,
+                                               target_vehicle,
                                                target_vehicle.get_location().distance(ego_location))
 
         # Simplified approach, using only the plan waypoints (similar to TM)
@@ -394,18 +394,18 @@ def detect_obstacles(self: "CanDetectObstacles",
             
             if is_within_distance(target_rear_transform, ego_front_transform, max_distance,
                                     [low_angle_th, up_angle_th]):
-                return ObstacleDetectionResult(True, 
-                                               target_vehicle, 
+                return ObstacleDetectionResult(True,
+                                               target_vehicle,
                                                target_rear_transform.location.distance(
                                                                 ego_front_transform.location))
 
     return ObstacleDetectionResult(False, None, -1)
 
 
-def detect_vehicles(self: "CanDetectObstacles", 
+def detect_vehicles(self: "CanDetectObstacles",
                     vehicle_list: Optional[Sequence[carla.Actor] | carla.ActorList]=None,
-                    max_distance: Optional[float]=None, 
-                    up_angle_th: float=90, 
+                    max_distance: Optional[float]=None,
+                    up_angle_th: float=90,
                     low_angle_th: float=0,
                     lane_offset: int=0) -> ObstacleDetectionResult:
     """
@@ -417,23 +417,23 @@ def detect_vehicles(self: "CanDetectObstacles",
         vehicle_list: list containing vehicle objects.
             If :code:`None`, all vehicle in the scene are used.
         max_distance: max free-space to check for obstacles.
-            If :code:`None`, the :py:attr:`.LunaticAgentSettings.obstacles.base_vehicle_threshold` value 
+            If :code:`None`, the :py:attr:`.LunaticAgentSettings.obstacles.base_vehicle_threshold` value
             is used.
         lane_offset: check a different lane than the one the agent is currently in.
 
-    The angle between the location and reference transform will also be taken into account. 
-    Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy: 
+    The angle between the location and reference transform will also be taken into account.
+    Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy:
     **low_angle_th** < angle < **up_angle_th**.
     
-    Tip: 
+    Tip:
         As the first argument is the agent, this function can be used as a method, i.e
         it can be added / imported directly into the agent class' body.
         
     .. deprecated::
         Use :py:func:`.detect_obstacles` instead.
     """
-    return detect_obstacles(self, vehicle_list, max_distance, 
-                            up_angle_th, low_angle_th, 
+    return detect_obstacles(self, vehicle_list, max_distance,
+                            up_angle_th, low_angle_th,
                             lane_offset=lane_offset)
 
 # Untested
@@ -452,13 +452,13 @@ detect_obstacles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th
 # Path Planning
 # ------------------------------
 
-def generate_lane_change_path(waypoint : carla.Waypoint, 
-                              direction: Literal['left', 'right']='left', 
+def generate_lane_change_path(waypoint : carla.Waypoint,
+                              direction: Literal['left', 'right']='left',
                               distance_same_lane: float=10,
-                              distance_other_lane: float=25, 
+                              distance_other_lane: float=25,
                               lane_change_distance: float=25,
-                              check: bool=True, 
-                              lane_changes: int=1, 
+                              check: bool=True,
+                              lane_changes: int=1,
                               step_distance: float=2) -> "list[tuple[carla.Waypoint, RoadOption]]":
     """
     This method generates a path that results in a lane change.
@@ -552,9 +552,9 @@ def generate_lane_change_path(waypoint : carla.Waypoint,
 
     return plan
     
-def create_agent_config(self: HasBaseSettings[AgentConfigT], 
-                        source: Union["type[AgentConfigT]", AgentConfigT, DictConfig, str, None]=None, 
-                        world_model: Optional["WorldModel"]=None, 
+def create_agent_config(self: HasBaseSettings[AgentConfigT],
+                        source: Union["type[AgentConfigT]", AgentConfigT, DictConfig, str, None]=None,
+                        world_model: Optional["WorldModel"]=None,
                         overwrite_options: Optional[Dict[str, Any]]=None):
     """
     Method to create the :py:class:`.AgentConfig` from different input types.
@@ -568,12 +568,12 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
               i.e. duck-typed as :py:class:`.AgentConfig`.
               
     Returns:
-        :py:attr:`self.BASE_SETTINGS <.LunaticAgent.BASE_SETTINGS>` (duck-typed): 
+        :py:attr:`self.BASE_SETTINGS <.LunaticAgent.BASE_SETTINGS>` (duck-typed):
             The configuration object. The actual type depends on **source**.
             If it is a :python:`str`, :py:class:`.AgentConfig` or :py:class:`.DictConfig`, the actual
             return type will be a :py:class:`omegaconf.DictConfig`.
     """
-    if source is None and world_model and world_model._config is not None: # noqa # pyright: ignore[reportUnnecessaryComparison]
+    if source is None and world_model and world_model._config is not None: # pyright: ignore[reportUnnecessaryComparison]
         logger.debug("Using world model config")
         opt_dict = world_model._config
     elif source is None:
@@ -600,10 +600,10 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
     else:
         logger.warning("Warning: Settings of type %s are not an instance of a supported class. "
                        "Trying to apply overwrite options.", type(source))
-        source.update(overwrite_options) 
+        source.update(overwrite_options)
         opt_dict = source  # assume the user passed something appropriate
     if isinstance(opt_dict, DictConfig):
-        opt_dict._set_flag("allow_objects", True) # noqa # pyright: ignore[reportPrivateUsage]
-        opt_dict.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.  
+        opt_dict._set_flag("allow_objects", True) # pyright: ignore[reportPrivateUsage]
+        opt_dict.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.
     cfg = opt_dict  # pyright: ignore[reportUnknownVariableType]
     return self.BASE_SETTINGS.cast(cfg)  # duck-type it

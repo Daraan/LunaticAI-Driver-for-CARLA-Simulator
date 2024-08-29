@@ -1,6 +1,6 @@
 """
-Helpers that can take over certain parts, some are directly imported 
-into the LunaticAgent but here for easier access and to keep the 
+Helpers that can take over certain parts, some are directly imported
+into the LunaticAgent but here for easier access and to keep the
 class cleaner.
 """
 

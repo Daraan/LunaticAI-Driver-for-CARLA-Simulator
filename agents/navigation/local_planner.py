@@ -19,7 +19,7 @@ from typing import NamedTuple
 
 class RoadOption(IntEnum):
     """
-    RoadOption represents the possible topological configurations when 
+    RoadOption represents the possible topological configurations when
     moving from a segment of lane to other.
     """
     
@@ -42,7 +42,7 @@ class PlannedWaypoint(NamedTuple):
     waypoint: carla.Waypoint
     road_option: RoadOption
 
-class LocalPlanner(object):
+class LocalPlanner:
     """
     LocalPlanner implements the basic behavior of following a
     trajectory of waypoints that is generated on-the-fly.

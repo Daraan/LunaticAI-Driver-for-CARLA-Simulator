@@ -86,7 +86,7 @@ def _draw_route_trans(world: carla.World, waypoints: "list[tuple[carla.Transform
         color = roadoption_color(w[1])
 
         wp = w[0].location + carla.Location(z=vertical_shift)
-        world.debug.draw_point(wp, size=size, color=color, life_time=life_time) 
+        world.debug.draw_point(wp, size=size, color=color, life_time=life_time)
 
     world.debug.draw_point(waypoints[0][0].location + carla.Location(z=vertical_shift), size=2*size,  # type: ignore[arg-type]
                                 color=carla.Color(0, 0, 128), life_time=life_time)
@@ -171,7 +171,7 @@ def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destin
     if traffic_light:
         wps = traffic_light.get_stop_waypoints()
         for wp in wps:
-            game_framework.debug.draw_point(wp.transform.location + carla.Location(z=2), life_time=0.6)  
+            game_framework.debug.draw_point(wp.transform.location + carla.Location(z=2), life_time=0.6)
             draw_waypoint_info( game_framework.debug, wp)
         trigger_loc = misc.get_trafficlight_trigger_location(traffic_light)
         trigger_wp = game_framework.get_map().get_waypoint(trigger_loc)
@@ -190,7 +190,7 @@ def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destin
                     size=0.1)
 
 
-def draw_transform(debug: carla.DebugHelper, trans: carla.Transform, col: carla.Color=carla.Color(255, 0, 0), lt:float=-1) -> None:
+def draw_transform(debug: carla.DebugHelper, trans: carla.Transform, col: carla.Color=red, lt:float=-1) -> None:
     debug.draw_arrow(
         trans.location, trans.location + trans.get_forward_vector(), # type: ignore[arg-type]
         thickness=0.05, arrow_size=0.1, color=col, life_time=lt)
@@ -237,7 +237,7 @@ def draw_waypoint_info(debug: carla.DebugHelper, w: carla.Waypoint, lt:float=5):
     debug.draw_string(w_loc + carla.Location(z=-.5), str(w.lane_change), False, red, lt)
 
 
-def draw_waypoint_union(debug: carla.DebugHelper, w0: carla.Waypoint, w1: carla.Waypoint, color: carla.Color=carla.Color(255, 0, 0), lt:float=5) -> None:
+def draw_waypoint_union(debug: carla.DebugHelper, w0: carla.Waypoint, w1: carla.Waypoint, color: carla.Color=red, lt:float=5) -> None:
     debug.draw_line(
         w0.transform.location + carla.Location(z=0.25), # type: ignore[arg-type]
         w1.transform.location + carla.Location(z=0.25),   # type: ignore[arg-type]

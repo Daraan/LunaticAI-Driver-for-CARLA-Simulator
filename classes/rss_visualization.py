@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     assert ad  # remove Unbound type # type: ignore
 
 
-class RssStateVisualizer(object):
+class RssStateVisualizer:
 
     def __init__(self, display_dimensions, font : pygame.font.Font, world):
         self._surface = None
@@ -90,13 +90,13 @@ class RssStateVisualizer(object):
                                              (xpos + 7, v_offset + 1 + 8), (xpos + 7, v_offset + 1 + 0), (xpos + 5, v_offset + 1 + 0), (xpos + 5, v_offset + 1 + 8)))
                     xpos += 14
 
-                if not state.rss_state.lateralStateRight.isSafe and not (state.rss_state.lateralStateRight.rssStateInformation.evaluator == "None"):
+                if not state.rss_state.lateralStateRight.isSafe and state.rss_state.lateralStateRight.rssStateInformation.evaluator != 'None':
                     pygame.draw.polygon(
                         state_surface, (
                             255, 255, 255), ((xpos + 0, v_offset + 1 + 4), (xpos + 8, v_offset + 1 + 4), (xpos + 8, v_offset + 1 + 1),
                                              (xpos + 12, v_offset + 1 + 6), (xpos + 8, v_offset + 1 + 10), (xpos + 8, v_offset + 1 + 8), (xpos + 0, v_offset + 1 + 8)))
                     xpos += 14
-                if not state.rss_state.lateralStateLeft.isSafe and not (state.rss_state.lateralStateLeft.rssStateInformation.evaluator == "None"):
+                if not state.rss_state.lateralStateLeft.isSafe and state.rss_state.lateralStateLeft.rssStateInformation.evaluator != 'None':
                     pygame.draw.polygon(
                         state_surface, (
                             255, 255, 255), ((xpos + 0, v_offset + 1 + 6), (xpos + 4, v_offset + 1 + 1), (xpos + 4, v_offset + 1 + 4),
@@ -316,7 +316,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
             RssUnstructuredSceneVisualizer.draw_lines(surface, lines)
             RssUnstructuredSceneVisualizer.draw_polygons(surface, polygons)
         except RuntimeError as e:
-            print("ERROR {}".format(e))
+            print(f"ERROR {e}")
         self._current_rss_surface = (frame, surface)
         self.update_surface(None, frame)
 
@@ -439,7 +439,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
 # ==============================================================================
 
 
-class RssBoundingBoxVisualizer(object):
+class RssBoundingBoxVisualizer:
 
     def __init__(self, display_dimensions, world, camera):
         self._last_camera_frame = 0
@@ -487,7 +487,7 @@ class RssBoundingBoxVisualizer(object):
                 rendered = True
                 break
         if not rendered and boxes_to_render > 0:
-            print("Warning: {} bounding boxes were not drawn.".format(boxes_to_render))
+            print(f"Warning: {boxes_to_render} bounding boxes were not drawn.")
         self._last_camera_frame = current_camera_frame
 
     @staticmethod
@@ -507,7 +507,9 @@ class RssBoundingBoxVisualizer(object):
         return bounding_boxes
 
     @staticmethod
-    def draw_bounding_boxes(surface, bounding_boxes, color=pygame.Color('red')):
+    def draw_bounding_boxes(surface: pygame.Surface,
+                            bounding_boxes,
+                            color: pygame.Color=pygame.Color('red')) -> None:  # noqa: B008
         """
         Draws bounding boxes on pygame display.
         """
@@ -608,7 +610,7 @@ class RssDebugVisualizationMode(Enum):
     All = 5
 
 
-class RssDebugVisualizer(object):
+class RssDebugVisualizer:
 
     def __init__(self, player, world : carla.World, visualization_mode: Union[RssDebugVisualizationMode,str,int] = RssDebugVisualizationMode.Off):
         self._world = world
@@ -630,7 +632,7 @@ class RssDebugVisualizer(object):
             self._visualization_mode = RssDebugVisualizationMode.VehicleStateAndRoute
         elif self._visualization_mode == RssDebugVisualizationMode.VehicleStateAndRoute:
             self._visualization_mode = RssDebugVisualizationMode.All
-        print("New Debug Visualizer Mode {}".format(self._visualization_mode))
+        print(f"New Debug Visualizer Mode {self._visualization_mode}")
 
     def tick(self, route, dangerous, individual_rss_states, ego_dynamics_on_route):
         if self._visualization_mode == RssDebugVisualizationMode.RouteOnly or \
@@ -649,8 +651,8 @@ class RssDebugVisualizer(object):
     def visualize_route(self, dangerous, route):
         if not route:
             return
-        right_lane_edges = dict()
-        left_lane_edges = dict()
+        right_lane_edges = {}
+        left_lane_edges = {}
 
         for road_segment in route.roadSegments:
             right_most_lane = road_segment.drivableLaneSegments[0]

@@ -18,10 +18,10 @@ get_client = CarlaDataProvider.get_client
 get_world = CarlaDataProvider.get_world
 get_map = CarlaDataProvider.get_map
 
-def initialize_carla(map_name="Town04", ip="127.0.0.1", port:int=2000, *, 
-                     timeout:float=10.0, worker_threads=0, 
-                     reload_world: bool=False, reset_settings: bool=True, 
-                     map_layers: carla.MapLayer=carla.MapLayer.All, 
+def initialize_carla(map_name="Town04", ip="127.0.0.1", port:int=2000, *,
+                     timeout:float=10.0, worker_threads=0,
+                     reload_world: bool=False, reset_settings: bool=True,
+                     map_layers: carla.MapLayer=carla.MapLayer.All,
                      sync: Union[bool, None]=True,
                      fps: int=20):
     client = CarlaDataProvider.get_client()

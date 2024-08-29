@@ -23,7 +23,7 @@ def subparser(func) -> argparse.ArgumentParser:
         func(parser, *args, **kwargs)
         return parser  # return the parser object again
 
-    # allows to circumvent calling the function. 
+    # allows to circumvent calling the function.
     # i.e. parser_function.parse_args() instead of parser_function().parse_args()
     wrapper.parse_args = lambda: wrapper(parser=None).parse_args()  # type: ignore[attr-defined]
     # allows to adjust parsers by adding another parser or by adding a parser function

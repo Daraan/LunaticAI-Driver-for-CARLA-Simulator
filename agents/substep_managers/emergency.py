@@ -15,7 +15,7 @@ def emergency_manager(self : "LunaticAgent", *, reasons:"set[Hazard]", control :
     The steering remains unchanged to avoid going out of the lane during turns.
 
     Parameters:
-        reasons: set of :py:class:`.Hazard` that triggered the emergency stop. 
+        reasons: set of :py:class:`.Hazard` that triggered the emergency stop.
             If empty this function will do nothing. Normally :py:attr:`detected_hazards <.LunaticAgent.detected_hazards>`.
         control: control to be modified in place.
             If :code:`None` the control for the current step will be calculated.

@@ -17,7 +17,7 @@ from typing import List, Tuple, cast as assure_type, TYPE_CHECKING
 import inspect
 import carla
 
-from launch_tools import CarlaDataProvider 
+from launch_tools import CarlaDataProvider
 from classes._sensor_interface import CustomSensorInterface
 from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisualizer, RssUnstructuredSceneVisualizer # pylint: disable=relative-import
 
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 # -- RssSensor -----------------------------------------------------------------
 # ==============================================================================
 
-class RssStateInfo(object):
+class RssStateInfo:
 
     def __init__(self, rss_state, ego_dynamics_on_route, world_model):
         # type: (ad.rss.state.RssState, carla.RssEgoDynamicsOnRoute, ad.rss.world.WorldModel) -> None
@@ -84,13 +84,13 @@ class RssStateInfo(object):
 
 class RssSensor(CustomSensorInterface):
 
-    def __init__(self, 
+    def __init__(self,
                  parent_actor : carla.Vehicle,
-                 unstructured_scene_visualizer: "RssUnstructuredSceneVisualizer", 
-                 bounding_box_visualizer, 
-                 state_visualizer, 
+                 unstructured_scene_visualizer: "RssUnstructuredSceneVisualizer",
+                 bounding_box_visualizer,
+                 state_visualizer,
                  *,
-                 visualizer_mode=RssDebugVisualizationMode.Off, 
+                 visualizer_mode=RssDebugVisualizationMode.Off,
                  routing_targets=None,
                  log_level: RssLogLevelAlias=RssLogLevel.off):
         world = CarlaDataProvider.get_world()
@@ -111,7 +111,7 @@ class RssSensor(CustomSensorInterface):
         self.route = None
         self.debug_visualizer = RssDebugVisualizer(parent_actor, world, visualizer_mode)
         self.state_visualizer = state_visualizer
-        self.change_to_unstructured_position_map = dict()
+        self.change_to_unstructured_position_map = {}
 
         # get max steering angle
         physics_control = parent_actor.get_physics_control()
@@ -122,7 +122,7 @@ class RssSensor(CustomSensorInterface):
         self._max_steer_angle = math.radians(self._max_steer_angle)
 
         bp = CarlaDataProvider._blueprint_library.find('sensor.other.rss')
-        self.sensor: carla.RssSensor = assure_type(carla.RssSensor, 
+        self.sensor: carla.RssSensor = assure_type(carla.RssSensor,
             world.spawn_actor(bp, carla.Transform(), attach_to=self._parent))
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
@@ -143,7 +143,7 @@ class RssSensor(CustomSensorInterface):
         self.sensor.listen(self._on_rss_response)
         assert isinstance(self.log_level, carla.RssLogLevel)
         assert isinstance(self.map_log_level, carla.RssLogLevel)
-        logger.info("Setting log level to {}".format(log_level))
+        logger.info(f"Setting log level to {log_level}")
         self.sensor.set_log_level(self.log_level)
         self.sensor.set_map_log_level(self.map_log_level)
 
@@ -329,13 +329,13 @@ class RssSensor(CustomSensorInterface):
         self.debug_visualizer.toggleMode()
 
     def increase_log_level(self):
-        print("increase {}".format(self.log_level))
+        print(f"increase {self.log_level}")
         if self.log_level < carla.RssLogLevel.off:
             self.log_level = self.log_level+1
         self.sensor.set_log_level(self.log_level)
 
     def decrease_log_level(self):
-        print("decrease {}".format(self.log_level))
+        print(f"decrease {self.log_level}")
         if self.log_level > carla.RssLogLevel.trace:
             self.log_level = self.log_level-1
         self.sensor.set_log_level(self.log_level)
@@ -470,4 +470,4 @@ class RssSensor(CustomSensorInterface):
                                        self.individual_rss_states, self.ego_dynamics_on_route)
 
         else:
-            print("ignore outdated RSS response {}".format(delta_time))
+            print(f"ignore outdated RSS response {delta_time}")

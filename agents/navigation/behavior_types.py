@@ -66,4 +66,4 @@ class BadAndRisky(Aggressive):
 
 # Gather all classes in this file
 
-behavior_types = dict(filter(lambda kv: not kv[0].startswith("_"), vars().items())) # type: dict[str, CarlaOriginalBehavior] 
+behavior_types = dict(filter(lambda kv: not kv[0].startswith("_"), vars().items())) # type: dict[str, CarlaOriginalBehavior]

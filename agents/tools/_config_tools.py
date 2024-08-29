@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast, get_ty
 from typing_extensions import TypeAlias, TypeVar, TypeAliasType
 
 if TYPE_CHECKING:
-    from agents.tools.config_creation import (AgentConfig, LunaticAgentSettings, 
+    from agents.tools.config_creation import (AgentConfig, LunaticAgentSettings,
                                     RuleCreatingParameters, CreateRuleFromConfig, RuleConfig)
     from classes.rule import Rule
 
@@ -48,7 +48,7 @@ READTHEDOCS = os.environ.get("READTHEDOCS", False)
 
 def look_ahead_time(speed: float, time_to_collision: float, plus: float=0) -> float:
     """
-    Convert the current speed in km /h and a time to collision in seconds to a distance in meters 
+    Convert the current speed in km /h and a time to collision in seconds to a distance in meters
     and adds a slight buffer on top.
 
     Use as :python:`"${look_ahead_time: ${live_info.current_speed}, time, }"`
@@ -94,7 +94,7 @@ def register_hydra_schema(obj: "type[Any]", name: Optional[str]=None):
     #    pass
     #else:
     #    postpond_register[name] = obj
-    config_store.store(name, OmegaConf.structured(obj, flags={"allow_objects" : True}), 
+    config_store.store(name, OmegaConf.structured(obj, flags={"allow_objects" : True}),
                         provider="agents.tools.config_creation", group=None, package=obj.__module__)
         
     
@@ -102,7 +102,7 @@ def config_path(path: Optional[str] = None):
     """
     Decorator to register the schema of the current class with Hydra's ConfigStore.
     
-    Returns 
+    Returns
         (Callable[[type[AgentConfig]], type[AgentConfig]]) Wrapper function to register the schema.
     """
     
@@ -173,7 +173,7 @@ _NOTSET = object()
 
 ConfigType = TypeVar("ConfigType", DictConfig, "AgentConfig")
 """
-Generic of an object that is a :py:class:`omegaconf.DictConfig` 
+Generic of an object that is a :py:class:`omegaconf.DictConfig`
 or a subclass of :py:class:`AgentConfig`.
 """
 
@@ -200,11 +200,11 @@ Allowed types for nested config
 if READTHEDOCS and not TYPE_CHECKING:
     from typing_extensions import TypeAliasType
     # annotate MISSING instead of ???
-    MISSING = TypeAliasType("MISSING", Any) 
+    MISSING = TypeAliasType("MISSING", Any)
     """
     Alias for :py:obj:`omegaconf.MISSING`, is literally :python:`"???"` but has type :python:`Any`.
 
-    If an attribute with this value is accessed from a :py:class:`DictConfig`, 
+    If an attribute with this value is accessed from a :py:class:`DictConfig`,
     it will raise a :py:exc:`MissingMandatoryValue` error.
 
     :meta hide-value:
@@ -388,7 +388,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
                 if comment_txt.startswith("\n@package "): # already striped here
                     comment_txt = "\n".join(comment_txt.split("\n")[2:]).strip()
             else:
-                comment_txt = lookup.get(key, None) 
+                comment_txt = lookup.get(key, None)
             if comment_txt is None:
                 continue
             if isinstance(comment_txt, dict):
@@ -432,7 +432,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     return string
 
 
-def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=False, yaml_commented:bool=True, 
+def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=False, yaml_commented:bool=True,
             detailed_rules:bool=False, *, include_private:bool = False) -> str:
     """
     Convert the options to a YAML string representation.
@@ -492,8 +492,8 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
                     except ImportError:
                         print("Could not import agents.rules.rule_from_config. Set detailed_rules=False to avoid this error. Call this function somewhere else.")
                         raise
-                    rule: Rule = rule_from_config(rule_cfg) 
-                    self_config: RuleConfig = rule.self_config 
+                    rule: Rule = rule_from_config(rule_cfg)
+                    self_config: RuleConfig = rule.self_config
                     if OmegaConf.is_missing(rule_cfg, "phases"):
                         rule_cfg.phases = list(self_config.instance.phases)[0] # only support one atm
                     with open_dict(self_config):
@@ -663,8 +663,8 @@ def flatten_config(config : "type[AgentConfig] | AgentConfig", *, resolve: bool 
         type is a normal dictionary.
     """
     try:
-        resolved = cast(NestedConfigDict, OmegaConf.to_container(OmegaConf.structured(config, flags={"allow_objects" : True}), 
-                                                        resolve=resolve, 
+        resolved = cast(NestedConfigDict, OmegaConf.to_container(OmegaConf.structured(config, flags={"allow_objects" : True}),
+                                                        resolve=resolve,
                                                         throw_on_missing=False,
                                                         structured_config_mode=SCMode.DICT))
     except omegaconf.errors.InterpolationToMissingValueError:
@@ -673,5 +673,5 @@ def flatten_config(config : "type[AgentConfig] | AgentConfig", *, resolve: bool 
         # NOTE: alternatively call again with resolve=False
         raise
     options: Dict[str, Any] = {}
-    _flatten_dict(resolved, options, resolve=resolve) 
+    _flatten_dict(resolved, options, resolve=resolve)
     return options

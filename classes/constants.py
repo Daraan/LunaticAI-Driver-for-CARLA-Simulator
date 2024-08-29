@@ -18,7 +18,7 @@ AD_RSS_AVAILABLE : bool
 """
 Indicator if the :py:mod:`carla.ad` module is available, i.e. if the current carla version was build
 with RSS support. As a rule of thumb: On Windows this will be always false.
-If this is false some objects will be missing in the :py:mod:`carla` module, for example 
+If this is false some objects will be missing in the :py:mod:`carla` module, for example
 the :py:class:`carla.RssSensor`, likewise are some utilities of this project involving RSS not be
 available.
 
@@ -52,7 +52,7 @@ class AgentState(Flag):
     """
     High-level states that the agent currently can be in.
     
-    Used with :py:attr:`.LunaticAgent.current_states` 
+    Used with :py:attr:`.LunaticAgent.current_states`
     and :py:attr:`.InformationManager.state_counter`.
     """
     
@@ -64,10 +64,10 @@ class AgentState(Flag):
     BLOCKED_RED_LIGHT = auto()     #: :meta hide-value:
     BLOCKED_BY_STATIC = auto()
     """
-    Static obstacle. 
+    Static obstacle.
     
     Attention:
-        Not updated by the information manager 
+        Not updated by the information manager
         but in the :py:attr:`Phase.DETECT_STATIC_OBSTACLES` phase.
     
     :meta hide-value:
@@ -141,7 +141,7 @@ class Phase(Flag):
     # see https://github.com/python/cpython/issues/91456
     # Before python version (3.12+?) auto() DOES NOT WORK AS EXPECTED when using ALIASES
 
-    NONE = 0                       
+    NONE = 0
     
     # These can be combined with any of the other Phases
     BEGIN = auto()
@@ -162,7 +162,7 @@ class Phase(Flag):
 
     UPDATE_INFORMATION = auto()
     """
-    Indicates the execution of the agents 
+    Indicates the execution of the agents
     :py:meth:`~.LunaticAgent.update_information` method
     
     This is the first Phase of the agent and executed every
@@ -176,7 +176,7 @@ class Phase(Flag):
     Indicates that the planning of a new path has started.
     
     Attention:
-        If the the path is replanned a :py:exc:`UpdatedPathException` 
+        If the the path is replanned a :py:exc:`UpdatedPathException`
         should be raised.
         
     :meta hide-value:
@@ -186,7 +186,7 @@ class Phase(Flag):
     """
     Executed during the agents :py:meth:`~.LunaticAgent.detect_hazard`
     method. Can add :py:attr:`.Hazard.TRAFFIC_LIGHT_RED` or
-    :py:attr:`.Hazard.TRAFFIC_LIGHT_YELLOW` to the agents 
+    :py:attr:`.Hazard.TRAFFIC_LIGHT_YELLOW` to the agents
     `.LunaticAgent.detected_hazards`:py:attr:.
     
     :meta hide-value:
@@ -296,7 +296,7 @@ class Phase(Flag):
     COLLISION = auto()
     """
     Special phase that is executed out-of-order when a
-    :external-icon-parse:`:py:class:\`carla.Sensor\`` detects a collision. 
+    :external-icon-parse:`:py:class:\`carla.Sensor\`` detects a collision.
     
     See Also:
         - :external-icon-parse:`:py:class:\`carla.CollisionEvent\``
@@ -327,7 +327,7 @@ class Phase(Flag):
     Can be used to indicate that the phase change is currently handled by the user.
     
     Warning:
-        :any:`LunaticAgent.execute_phase` checks for exact match, 
+        :any:`LunaticAgent.execute_phase` checks for exact match,
         i.e. a phase :python:`UPDATE_INFORMATION | BEGIN | END`
         will not be executed in the normal loop.
     
@@ -336,7 +336,7 @@ class Phase(Flag):
         
     :meta hide-value:
     """
-    # States which the agent can be in outside of a normal Phase0-5 loop 
+    # States which the agent can be in outside of a normal Phase0-5 loop
 
     # --- Aliases & Combination Phases ---
     # NOTE: # CRITICAL : Alias creation should be done after all the phases are created.!!!
@@ -393,7 +393,7 @@ class Phase(Flag):
         - :py:meth:`LunaticAgent.run_step <agents.lunatic_agent.LunaticAgent.run_step>`
         - :py:mod:`agents.substep_managers.collision_manager`
     
-    :meta hide-value:     
+    :meta hide-value:
     """
     
     """
@@ -446,9 +446,9 @@ class Phase(Flag):
         """
         :meta private:
         """
-        
-        assumed_next = current_phase.next_phase()  # type: ignore # noqa
-        NotImplemented # Currently done in agent.execute_phase # type: ignore
+        ...
+        #assumed_next = current_phase.next_phase()
+        # NotImplemented # Currently done in agent.execute_phase
 
     @classmethod
     def get_user_controlled_phases(cls):
@@ -476,7 +476,7 @@ class Phase(Flag):
         p = main_phases[1].next_phase()
         while p != main_phases[1] and not (p & cls.USER_CONTROLLED):
             if p & cls.USER_CONTROLLED:
-                raise ValueError("User controlled phase should not be in main phases %s" % p)
+                raise ValueError(f"User controlled phase should not be in main phases {p}")
             main_phases.append(p)
             p = p.next_phase()
         return main_phases
@@ -557,7 +557,7 @@ class HazardSeverity(Flag):
     The :py:class:`HazardSeverity` flags are stored in :py:attr:`~.LunaticAgent.detected_hazards_info`.
     """
     
-    UNKNOWN = -1 
+    UNKNOWN = -1
     
     NONE = 0
     """
@@ -650,7 +650,7 @@ else:
         """
 
 
-class __ItemAccessMeta(type):  # noqa
+class __ItemAccessMeta(type):
     """Class that allows item access on the class."""
     def __getitem__(cls, key : str) -> carla.Color:
         return getattr(cls, key)
@@ -729,8 +729,9 @@ class _CarlaIntEnum(IntEnum):
     names  : ClassVar[Dict[str, Self]]
 
     def __init_subclass__(cls):
-        cls.values : dict[int, cls]
-        cls.names  : dict[str, cls]
+        # TODO: as this is runtime create it correctly.
+        cls.values : dict[int, cls]  # noqa: B032
+        cls.names  : dict[str, cls]  # noqa: B032
 
 
 class RssLogLevelStub(_CarlaIntEnum):
@@ -746,10 +747,10 @@ class RssLogLevelStub(_CarlaIntEnum):
 
 class RssRoadBoundariesModeStub(_CarlaIntEnum):
     """
-    Enum declaration used in carla.RssSensor to enable or disable the stay on road feature. 
+    Enum declaration used in carla.RssSensor to enable or disable the stay on road feature.
     In summary, this feature considers the road boundaries as virtual objects.
-    The minimum safety distance check is applied to these virtual walls, 
-    in order to make sure the vehicle does not drive off the road. 
+    The minimum safety distance check is applied to these virtual walls,
+    in order to make sure the vehicle does not drive off the road.
     """
     Off = 0
     On = 1
@@ -766,7 +767,7 @@ if TYPE_CHECKING:
     RssLogLevelAlias: TypeAlias = Union[carla.RssLogLevel, RssLogLevelStub]
     RssRoadBoundariesModeAlias: TypeAlias = Union[carla.RssRoadBoundariesMode, RssRoadBoundariesModeStub]
 # Correct at Runtime, correct time needed for OmegaConf
-elif AD_RSS_AVAILABLE:  # noqa
+elif AD_RSS_AVAILABLE:
     RssLogLevelAlias = carla.RssLogLevel
     RssRoadBoundariesModeAlias = carla.RssRoadBoundariesMode
 else:

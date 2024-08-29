@@ -10,7 +10,7 @@ import math
 import numpy as np
 import carla
 
-from agents.navigation.controller import (VehiclePIDController, PIDLongitudinalController, 
+from agents.navigation.controller import (VehiclePIDController, PIDLongitudinalController,
                                           PIDLateralController)
 from classes.type_protocols import UseableWithDynamicPlanner
 
@@ -139,7 +139,7 @@ class DynamicPIDLongitudinalController(PIDLongitudinalController):
         """
         current_speed = self.config.live_info.current_speed
         if debug:
-            print('Current speed = {}'.format(current_speed))
+            print(f'Current speed = {current_speed}')
 
         target_speed = self.config.speed.target_speed
         return self._pid_control(target_speed, current_speed)

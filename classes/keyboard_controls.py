@@ -67,7 +67,7 @@ class KeyboardControl:
     def __init__(self, world : "WorldModel", help_notice=True):
         """
         Parameters:
-            world : WorldModel 
+            world : WorldModel
             help_notice : bool
                 Show a notice about the help keys.
         """
@@ -118,7 +118,7 @@ class KeyboardControl:
 
 class PassiveKeyboardControl(KeyboardControl):
     """
-    Does not allow to control the vehicle. Only allows to 
+    Does not allow to control the vehicle. Only allows to
     quit the simulation.
 
         ESC          : quit
@@ -259,12 +259,12 @@ class RSSKeyboardControl(KeyboardControl):
         :meta private:
         """
         if not RSSKeyboardControl.signal_received:
-            print('\nReceived signal {}. Trigger stopping... In case the program freezes trigger twice more.'.format(signum))
+            print(f'\nReceived signal {signum}. Trigger stopping... In case the program freezes trigger twice more.')
             RSSKeyboardControl.signal_received = True
             return
         # Did not yet terminate
         if RSSKeyboardControl.signal_received is True:
-            print('\nReceived signal {}. Abort a 3rd time to terminate the program immediately'.format(signum))
+            print(f'\nReceived signal {signum}. Abort a 3rd time to terminate the program immediately')
             RSSKeyboardControl.signal_received = 2
             return
         import sys
@@ -306,7 +306,8 @@ class RSSKeyboardControl(KeyboardControl):
                 elif event.key == K_F2:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.toggle_debug_visualization_mode()
-                        self._world_model.hud.notification("RSS Debug Visualization Mode: %s" % self._world_model.rss_sensor.debug_visualizer._visualization_mode)
+                        self._world_model.hud.notification("RSS Debug Visualization Mode: {}".format(
+                            self._world_model.rss_sensor.debug_visualizer._visualization_mode))
                 elif event.key == K_F3:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.decrease_log_level()
@@ -511,4 +512,4 @@ class RSSKeyboardControl(KeyboardControl):
 
     
 # Stops RSS and allows hard kills if the script is stuck
-signal.signal(signal.SIGINT, RSSKeyboardControl._signal_handler)  # noqa
+signal.signal(signal.SIGINT, RSSKeyboardControl._signal_handler)

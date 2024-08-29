@@ -23,7 +23,7 @@ class TrafficManager:
             raise TypeError("`actor` must be a carla.Actor, not " + str(type(actor)))
         if TrafficManager.tm is None:
             # TrafficManager.tm : carla.TrafficManager =\
-            TrafficManager.tm = cast(carla.TrafficManager, 
+            TrafficManager.tm = cast(carla.TrafficManager,
         client.get_trafficmanager(CarlaDataProvider.get_traffic_manager_port()))
             # TrafficManager.tm.set_random_device_seed(seed)
             TrafficManager.tm.set_random_device_seed(seed)

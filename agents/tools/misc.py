@@ -50,7 +50,7 @@ def get_speed(vehicle, kmh=True, vel=None):
         :param kmh: boolean to convert speed to km/h
         :param vel: (optional) velocity of the vehicle.
             Note:
-                Should be from vehicle.get_velocity() 
+                Should be from vehicle.get_velocity()
                 or CarlaDataProvider.get_velocity(vehicle)
         :return: speed as a float in Km/h
     """

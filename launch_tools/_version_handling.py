@@ -9,7 +9,7 @@ __all__ = ['singledispatchmethod', 'Literal', 'ast_parse']
 # singledispatchmethod
 
 if sys.version_info >= (3, 8):
-    from functools import singledispatchmethod # Python 3.8+    
+    from functools import singledispatchmethod # Python 3.8+
 else:
     from functools import singledispatch, update_wrapper
     from typing import Callable, TypeVar, Any
@@ -41,7 +41,7 @@ except ImportError:
         from typing import Literal
     else:
         print("Warning: Literal not found. Literal requires python3.8+ or typing_extensions.")
-        class __LiteralMeta(type): # noqa
+        class __LiteralMeta(type):
             def __getitem__(cls, _):
                 return cls.__repr__()
             

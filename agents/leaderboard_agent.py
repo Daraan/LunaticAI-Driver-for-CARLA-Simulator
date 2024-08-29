@@ -1,12 +1,12 @@
 """
 Leaderboard_ 2.0 compatible version of the Lunatic Agent
 
-Attention: 
+Attention:
     Command line overrides are currently not supported for this agent,
-    therefore this module allows to define some global constants to 
+    therefore this module allows to define some global constants to
     that can adjust settings the settings if they are not set to None (default).
     
-    These global settings are only used if :py:meth:`LunaticChallenger.setup` 
+    These global settings are only used if :py:meth:`LunaticChallenger.setup`
     is called with a string pointing to a configuration file. Passing a
     :py:class:`.LaunchConfig` directly will skip the Hydra_ setup and the global
     values will not be used.
@@ -32,7 +32,7 @@ try:
     from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track # pyright: ignore[reportMissingImports]
     from leaderboard.utils.route_manipulation import downsample_route          # pyright: ignore[reportMissingImports]
 except ModuleNotFoundError:
-    # Leaderboard is not a submodule, cannot use it on readthedocs 
+    # Leaderboard is not a submodule, cannot use it on readthedocs
     if "READTHEDOCS" in os.environ and not TYPE_CHECKING:
         class AutonomousAgent: pass # noqa
     else: raise # noqa: E701
@@ -93,13 +93,13 @@ args: LaunchConfig
 
 class LunaticChallenger(AutonomousAgent, LunaticAgent):
     """
-    Variant of the :py:class:`.LunaticAgent` that is compatible with the 
+    Variant of the :py:class:`.LunaticAgent` that is compatible with the
     `Leaderboard 2.0 <https://leaderboard.carla.org/>`_ interface.
     
     Attention:
         If the :py:class:`LunaticChallenger` is used without the Leaderboard 2.0 framework
         the :py:meth:`__call__`  method should be used instead of :py:meth:`run_step`
-        to acquire the next control. 
+        to acquire the next control.
     """
     
     sensor_interface: "SensorInterface" #: :meta private:
@@ -133,10 +133,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         
         Parameters:
             path_to_conf_file:
-                Can either be a string pointing to a configuration file to load a 
+                Can either be a string pointing to a configuration file to load a
                 :py:class:`.LaunchConfig` or a :py:class:`.LaunchConfig` to be used directly.
                 
-                Note: 
+                Note:
                     If a :py:class:`.LaunchConfig` is passed directly the Hydra_ setup will be skipped.
         """
         self._destroyed = False
@@ -145,21 +145,21 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             print("Setup with conf file", path_to_conf_file)
             logger.info("Setup with conf file %s", path_to_conf_file)
             config_dir, config_name = os.path.split(path_to_conf_file)
-            # TODO: Maybe move to init so its available during set_global_plan 
+            # TODO: Maybe move to init so its available during set_global_plan
             global args
             overrides=["agent=leaderboard"]
             if not GameFramework.hydra_initialized():
-                initialize_config_dir(version_base=None, 
-                                        config_dir=os.path.abspath(config_dir), 
+                initialize_config_dir(version_base=None,
+                                        config_dir=os.path.abspath(config_dir),
                                         job_name="LeaderboardAgent")
                 if ENABLE_DATA_MATRIX is not None:
                     overrides.append("agent.detection_matrix.enabled=" + str(ENABLE_DATA_MATRIX).lower())
                 overrides.append("agent.detection_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
                 if ENABLE_RSS is not None:
                     overrides.append("agent.rss.enabled=" + str(ENABLE_RSS).lower())
-                args = cast(LaunchConfig, 
-                            compose(config_name=config_name, 
-                                    return_hydra_config=True, 
+                args = cast(LaunchConfig,
+                            compose(config_name=config_name,
+                                    return_hydra_config=True,
                                     overrides=overrides) # uses conf/agent/leaderboard
                             )
                 args.debug = DEBUG
@@ -188,9 +188,9 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                     args.agent.detection_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
                 logger.info(OmegaConf.to_yaml(args))
             else:
-                args = cast(LaunchConfig, 
-                            compose(config_name=config_name, 
-                                    return_hydra_config=True, 
+                args = cast(LaunchConfig,
+                            compose(config_name=config_name,
+                                    return_hydra_config=True,
                                     overrides=overrides) # uses conf/agent/leaderboard
                             )
             logger.setLevel(logging.DEBUG)
@@ -236,7 +236,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         """
         Define the sensor suite required by the agent
         
-            Returns: 
+            Returns:
                 A list containing the required sensors in the following format
             
                 .. code-block:: python
@@ -285,24 +285,24 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         for key, val in input_data.items():
             if hasattr(val[1], 'shape'):
                 shape = val[1].shape
-                print("[{} -- {:06d}] with shape {}".format(key, val[0], shape))
+                print(f"[{key} -- {val[0]:06d}] with shape {shape}")
             else:
-                print("[{} -- {:06d}] ".format(key, val[0]))
+                print(f"[{key} -- {val[0]:06d}] ")
         print("<=====================")
         return True
     
     # This allows BlockingRules to pick up the coorect function
     @singledispatchmethod
-    def run_step(self, debug:bool=False, second_pass=False) -> carla.VehicleControl:   
+    def run_step(self, debug:bool=False, second_pass=False) -> carla.VehicleControl:
         """
         Attention:
             Use :py:meth:`__call__` instead of this method!
-        """     
+        """
         # TODO: Possibly singledispatch to __call__ instead
         return super(AutonomousAgent, self).run_step(debug=self.args.debug, second_pass=second_pass)
 
     @run_step.register(dict)
-    def _(self, input_data: Dict[str, Tuple[int, Any]], timestamp: float=-1) -> carla.VehicleControl:  # noqa: U100
+    def _(self, input_data: Dict[str, Tuple[int, Any]], timestamp: float=-1) -> carla.VehicleControl:
         """Function that is called by leaderboard framework"""
         try:
             if self._print_input_data(input_data) and "OpenDRIVE" in input_data:
@@ -358,7 +358,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         """
         Set the plan (route) for the agent
         """
-        # old: 
+        # old:
         # super().set_global_plan(global_plan_gps, global_plan_world_coord)
         # new:
         #print("==============Road updated============")

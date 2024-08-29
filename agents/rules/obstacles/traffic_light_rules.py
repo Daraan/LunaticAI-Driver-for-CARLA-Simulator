@@ -13,7 +13,7 @@ from classes.rule import BlockingRule, Context, Rule
 
 from agents.tools.config_creation import RuleConfig
 
-__all__ = ["DriveSlowTowardsTrafficLight", "PassYellowTrafficLightRule"]   
+__all__ = ["DriveSlowTowardsTrafficLight", "PassYellowTrafficLightRule"]
 
 
 class PassYellowTrafficLightRule(Rule):
@@ -73,7 +73,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         return ctx.has_hazard(Hazard.TRAFFIC_LIGHT, "intersection") and not ctx.has_hazard(Hazard.OBSTACLE)
     
     # Important need to turn this of to have custom speed limits.
-    overwrite_settings = {"speed" : {"follow_speed_limits" : False},}   
+    overwrite_settings = {"speed" : {"follow_speed_limits" : False},}
     
     @dataclass
     class self_config(RuleConfig):
@@ -89,7 +89,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         logger.info("Entering DriveSlowTowardsTrafficLight rule.")
         
         # Remove the hazard as we handle it below; removes yellow and red light hazards
-        ctx.discard_hazard(Hazard.TRAFFIC_LIGHT, "intersection") 
+        ctx.discard_hazard(Hazard.TRAFFIC_LIGHT, "intersection")
 
         last_traffic_light = ctx.agent.current_traffic_light
         if not last_traffic_light:
@@ -105,7 +105,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         # Smaller list of lights to check, however calls the simulator!
         
         affected: TrafficLightDetectionResult | bool = True
-        while affected and distance <= last_distance + 1/1000:            
+        while affected and distance <= last_distance + 1 / 1000:
             # You should always use ctx.agent.calculate_control() before self.loop_agent
             # This will move the planned waypoint queue forward.
             # However, the rule might be after the step was already calculated.
@@ -122,9 +122,9 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
             if not ctx.control: # Not yet set; this is the expected case
                 # Change settings before calculating the control object
                 ctx.config.speed.target_speed = min(ctx.config.speed.target_speed, distance * 2)
-                ctx.config.controls.max_brake = self.self_config.max_brake 
+                ctx.config.controls.max_brake = self.self_config.max_brake
                 ctx.config.controls.max_throttle = self.self_config.max_throttle
-                #print("Target Speed: ", ctx.config.speed.target_speed, 
+                #print("Target Speed: ", ctx.config.speed.target_speed,
                 #      "current speed: ", ctx.live_info.current_speed)
                 # # calculate it now
                 control = ctx.get_or_calculate_control()
@@ -134,11 +134,11 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
             # ------------ Loop Agent -------------------
             # Logic:
             # - ctx.get_or_calculate_control()
-            # 
+            #
             # - ctx.agent.parse_keyboard_input
             # - ctx.agent.apply_control
             # - self.update_world
-            # 
+            #
             # Are nearly equivalent to `BlockingRule.loop_agent`
             # which encapsulates the above functions, the only difference is
             # that BlockingRule.loop_agent will calculate the next control object at the end
