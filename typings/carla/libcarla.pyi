@@ -4252,12 +4252,26 @@ class Vector3D():
     @property
     def x(self) -> float:
         """X-axis value."""
+        ...
+    @x.setter
+    def x(self, value: float):
+        ...
+
     @property
     def y(self) -> float:
         """Y-axis value."""
+        ...
+    @y.setter
+    def y(self, value: float):
+        ...
+
     @property
     def z(self) -> float:
         """Z-axis value."""
+        ...
+    @z.setter
+    def z(self, value: float):
+        ...
     # endregion
 
     # region Methods
