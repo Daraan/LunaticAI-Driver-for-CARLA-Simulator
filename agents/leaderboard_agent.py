@@ -35,7 +35,7 @@ except ModuleNotFoundError:
     # Leaderboard is not a submodule, cannot use it on readthedocs 
     if "READTHEDOCS" in os.environ and not TYPE_CHECKING:
         class AutonomousAgent: pass # noqa
-    else: raise
+    else: raise # noqa: E701
 
 from agents.lunatic_agent import LunaticAgent
 

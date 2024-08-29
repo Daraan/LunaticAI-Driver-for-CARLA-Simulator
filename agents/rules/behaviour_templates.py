@@ -217,7 +217,7 @@ if __name__ == "__main__" or DEBUG_RULES:
         return 1
     
     def ctx_action(ctx : Context):
-        foo = _check_type(ctx, Context)
+        _check_type(ctx, Context)
         
     def ctx_self_action(self, ctx : Context):
         _check_type(self, Rule)
@@ -236,14 +236,14 @@ if __name__ == "__main__" or DEBUG_RULES:
     class SimpleRule1:
         phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
         condition = context_function
-        action = lambda ctx: _check_type(ctx, Context)
+        action = lambda ctx: _check_type(ctx, Context)  # noqa: E731
         description = "Simple Rule 1"
     
     
     class SimpleRule(Rule):
         phases = Phase.UPDATE_INFORMATION | Phase.BEGIN # type: ignore[assignment]
         condition = context_method
-        action = lambda self, ctx: ctx_self_action(self, ctx)
+        action = lambda self, ctx: ctx_self_action(self, ctx)  # noqa: E731
 
     class ReverseWhenCollide(Rule):
         phases = set([Phase.COLLISION | Phase.END])    # type: ignore[assignment]
@@ -352,7 +352,7 @@ if __name__ == "__main__" or DEBUG_RULES:
         phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
         
         _cooldown = 0
-        condition = lambda ctx: [][1] # This should not be executed, overwritten in the custom Init
+        condition = lambda ctx: [][1] # This should not be executed, overwritten in the custom Init # noqa: E731
         
         actions = {True: lambda self, ctx: (_check_type(self, Rule), _check_type(ctx, Context)),
                 False: lambda ctx: _check_type(ctx, Context)}
@@ -413,4 +413,4 @@ if __name__ == "__main__" or DEBUG_RULES:
     assert not cd_rule.phases
     assert cd_rule.description == """This is my description"""
 
-    debug_rules = [test, simple_rule, simple_ruleB, simple_rule2B, another_rule, custom_rule, new_rule, cd_rule]
+    debug_rules: list[Rule] = [test, simple_rule, simple_ruleB, simple_rule2B, another_rule, custom_rule, new_rule, cd_rule]

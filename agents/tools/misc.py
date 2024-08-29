@@ -15,7 +15,7 @@ import math
 import numpy as np
 
 import carla
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Sequence
 
 __all__ = [
     'draw_waypoints',
@@ -42,14 +42,14 @@ else:
 
 
 def get_speed(vehicle, kmh=True, vel=None):
-    # type: (carla.Vehicle, bool, float | None) -> float
+    # type: (carla.Actor, bool, float | None) -> float
     """
     Compute speed of a vehicle in Km/h.
 
         :param vehicle: the vehicle for which speed is calculated
         :param kmh: boolean to convert speed to km/h
         :param vel: (optional) velocity of the vehicle.
-            Note: 
+            Note:
                 Should be from vehicle.get_velocity() 
                 or CarlaDataProvider.get_velocity(vehicle)
         :return: speed as a float in Km/h
@@ -90,8 +90,9 @@ def get_trafficlight_trigger_location(traffic_light: carla.TrafficLight) -> carl
     return carla.Location(point_location.x, point_location.y, point_location.z)
 
 
-def is_within_distance(target_transform, reference_transform, max_distance, angle_interval=None):
-    # type: (carla.Transform, carla.Transform, float, Sequence[float] | None) -> bool
+def is_within_distance(target_transform: carla.Transform,
+                       reference_transform: carla.Transform,
+                       max_distance: float, angle_interval: Optional[Sequence[float]]=None) -> bool:
     """
     Check if a location is both within a certain distance from a reference object.
     By using 'angle_interval', the angle between the location and reference transform

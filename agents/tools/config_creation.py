@@ -6,35 +6,14 @@ Note:
     when this file runs.
 """
 
-from __future__ import annotations as _
-import sys
-
-__all__ = [
-           "AgentConfig", 
-           "BasicAgentSettings", 
-           "BehaviorAgentSettings", 
-           "LunaticAgentSettings",
-           "ContextSettings",
-           "CallFunctionFromConfig",
-           "CreateRuleFromConfig",
-           "AutopilotBehavior",
-           "RuleConfig",
-           "CameraConfig",
-           "LaunchConfig",
-           
-           "config_store",
-           "AsDictConfig",
-           
-           "RssLogLevel",
-           "RssRoadBoundariesMode",
-        ]
-
 # pyright: reportAttributeAccessIssue=warning
 # pyright: reportCallIssue=warning
 # pyright: reportInvalidStringEscapeSequence=false
 # pyright: reportPrivateUsage=false
 # pyright: reportSelfClsParameterName=false
 # pyright: reportAbstractUsage=false
+from __future__ import annotations as _
+import sys
 
 import inspect
 import os
@@ -51,7 +30,7 @@ from omegaconf.errors import InterpolationKeyError
 
 from hydra.conf import HydraConf
 
-from launch_tools import class_or_instance_method, Literal
+from launch_tools import class_or_instance_method
 from classes.constants import (Phase, RulePriority, RoadOption, AD_RSS_AVAILABLE, READTHEDOCS,
                                
                                # Correct runtime versions, Stub or carla.RssLogLevel
@@ -86,6 +65,26 @@ if TYPE_CHECKING:
     from classes.rule import Rule
     from agents.leaderboard_agent import LunaticChallenger
     from classes.worldmodel import GameFramework
+    
+__all__ = [
+           "AgentConfig", 
+           "BasicAgentSettings", 
+           "BehaviorAgentSettings", 
+           "LunaticAgentSettings",
+           "ContextSettings",
+           "CallFunctionFromConfig",
+           "CreateRuleFromConfig",
+           "AutopilotBehavior",
+           "RuleConfig",
+           "CameraConfig",
+           "LaunchConfig",
+           
+           "config_store",
+           "AsDictConfig",
+           
+           "RssLogLevel",
+           "RssRoadBoundariesMode",
+        ]
 
 if sys.version_info < (3, 9):
     # fix for typing.get_type_hints when OmegaConf.structured is used with nested dataclasses
@@ -351,7 +350,7 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
                 print(e)
                 #breakpoint()
                 raise
-        elif as_dictconfig == False and isinstance(behavior, DictConfig):
+        elif as_dictconfig is False and isinstance(behavior, DictConfig):
             return cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings) # pyright: ignore[reportCallIssue]
         elif as_dictconfig is None:
             logger.debug("A clear return type of %s.create_from_args has not set as config_mode is None. Returning as %s", cls.__name__, type(behavior))

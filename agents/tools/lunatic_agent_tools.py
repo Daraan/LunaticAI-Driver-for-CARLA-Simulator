@@ -1,15 +1,15 @@
 
-from __future__ import annotations
-# pyright: strict
-# pyright: reportUnnecessaryIsInstance=information
-# pyright: reportPrivateUsage=false
-# pyright: reportTypeCommentUsage=none
-
 """
 Helper functions and methods for the :py:class:`.LunaticAgent`, some methods are variants
 from the original CARLA agents that have been simplified and outsourced to this
 module.
 """
+# pyright: strict
+# pyright: reportUnnecessaryIsInstance=information
+# pyright: reportPrivateUsage=false
+# pyright: reportTypeCommentUsage=none
+
+from __future__ import annotations
 
 import sys
 from inspect import isclass
@@ -28,9 +28,9 @@ from agents.tools.logging import logger
 
 from classes.constants import Phase
 from classes.exceptions import EmergencyStopException, LunaticAgentException
-from launch_tools import CarlaDataProvider, Literal
+from launch_tools import CarlaDataProvider
 from typing import TYPE_CHECKING, Any, Callable, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
-from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never
+from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never, Literal
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
@@ -141,7 +141,8 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
         if on_enter is None and on_exit is None:
             print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
                     "decorator for function %s. Ignoring decorator." % func.__name__)
-            if TYPE_CHECKING: assert_never(func) # we ignore this # pyright: ignore
+            if TYPE_CHECKING: 
+                assert_never(func) # we ignore this # pyright: ignore
             return func
         @wraps(func)
         def wrapper(self: "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):

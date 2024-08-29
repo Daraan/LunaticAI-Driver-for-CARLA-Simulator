@@ -23,7 +23,7 @@ from launch_tools import CarlaDataProvider
 
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, AsDictConfig
 
-from classes.keyboard_controls import PassiveKeyboardControl, RSSKeyboardControl
+from classes.keyboard_controls import RSSKeyboardControl # Alternative: PassiveKeyboardControl
 
 from classes.constants import Phase
 from classes.worldmodel import GameFramework, WorldModel
@@ -154,7 +154,7 @@ def game_loop(args: LaunchConfig):
                 The agent.run_step is the main method in which the agent
                 calculates the next vehicle control object.
                 """
-                planned_control = agent.run_step(debug=True)
+                planned_control = agent.run_step(debug=True)  # noqa: F841
                 
                 # ------ Apply / Handle User Input ------
                 

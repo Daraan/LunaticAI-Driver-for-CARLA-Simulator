@@ -114,7 +114,6 @@ class CameraManager(CustomSensorInterface):
         # TODO: These are remnants from the original code, for our purpose most sensors are not relevant
         # -> Move to globals or some config which should be used (also saves resources)
         self.sensors = sensors if sensors else self.default_blueprints
-        world = self._parent.get_world()
         bp_library = CarlaDataProvider._blueprint_library
         for i, item in enumerate(self.sensors):
             try:

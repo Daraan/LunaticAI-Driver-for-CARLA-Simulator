@@ -225,7 +225,9 @@ _NestedStrDict = Dict[str, "str | _NestedStrDict"]
 """Nested dict with str as leaves"""
 
 if TYPE_CHECKING:
-    from omegaconf.basecontainer import BaseContainer
+    # AgentConfig parent should include DictConfig interface; without being a DictConfig
+    # BaseContainer adds the methods, however is ABC with more methods
+    from omegaconf.basecontainer import BaseContainer  # noqa: F401
     # More informative types when type checking; need primitive types at runtime
     DictConfigAlias : TypeAlias = Union[DictConfig, NestedConfigDict]
     OverwriteDictTypes : TypeAlias = Dict[str, Union[Dict[str, NestedConfigDict], "AgentConfig"]]
@@ -501,7 +503,7 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
                     else:
                         try:
                             rule_cfg.self_config.update(self_config)
-                        except:
+                        except Exception:
                             with open_dict(rule_cfg):
                                 rule_cfg.self_config = OmegaConf.to_container(OmegaConf.merge(self_config, rule_cfg.self_config), enum_to_str=True) # type: ignore
                 

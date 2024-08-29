@@ -447,7 +447,7 @@ class Phase(Flag):
         :meta private:
         """
         
-        assumed_next = current_phase.next_phase()  # type: ignore
+        assumed_next = current_phase.next_phase()  # type: ignore # noqa
         NotImplemented # Currently done in agent.execute_phase # type: ignore
 
     @classmethod

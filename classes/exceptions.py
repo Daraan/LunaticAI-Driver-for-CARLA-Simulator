@@ -1,10 +1,23 @@
 """Helper module that contains all the custom exceptions used in the project"""
 
-
 from typing import Any
 import carla
 
 from classes.constants import RuleResult, Hazard
+
+__all__ = [
+    "UserInterruption",
+    "LunaticAgentException",
+    "AgentDoneException",
+    "ContinueLoopException",
+    "SkipInnerLoopException",
+    "EmergencyStopException",
+    "UpdatedPathException",
+    "NoFurtherRulesException",
+    "DoNotEvaluateChildRules",
+    "UnblockRuleException",
+    "_RuleResultException"
+]
 
 class UserInterruption(Exception):
     """
@@ -76,7 +89,8 @@ class UpdatedPathException(LunaticAgentException):
 
 class _RuleResultException(LunaticAgentException):
     """
-    Abstract class for exceptions that can be raised by rules, but still are able to return a result.
+    Abstract class for exceptions that can be raised by rules
+    **that still are able to return a result**.
     
     :meta public:
     """

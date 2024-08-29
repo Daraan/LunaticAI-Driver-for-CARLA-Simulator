@@ -1,5 +1,6 @@
 import carla
 import inspect
+import signal
 
 import weakref
 import pygame
@@ -250,19 +251,19 @@ class RSSKeyboardControl(KeyboardControl):
                 self._surface, (self._mouse_steering_center[0] - self.MOUSE_STEERING_RANGE, self._mouse_steering_center[1] - self.MOUSE_STEERING_RANGE))
 
     @staticmethod
-    def signal_handler(signum, _):
+    def _signal_handler(signum, _):
         """
         Signal handler for stopping the simulation, e.g. when pressing Ctrl+C
         in the terminal.
         
         :meta private:
         """
-        if RSSKeyboardControl.signal_received == False:
+        if not RSSKeyboardControl.signal_received:
             print('\nReceived signal {}. Trigger stopping... In case the program freezes trigger twice more.'.format(signum))
             RSSKeyboardControl.signal_received = True
             return
         # Did not yet terminate
-        if RSSKeyboardControl.signal_received == True:
+        if RSSKeyboardControl.signal_received is True:
             print('\nReceived signal {}. Abort a 3rd time to terminate the program immediately'.format(signum))
             RSSKeyboardControl.signal_received = 2
             return
@@ -444,7 +445,7 @@ class RSSKeyboardControl(KeyboardControl):
                     self._mouse_steering_center = None
         
         if not self._autopilot_enabled:
-            prev_steer_cache = self._steer_cache
+            #prev_steer_cache = self._steer_cache # NOTE: Not used anymore
             self._parse_vehicle_keys(pygame.key.get_pressed(), self._clock.get_time())
             if pygame.mouse.get_pressed()[0]:
                 self._parse_mouse(pygame.mouse.get_pos())
@@ -510,5 +511,4 @@ class RSSKeyboardControl(KeyboardControl):
 
     
 # Stops RSS and allows hard kills if the script is stuck
-import signal
-signal.signal(signal.SIGINT, RSSKeyboardControl.signal_handler)
+signal.signal(signal.SIGINT, RSSKeyboardControl._signal_handler)  # noqa

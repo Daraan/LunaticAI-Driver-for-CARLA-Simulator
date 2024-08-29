@@ -52,7 +52,7 @@ class VehicleSpawner(CarlaDataProvider):
 
     def spawn_traffic(self, world, car_bp, spawn_points, driver, ego_vehicle):
         # NOTE: Duplicate in CarlaFunction
-        client = CarlaDataProvider.get_client()
+        #client = CarlaDataProvider.get_client()
         for sp in spawn_points[1:5]:
             v = Vehicle(world, car_bp)
             v.spawn(sp)

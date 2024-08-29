@@ -1,8 +1,10 @@
-# pylint: disable=unused-import
 """
 Note:
-    All rule should be imported into this module for insatiate to work
+    All rule should be imported into this module for hydra.instantiate to work
 """
+# pylint: disable=unused-import
+# pyright: reportUnusedImport=false
+# ruff: noqa: F401, F403
 
 import hydra.errors
 from omegaconf import DictConfig, OmegaConf
@@ -10,7 +12,9 @@ from hydra.utils import instantiate, call
 import omegaconf
 
 from agents.rules.behaviour_templates import SetNextWaypointNearby, SlowDownAtIntersectionRule, NormalSpeedRule, ConfigBasedRSSUpdates, DEBUG_RULES
-from agents.rules.lane_changes import *
+from agents.rules.lane_changes import RandomLaneChangeRule, SimpleOvertakeRule, AvoidTailgatorRule
+from agents.rules.lane_changes import * # allow to import all new rules
+from agents.rules.obstacles import DriveSlowTowardsTrafficLight, PassYellowTrafficLightRule
 from agents.rules.obstacles import *
 from agents.rules.stopped_long_trigger import StoppedTooLongTrigger
 
@@ -38,7 +42,7 @@ def create_default_rules(gameframework: Optional["GameFramework"]=None, random_l
     
     #slow_towards_traffic_light = DriveSlowTowardsTrafficLight(gameframework=gameframework) # Blocking Rule
 
-    default_rules = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, 
+    default_rules: list[Rule] = [normal_intersection_speed_rule, normal_speed_rule, avoid_tailgator_rule, 
                            simple_overtake_rule, set_close_waypoint_when_done, config_based_rss_updates,]
     if random_lane_change:
         default_rules.append(RandomLaneChangeRule())
@@ -82,11 +86,13 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
     
     # Lazy dotpath from globals
     # Allow to write NormalSpeedRule instead of agents.rules.behaviour_templates.NormalSpeedRule
-    if cfg._target_ in globals():
-        rule_class = globals()[cfg._target_]
-        cfg._target_ = globals()[cfg._target_].__module__ + "." + cfg._target_
+    if cfg._target_ in globals():  # pyright: ignore[reportPrivateUsage]
+        cfg._target_ = globals()[cfg._target_].__module__ + "." + cfg._target_ # pyright: ignore[reportPrivateUsage]
+        # NOTE: Could use rule_class for a more direct way compared to the block with
+        # except (omegaconf.MissingMandatoryValue, omegaconf.errors.InterpolationKeyError)
+        #rule_class = globals()[cfg._target_]
     else:
-        rule_class = None
+        rule_class = None  # noqa: F841  # pyright: ignore[reportUnusedVariable]
     # Else user needs to provide the full path
     
     # Fix phase as string from yaml
@@ -96,14 +102,14 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
     elif isinstance(cfg.phases, str):                      # pyright: ignore[reportAttributeAccessIssue]
         cfg.phases = Phase.from_string(cfg.phases)  # pyright: ignore[reportAttributeAccessIssue]
     elif isinstance(cfg.phases, Iterable):                 # pyright: ignore[reportAttributeAccessIssue]
-        cfg.phases = [Phase.from_string(phase) if isinstance(phase, str) else phase for phase in cfg.phases]  # pyright: ignore[reportAttributeAccessIssue]
+        cfg.phases = [Phase.from_string(phase) if isinstance(phase, str) else phase for phase in cfg.phases]  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
     
     # Throw out all keys that are not valid for the target, i.e. MISSING
     valid_keys = list({k for k in cfg.keys() if not OmegaConf.is_missing(cfg, k)})  # _target_ is kept for instantiate
-    clean_cfg : RuleCreatingParameters = OmegaConf.masked_copy(cfg, valid_keys)  # pyright: ignore[reportArgumentType]
+    clean_cfg : RuleCreatingParameters = OmegaConf.masked_copy(cfg, valid_keys)   # pyright: ignore[reportArgumentType]
     
     if "_args_" in clean_cfg and clean_cfg._args_ is None:
-        logger.error("_args_ argument for %s should be a list, not None", cfg._target_)
+        logger.error("_args_ argument for %s should be a list, not None", cfg._target_)  # pyright: ignore[reportPrivateUsage]
         clean_cfg._args_ = []
         
     # Note: call is an alias for instantiate
@@ -129,10 +135,10 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
                             parent.live_info[key] = "VOID"
                         try:
                             parent.live_info[key] = 0
-                        except:
+                        except Exception:
                             continue
                     clean_cfg.self_config._set_parent(parent)
-                    clean_cfg._set_parent(parent)
+                    clean_cfg._set_parent(parent)  # pyright: ignore[reportPrivateUsage]
                     parent["self"] = clean_cfg.self_config
                     # NOTE: If this still fails, can go over the rule_class directly if found; which might be better/easier than this hack
                 
@@ -149,10 +155,10 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
 
 
 # Add rules to extracted schema
-import agents.tools.config_creation as __config_creation
+import agents.tools.config_creation as __config_creation  # noqa
 if not __config_creation.READTHEDOCS:
     try:
         __config_creation.export_schemas(detailed_rules=True)
-    except:
+    except Exception:
         logger.exception("Error exporting schemas with rules")
 del __config_creation

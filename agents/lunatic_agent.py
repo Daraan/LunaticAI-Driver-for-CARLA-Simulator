@@ -19,7 +19,10 @@ import carla  # pyright: ignore[reportMissingTypeStubs]
 import omegaconf
 from omegaconf import DictConfig, OmegaConf
 
-from classes.exceptions import *
+
+from classes.exceptions import (AgentDoneException, ContinueLoopException, EmergencyStopException,
+                                LunaticAgentException, UpdatedPathException, NoFurtherRulesException,
+                                UserInterruption, SkipInnerLoopException)
 from classes.constants import (AgentState, HazardSeverity, Phase, Hazard, RoadOption, 
                                AD_RSS_AVAILABLE, READTHEDOCS)
 from classes.worldmodel import WorldModel, CarlaDataProvider
@@ -33,7 +36,7 @@ from agents.navigation.behavior_agent import BehaviorAgent
 from agents.tools.logging import logger
 from agents.tools.lunatic_agent_tools import (detect_vehicles, must_clear_hazard,
                                               result_to_context,
-                                              phase_callback, generate_lane_change_path) # type: ignore[unused-import]
+                                              phase_callback, generate_lane_change_path) # type: ignore[unused-import] # noqa: F401
 from agents.tools.misc import lanes_have_same_direction
 
 from agents import substep_managers

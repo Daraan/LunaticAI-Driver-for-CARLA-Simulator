@@ -17,7 +17,9 @@ from typing_extensions import (Annotated, Callable, overload, Self, ParamSpec, C
                                TypeVar, TypeGuard, Never)
 
 from classes.constants import READTHEDOCS
-from classes.type_protocols import AnyCallableAction, AnyCallableCondition, RuleT, CallableAction, CallableCondition, CallableT
+from classes.type_protocols import (
+    AnyCallableAction, AnyCallableCondition, RuleT, CallableAction, CallableCondition, CallableT, CallableConditionT
+)
 
 if TYPE_CHECKING:
     from typing import NoReturn
@@ -156,7 +158,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         return instance
     
     if READTHEDOCS and not TYPE_CHECKING:
-        __new__.__annotations__["first_argument"] = Optional["str[name]" | AnyCallableCondition]  # noqa: 821
+        __new__.__annotations__["first_argument"] = Optional["str[name]" | AnyCallableCondition]  # noqa: F821
         #evaluation_function : typing.Callable[typing.Concatenate[RuleT, "Context", _CP], _CH] | typing.Callable[typing.Concatenate["Context", _CP], _CH]
     
     def __init__(self, 
@@ -177,7 +179,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         Uses the generic type hints :py:obj:`_CP`, :py:obj:`_CH` of the class.
         """
         if READTHEDOCS and not TYPE_CHECKING:
-            self.evaluation_function : CallableConditionT  # noqa: 821
+            self.evaluation_function : CallableConditionT
         
         self.truthy: bool = truthy
         if name != "ConditionFunction":

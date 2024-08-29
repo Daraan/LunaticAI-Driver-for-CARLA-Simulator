@@ -4,6 +4,10 @@ if TYPE_CHECKING:
     from classes.rule import Context
     from classes.rule import Rule
 
+__all__ = [
+    'rule_lane_change'
+]
+
 def rule_lane_change(self: "Rule", ctx: "Context", order=("left", "right"), **kwargs):
     """
     Helper function to execute lane changes

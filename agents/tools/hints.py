@@ -5,6 +5,12 @@ The code is compatible with Python 2.7, <3.6 and >=3.6. The later uses the typed
 """
 
 
+# Modern Python 3.6+ syntax for better type hinting
+
+from typing import NamedTuple, Optional, Union
+from launch_tools import Literal
+import carla
+
 # Carla code with compatibility
 '''
 import sys
@@ -35,12 +41,6 @@ else:
     
     TrafficLightDetectionResult = NamedTuple('TrafficLightDetectionResult', [('traffic_light_was_found', bool), ('traffic_light', Union[TrafficLight, None])])
 '''
-
-# Modern Python 3.6+ syntax for better type hinting
-
-from typing import NamedTuple, Optional, Union
-from launch_tools import Literal
-import carla
 
 class TrafficLightDetectionResult(NamedTuple):
     traffic_light_was_found : bool
@@ -88,4 +88,3 @@ class CameraBlueprint(NamedTuple):
     """Semantic name of the blueprint, e.g. RGB, Segmentation"""
     actual_blueprint : Optional[carla.ActorBlueprint] = None
     """The actual blueprint object; filled in later"""
-
