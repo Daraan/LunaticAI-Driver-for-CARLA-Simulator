@@ -1,26 +1,75 @@
 from __future__ import annotations
 
-import matplotlib
-matplotlib.use('Agg')
-
 import threading
 import time
 from typing import Dict, List, TYPE_CHECKING, Any, Optional, Set
 from typing_extensions import TypedDict
-
+import signal
 
 import numpy as np
-import matplotlib.backends.backend_agg as agg
 import pylab
 
 import carla
 import pygame
 
 from launch_tools import CarlaDataProvider
+#from classes.constants import StreetType
 
-from data_gathering.car_detection_matrix.informationUtils import RoadLaneId, get_all_road_lane_ids
-from data_gathering.car_detection_matrix.matrix_wrap import wrap_matrix_functionalities
-        
+from data_gathering.car_detection_matrix.informationUtils import RoadLaneId, check_ego_on_highway, create_city_matrix, detect_surrounding_cars, get_all_road_lane_ids
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.backends.backend_agg as agg
+
+__all__ = [
+    'DetectionMatrix',
+    'AsyncDetectionMatrix',
+    'wrap_matrix_functionalities',
+]
+
+def wrap_matrix_functionalities(ego_vehicle : carla.Actor,
+                                world : carla.World,
+                                world_map : carla.Map,
+                                road_lane_ids: "set[RoadLaneId]",
+                                radius: float =100.0,
+                                highway_shape=None):
+    """
+    Parameters:
+        ego_vehicle: The ego vehicle
+        highway_shape (tuple): Tuple containing highway_type, number of straight highway lanes, entry waypoint tuple and/ exit waypoint tuple.
+            Format: (highway_type: string, straight_lanes: int, entry_wps: ([wp,..], [wp,..]), exit_wps: ([wp,..], [wp,..]))
+    """
+    ego_location = ego_vehicle.get_location()
+    ego_waypoint = world_map.get_waypoint(ego_location)
+    ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)
+
+    current_lanes = []
+    for id in road_lane_ids:
+        if ego_waypoint.road_id == id[0]:
+            current_lanes.append(id[1])
+
+    # Normal Road; TODO: Check if this is useful
+    #if ego_on_highway:
+    #    street_type = StreetType.ON_HIGHWAY
+    #else:
+    #    street_type = StreetType.NON_HIGHWAY_STREET
+    
+    # NOTE: in rare unsupported cases, the function will return None
+    matrix = create_city_matrix(ego_location, road_lane_ids, world_map)
+
+    if matrix:
+        matrix, _ = detect_surrounding_cars(
+            ego_location, ego_vehicle, matrix, road_lane_ids, world, radius, ego_on_highway, highway_shape
+        )
+    else:
+        return None
+    # Removes the information about "left_outer_lane" by replacing it with numeric values.
+    # Is this a good idea?
+    new_matrix = {i : v for i, v in enumerate(matrix.values())}
+    matrix = new_matrix
+    return matrix
+
+
 class DetectionMatrix:
     """Create a matrix representing the lanes around the ego vehicle."""
     
@@ -46,20 +95,19 @@ class DetectionMatrix:
             
     Attention:
         Currently the keys are replaces by numbers.
-                
     """
     
-    
-    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids: Optional[Set[RoadLaneId]]=None):
+    def __init__(self, ego_vehicle : carla.Actor, road_lane_ids: Optional[Set[RoadLaneId]]=None):
         self._ego_vehicle = ego_vehicle
-        self._world = world
+        self._world = CarlaDataProvider.get_world()
+        self._world_map = CarlaDataProvider.get_map()
         self.running = True
         """If the matrix will perform updates."""
         self._sync = True
-        self._world_map = CarlaDataProvider.get_map()
         self._road_lane_ids = road_lane_ids or get_all_road_lane_ids(CarlaDataProvider._map)
         """A set containing unique road and lane identifiers in the format "roadId_laneId"."""
         self.matrix = None  # type: ignore[assignment]
+        self._add_signal_handler()
 
     def _calculate_update(self):
         return wrap_matrix_functionalities(self._ego_vehicle, self._world, self._world_map,
@@ -76,21 +124,6 @@ class DetectionMatrix:
 
     def getMatrix(self) -> Dict[int, List[int]]:
         return self.matrix
-
-    def start(self):
-        """Allows the matrix to update."""
-        self.running = True
-
-    def stop(self):
-        """Prevents the matrix from updating."""
-        self.running = False
-         
-    def __del__(self):
-        if self.running:
-            try:
-                self.stop()
-            except Exception:
-                pass
         
     def to_list(self) -> "None | list[list[int]]":
         """
@@ -118,13 +151,13 @@ class DetectionMatrix:
             draw : bool
     
     def render(self,
-               display : pygame.Surface, 
+               display: pygame.Surface, 
                imshow_settings: dict[str, Any]={'cmap':'jet'},
-               vertical:bool=True, 
-               draw_values:bool=True,
-               text_settings:dict[str, Any]={'color':'orange'},
+               vertical: bool=True, 
+               draw_values: bool=True,
+               text_settings: dict[str, Any]={'color':'orange'},
                *,
-               draw:bool=True):
+               draw: bool=True):
         """
         Renders the matrix on the given surface.
         
@@ -145,14 +178,13 @@ class DetectionMatrix:
                 ax.text(j, i, val, ha='center', va='center', **text_settings)
         ax.axis('off')
         fig.tight_layout(pad=0)
-        canvas = agg.FigureCanvasAgg(fig)
+        
+        canvas: agg.FigureCanvasAgg = fig.canvas  # type: ignore[assignment]
         canvas.draw()
-        renderer = canvas.get_renderer()
-        raw_data = renderer.tostring_rgb()
+        buffer_data : memoryview = canvas.buffer_rgba()
         
         size = canvas.get_width_height()
-        #size = (size[0] //2, size[1] // 2)
-        surf = pygame.image.fromstring(raw_data, size, "RGB")
+        surf = pygame.image.frombuffer(buffer_data, size, "RGBA")
         
         display.blit(surf, (220, display.get_height() - surf.get_height()- 40 ))
         pylab.close(fig)
@@ -165,26 +197,62 @@ class DetectionMatrix:
         :meta private:
         """
         return self._sync
+    
+    def start(self):
+        """Allows the matrix to update."""
+        self.running = True
+
+    def stop(self):
+        """Prevents the matrix from updating."""
+        self.running = False
+        self.matrix = None # prevent rendering # type: ignore[assignment]
+         
+    def __del__(self):
+        if self.running:
+            try:
+                self.stop()
+            except Exception:
+                pass
+
+    def _signal_handler(self, signum: int, _):  # noqa
+        """
+        Signal handler for stopping the simulation, e.g. when pressing Ctrl+C
+        in the terminal.
+        
+        Calls :py:meth:`.stop`.
+        
+        :meta private:
+        """
+        self.stop()
+        
+    def _add_signal_handler(self):
+        """
+        Adds the signal handler for stopping the simulation.
+        
+        :meta private:
+        """
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
 
 class AsyncDetectionMatrix(DetectionMatrix):
-    def __init__(self, ego_vehicle : carla.Actor, world : carla.World, road_lane_ids=None, *, sleep_time=0.1):
+    def __init__(self, ego_vehicle : carla.Actor, *, road_lane_ids=None, sleep_time=0.1):
         """
         Asynchronous version of the :py:class:`DetectionMatrix`.
         
         Will calculate the matrix update in a separate thread.
         """
-        super().__init__(ego_vehicle, world, road_lane_ids)
+        super().__init__(ego_vehicle, road_lane_ids)
         self._sync = False
         self.sleep_time = sleep_time
         self.lock = threading.Lock()
-        self.worker_thread = threading.Thread(target=self._worker)
+        self.worker_thread = threading.Thread(target=self._worker, daemon=True)
         
     # TODO: add signal handler to interrupt the thread faster
     
     def update(self) -> None:
         """Not available in the async version."""
 
-    def _worker(self):
+    def _worker(self) -> None:
         while self.running:
             try:
                 new_matrix = self._calculate_update()
@@ -195,7 +263,8 @@ class AsyncDetectionMatrix(DetectionMatrix):
                 raise
             except Exception as e:
                 print(f"Error in matrix calculation: {e}")
-            time.sleep(self.sleep_time)
+            if self.sleep_time:
+                time.sleep(self.sleep_time)
 
     def getMatrix(self):
         with self.lock:
@@ -205,14 +274,41 @@ class AsyncDetectionMatrix(DetectionMatrix):
         self.running = True
         self.worker_thread.start() # NOTE: This does not allow restart
 
-    def stop(self):
+    def stop(self, timeout: float | None=None):
+        """
+        See Also:
+            :meth:`threading.Thread.join`
+            
+        Raises:
+            RuntimeError: if **timeout** is not None and the thread is still alive after the time.
+        """
+        self.running = False
+        if self.worker_thread.is_alive():
+            self.worker_thread.join(timeout)
+        else:
+            from agents.tools.logging import logger
+            logger.info("DetectionMatrix.stop called multiple times.")
+        self.matrix = None # prevent rendering # type: ignore[assignment]
+    
+    def __del__(self):
         self.running = False
         try:
-            from agents.tools.logging import logger
-            if self.worker_thread.is_alive():
-                self.worker_thread.join()
-            else:
-                logger.info("DetectionMatrix.stop called multiple times.")
-        except ImportError:
-            print("Cannot import logger from agents.tools.logging. Stopping data matrix.")
-            self.worker_thread.join()
+            self.worker_thread.join(3.0)
+        except Exception:
+            pass
+        self.matrix = None  # type: ignore[assignment]
+
+
+def get_car_coords(matrix) -> tuple[int, int]:
+    """
+    Position of the ego vehicle in the matrix.
+    Should be a constant value for non-junctions.
+    """
+    (i_car, j_car) = (0, 0)
+    for lane, occupations in matrix.items():
+        try:
+            return (lane, occupations.index(1)) # find the 1 entry in a efficient way
+        except ValueError:
+            continue
+
+    return i_car, j_car

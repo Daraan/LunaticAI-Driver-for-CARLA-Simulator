@@ -25,7 +25,7 @@ def main():
     ego.spawn(spawn_points[0])
     vehicles.append(ego)
 
-    matrix = DetectionMatrix(ego, world)
+    matrix = DetectionMatrix(ego)
 
     # spawn others
     for sp in spawn_points[1:]:

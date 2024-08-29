@@ -1315,9 +1315,9 @@ class LunaticAgent(BehaviorAgent):
     def _init_detection_matrix(self):
         if self.config.detection_matrix and self.config.detection_matrix.enabled:
             if self.config.detection_matrix.sync and self._world_model.world_settings.synchronous_mode:
-                self._detection_matrix = DetectionMatrix(self._vehicle, self._world_model.world)
+                self._detection_matrix = DetectionMatrix(self._vehicle)
             else:
-                self._detection_matrix = AsyncDetectionMatrix(self._vehicle, self._world_model.world)
+                self._detection_matrix = AsyncDetectionMatrix(self._vehicle)
             self._detection_matrix.start()
         else:
             self._detection_matrix = None

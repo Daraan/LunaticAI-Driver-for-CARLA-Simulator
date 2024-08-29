@@ -20,50 +20,6 @@ class RoadLaneId(NamedTuple):
     def __str__(self) -> str:
         return f"{self.road_id}_{self.lane_id}"
 
-# NOTE: TODO: double definition
-def get_row(matrix):
-    row_data = {}
-
-    keys = [0, 1, 2, 3, 4, 5, 6, 7]
-    counter = 0
-    for key, values in matrix.items():
-        column_names = [f"{keys[counter]}_{i}" for i in range(0, 8)]
-        row_data.update(dict(zip(column_names, values)))
-        counter += 1
-
-    return row_data
-
-def get_row(matrix : collections.OrderedDict) -> Dict:
-    """
-    Convert the city matrix into a row of data in the DataFrame.
-
-    Parameters:
-        matrix (collections.OrderedDict): The city matrix representing the lanes around the ego vehicle.
-
-    Returns:
-        dict: A dictionary representing a row of data to be added to the DataFrame.
-    """
-    row_data = {}
-
-    keys = [0, 1, 2, 3, 4, 5, 6, 7]
-    counter = 0
-    if matrix:
-        # Iterate over the data dictionary
-        for key, values in matrix.items():
-            # Get the column names based on the key
-            column_names = [f"{keys[counter]}_{i}" for i in range(0, 8)]
-            # Create a dictionary with column names as keys and values from data as values
-            row_data.update(dict(zip(column_names, values)))
-            counter += 1
-    else:
-        # If no data is available, fill the row with None values
-        for i in range(0, 8):
-            column_names = [f"{keys[counter]}_{i}" for i in range(0, 8)]
-            row_data.update(dict(zip(column_names, [None] * 8)))
-            counter += 1
-
-    return row_data
-
 def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
     """
     Check if the ego vehicle is on a highway based on its location. The function considers the ego vehicle to be on a highway if:
@@ -91,11 +47,11 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
     
     # check for all waypoints if they are on a highway, in case they have different road_id's
     for wp in waypoints:
-        ego_vehilce_road_id = wp.road_id
+        ego_vehicle_road_id = wp.road_id
         # get all lanes of the respective road
         lanes = []
         for id in road_lane_ids:
-            if ego_vehilce_road_id == id[0]:
+            if ego_vehicle_road_id == id[0]:
                 lanes.append(id[1])
         # cast lane_id's to int and check for highway condition
         lanes = [int(lane) for lane in lanes]
@@ -106,7 +62,8 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
 
     return False
 
-_all_lane_ids = []
+_all_lane_ids: 'list[Set[RoadLaneId]]' = []
+"""List of length 1 of RoadLaneId sets to check if the lane ids are consistent"""
 
 # @functools.lru_cache(maxsize=1) # Faster but not safe when changing the map without changing the map object/ or clearing the cache
 @cached(cache=LRUCache(maxsize=1), key=attrgetter("name"))
@@ -133,7 +90,6 @@ def get_all_road_lane_ids(world_map : carla.Map):
     _all_lane_ids.append(road_lane_ids)
     if len(_all_lane_ids) > 1:
         match = _all_lane_ids[0] == _all_lane_ids[1]
-        print("All lane ids match:", match)
         if match:
             _all_lane_ids.pop(0)
         else:
@@ -156,7 +112,7 @@ def distance(p1, p2):
 def create_city_matrix(ego_vehicle_location: carla.Location, 
                        road_lane_ids: "set[RoadLaneId]", 
                        world_map: carla.Map, 
-                       ghost:bool=False, 
+                       ghost: bool=False, 
                        ego_on_bad_highway_street:bool=False) -> Optional["dict[str | tuple[int, int], list[int]]"]:
     """
     Create a matrix representing the lanes around the ego vehicle.
@@ -349,12 +305,16 @@ def create_city_matrix(ego_vehicle_location: carla.Location,
             ("right_inner_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
             ("right_outer_lane", [3, 3, 3, 3, 3, 3, 3, 3]),
         ]
+    else:
+        # Unsupported case
+        # Keep at info level to allow suppression
+        logger.info("Could not infer road type to create city matrix")
 
     # Update matrix
     if key_value_pairs:
         matrix = collections.OrderedDict(key_value_pairs)
     
-    # Insert ego in matrix, in case ego is not entrying/exiting a highway    
+    # Insert ego in matrix, in case ego is not entering/exiting a highway    
     if matrix and not ghost:
         try:
             if ego_on_bad_highway_street:
@@ -432,7 +392,7 @@ def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
 def detect_surrounding_cars(
     ego_location : carla.Location,
     ego_vehicle :  carla.Actor,
-    matrix,
+    matrix : dict[str | tuple[int, int], list[int]],
     road_lane_ids,
     world,
     radius,
@@ -523,7 +483,7 @@ def detect_surrounding_cars(
     # in the following, ignore cars that are on highway exit/entry lanes
     if highway_shape is not None:
         entry_wps = highway_shape[2] # Tuple with start and end waypoint of the entry: ([start_wp, start_wp..], [end_wp, end_wp..])
-        exit_wps = highway_shape[3] # Tuple with start and end waypoint of the exit: ([start_wp, start_wp..], [end_wp, end_wp..])
+        exit_wps = highway_shape[3]  # Tuple with start and end waypoint of the exit: ([start_wp, start_wp..], [end_wp, end_wp..])
 
         # get all road id's of entry and exit and previous/next road
         entry_road_id = []
@@ -782,7 +742,7 @@ def calculate_position_in_matrix(
     new_distance = get_forward_vector_distance(ego_location, other_car, world_map)
 
     # Get distance between ego_vehicle and other car
-    distance_to_actor = distance(other_location, ego_location)
+    distance_to_actor = other_location.distance(ego_location)
 
     # check if car is behind or in front of ego vehicle: dot_product > 0 ==> in front, dot_product < 0 ==> behind
     dot_product = check_car_in_front_or_behind(ego_location, other_location, rotation)
@@ -1141,20 +1101,21 @@ def detect_surrounding_cars_outside_junction(
         list: Updated key-value pairs representing the city matrix with information about surrounding cars.
     """
     world_map = CarlaDataProvider.get_map()
+    world = CarlaDataProvider.get_world()
     ego_waypoint = world_map.get_waypoint(ego_vehicle.get_location())
     junction_id = junction.id
     # junction_roads =
     #   [road_id of incoming road, direction from ego-perspective, wp of outgoing lane of incoming road, corresponding lane_id ],
     #       ... for all 4 directions ego, left, right, straight
-    #   ]    # Special Highway Traffi
+    #   ]    # Special Highway Traffic
 
     surrounding_cars = {"ego": [], "left": [], "straight": [], "right": []}
     actors = world.get_actors()
     ego_actor = actors.find(ego_vehicle.id)
     actors = [ego_actor] + [actor for actor in actors if actor.id != ego_vehicle.id]
-    if type(key_value_pairs) == dict:
+    if isinstance(key_value_pairs, dict):
         ego_already_in_matrix = any(
-            1 in val for key, val in key_value_pairs.items())  # TODO: sometimes list, sometimes dict (whaaaat?)
+            1 in val for val in key_value_pairs.values())  # TODO: sometimes list, sometimes dict
     else:
         ego_already_in_matrix = any(1 in val for key, val in key_value_pairs)
     for actor in actors:
@@ -1167,7 +1128,7 @@ def detect_surrounding_cars_outside_junction(
                     actor_waypoint.lane_id) and actor_waypoint.road_id in [40, 41]:
                 continue
             for road in junction_roads:
-                distance_to_actor = distance(actor_location, road[2].transform.location)
+                distance_to_actor = actor_location.distance(road[2].transform.location)
                 different_road_distance = None
 
                 if (actor_waypoint.is_junction) and (

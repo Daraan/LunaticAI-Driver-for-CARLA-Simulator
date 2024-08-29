@@ -833,17 +833,32 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self.imu_sensor : Optional[IMUSensor] = None     # from interactive
         self.radar_sensor : Optional[RadarSensor] = None # from interactive
         self.camera_manager : CameraManager = None       # type: ignore # set in restart
+        """
+        Manages cameras for the user interface and :py:class:`.HUD`.
+        """
         
         self._weather_presets = CarlaDataProvider.find_weather_presets()
         self._weather_index = 0
-        self.weather = None
+        self.weather: str = None
+        """
+        Name of currently used weather preset.
+        See also: :py:class:`CarlaDataProvider.find_weather_presets()<CarlaDataProvider>`
+        """
         
         self.actors: List[Union[carla.Actor, CustomSensorInterface]] = []
+        """Actors attached to this instance for the user interface and :py:class:`.HUD`."""
         
         # From interactive:
-        self.constant_velocity_enabled = NotImplemented
-        self.show_vehicle_telemetry = False
-        self.doors_are_open = False
+        self.constant_velocity_enabled = NotImplemented  #: :meta private:
+        self.show_vehicle_telemetry = False  #: :meta private: # enabled via KeyboardController
+        self.doors_are_open: bool = False
+        """
+        Note:
+            Only set over the KeyboardController, does not query the actor or simulation
+            
+        :meta private:
+        """
+        
         self.current_map_layer = 0
         self.map_layer_names = [
             carla.MapLayer.NONE,
@@ -860,7 +875,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         ]
         # RSS
         # set in restart
-        self.rss_sensor = None
+        self.rss_sensor: Optional[RssSensor] = None
         self.rss_unstructured_scene_visualizer: RssUnstructuredSceneVisualizer = None # type: ignore[assignment]
         self.rss_bounding_box_visualizer: RssBoundingBoxVisualizer = None  # type: ignore[assignment]
         
@@ -1043,7 +1058,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     blueprint.set_attribute('color', color)
                 # From Interactive:
                 if blueprint.has_attribute('terramechanics'): # For Tire mechanics/Physics? # Todo is that needed?
-                    blueprint.set_attribute('terramechanics', 'true')
+                    blueprint.set_attribute('terramechanics', 'false')
                 if blueprint.has_attribute('driver_id'):
                     driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
                     blueprint.set_attribute('driver_id', driver_id)
@@ -1267,7 +1282,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         if finalize:
             self.finalize_render(display)
 
-    def destroy_sensors(self): # TODO only camera_manager, should be renamed.
+    def destroy_sensors(self):
         """Destroy sensors"""
         if self.rss_sensor:
             self.rss_sensor.destroy()
