@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Set, NamedTuple, Optional
+from typing import List, Set, NamedTuple, Optional
 import carla
 import math
 import collections
@@ -563,7 +563,7 @@ def detect_surrounding_cars(
             car,
             matrix,
             world_map,
-            ego_vehicle.get_velocity(),
+            #ego_vehicle.get_velocity(),
             ego_on_highway=ego_on_highway,
             ghost=ghost,
         )
@@ -599,9 +599,11 @@ def detect_surrounding_cars(
 
     return matrix, surrounding_cars_on_highway_entryExit
 
-def check_car_in_front_or_behind(ego_location, other_location, rotation):
+def check_car_in_front_or_behind(ego_location: carla.Location,
+                                 other_location: carla.Location,
+                                 rotation: carla.Rotation) -> float:
     """
-    Chek if other car is in front or behind ego vehicle.
+    Check if other car is in front or behind ego vehicle.
 
     Args:
         ego_location (carla.Location): The location object of the ego vehicle.
@@ -613,22 +615,17 @@ def check_car_in_front_or_behind(ego_location, other_location, rotation):
     """
     # Get ego to other vector location
     ego_to_other_vector = other_location - ego_location
-
     # Calculate forward vector of ego
-    ego_forward_vector = carla.Vector3D(
-        math.cos(math.radians(rotation.yaw)),
-        math.sin(math.radians(rotation.yaw)),
-        0,
-    )
+    ego_forward_vector = rotation.get_forward_vector()
+    
+    # Calculate dot_product (similarity between the vectors): 
+    # dot_product > 0 ==> in front, dot_product < 0 ==> behind
+    # ignore z component
+    return ego_to_other_vector.dot_2d(ego_forward_vector)
 
-    # Calculate dot_product (similarity between the vectors): dot_product > 0 ==> in front, dot_product < 0 ==> behind
-    dot_product = (
-        ego_forward_vector.x * ego_to_other_vector.x
-        + ego_forward_vector.y * ego_to_other_vector.y
-    )
-    return dot_product
-
-def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
+def get_forward_vector_distance(ego_vehicle_location: carla.Location,
+                                other_car: carla.Actor,
+                                world_map: carla.Map) -> float:
     """
     Calculate the distance between point B (other vehicle) and point C (parallel point right/left of ego on lane of other vehicle) in a right-angled triangle.
 
@@ -636,7 +633,6 @@ def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
         ego_vehicle_location (carla.Location): The location of the ego vehicle in 3D space.
         other_car_location (carla.Location): The location of the other car in 3D space.
         world_map (carla.WorldMap): The map representing the environment.
-
 
     Returns:
         float: The distance between perpendicular_wp (waypoint left/right in parallel to ego) and other car in triangle calculation.
@@ -696,7 +692,15 @@ def get_forward_vector_distance(ego_vehicle_location, other_car, world_map):
     return math.sqrt(abs(distance_ego_other**2 - distance_opposite**2))
 
 def calculate_position_in_matrix(
-        ego_location, ego_vehicle, other_car, matrix, world_map, velocity, *, ego_on_highway, ghost=False,
+        ego_location: carla.Location, 
+        ego_vehicle: carla.Actor,
+        other_car: carla.Actor,
+        matrix,
+        world_map,
+        #velocity,
+        *,
+        ego_on_highway: bool,
+        ghost: bool=False,
 ):
     """
     Calculate the position of the other car in the city matrix based on its relative location and distance from the ego vehicle.
@@ -706,8 +710,10 @@ def calculate_position_in_matrix(
         ego_location (carla.Location): The location object of the ego vehicle.
         ego_vehicle (carla.Vehicle): The ego vehicle for reference.
         other_car (carla.Vehicle): The other car whose position is to be determined.
-        matrix (collections.OrderedDict): An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id". 
-            For non-existing lanes different placeholder exist, e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction.
+        matrix (collections.OrderedDict): An ordered dictionary representing the city matrix.
+            The keys for existing lanes are the lane IDs in the format "road_id_lane_id". 
+            For non-existing lanes different placeholder exist,
+            e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction.
             The values indicate whether a vehicle is present: 0 - No vehicle, 1 - Ego vehicle, 3 - No road.
             Format example: {
                 "left_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
@@ -719,14 +725,17 @@ def calculate_position_in_matrix(
                 "right_inner_lane": [3, 3, 3, 3, 3, 3, 3, 3],
                 "right_outer_lane": [3, 3, 3, 3, 3, 3, 3, 3],
         world_map (carla.WorldMap): The map representing the environment.
-        ghost (bool): Ghost mode when ego is exiting/entering a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
+        ego_on_highway (bool): Wether the ego is on a highway, if so will consider greater distances.
+        ghost (bool): Ghost mode when ego is exiting/entering a highway - fix a location of an 
+            imaginary vehicle on highway to correctly build matrix from this ghost perspective.
 
     Returns:
         int or None: The column index in the city matrix representing the column in the city matrix of the other car,
                     or None if the other car is not within the specified distance range.
 
     Note:
-        The city matrix should be pre-generated using the 'create_basic_matrix' function. Other cars are detected using the detect_surronding cars func.
+        The city matrix should be pre-generated using the 'create_basic_matrix' function.
+        Other cars are detected using the detect_surrounding_cars func.
     """
 
     # Get ego vehicle rotation and location
@@ -742,7 +751,8 @@ def calculate_position_in_matrix(
     new_distance = get_forward_vector_distance(ego_location, other_car, world_map)
 
     # Get distance between ego_vehicle and other car
-    distance_to_actor = other_location.distance(ego_location)
+    # NOTE: Unused, but could be useful for future extensions
+    #distance_to_actor = other_location.distance(ego_location)
 
     # check if car is behind or in front of ego vehicle: dot_product > 0 ==> in front, dot_product < 0 ==> behind
     dot_product = check_car_in_front_or_behind(ego_location, other_location, rotation)
@@ -754,10 +764,11 @@ def calculate_position_in_matrix(
     other_car_road_lane_id = (other_car_road_id, other_car_lane_id)
 
     # Get road_lane_id of ego vehicle
-    ego_car_waypoint = world_map.get_waypoint(ego_location)
-    ego_car_lane_id = ego_car_waypoint.lane_id
-    ego_car_road_id = ego_car_waypoint.road_id
-    ego_car_road_lane_id = (ego_car_road_id, ego_car_lane_id)
+    # NOTE: Unused, but could be useful for future extensions
+    #ego_car_waypoint = world_map.get_waypoint(ego_location)
+    #ego_car_lane_id = ego_car_waypoint.lane_id
+    #ego_car_road_id = ego_car_waypoint.road_id
+    #ego_car_road_lane_id = (ego_car_road_id, ego_car_lane_id)
 
     # velocity = ego_vehicle.get_velocity()
     #ego_speed = (
@@ -977,8 +988,10 @@ def get_waypoint_direction(
     yaw_degrees = math.degrees(yaw)
     ego_rotation = yaw_degrees
     # Get the orientation of the ego vehicle
-    ego_rotation_1 = ego_vehicle.get_transform().rotation.yaw
-    # ego_rotation = ego_rotation_1
+    # NOTE: This was changed
+    #ego_rotation_1 = ego_vehicle.get_transform().rotation.yaw
+    #ego_rotation = ego_rotation_1
+    
     # Get the location of the junction waypoint
     junction_location = junction_waypoint.transform.location
 
@@ -1460,8 +1473,8 @@ def get_all_lanes(ego_vehicle, ego_wp, junction_waypoints, road_lane_ids, direct
     ego_location = ego_wp.transform.location
     road_id_ego = ego_wp.road_id
 
-    lane_id_ego = ego_wp.lane_id
-    start_wps = [[], [], []]
+    #lane_id_ego = ego_wp.lane_id
+    #start_wps = [[], [], []]
     end_wps = [[], [], [], []]
     closest_start_wp = get_closest_starting_waypoint(junction_waypoints, ego_location)
 
@@ -1649,7 +1662,7 @@ def get_grid_corners(junction_shape):
     # if left from ego perspective is no street: check in last row
     if sum(junction_shape[0][1]) == 8 * 3: # all 8 value of value 3
         row = 7
-    # else: left from ego perspective is a street: ckeck in first row
+    # else: left from ego perspective is a street: check in first row
     else:
         row = 0        
     # get left x coordinate: x1
@@ -1658,9 +1671,9 @@ def get_grid_corners(junction_shape):
             x_1 = k
             break
     # get right x coordinate: x2
-    for l in range(7, -1, -1):
-        if junction_shape[row][1][l] != 3:
-            x_2 = l
+    for n in range(7, -1, -1):
+        if junction_shape[row][1][n] != 3:
+            x_2 = n
             break
 
     return [[y_1, x_1], [y_1, x_2], [y_2, x_1], [y_2, x_2]]
