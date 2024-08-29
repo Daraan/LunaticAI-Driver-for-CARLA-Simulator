@@ -14,7 +14,7 @@ from launch_tools import singledispatchmethod
 import typing
 from typing import Any, ClassVar, Dict, Generic, Hashable, TYPE_CHECKING, Optional, Union, cast
 from typing_extensions import (Annotated, Callable, overload, Self, ParamSpec, Concatenate, 
-                               TypeVar, TypeGuard, Never)
+                               TypeVar, TypeGuard, Never, Literal)
 
 from classes.constants import READTHEDOCS
 from classes.type_protocols import (
@@ -117,7 +117,6 @@ class ConditionFunction(Generic[_CP, _CH]):
         - _CP : :py:class:`typing.ParamSpec` of the passed :py:attr:`evaluation_function`.
         - _CH : The :term:`Hashable` return type of the :py:attr:`evaluation_function`.
     """
-    
     actions: Dict[Hashable, _ActionsDictValues] = {}
     """
     Mapping of return values to actions to be executed.
@@ -131,18 +130,27 @@ class ConditionFunction(Generic[_CP, _CH]):
     
     @overload
     def __new__(cls, first_argument: Optional[Annotated[str, "name"]]=None, name: str="ConditionFunction", *, 
-                truthy:bool=False, use_self: Optional[bool]=None) -> Callable[[CallableCondition[RuleT, _P, _H]], ConditionFunction[_P, _H]]: ...
+                truthy:Literal[False]=False, use_self: Optional[bool]=None) -> Callable[[CallableCondition[RuleT, _P, _H]], ConditionFunction[_P, _H]]: ...
+    
+    @overload
+    def __new__(cls, first_argument: Optional[Annotated[str, "name"]]=None, name: str="ConditionFunction", *, 
+                truthy:Literal[True], use_self: Optional[bool]=None) -> Callable[[CallableCondition[RuleT, _P, Any]], ConditionFunction[_P, bool]]: ...
         
     @overload
     def __new__(cls, first_argument: CallableCondition[RuleT, _CP, _CH], name: str="ConditionFunction", *, 
                 truthy:bool=False, use_self: Optional[bool]=None) -> Self: ...
     
     def __new__(cls, 
-                first_argument: Optional[Union[Annotated[str, "name"], CallableCondition[RuleT, _CP, _CH]]]=None,
+                first_argument: Optional[Annotated[str, "name"] | CallableCondition[RuleT, _CP, _CH]]=None,
                 name: str="ConditionFunction", 
                 *, 
                 truthy: bool=False, 
-                use_self: Optional[bool]=None) -> Callable[[CallableCondition[RuleT, _P, _H]], ConditionFunction[_P, _H]] | Self:
+                use_self: Optional[bool]=None) \
+                -> (
+                    Callable[[CallableCondition[RuleT, _P, _H]], ConditionFunction[_P, _H]]  # default decorator
+                    | Callable[[CallableCondition[RuleT, _P, Any]], ConditionFunction[_P, bool]] # truthy=True
+                    | Self # function way
+                ):
         # example usage: @ConditionFunction("name")
         if isinstance(first_argument, str):
             # Calling decorator with a string @ConditionFunction("name")
