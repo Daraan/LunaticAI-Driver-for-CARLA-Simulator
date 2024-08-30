@@ -1,5 +1,6 @@
 
 from carla import ad
+from . import *
 
 
 class LateralRelativePosition(int,):

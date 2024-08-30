@@ -116,7 +116,7 @@ class HeadingRangeVector(ad._Vector[HeadingRange]):
 class LateralResponse(int,):
     BrakeMin = 1
 
-    None = 0
+    None = 0  # type: ignore
 
 
 class LateralRssState():
@@ -148,7 +148,7 @@ class LongitudinalResponse(int,):
 
     BrakeMinCorrect = 1
 
-    None = 0
+    None = 0  # type: ignore
 
 
 class LongitudinalRssState():
@@ -268,7 +268,7 @@ class RssStateEvaluator(int,):
 
     LongitudinalDistanceSameDirectionOtherInFront = 4
 
-    None = 0
+    None = 0  # type: ignore
 
 
 class RssStateInformation():
@@ -386,7 +386,7 @@ class UnstructuredSceneResponse(int,):
 
     DriveAway = 2
 
-    None = 0
+    None = 0 # type: ignore
 
 
 class UnstructuredSceneRssState():
