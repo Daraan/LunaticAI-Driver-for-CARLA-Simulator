@@ -1,18 +1,19 @@
 from typing import *
-import typing
+import typing as typing
 
 
 here = lambda s: "docs.webview.source._autodoc_type_aliases." + s
 
 autodoc_type_aliases = {
     '_ActionsDictValues' : 'typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Any], typing.Callable[typing.Concatenate[Context, ...], typing.Any]]',
+    '_ActionsDictValues' : 'AnyCallableAction',
     
     '_ConditionType' : "typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Hashable], typing.Callable[typing.Concatenate[Context, ...], typing.Hashable]]",
     '_ActionType' : "typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Any], typing.Callable[typing.Concatenate[Context, ...], typing.Any]]",
     
-    'CallableAction' : "typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Any], typing.Callable[typing.Concatenate[Context, ...], typing.Any]]",
     '_CallableCondition' : "typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Hashable], typing.Callable[typing.Concatenate[Context, ...], typing.Hashable]]",
     
+    'CallableAction' : "typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Any], typing.Callable[typing.Concatenate[Context, ...], typing.Any]]",
     'CallableAction' : "classes.type_protocols.CallableActionT",
     'CallableCondition' : "classes.type_protocols.CallableConditionT",
     
@@ -37,8 +38,6 @@ autodoc_type_aliases = {
     'Annotated' : 'typing.Annotated',
     'ClassVar' : 'typing.ClassVar',
     'Context' : 'classes.rule.Context',
-    
-    '_ActionsDictValues' : 'AnyCallableAction',
     
     '_ActorList' : 'list',
     '_Generic_carlaActorList' : 'carla.ActorList',

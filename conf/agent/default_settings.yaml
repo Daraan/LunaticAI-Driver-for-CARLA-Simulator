@@ -98,9 +98,9 @@ speed:
 
   # TODO: Port from traffic manager.
   #  
-  # Sets the difference the vehicle's intended speed and its current speed limit. 
-  # Speed limits can be exceeded by setting the perc to a negative value. 
-  # Default is 30. 
+  # Sets the difference the vehicle's intended speed and its current speed limit.
+  # Speed limits can be exceeded by setting the perc to a negative value.
+  # Default is 30.
   # Exceeding a speed limit can be done using negative percentages.
   vehicle_percentage_speed_difference: ???
   # Formula or value to calculate the target speed when approaching an intersection
@@ -122,7 +122,7 @@ distance:
 
   # PORT from TrafficManager # TODO:
   #  
-  # Sets the minimum distance in meters that a vehicle has to keep with the others. 
+  # Sets the minimum distance in meters that a vehicle has to keep with the others.
   # The distance is in meters and will affect the minimum moving distance. It is computed from front to back of the vehicle objects.
   distance_to_leading_vehicle: ???
 
@@ -130,8 +130,8 @@ distance:
 # ------------------------------
 # Lane Change
 #  
-# Adjust probability that in each timestep the actor will perform a left/right lane change, 
-# dependent on lane change availability. 
+# Adjust probability that in each timestep the actor will perform a left/right lane change,
+# dependent on lane change availability.
 # ------------------------------
 lane_change:
   same_lane_time: 0.0
@@ -156,7 +156,7 @@ obstacles:
 
   # Whether the agent should ignore stop signs
   #  
-  # Attention: 
+  # Attention:
   #     No usage implemented yet.
   #  
   # Idea:
@@ -187,7 +187,7 @@ obstacles:
   # Usage:
   #     Only vehicles with distance < `nearby_vehicles_max_distance` are checked for
   #     ```python
-  #     max_vehicle_distance = base_vehicle_threshold 
+  #     max_vehicle_distance = base_vehicle_threshold
   #     if dynamic_threshold:
   #         max_vehicle_distance += detection_speed_ratio * vehicle_speed
   #     ```
@@ -237,7 +237,7 @@ obstacles:
 
   # When making lane changes determines the minimum distance to check for vehicles.
   #  
-  # max_distance_check = max(obstacles.min_proximity_threshold, 
+  # max_distance_check = max(obstacles.min_proximity_threshold,
   #                          live_info.current_speed_limit / speed_detection_downscale)
   #                          
   # Hint:
@@ -248,7 +248,7 @@ obstacles:
 
   # When making lane changes determines the maximum distance to check for vehicles.
   #  
-  # max_distance_check = max(obstacles.min_proximity_threshold, 
+  # max_distance_check = max(obstacles.min_proximity_threshold,
   #                          live_info.current_speed_limit / speed_detection_downscale.[same|other]_lane)
   #                          
   # Hint:
@@ -271,11 +271,11 @@ obstacles:
 
   # Base distance to vehicles to check if they affect the vehicle
   #         
-  # Usage: 
+  # Usage:
   #     static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
   base_static_threshold: 2.0
 
-  # Usage: 
+  # Usage:
   #     static_detection_speed_ratio = base_static_threshold + static_detection_speed_ratio * vehicle_speed
   static_detection_speed_ratio: 0.5
 
@@ -291,7 +291,7 @@ obstacles:
 # ----------------------------
 controls:
 
-  # Vehicle control how strong the brake is used, 
+  # Vehicle control how strong the brake is used,
   #  
   # NOTE: Also used in emergency stop
   max_brake: 0.5
@@ -312,7 +312,7 @@ controls:
 #         K_I -- Integral term
 #         dt -- time differential in seconds
 # offset: If different than zero, the vehicle will drive displaced from the center line.
-# Positive values imply a right offset while negative ones mean a left one. 
+# Positive values imply a right offset while negative ones mean a left one.
 # Numbers high enough to cause the vehicle to drive through other lanes might break the controller.
 #  
 # Notes:
@@ -358,7 +358,7 @@ planner:
 
   # Removes waypoints from the queue that are too close to the vehicle.
   #  
-  # Usage: min_distance = min_distance_next_waypoint + next_waypoint_distance_ratio * vehicle_speed 
+  # Usage: min_distance = min_distance_next_waypoint + next_waypoint_distance_ratio * vehicle_speed
   min_distance_next_waypoint: 3.0
   # Increases the minimum distance to the next waypoint based on the vehicles speed.
   next_waypoint_distance_ratio: 0.5

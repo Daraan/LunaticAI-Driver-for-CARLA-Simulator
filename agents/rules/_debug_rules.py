@@ -1,11 +1,13 @@
+# noqa: ALL
 """These are rules for testing and debugging"""
+from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 from typing_extensions import Self
-from agents.rules.behaviour_templates import *  # noqa
+from agents.rules.behaviour_templates import AlwaysAcceptRSSUpdates, ConfigBasedRSSUpdates
 from classes.constants import Phase
-from classes.rule import Context, Rule
-
+from classes.rule import Context, Rule, always_execute
+from classes.evaluation_function import ConditionFunction
 
 from typing_extensions import Callable, assert_type
 
@@ -244,5 +246,5 @@ assert phase == Phase.END, f"Expected {Phase.END} but got {phase}"
 assert not cd_rule.phases
 assert cd_rule.description == """This is my description"""
 
-
 debug_rules: list[Rule] = [test, simple_rule, simple_ruleB, simple_rule2B, another_rule, custom_rule, new_rule, cd_rule]
+"""Combination of rules to test the Rule class"""

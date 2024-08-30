@@ -1144,7 +1144,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     else:
                         log_level = carla.RssLogLevel(log_level)
                 except Exception as e:
-                    raise KeyError("Could not convert '{log_level}' to RssLogLevel must be in {valid}".format(
+                    raise KeyError("Could not convert '{log_level}' to RssLogLevel must be in {valid}".format(  # noqa: UP032
                                     log_level=log_level, valid=list(carla.RssLogLevel.names.keys()))
                     ) from e
                 logger.info("Carla Log level was not a RssLogLevel")

@@ -1203,7 +1203,6 @@ class Rule(_GroupRule):
             ignore_phase: If :python:`True` the phase check is skipped. Defaults to :code:`False`.
             ignore_cooldown: If True the cooldown check is skipped. Defaults to :code:`False`.
         """
-        
         # Check phase
         assert ignore_phase or ctx.agent.current_phase in self.phases
         
@@ -1267,6 +1266,11 @@ class Rule(_GroupRule):
 
 
 class MultiRule(Rule, metarule=True):
+    """
+    This metarule allows to execute one or multiple rules if it is applicable.
+    Depending on :py:attr:`execute_all_rules` it will either execute all rules or only the first 
+    applicable rule from its :py:attr:`rules` list.
+    """
 
     rules : List[Rule]
     """The list of child rules to be called if this rule's condition is true."""

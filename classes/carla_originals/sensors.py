@@ -65,7 +65,7 @@ class CollisionSensor(CustomSensorInterface):
             return
         from classes.hud import get_actor_display_name # lazy import to avoid circular import
         actor_type = get_actor_display_name(event.other_actor)
-        self.hud.notification('Collision with %r' % actor_type)
+        self.hud.notification(f'Collision with {actor_type!r}')
         impulse = event.normal_impulse
         intensity = math.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
         self.history.append((event.frame, intensity))
@@ -105,8 +105,8 @@ class LaneInvasionSensor(CustomSensorInterface):
         if not self:
             return
         lane_types = {x.type for x in event.crossed_lane_markings}
-        text = ['%r' % str(x).split()[-1] for x in lane_types]
-        self.hud.notification('Crossed line %s' % ' and '.join(text))
+        text = [repr(str(x).split()[-1]) for x in lane_types]
+        self.hud.notification('Crossed line {}'.format(' and '.join(text)))
 
 
 # ==============================================================================

@@ -136,7 +136,7 @@ class GlobalRoutePlanner:
             # Rounding off to avoid floating point imprecision
             x1, y1, z1, x2, y2, z2 = np.round([l1.x, l1.y, l1.z, l2.x, l2.y, l2.z], 0)
             wp1.transform.location, wp2.transform.location = l1, l2
-            seg_dict = dict()  # type: TopologyDict # type: ignore[assignment]
+            seg_dict = {}  # type: TopologyDict # type: ignore[assignment]
             seg_dict['entry'], seg_dict['exit'] = wp1, wp2
             seg_dict['entryxyz'], seg_dict['exitxyz'] = (x1, y1, z1), (x2, y2, z2)
             seg_dict['path'] = []
@@ -172,8 +172,8 @@ class GlobalRoutePlanner:
         """
 
         self._graph = nx.DiGraph()
-        self._id_map = dict()  # Map with structure {(x,y,z): id, ... }
-        self._road_id_to_edge = dict()  # Map with structure {road_id: {lane_id: edge, ... }, ... }
+        self._id_map = {}  # Map with structure {(x,y,z): id, ... }
+        self._road_id_to_edge = {}  # Map with structure {road_id: {lane_id: edge, ... }, ... }
 
         for segment in self._topology:
             entry_xyz, exit_xyz = segment['entryxyz'], segment['exitxyz']
@@ -191,9 +191,9 @@ class GlobalRoutePlanner:
             n1 = self._id_map[entry_xyz]
             n2 = self._id_map[exit_xyz]
             if road_id not in self._road_id_to_edge:
-                self._road_id_to_edge[road_id] = dict()
+                self._road_id_to_edge[road_id] = {}
             if section_id not in self._road_id_to_edge[road_id]:
-                self._road_id_to_edge[road_id][section_id] = dict()
+                self._road_id_to_edge[road_id][section_id] = {}
             self._road_id_to_edge[road_id][section_id][lane_id] = (n1, n2)
 
             entry_carla_vector = entry_wp.transform.rotation.get_forward_vector()
@@ -230,9 +230,9 @@ class GlobalRoutePlanner:
             else:
                 count_loose_ends += 1
                 if road_id not in self._road_id_to_edge:
-                    self._road_id_to_edge[road_id] = dict()
+                    self._road_id_to_edge[road_id] = {}
                 if section_id not in self._road_id_to_edge[road_id]:
-                    self._road_id_to_edge[road_id][section_id] = dict()
+                    self._road_id_to_edge[road_id][section_id] = {}
                 n1 = self._id_map[exit_xyz]
                 n2 = -1 * count_loose_ends
                 self._road_id_to_edge[road_id][section_id][lane_id] = (n1, n2)
@@ -362,7 +362,7 @@ class GlobalRoutePlanner:
 
         return last_node, last_intersection_edge
 
-    def _turn_decision(self, index, route, threshold=math.radians(35)):
+    def _turn_decision(self, index, route, threshold=math.radians(35)):  # noqa: B008
         # type: (int, list[int], float) -> RoadOption
         """
         This method returns the turn decision (RoadOption) for pair of edges

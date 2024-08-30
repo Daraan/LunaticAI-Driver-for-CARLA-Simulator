@@ -66,6 +66,7 @@ class CameraManager(CustomSensorInterface):
     """ Class for camera management"""
 
     default_blueprints: ClassVar[List[CameraBlueprint]] = list(CameraBlueprints.values())
+    """Cameras that should be attached to the ego vehicle by default."""
 
     def __init__(self,
                  parent_actor: carla.Actor,
@@ -139,12 +140,12 @@ class CameraManager(CustomSensorInterface):
         if args.camera.spectator:
             self.follow_actor(self._parent)
 
-    def toggle_camera(self):
+    def toggle_camera(self) -> None:
         """Activate a camera"""
         self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
         self.set_sensor(self.index, notify=False, force_respawn=True)
 
-    def set_sensor(self, index: int, notify=True, force_respawn=False):
+    def set_sensor(self, index: int, notify=True, force_respawn=False) -> None:
         """Set the sensor that should be used for the camera output"""
         index = index % len(self.sensors)
         needs_respawn = True if self.index is None else (
@@ -176,7 +177,7 @@ class CameraManager(CustomSensorInterface):
         self.recording = not self.recording
         self._hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
 
-    def destroy(self):
+    def destroy(self) -> None:
         super().destroy()
         self.index = None   # type: ignore
         self._surface = None # type: ignore
@@ -224,7 +225,7 @@ class CameraManager(CustomSensorInterface):
     @class_or_instance_method
     def follow_actor(cls_or_self: "Self | type[Self]",
                      actor: Optional[carla.Actor]=None,
-                     updater=spectator_follow_actor):
+                     updater=spectator_follow_actor) -> None:
         """
         Follows the actor with the spectator view.
         
@@ -238,13 +239,13 @@ class CameraManager(CustomSensorInterface):
         cls_or_self._spectator_thread = Thread(target=updater, args=(actor, ))
         
     @staticmethod
-    def stop_following_actor():
+    def stop_following_actor() -> None:
         _follow_car_event.set()
         
 # ==============================================================================
 
 
-def _spectator_to_actor(actor: carla.Actor):
+def _spectator_to_actor(actor: carla.Actor) -> None:
     """
     Set the spectator's view to follow the ego vehicle.
 

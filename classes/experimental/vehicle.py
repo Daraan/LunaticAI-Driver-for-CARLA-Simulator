@@ -33,7 +33,7 @@ class VehicleBase:
         #Vehicle.instances.append(self)  # access all instances over the class
 
     @classmethod
-    def destroy_all(cls, client):
+    def destroy_all(cls, client: carla.Client) -> None:
         while len(cls.instances) > 0:  # instances might contain actors if still not empty.
             client.apply_batch([carla.command.DestroyActor(cls.instances.pop().actor)])
 

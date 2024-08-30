@@ -257,34 +257,37 @@ class Has_Vehicle(Protocol):
     """
     
 class UseableWithDynamicPlanner(HasPlannerWithConfig, Has_Vehicle, HasContext, Protocol):
-    """
-    Can be used with :py:class:`.DynamicLocalPlanner`
-    """
+    """Can be used with :py:class:`.DynamicLocalPlanner`."""
     ...
 
 class CanDetectObstacles(Has_Vehicle, HasPlanner,
                          HasConfig["BehaviorAgentSettings | LunaticAgentSettings"],
                          Protocol):
-    """
-    Can be used with :py:func:`lunatic_agent_tools.detect_obstacles`
-    """
+    """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles`."""
     ...
     
 class CanDetectNearbyObstacles(CanDetectObstacles, Protocol):
-    """
-    Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`
-    """
+    """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`."""
     
     all_obstacles_nearby : list[carla.Actor]
     """Actors that are considered to be near the actor."""
 
     def max_detection_distance(self, lane: Literal["same_lane", "other_lane"]) -> float:
+        """
+        Convenience function to be used with :py:func:`lunatic_agent_tools.detect_vehicles`
+        and :any:`LunaticAgent.detect_obstacles_in_path`.
+
+        The max distance to consider an obstacle in the same lane or in another lane, obstacles
+        further away will be ignored.
+
+        Parameters:
+            self : An object that implements the `config` and `live_info` attributes
+            lane : The lane to consider.
+        """
         ...
 
 class CanDetectNearbyTrafficLights(CanDetectObstacles, HasStates, Has_WorldModel, Protocol):
-    """
-    Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`
-    """
+    """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`."""
     
     traffic_lights_nearby : list[carla.TrafficLight]
     """Actors that are considered to be near the actor."""

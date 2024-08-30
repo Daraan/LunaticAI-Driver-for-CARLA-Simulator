@@ -53,7 +53,7 @@ _Actor_co = TypeVar("_Actor_co", bound=carla.Actor, covariant=True)
 # ------------------------------
     
     
-def result_to_context(key: str):
+def result_to_context(key: str) -> Callable[[CallableT], CallableT]:
     """
     Decorator to use for the agent. Sets the **key** attribute of the
     :py:class:`.Context`.
@@ -300,7 +300,7 @@ def detect_obstacles(self: "CanDetectObstacles",
     if not max_distance:
         max_distance = self.config.obstacles.base_vehicle_threshold # TODO: This is not modified with the dynamic threshold
     
-    def get_route_polygon():
+    def get_route_polygon() -> None | Polygon:
         # Note nested functions can access variables from the outer scope
         route_bb = [] # type: list[list[float]]
         extent_y = self._vehicle.bounding_box.extent.y
@@ -555,7 +555,7 @@ def generate_lane_change_path(waypoint : carla.Waypoint,
 def create_agent_config(self: HasBaseSettings[AgentConfigT],
                         source: Union["type[AgentConfigT]", AgentConfigT, DictConfig, str, None]=None,
                         world_model: Optional["WorldModel"]=None,
-                        overwrite_options: Optional[Dict[str, Any]]=None):
+                        overwrite_options: Optional[Dict[str, Any]]=None) -> AgentConfigT:
     """
     Method to create the :py:class:`.AgentConfig` from different input types.
     

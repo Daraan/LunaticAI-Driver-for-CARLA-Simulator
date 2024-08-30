@@ -3,6 +3,7 @@ import os
 from typing import Union, Optional
 
 import carla
+from classes.experimental.vehicle import Vehicle
 from launch_tools import CarlaDataProvider
 
 TRAFFIC_MANAGER_CONFIG_SUBDIR = ""
@@ -11,7 +12,7 @@ TRAFFIC_MANAGER_CONFIG_SUBDIR = ""
 class Driver:
     def __init__(self, path,
                  traffic_manager: Optional[Union[carla.Client, carla.TrafficManager]] = None,
-                 config_update: dict = None):
+                 config_update: Optional[dict] = None):
         """
         Args:
             path:
@@ -19,8 +20,8 @@ class Driver:
                     todo: find out if multiple client.get_trafficmanager() are the same thing or not
             config_update: dict : To modify/path the file found in path.
         """
-        self.vehicle = None
-        self.config = None
+        self.vehicle: Vehicle = None  # type: ignore[assignment]
+        self.config = None  # type: ignore
         self.overtake_mistake_chance = 0
         self.risky_overtake_chance = 0
         self.ignore_obstacle_chance = 0
@@ -29,7 +30,7 @@ class Driver:
         if isinstance(traffic_manager, carla.TrafficManager):
             self.tm = traffic_manager  # Traffic manager short alias
         elif isinstance(traffic_manager, carla.Client):
-            self.tm: carla.TrafficManager = traffic_manager.get_trafficmanager(CarlaDataProvider.get_traffic_manager_port())  # todo find out if there is a different to useing
+            self.tm: carla.TrafficManager = traffic_manager.get_trafficmanager(CarlaDataProvider.get_traffic_manager_port())
         elif traffic_manager is not None:
             raise TypeError("manager wrong type", type(traffic_manager))
         if path is not None:
@@ -57,12 +58,14 @@ class Driver:
             self.speed = 0  # Default speed
             self.distance_x = 0  # Default distance
         if self.config is None:
+            assert config_update
             self.config = config_update
         elif config_update is not None:
             self.config.update(config_update)  # TODO add some sanity check for correct format
+        assert self.config
         if self.config["use_traffic_manager"]:
-            dir = os.path.split(path)[0]
-            path_tm = os.path.join(dir, TRAFFIC_MANAGER_CONFIG_SUBDIR, self.config["use_traffic_manager"] + ".json", )
+            dir_path = os.path.split(path)[0]
+            path_tm = os.path.join(dir_path, TRAFFIC_MANAGER_CONFIG_SUBDIR, self.config["use_traffic_manager"] + ".json", )
             with open(path_tm, 'r') as file:
                 self.tm_config = json.load(file)
 
@@ -70,7 +73,7 @@ class Driver:
         self.vehicle.spawn(transform)
 
     @property
-    def actor(self) -> carla.Actor:
+    def actor(self) -> carla.Vehicle:
         return self.vehicle.actor
 
     @property

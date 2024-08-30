@@ -33,7 +33,6 @@ def get_actor_display_name(actor : carla.Actor, truncate:int=250):
 # -- HUD -----------------------------------------------------------------------
 # ==============================================================================
 
-
 class HUD:
     """Class for HUD text"""
     default_font : ClassVar[str] = 'ubuntumono'
@@ -114,21 +113,22 @@ class HUD:
             list[float]]]
 
         self._info_text = [
-            'Server:  % 16.0f FPS' % self.server_fps,
-            'Client:  % 16.0f FPS' % clock.get_fps(),
-            'Map:     % 20s' % self.map_name, # from rss
+            'Server:  {: 16.0f} FPS'.format(self.server_fps),
+            'Client:  {: 16.0f} FPS'.format(clock.get_fps()),
+            'Map:     {: 20s}'.format(self.map_name), # from rss
             '',
-            'Vehicle: % 20s' % get_actor_display_name(player, truncate=20),
-            'Map:     % 20s' % world.map.name.split('/')[-1],
-            'Simulation time: % 12s' % timedelta(seconds=int(self.simulation_time)),
+            'Vehicle: {: 20s}'.format(get_actor_display_name(player, truncate=20)),
+            'Map:     {: 20s}'.format(world.map.name.split('/')[-1]),
+            'Simulation time: {: 12s}'.format(timedelta(seconds=int(self.simulation_time))),
             '',
-            'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)),
-            'Heading:% 16.0f\N{DEGREE SIGN} % 2s' % (transform.rotation.yaw, heading),
-            #  TODO maybe 'Heading: % 20.2f' % math.radians(transform.rotation.yaw),
-            'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (transform.location.x, transform.location.y)),
-            'Height:  % 18.0f m' % transform.location.z,]
+            'Speed:   {: 15.0f} km/h'.format(3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)),
+            'Heading:{: 16.0f}\N{DEGREE SIGN} {: 2s}'.format(transform.rotation.yaw, heading),
+            #  TODO maybe 'Heading: {: 20.2f}'.format(math.radians(transform.rotation.yaw)),
+            'Location:{: 20s}'.format(f'({transform.location.x: 5.1f}, {transform.location.y: 5.1f})'),
+            'Height:  {: 18.0f} m'.format(transform.location.z)]
         if world.gnss_sensor:
-            self._info_text.append('GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (world.gnss_sensor.lat, world.gnss_sensor.lon)))
+            self._info_text.append(
+                'GNSS:{: 24s}'.format(f'({world.gnss_sensor.lat: 2.6f}, {world.gnss_sensor.lon: 3.6f})'))
         self._info_text.append('') # empty line
         if isinstance(control, carla.VehicleControl):
             if self.original_vehicle_control:
@@ -148,7 +148,7 @@ class HUD:
                 ('Reverse:', control.reverse),
                 ('Hand brake:', control.hand_brake),
                 ('Manual:', control.manual_gear_shift),
-                'Gear:        %s' % {-1: 'R', 0: 'N'}.get(control.gear, control.gear)]
+                'Gear:        {}'.format({-1: 'R', 0: 'N'}.get(control.gear, control.gear))]
         elif isinstance(control, carla.WalkerControl):  # pyright: ignore[reportUnnecessaryIsInstance]
             self._info_text += [
                 ('Speed:', control.speed, 0.0, 5.556),

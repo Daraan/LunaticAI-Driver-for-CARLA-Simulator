@@ -41,13 +41,10 @@ def wrap_matrix_functionalities(ego_vehicle : carla.Actor,
             Format: (highway_type: string, straight_lanes: int, entry_wps: ([wp,..], [wp,..]), exit_wps: ([wp,..], [wp,..]))
     """
     ego_location = ego_vehicle.get_location()
-    ego_waypoint = world_map.get_waypoint(ego_location)
+    #ego_waypoint = world_map.get_waypoint(ego_location)
     ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)
 
-    current_lanes = []
-    for id in road_lane_ids:
-        if ego_waypoint.road_id == id[0]:
-            current_lanes.append(id[1])
+    #current_lanes = [rl_id[1] for rl_id in road_lane_ids if rl_id[0] == ego_waypoint.road_id]
 
     # Normal Road; TODO: Check if this is useful
     #if ego_on_highway:

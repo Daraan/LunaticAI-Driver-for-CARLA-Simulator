@@ -495,7 +495,7 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
                     rule: Rule = rule_from_config(rule_cfg)
                     self_config: RuleConfig = rule.self_config
                     if OmegaConf.is_missing(rule_cfg, "phases"):
-                        rule_cfg.phases = list(self_config.instance.phases)[0] # only support one atm
+                        rule_cfg.phases = next(iter(self_config.instance.phases)) # only support one atm
                     with open_dict(self_config):
                         del self_config["instance"]
                     if OmegaConf.is_missing(rule_cfg, "self_config"):
@@ -517,8 +517,8 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
             # NOTE: For some reason "_args_" in rule does NOT WORK
             elif "_args_" in rule_cfg.keys() and OmegaConf.is_missing(rule_cfg, key="_args_"):
                 # check > CallFunctionFromConfig
-                raise ValueError("%s has no phase or (positional) `_args_` key. Did you forget to add a phase?"
-                                    "If the _target_ is a function, still prove an empty `_args_ = []` key." % str(rule_cfg))
+                raise ValueError(f"{rule_cfg} has no phase or (positional) `_args_` key. Did you forget to add a phase?"
+                                    "If the _target_ is a function, still prove an empty `_args_ = []` key.")
             missing_keys = {k for k in rule_cfg.keys() if OmegaConf.is_missing(rule_cfg, k)}
             clean_rule = OmegaConf.masked_copy(rule_cfg, set(rule_cfg.keys()) - missing_keys)  # pyright: ignore[reportArgumentType]
             masked_rules.append(clean_rule)
@@ -592,7 +592,7 @@ def export_options(cls_or_self: Union[type[AgentConfig], AgentConfig],
             
 # --------------- Other Tools -----------------
 
-def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfigDict, "AgentConfig"]):
+def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfigDict, "AgentConfig"]) -> None:
     """
     Sets the object_type for sub configs if the config has been initialized with
     a :py:class:`omegaconf.DictConfig` and not the respective AgentConfig subclass.
@@ -639,7 +639,7 @@ def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfig
                 
 
         
-def _flatten_dict(source : NestedConfigDict, target : NestedConfigDict, resolve : bool=False):
+def _flatten_dict(source : NestedConfigDict, target : NestedConfigDict, resolve : bool=False) -> None:
     if isinstance(source, DictConfig):
         items = source.items_ex(resolve=resolve)
     else:

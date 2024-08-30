@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import NoReturn
 import carla
 from omegaconf import II
 
@@ -129,7 +130,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
                 # # calculate it now
                 control = ctx.get_or_calculate_control()
             else:
-                logger.debug
+                logger.debug("Control is already set in DriveSlowTowardsTrafficLight rule. Skipping calculation.")
             
             # ------------ Loop Agent -------------------
             # Logic:
@@ -188,7 +189,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         if ctx.control: # NOTE: This is unset with self.update_world
             raise SkipInnerLoopException(ctx.control)
 
-    def max_tick_callback(self, ctx: Context):
+    def max_tick_callback(self, ctx: Context) -> NoReturn:
         if ctx.control:
             ctx.control.brake = 1.0
             ctx.control.throttle = 0.0

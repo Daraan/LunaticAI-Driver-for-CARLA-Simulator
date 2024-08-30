@@ -1,11 +1,10 @@
-# pyright: strict
-# pylint: disable=unused-import
-# pyright: reportUnusedImport=information
-# pyright: reportMissingTypeStubs=none
 """
 Various tools load CARLA and data.
 Also handles problematic import deriving from version conflicts
 """
+# pylint: disable=unused-import
+# pyright: reportUnusedImport=information
+# pyright: reportMissingTypeStubs=none
 
 __all__ = [
     "carla",

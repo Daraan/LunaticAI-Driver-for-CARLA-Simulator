@@ -52,7 +52,7 @@ def roadoption_color(option: "RoadOption") -> carla.Color:
 
 
 
-def _draw_route_wp(world: carla.World, waypoints: "list[tuple[carla.Waypoint, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
+def _draw_route_wp(world: carla.World, waypoints: "list[tuple[carla.Waypoint, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0) -> None:
     """
     Draw a list of waypoints at a certain height given in vertical_shift.
 
@@ -73,7 +73,7 @@ def _draw_route_wp(world: carla.World, waypoints: "list[tuple[carla.Waypoint, Ro
                                 color=carla.Color(128, 128, 128), life_time=life_time)
 
 
-def _draw_route_trans(world: carla.World, waypoints: "list[tuple[carla.Transform, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
+def _draw_route_trans(world: carla.World, waypoints: "list[tuple[carla.Transform, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0) -> None:
     """
     Draw a list of waypoints at a certain height given in vertical_shift.
 
@@ -94,7 +94,7 @@ def _draw_route_trans(world: carla.World, waypoints: "list[tuple[carla.Transform
                                 color=carla.Color(128, 128, 128), life_time=life_time)
 
 
-def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform | carla.Waypoint, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0):
+def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform | carla.Waypoint, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0) -> None:
     """
     Draw a list of waypoints at a certain height given in vertical_shift.
 
@@ -139,7 +139,7 @@ def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5
         world.debug.draw_arrow(begin, end, color=color, **kwargs)  # type: ignore[arg-type]
 
 
-def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destination: Optional[carla.Location]):
+def debug_drawing(agent:"LunaticAgent", game_framework : "GameFramework", destination: Optional[carla.Location]) -> None:
     """
     
     Raises:
@@ -245,8 +245,10 @@ def draw_waypoint_union(debug: carla.DebugHelper, w0: carla.Waypoint, w1: carla.
     debug.draw_point(w1.transform.location + carla.Location(z=0.25), 0.1, color, lt, False) # type: ignore[arg-type]
 
 
-def lane_explorer(debug : carla.DebugHelper, current_w: carla.Waypoint, draw_info=True, waypoint_separation=waypoint_separation, trail_life_time:float=0.1):
-    """From CARLA lane_explorer.py example"""
+def lane_explorer(debug : carla.DebugHelper, current_w: carla.Waypoint, draw_info=True, waypoint_separation=waypoint_separation, trail_life_time:float=0.1): # noqa: ANN201
+    """
+    From CARLA lane_explorer.py example.
+    """
 
     # list of potential next waypoints
     potential_w = list(current_w.next(waypoint_separation))

@@ -36,10 +36,9 @@ if TYPE_CHECKING:
 else:
     # circular import when loading agents/navigation/local_planner.py, which we do not want to
     # modify. When debug_drawing is loaded this function will be replaced by the correct one.
-    def draw_waypoints(*args, **kwargs):
+    def draw_waypoints(*args, **kwargs) -> None:  # noqa: ANN
         from agents.tools.debug_drawing import draw_waypoints
         return draw_waypoints(*args, **kwargs)
-
 
 def get_speed(vehicle, kmh=True, vel=None):
     # type: (carla.Actor, bool, float | None) -> float

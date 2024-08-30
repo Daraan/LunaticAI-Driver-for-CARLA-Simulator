@@ -117,11 +117,19 @@ class ConditionFunction(Generic[_CP, _CH]):
         - _CP : :py:class:`typing.ParamSpec` of the passed :py:attr:`evaluation_function`.
         - _CH : The :term:`Hashable` return type of the :py:attr:`evaluation_function`.
     """
-    actions: Dict[Hashable, _ActionsDictValues] = {}
+    
+    _default_actions: ClassVar[Dict[Hashable, _ActionsDictValues]] = {}
+    """
+    Default values for the :py:attr:`actions` dictionary. Could be used for subclassing.
+    By default :py:attr:`actions` is a shallow copy of this one.
+    """
+    
+    actions: Dict[Hashable, _ActionsDictValues]
     """
     Mapping of return values to actions to be executed.
     If this dictionary is not empty it will be used as the :py:attr:`.Rule.actions` dictionary.
     """
+    
     if READTHEDOCS and not TYPE_CHECKING:
         actions: Dict[Hashable, AnyCallableAction] = {}
     
@@ -197,7 +205,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         else:
             self.name = str(evaluation_function)
         self.use_self: bool | None = use_self
-        self.actions = self.actions.copy()
+        self.actions = self._default_actions.copy()
 
     # Possible Pyright <1.1.377 : bug when this is active
     @overload

@@ -110,9 +110,12 @@ class LunaticAgent(BehaviorAgent):
     """Reference to the attached :py:class:`WorldModel`."""
     
     _validate_phases = False
-    """A flag to sanity check if the agent passes trough the phases in the correct order"""
+    """
+    Debugging flag to sanity check if the agent passes trough the phases in the correct order.
+    Attention: Currently straight forward anymore.
+    """
     
-    _active_blocking_rules: Set[BlockingRule] = set()
+    _active_blocking_rules: Set[BlockingRule]
     """Blocking rules that are currently active and have taken over the agents loop."""
     
     # ------------------ Initialization ------------------ #
@@ -125,7 +128,7 @@ class LunaticAgent(BehaviorAgent):
                                sim_world : carla.World,
                                settings_archetype: "Optional[type[AgentConfig]]"=None,
                                agent_config: Optional["LunaticAgentSettings"]=None,
-                               overwrites: Optional[Dict[str, Any]]={}
+                               overwrites: Optional[Dict[str, Any]]=None
                                ) -> tuple[Self, WorldModel, GlobalRoutePlanner]:
         """
         Setup function to create the agent from the :py:class:`LaunchConfig` settings.
@@ -171,7 +174,7 @@ class LunaticAgent(BehaviorAgent):
                  world_model: Optional[WorldModel]=None,
                  *,
                  vehicle: Optional[carla.Vehicle]=None,
-                 overwrite_options: dict[str, Any] = {},
+                 overwrite_options: Optional[dict[str, Any]]=None,
                  debug: bool=True):
         """
         Initialize the LunaticAgent.
@@ -260,6 +263,8 @@ class LunaticAgent(BehaviorAgent):
         self.information_manager = InformationManager(self)
         self.current_states = self.information_manager.state_counter # share the dict
         
+        # Blocking Rules
+        self._active_blocking_rules = set()
         
     # --------------------- Collision Callback ------------------------
         
@@ -638,7 +643,7 @@ class LunaticAgent(BehaviorAgent):
         
         Arguments:
             debug : Whether to enable debug mode.
-                This prints some more information and debugdrawings.
+                This prints some more information and debug drawings.
             second_pass : **Internal usage** set to :python:`True`
                 if this function is called a second time, e.g. after a route update.
         
@@ -664,19 +669,20 @@ class LunaticAgent(BehaviorAgent):
             # Phase 1 - Plan Path
             # ----------------------------
 
-            # TODO: What TODO if the last phase was COLLISION, EMERGENCY
+            # Question: What TODO if the last phase was COLLISION (async), EMERGENCY
             # Some information to PLAN_PATH should reflect this
 
-            # TODO: add option to diverge from existing path here, or plan a new path
+            # NOTE: Currently no option to diverge from existing path here, or plan a new path
             # NOTE: Currently done in the local planner and behavior functions
             self._plan_path_phase(second_pass=second_pass, debug=debug)
             
+            # Check whether the agent has reached its destination.
             if self.done():
                 # NOTE: Might be in NONE phase here.
                 self.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
                 if self.done():
-                    # No Rule set a net destination
-                    print("The target has been reached, stopping the simulation")
+                    # No Rule set a new destination
+                    logger.info("The target has been reached, stopping the simulation")
                     self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
                     raise AgentDoneException
                 self.execute_phase(Phase.DONE | Phase.END, prior_results=None)
@@ -689,9 +695,12 @@ class LunaticAgent(BehaviorAgent):
                 planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
                 if self.detected_hazards:
                     raise EmergencyStopException(self.detected_hazards)
-    
+            # Reraise Exceptions
+            except UserInterruption as ui:
+                raise ui
+
+            # Handled Exceptions
             except EmergencyStopException as emergency:
-                
                 # ----------------------------
                 # Phase Emergency
                 # no Rule with Phase.EMERGENCY | BEGIN cleared the provided hazards in ctx.prior_results
@@ -700,31 +709,30 @@ class LunaticAgent(BehaviorAgent):
                 emergency_controls = self.emergency_manager(reasons=emergency.hazards_detected)
                 
                 # TODO: somehow backup the control defined before.
-                self.execute_phase(Phase.EMERGENCY | Phase.END, update_controls=emergency_controls, prior_results=emergency.hazards_detected)
+                self.execute_phase(Phase.EMERGENCY | Phase.END,
+                                   update_controls=emergency_controls,
+                                   prior_results=emergency.hazards_detected)
                 planned_control = self.get_control() # type: carla.VehicleControl # type: ignore[assignment]
-            
-            # Other Exceptions
             
             except SkipInnerLoopException as skip:
                 self.set_control(skip.planned_control)
                 self.current_phase = Phase.USER_CONTROLLED
                 planned_control = skip.planned_control
-            except UserInterruption:
-                raise
-            except UpdatedPathException as e:
+            except UpdatedPathException as update_exception:
                 if second_pass > 5:
                     logger.warning("UpdatedPathException was raised more than %s times. "
                                    "Warning: This might be an infinite loop.", second_pass)
                 elif second_pass > 50:
                     raise RecursionError("UpdatedPathException was raised more than 50 times. "
-                                         "Assuming an infinite loop and terminating")
+                                         "Assuming an infinite loop and terminating") from update_exception
                 else:
-                    logger.warning("UpdatedPathException was raised in the inner step, this should be done in Phase.PLAN_PATH ", e)
-                return self.run_step(second_pass=int(second_pass)+1) # type: ignore
-            except LunaticAgentException as e:
+                    logger.warning("%s was raised in the inner step, this should be done in "
+                                   "Phase.PLAN_PATH instead.", update_exception)
+                return self.run_step(second_pass=int(second_pass) + 1)  # type: ignore
+            except LunaticAgentException as lae:
                 if self.ctx.control is None:
-                    raise ValueError("A VehicleControl object must be set on the agent when %s is "
-                                     "raised during `._inner_step`" % type(e).__name__) from e
+                    raise ValueError(f"A VehicleControl object must be set on the agent when {type(lae).__name__} is "
+                                     "raised during `._inner_step`") from lae
                 planned_control = self.get_control() # type: ignore[assignment]
             # assert ctx.control
             
@@ -752,7 +760,7 @@ class LunaticAgent(BehaviorAgent):
         except ContinueLoopException as e:
             logger.debug("ContinueLoopException skipping rest of loop.")
             if self.ctx.control is None:
-                raise ValueError("A VehicleControl object must be set on the agent when %s is raised during `._inner_step`" % type(e).__name__) from e
+                raise ValueError(f"A VehicleControl object must be set on the agent when {type(e).__name__} is raised during `._inner_step`") from e
         
         planned_control = self.ctx.control # type: carla.VehicleControl # type: ignore[assignment]
         planned_control.manual_gear_shift = False
@@ -1142,7 +1150,8 @@ class LunaticAgent(BehaviorAgent):
             logger.info("Ignoring the lane change as no path was found")
 
         # Change path to take now
-        super(LunaticAgent, self).set_global_plan(path)
+        # NOTE: use super with arguments here.
+        super(LunaticAgent, self).set_global_plan(path)  # noqa: UP008
         # TODO: # CRITICAL: Keep old global plan if it is some end goal -> Restore it.
         
     # TODO: Use generate_lane_change_path to finetune
@@ -1186,7 +1195,7 @@ class LunaticAgent(BehaviorAgent):
                 other_wpt = waypoint.get_left_lane()
                 lane_offset = -1
             else:
-                raise ValueError("Direction must be 'left' or 'right', was %s" % direction)
+                raise ValueError(f"Direction must be 'left' or 'right', was {direction}")
             if (can_change # other_wpt is not None
                 and lanes_have_same_direction(waypoint, other_wpt)  # type: ignore[arg-type]
                 and other_wpt.lane_type == carla.LaneType.Driving):  # type: ignore[attr-defined]
@@ -1368,7 +1377,7 @@ class LunaticAgent(BehaviorAgent):
     #@override
     def set_target_speed(self, speed : float) -> None:
         """
-        Changes the target speed of the agent
+        Changes the target speed of the agent.
             :param speed (float): target speed in Km/h
         """
         if self.config.speed.follow_speed_limits:
@@ -1378,7 +1387,7 @@ class LunaticAgent(BehaviorAgent):
 
     def follow_speed_limits(self, value:bool=True) -> None:
         """
-        If active, the agent will dynamically change the target speed according to the speed limits
+        If active, the agent will dynamically change the target speed according to the speed limits.
         
         Arguments:
             value: Whether to activate this behavior
@@ -1439,7 +1448,7 @@ class LunaticAgent(BehaviorAgent):
         """
         :meta private:
         """
-        raise NotImplementedError("This function was overwritten use ´add_emergency_stop´ instead")
+        raise NotImplementedError("This function was overwritten use `add_emergency_stop` instead")
 
     # ------------------------------------ #
     # As reference Parent Functions

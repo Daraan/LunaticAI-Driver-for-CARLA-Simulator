@@ -8,7 +8,7 @@ import carla
 
 create_blueprint = CarlaDataProvider.create_blueprint
 
-def get_blueprint_library(world: Optional["carla.World"]=None):
+def get_blueprint_library(world: Optional["carla.World"]=None) -> carla.BlueprintLibrary:
     """
     Get the blueprint library of the given world.
     
@@ -54,12 +54,12 @@ def get_contrasting_blueprints(ego_vehicle: str="vehicle.lincoln.mkz_2020",
     return ego_bp, car_blueprint
 
 @overload
-def get_actor_blueprints(filter: str, generation: Literal['all']) -> carla.BlueprintLibrary: ...
+def get_actor_blueprints(pattern: str, generation: Literal['all']) -> carla.BlueprintLibrary: ...
 
 @overload
-def get_actor_blueprints(filter: str, generation: Literal[1, 2]) -> List[carla.ActorBlueprint]: ...
+def get_actor_blueprints(pattern: str, generation: Literal[1, 2]) -> List[carla.ActorBlueprint]: ...
 
-def get_actor_blueprints(filter: str, generation: Literal[1, 2, 'all']) -> Union[List["carla.ActorBlueprint"], carla.BlueprintLibrary]:
+def get_actor_blueprints(pattern: str, generation: Literal[1, 2, 'all']) -> Union[List["carla.ActorBlueprint"], carla.BlueprintLibrary]:
     """
     Returns a list of actor blueprints filtered by the given filter and generation.
 
@@ -71,7 +71,7 @@ def get_actor_blueprints(filter: str, generation: Literal[1, 2, 'all']) -> Union
     Returns:
         List of carla.ActorBlueprint: The list of actor blueprints that match the given filter and generation.
     """
-    bps = get_blueprint_library().filter(filter)
+    bps = get_blueprint_library().filter(pattern)
 
     if isinstance(generation, str) and generation.lower() == "all":
         return bps

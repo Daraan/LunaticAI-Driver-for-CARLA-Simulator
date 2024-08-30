@@ -165,7 +165,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 args.debug = DEBUG
                 # Let scenario manager decide
                 if args.map:
-                    logger.warning("Map should be set by scenario manager and be None in the config file found map is %s." % args.map)
+                    logger.warning(f"Map should be set by scenario manager and be None in the config file found map is {args.map}.")
                 if args.handle_ticks:
                     logger.warning("When using the leaderboard agent, `handle_ticks` should be False.")
                     args.handle_ticks = False

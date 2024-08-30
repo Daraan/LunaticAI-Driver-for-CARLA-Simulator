@@ -306,16 +306,24 @@ class RSSKeyboardControl(KeyboardControl):
                 elif event.key == K_F2:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.toggle_debug_visualization_mode()
-                        self._world_model.hud.notification("RSS Debug Visualization Mode: {}".format(
-                            self._world_model.rss_sensor.debug_visualizer._visualization_mode))
+                        _newmode = self._world_model.rss_sensor.debug_visualizer._visualization_mode
+                        self._world_model.hud.notification(f"RSS Debug Visualization Mode: {_newmode}")
                 elif event.key == K_F3:
                     if self._world_model and self._world_model.rss_sensor:
-                        self._world_model.rss_sensor.decrease_log_level()
-                        self._world_model._restrictor.set_log_level(self._world_model.rss_sensor.log_level)
+                        if not self._world_model._restrictor:
+                            print("WARNING: No restrictor available")
+                        else:
+                            self._world_model.rss_sensor.decrease_log_level()
+                            assert isinstance(self._world_model.rss_sensor.log_level, (int, carla.RssLogLevel))
+                            self._world_model._restrictor.set_log_level(self._world_model.rss_sensor.log_level)  # pyright: ignore[reportArgumentType]
                 elif event.key == K_F4:
                     if self._world_model and self._world_model.rss_sensor:
-                        self._world_model.rss_sensor.increase_log_level()
-                        self._world_model._restrictor.set_log_level(self._world_model.rss_sensor.log_level)
+                        if not self._world_model._restrictor:
+                            print("WARNING: No restrictor available")
+                        else:
+                            self._world_model.rss_sensor.increase_log_level()
+                            assert isinstance(self._world_model.rss_sensor.log_level, (int, carla.RssLogLevel))
+                            self._world_model._restrictor.set_log_level(self._world_model.rss_sensor.log_level)  # pyright: ignore[reportArgumentType]
                 elif event.key == K_F5:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.decrease_map_log_level()

@@ -54,8 +54,8 @@ class LocalPlanner:
     unless a given global plan has already been specified.
     """
 
-    def __init__(self, vehicle, opt_dict={}, map_inst=None):
-        # type: (carla.Vehicle, dict, carla.Map | None) -> None
+    def __init__(self, vehicle, opt_dict=None, map_inst=None):
+        # type: (carla.Vehicle, dict | None, carla.Map | None) -> None
         """
         :param vehicle: actor to apply to local planner logic onto
         :param opt_dict: dictionary of arguments with different parameters:
@@ -104,7 +104,6 @@ class LocalPlanner:
         self._follow_speed_limits = False
 
         # Overload parameters
-        # TODO: instead of storing variables, updating the dict could influence the planner dynamically
         if opt_dict:
             if 'dt' in opt_dict:
                 self._dt = opt_dict['dt']

@@ -2,12 +2,12 @@
 TL;DR: Add the following to the top of your file to allow importing from the project root folder.
 import __allow_imports_from_root
 
-
 --------------------------------------------------------------------------------
 
 Add project folder to sys.path
 This allows running examples from the examples subfolder.
 """
+
 import os
 import sys
 
@@ -20,6 +20,7 @@ if p is None:
     print("Warning: LUNATIC_AI_ROOT not set. Trying to use parent folder of this file.")
     # TODO: add support for example/<subfolders>
     p = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), '..'))  # todo: could be more elegant and more fail safe.
+        os.path.join(os.path.dirname(__file__), "..")
+    )  # todo: could be more elegant and more fail safe.
 sys.path.append(p)
-print(f'Added to sys.path: {p}')
+print(f"Added to sys.path: {p}")

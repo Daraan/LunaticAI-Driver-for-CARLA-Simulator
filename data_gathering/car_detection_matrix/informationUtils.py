@@ -49,10 +49,7 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
     for wp in waypoints:
         ego_vehicle_road_id = wp.road_id
         # get all lanes of the respective road
-        lanes = []
-        for id in road_lane_ids:
-            if ego_vehicle_road_id == id[0]:
-                lanes.append(id[1])
+        lanes = [rl_id[1] for rl_id in road_lane_ids if ego_vehicle_road_id == rl_id[0]]
         # cast lane_id's to int and check for highway condition
         lanes = [int(lane) for lane in lanes]
         if len(lanes) >= 6 or (
@@ -147,12 +144,8 @@ def create_city_matrix(ego_vehicle_location: carla.Location,
     ego_vehicle_road_id = ego_vehicle_waypoint.road_id
 
     # get all lanes of ego's road
-    lanes = []
-    for id in road_lane_ids:
-        if ego_vehicle_road_id == id[0]:
-            lanes.append(id[1])
-    lanes.sort()
-    lanes = [int(id) for id in lanes]
+    lanes = sorted(rl_id[1] for rl_id in road_lane_ids if ego_vehicle_road_id == rl_id[0])
+    lanes = [int(l_id) for l_id in lanes] # TODO: should be redundant
     
     # split lanes into directions & sort, e.g. [-2,-1,1,2] -> [[-2,-1],[2,1]]
     lanes_splitted: list[list[int]] = []
@@ -368,16 +361,16 @@ def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
     if next_waypoint.road_id != ego_vehicle_waypoint.road_id:
         next_road_id = next_waypoint.road_id
         next_lanes = [
-            id[1]
-            for id in road_lane_ids
-            if next_road_id == id[0]
+            rl_id[1]
+            for rl_id in road_lane_ids
+            if next_road_id == rl_id[0]
         ]
         
     # get lanes of ego vehicle's road
     our_lanes = [
-        id[1]
-        for id in road_lane_ids
-        if ego_vehicle_waypoint.road_id == id[0]
+        rl_id[1]
+        for rl_id in road_lane_ids
+        if ego_vehicle_waypoint.road_id == rl_id[0]
     ]
     
     # return next_road_id and next_lanes if they exist, otherwise return None
@@ -457,10 +450,7 @@ def detect_surrounding_cars(
     _, next_lanes = check_road_change(ego_location, road_lane_ids, True, world_map)
     _, prev_lanes = check_road_change(ego_location, road_lane_ids, False, world_map)
     lanes_exist_further = False
-    lanes = []
-    for id in road_lane_ids:
-        if ego_vehicle_road_id == id[0]:
-            lanes.append(id[1])
+    lanes = [rl_id[1] for rl_id in road_lane_ids if ego_vehicle_road_id == rl_id[0]]
     try:
         if next_lanes and matrix:
             # lanes = [road_lane.split("_")[1] for road_lane in matrix.keys()]
@@ -1040,7 +1030,7 @@ def detect_ego_before_junction(
 
     # cast lane id's to int
     for road in junction_roads:
-        lanes_all[road[1]] = [int(id) for id in lanes_all[road[1]]]
+        lanes_all[road[1]] = [int(l_id) for l_id in lanes_all[road[1]]]
 
     logger.info("all lanes %s", lanes_all)
 

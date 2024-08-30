@@ -331,13 +331,13 @@ class RssSensor(CustomSensorInterface):
     def increase_log_level(self):
         print(f"increase {self.log_level}")
         if self.log_level < carla.RssLogLevel.off:
-            self.log_level = self.log_level+1
+            self.log_level = carla.RssLogLevel.values[self.log_level+1]
         self.sensor.set_log_level(self.log_level)
 
     def decrease_log_level(self):
         print(f"decrease {self.log_level}")
         if self.log_level > carla.RssLogLevel.trace:
-            self.log_level = self.log_level-1
+            self.log_level = carla.RssLogLevel.values[self.log_level-1]
         self.sensor.set_log_level(self.log_level)
 
     def increase_map_log_level(self):

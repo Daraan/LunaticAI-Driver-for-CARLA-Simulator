@@ -24,7 +24,7 @@ fps: 20
 
 # If True, the simulation will be set to run in synchronous mode.
 # For False, the simulation will be set to run in asynchronous mode.
-# If None the world settings for synchronous mode will not be adjusted, 
+# If None the world settings for synchronous mode will not be adjusted,
 # assuming this is handled by the user / external system.
 sync: true
 
@@ -34,7 +34,7 @@ handle_ticks: true
 
 # If True the agent will look for a new waypoint after the initial route is done.
 #  
-# Note: 
+# Note:
 #     Needs custom implementation in the main file by the user.
 loop: true
 # width of pygame window
@@ -60,12 +60,12 @@ generation: 2
 
 # Whether or not to use the CARLAS's `carla.TrafficManager` to autopilot the agent
 #  
-# Note: 
-#     This disables the usage of the LunaticAgent, however needs to be 
+# Note:
+#     This disables the usage of the LunaticAgent, however needs to be
 #     enabled in the main script by the user to work.
 autopilot: false
 
-# If None will remove all sensors from an externalActor, if `WorldModel.restart` is 
+# If None will remove all sensors from an externalActor, if `WorldModel.restart` is
 # called outside from the initialization, i.e. a second time.
 # Else will always/never remove the sensors when using `WorldModel.restart`.
 restart_clean_sensors: null

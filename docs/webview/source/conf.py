@@ -152,6 +152,7 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3/', None),
                                        'pygame' : ("https://www.pygame.org/docs/", None),
                                        'carla' : ('https://carla.readthedocs.io/en/latest/', '_carla-inv.inv'),
                                        'scenario_runner' : ('https://github.com/carla-simulator/scenario_runner/', '_scenario_runner-inv.inv'),
+                                       'shapely' : ('https://shapely.readthedocs.io/en/stable/', None),
                                        #'cachetools' : ("https://cachetools.readthedocs.io/en/stable/", None),
                        }
 

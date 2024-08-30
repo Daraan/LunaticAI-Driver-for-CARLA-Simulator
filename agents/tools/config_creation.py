@@ -91,9 +91,9 @@ __all__ = [
 if sys.version_info < (3, 9):
     # fix for typing.get_type_hints when OmegaConf.structured is used with nested dataclasses
     __original_config_path = config_path
-    def config_path(path=None):
+    def config_path(path: Optional[str] =None):
         decorator = __original_config_path(path)
-        def wrapper(cls):
+        def wrapper(cls: type):
             globals()[cls.__name__] = cls # add to globals
             return decorator(cls)
         return wrapper
