@@ -1,5 +1,10 @@
-from carla import ad
+from carla.libcarla import _CarlaEnum
 from . import *
+
+
+INVALID = TrafficType.INVALID
+LEFT_HAND_TRAFFIC = TrafficType.LEFT_HAND_TRAFFIC
+RIGHT_HAND_TRAFFIC = TrafficType.RIGHT_HAND_TRAFFIC
 
 class MapMetaData():
     def assign(self, arg1: MapMetaData, other: MapMetaData) -> MapMetaData:
@@ -146,12 +151,9 @@ class PartitionIdList():
         '''
         ...
 
-
-class TrafficType(int,):
+class TrafficType(int, _CarlaEnum):
     INVALID = 0
-
     LEFT_HAND_TRAFFIC = 1
-
     RIGHT_HAND_TRAFFIC = 2
 
 
