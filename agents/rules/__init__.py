@@ -49,7 +49,7 @@ def create_default_rules(gameframework: Optional["GameFramework"]=None, random_l
     
     if DEBUG_RULES:
         default_rules.append(StoppedTooLongTrigger())
-        from agents.rules.behaviour_templates import SimpleRule1, SimpleRule1B, debug_rules
+        from agents.rules._debug_rules import SimpleRule1, SimpleRule1B, debug_rules
         default_rules.extend([SimpleRule1, SimpleRule1B])
         default_rules.extend(debug_rules)
     from classes.rule import BlockingRule
