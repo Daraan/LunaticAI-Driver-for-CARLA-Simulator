@@ -11,19 +11,23 @@
 # pyright: reportTypeCommentUsage=none
 # pyright: reportAttributeAccessIssue=information
 
-import math
-from typing import List, Tuple, cast as assure_type, TYPE_CHECKING
-
 import inspect
+import math
+from typing import TYPE_CHECKING, List, Tuple
+from typing import cast as assure_type
+
 import carla
 
-from launch_tools import CarlaDataProvider
-from classes._sensor_interface import CustomSensorInterface
-from classes.rss_visualization import RssDebugVisualizationMode, RssDebugVisualizer, RssUnstructuredSceneVisualizer # pylint: disable=relative-import
-
 from agents.tools.logging import logger
-
+from classes._sensor_interface import CustomSensorInterface
 from classes.constants import AD_RSS_AVAILABLE, RssLogLevel, RssLogLevelAlias
+from classes.rss_visualization import (  # pylint: disable=relative-import
+    RssDebugVisualizationMode,
+    RssDebugVisualizer,
+    RssUnstructuredSceneVisualizer,
+)
+from launch_tools import CarlaDataProvider
+
 if AD_RSS_AVAILABLE:
     from carla import ad
 

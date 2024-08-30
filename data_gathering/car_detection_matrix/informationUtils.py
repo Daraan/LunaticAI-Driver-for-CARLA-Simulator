@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from typing import List, Set, NamedTuple, Optional
-import carla
-import math
 import collections
-import numpy as np
-
-from cachetools import cached, LRUCache
+import math
 from operator import attrgetter
+from typing import List, NamedTuple, Optional, Set
+
+import carla
+import numpy as np
+from cachetools import LRUCache, cached
 
 from agents.tools.logging import logger
-
 from launch_tools import CarlaDataProvider
+
 
 class RoadLaneId(NamedTuple):
     road_id: int

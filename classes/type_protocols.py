@@ -13,21 +13,19 @@ See Also:
 from __future__ import annotations
 
 import sys
-from typing import Callable, Hashable, TYPE_CHECKING, Any, Optional, Sequence, Union
-from typing_extensions import (Protocol, ParamSpec, Concatenate,
-                               TypeAlias, TypeVar, TypeAliasType, Literal)
-import carla  # type: ignore
+from typing import TYPE_CHECKING, Any, Callable, Hashable, Optional, Sequence, Union
 
+import carla  # type: ignore
+from typing_extensions import Concatenate, Literal, ParamSpec, Protocol, TypeAlias, TypeAliasType, TypeVar
 
 if TYPE_CHECKING:
-    from agents.tools.config_creation import AgentConfig
-    from agents.navigation.local_planner import LocalPlanner
     from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner  # noqa: F401
-    from classes.rule import Rule, Context
-    from classes.evaluation_function import ConditionFunction
-    from agents.tools.config_creation import BehaviorAgentSettings, LunaticAgentSettings  # noqa: F401
-    from classes.worldmodel import WorldModel
+    from agents.navigation.local_planner import LocalPlanner
+    from agents.tools.config_creation import AgentConfig, BehaviorAgentSettings, LunaticAgentSettings  # noqa: F401
     from classes.constants import AgentState
+    from classes.evaluation_function import ConditionFunction
+    from classes.rule import Context, Rule
+    from classes.worldmodel import WorldModel
 
 __all__ = [
     "RuleT",

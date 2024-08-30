@@ -3,10 +3,12 @@ Uses the built in carla.TrafficManager to use the autopilot written in C.
 """
 
 from typing import ClassVar, cast
+
 import carla
 
-from launch_tools import CarlaDataProvider
 from agents.tools.config_creation import AutopilotBehavior
+from launch_tools import CarlaDataProvider
+
 
 class TrafficManager:
     tm : ClassVar[carla.TrafficManager] = None  # type: ignore[assignment]

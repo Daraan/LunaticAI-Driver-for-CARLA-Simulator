@@ -12,30 +12,37 @@ module.
 from __future__ import annotations
 
 import sys
+from functools import partial, wraps
 from inspect import isclass
 from operator import attrgetter
-from omegaconf import DictConfig
-from shapely.geometry import Polygon
-from functools import partial, wraps
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Sequence, Tuple, Union
+from typing import cast as assure_type
 
 import carla
-from classes.type_protocols import CallableT, CanDetectNearbyObstacles, CanDetectObstacles, HasBaseSettings, AgentConfigT, HasConfig
-from classes.constants import RoadOption
+from omegaconf import DictConfig
+from shapely.geometry import Polygon
+from typing_extensions import Concatenate, Literal, ParamSpec, TypeVar, assert_never
+
 from agents.tools.config_creation import AgentConfig
 from agents.tools.hints import ObstacleDetectionResult
-from agents.tools.misc import is_within_distance
 from agents.tools.logging import logger
-
-from classes.constants import Phase
+from agents.tools.misc import is_within_distance
+from classes.constants import Phase, RoadOption
 from classes.exceptions import EmergencyStopException, LunaticAgentException
+from classes.type_protocols import (
+    AgentConfigT,
+    CallableT,
+    CanDetectNearbyObstacles,
+    CanDetectObstacles,
+    HasBaseSettings,
+    HasConfig,
+)
 from launch_tools import CarlaDataProvider
-from typing import TYPE_CHECKING, Any, Callable, Dict, Sequence, Optional, Tuple, Union, cast as assure_type
-from typing_extensions import ParamSpec, TypeVar, Concatenate, assert_never, Literal
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
-    from classes.worldmodel import WorldModel
     from agents.tools.config_creation import BehaviorAgentSettings, LunaticAgentSettings
+    from classes.worldmodel import WorldModel
 
 _T = TypeVar("_T")
 _P = ParamSpec('_P')

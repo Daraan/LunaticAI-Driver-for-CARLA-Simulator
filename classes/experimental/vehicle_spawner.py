@@ -1,12 +1,12 @@
 import yaml
 
 import launch_tools
-from classes.experimental.rule_interpreter import RuleInterpreter
-from launch_tools.carla_service import initialize_carla
 from classes.experimental.driver import Driver
+from classes.experimental.rule_interpreter import RuleInterpreter
 from classes.experimental.traffic_manager import TrafficManager
 from classes.experimental.vehicle import Vehicle
 from launch_tools import CarlaDataProvider
+from launch_tools.carla_service import initialize_carla
 
 
 class VehicleSpawner(CarlaDataProvider):

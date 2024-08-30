@@ -3,9 +3,9 @@ Sets up a custom :py:mod:`logging.Logger <logging>` for the project.
 :python:`from agents.tools.logging import logger` can be used to access the logger.
 """
 
-import os
-import logging
 import datetime
+import logging
+import os
 from typing import Optional
 
 USE_HYDRA_IF_POSSIBLE = True

@@ -1,8 +1,9 @@
 import json
 import os
-from typing import Union, Optional
+from typing import Optional, Union
 
 import carla
+
 from classes.experimental.vehicle import Vehicle
 from launch_tools import CarlaDataProvider
 

@@ -1,22 +1,20 @@
 import weakref
+from threading import Event, Thread
+from typing import TYPE_CHECKING, ClassVar, List, NoReturn, Optional, cast
 
 import carla
 import numpy as np
 import pygame
 from carla import ColorConverter as cc
-
-from typing import TYPE_CHECKING, ClassVar, List, Optional, cast
 from typing_extensions import Self
-from typing import NoReturn
-from threading import Event, Thread
 
 from agents.tools.hints import CameraBlueprint
 from classes._sensor_interface import CustomSensorInterface
 from launch_tools import CarlaDataProvider, class_or_instance_method
 
 if TYPE_CHECKING:
-    from classes.hud import HUD
     from agents.tools.config_creation import LaunchConfig
+    from classes.hud import HUD
 
 # TODO integrate into camera.yaml
 CameraBlueprints = {

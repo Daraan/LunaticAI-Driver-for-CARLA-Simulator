@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
-from typing_extensions import Self
+
+from typing_extensions import Callable, Self, assert_type
+
 from agents.rules.behaviour_templates import AlwaysAcceptRSSUpdates, ConfigBasedRSSUpdates
 from classes.constants import Phase
-from classes.rule import Context, Rule, always_execute
 from classes.evaluation_function import ConditionFunction
-
-from typing_extensions import Callable, assert_type
+from classes.rule import Context, Rule, always_execute
 
 x = ConfigBasedRSSUpdates()
 assert x.description == ConfigBasedRSSUpdates.__doc__
@@ -206,8 +206,10 @@ another_rule = Another()
 
 def _test_custom_init_Rule():
     """Suppress warning message when creating this invalid case"""
+    import io
+    import re
+    import sys
     from contextlib import redirect_stderr
-    import io, sys, re  # noqa
     alt_out = io.StringIO()
     # suppress expected message
     

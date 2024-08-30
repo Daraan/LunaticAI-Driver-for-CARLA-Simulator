@@ -6,8 +6,8 @@ from typing import ClassVar, List
 import carla
 from carla import Vector3D
 
-
 from launch_tools import CarlaDataProvider
+
 
 def calculateDistance(location1, location2):
     return sqrt(

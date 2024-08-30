@@ -4,22 +4,21 @@ Example of automatic vehicle control from client side
 Based on original CARLA example by German Ros
 """
 
-import os
 import math
-from typing import ClassVar, Iterable, List, Optional, Tuple, Union, cast
+import os
 from datetime import timedelta
+from typing import TYPE_CHECKING, ClassVar, Iterable, List, Optional, Tuple, Union, cast
 
 import carla
 import pygame
 
-
 from classes.keyboard_controls import RSSKeyboardControl
 from classes.rss_visualization import RssStateVisualizer
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from classes.worldmodel import WorldModel
     from pygame._common import ColorValue  # type: ignore
+
+    from classes.worldmodel import WorldModel
 
 FONT_SIZE = 20
 

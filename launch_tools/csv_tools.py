@@ -1,11 +1,12 @@
 """Contains snippets that can can import/export vehicle positions from/to csv files."""
 from __future__ import annotations
+
 # pyright: reportUnknownMemberType=none
 # pyright: reportUnknownVariableType=information
-
 from os import PathLike
-import pandas as pd
+
 import carla
+import pandas as pd
 
 __all__ = ["transform_to_pandas",
            "vehicle_location_to_dataframe",

@@ -5,27 +5,32 @@
 
 from __future__ import annotations
 
-import inspect
 import collections.abc
-from functools import partial, update_wrapper, wraps
-
-from launch_tools import singledispatchmethod
-
+import inspect
 import typing
-from typing import Any, Callable, ClassVar, Dict, Generic, Hashable, TYPE_CHECKING, Optional, Union, cast
-from typing_extensions import (Annotated, overload, Self, ParamSpec, Concatenate,
-                               TypeVar, TypeGuard, Never, Literal)
+from functools import partial, update_wrapper, wraps
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Hashable, Optional, Union, cast
+
+from typing_extensions import Annotated, Concatenate, Literal, Never, ParamSpec, Self, TypeGuard, TypeVar, overload
 
 from classes.constants import READTHEDOCS
 from classes.type_protocols import (
-    AnyCallableAction, AnyCallableCondition, RuleT, CallableAction, CallableCondition, CallableT, CallableConditionT
+    AnyCallableAction,
+    AnyCallableCondition,
+    CallableAction,
+    CallableCondition,
+    CallableConditionT,
+    CallableT,
+    RuleT,
 )
+from launch_tools import singledispatchmethod
 
 if TYPE_CHECKING:
-    from typing import NoReturn
-    # NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
-    from classes.rule import Context, Rule # circular import
     from functools import _Wrapped  # type: ignore
+    from typing import NoReturn
+
+    # NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
+    from classes.rule import Context, Rule  # circular import
 
 
 _T = TypeVar("_T")

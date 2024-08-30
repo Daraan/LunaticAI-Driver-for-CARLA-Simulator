@@ -1,13 +1,13 @@
-
-from agents.rules.behaviour_templates import DEBUG_RULES
-
-from classes.constants import AgentState, Phase
-from classes.rule import Rule, MultiRule, ConditionFunction, Context
-
-from agents.tools.logging import logger
+"""Example of a :py:class:`MultiRule` if the agent does not perform any actions for a certain time."""
 
 from typing import List
-    
+
+from agents.rules.behaviour_templates import DEBUG_RULES
+from agents.tools.logging import logger
+from classes.constants import AgentState, Phase
+from classes.rule import ConditionFunction, Context, MultiRule, Rule
+
+
 class StoppedTooLongTrigger(MultiRule):
     """Triggers child rules if the agent has stopped for a too long time"""
     phase = Phase.UPDATE_INFORMATION | Phase.END
@@ -26,7 +26,7 @@ class StoppedTooLongTrigger(MultiRule):
             return False
         return True
     
-    def action(self, ctx: Context):
+    def action(self, ctx: Context) -> None:
         if not self._warning_given:
             self._warning_given = True
             logger.warning("Agent has stopped for too long.")

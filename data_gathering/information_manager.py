@@ -10,18 +10,17 @@ i.e. distill the information from the data and return high level information
 from __future__ import annotations
 
 # todo: maybe find another name for this module
-
 from fnmatch import fnmatch
 from functools import wraps
-from typing import (ClassVar, TYPE_CHECKING,
-                    NamedTuple, Optional, Union, Dict, List, Callable, TypeVar, cast)
-from typing_extensions import Self, ParamSpec, Concatenate
-from cachetools import cached
-import carla
+from typing import TYPE_CHECKING, Callable, ClassVar, Dict, List, NamedTuple, Optional, TypeVar, Union, cast
 
-from launch_tools import CarlaDataProvider
+import carla
+from cachetools import cached
+from typing_extensions import Concatenate, ParamSpec, Self
+
 from agents.tools.logging import logger
 from classes.constants import AgentState
+from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent

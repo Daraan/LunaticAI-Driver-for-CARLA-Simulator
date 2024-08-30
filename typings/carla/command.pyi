@@ -5,10 +5,18 @@ and `carla.Client.apply_batch_sync`.
 
 from typing import Protocol, overload, type_check_only
 
-from .libcarla.command import *  # type: ignore  # noqa
-from .libcarla import (Actor, ActorBlueprint, Transform, VehicleControl, VehiclePhysicsControl,
-                       AckermannControllerSettings, VehicleLightState, Vector3D)
 from .libcarla import *  # noqa: F403
+from .libcarla import (
+    AckermannControllerSettings,
+    Actor,
+    ActorBlueprint,
+    Transform,
+    Vector3D,
+    VehicleControl,
+    VehicleLightState,
+    VehiclePhysicsControl,
+)
+from .libcarla.command import *  # type: ignore  # noqa
 
 @type_check_only
 class _IsCommand(Protocol):

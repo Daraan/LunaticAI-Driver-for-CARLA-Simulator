@@ -1,8 +1,9 @@
-from agents.tools.hints import ObstacleDetectionResult
-from classes.constants import RoadOption
-from agents.tools.lunatic_agent_tools import detect_vehicles
-
 from typing import TYPE_CHECKING
+
+from agents.tools.hints import ObstacleDetectionResult
+from agents.tools.lunatic_agent_tools import detect_vehicles
+from classes.constants import RoadOption
+
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 

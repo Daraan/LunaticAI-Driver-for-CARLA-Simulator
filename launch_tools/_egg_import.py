@@ -4,9 +4,9 @@ This script is used to import the carla module from the `.egg` file.
 Please set the `CARLA_ROOT` environment variable to the root directory of the CARLA installation.
 """
 
-import sys
-import os
 import glob
+import os
+import sys
 
 CARLA_ROOT = os.environ.get("CARLA_ROOT")
 FILE_NAME = 'PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (

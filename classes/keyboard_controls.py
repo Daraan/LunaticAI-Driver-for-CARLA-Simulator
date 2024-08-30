@@ -1,48 +1,50 @@
-import carla
 import inspect
 import signal
-
 import weakref
+from typing import TYPE_CHECKING, Any, Optional, Union
+
+import carla
 import pygame
-from pygame.locals import KMOD_CTRL
-from pygame.locals import KMOD_SHIFT
-from pygame.locals import K_BACKSPACE
-from pygame.locals import K_TAB
-from pygame.locals import K_DOWN
-from pygame.locals import K_ESCAPE
-from pygame.locals import K_F1
-from pygame.locals import K_F2
-from pygame.locals import K_F3
-from pygame.locals import K_F4
-from pygame.locals import K_F5
-from pygame.locals import K_F6
-from pygame.locals import K_LEFT
-from pygame.locals import K_RIGHT
-from pygame.locals import K_SPACE
-from pygame.locals import K_UP
-from pygame.locals import K_a
-from pygame.locals import K_b
-from pygame.locals import K_d
-from pygame.locals import K_g
-from pygame.locals import K_n
-from pygame.locals import K_p
-from pygame.locals import K_q
-from pygame.locals import K_r
-from pygame.locals import K_s
-from pygame.locals import K_t
-from pygame.locals import K_o
-from pygame.locals import K_w
-from pygame.locals import K_l
-from pygame.locals import K_i
-from pygame.locals import K_z
-from pygame.locals import K_x
-from pygame.locals import MOUSEBUTTONDOWN
-from pygame.locals import MOUSEBUTTONUP
-from pygame.locals import K_MINUS, K_EQUALS
-
-
-from typing import TYPE_CHECKING, Optional, Union, Any
+from pygame.locals import (
+    K_BACKSPACE,
+    K_DOWN,
+    K_EQUALS,
+    K_ESCAPE,
+    K_F1,
+    K_F2,
+    K_F3,
+    K_F4,
+    K_F5,
+    K_F6,
+    K_LEFT,
+    K_MINUS,
+    K_RIGHT,
+    K_SPACE,
+    K_TAB,
+    K_UP,
+    KMOD_CTRL,
+    KMOD_SHIFT,
+    MOUSEBUTTONDOWN,
+    MOUSEBUTTONUP,
+    K_a,
+    K_b,
+    K_d,
+    K_g,
+    K_i,
+    K_l,
+    K_n,
+    K_o,
+    K_p,
+    K_q,
+    K_r,
+    K_s,
+    K_t,
+    K_w,
+    K_x,
+    K_z,
+)
 from typing_extensions import Literal
+
 if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
 

@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 
 import yaml
 
+
 class RuleInterpreter:
     """
     This is a second way of implementing rules from files and not via the Rule interface.

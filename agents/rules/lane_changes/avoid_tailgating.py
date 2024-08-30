@@ -1,12 +1,11 @@
 """Rule that avoids a tailgator by changing lanes."""
 
-from classes.constants import RoadOption
 from agents.rules.lane_changes.other_rules import rule_lane_change
 from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
-from classes.constants import Phase, RulePriority
-from classes.rule import Context, ConditionFunction, Rule
+from classes.constants import Phase, RoadOption, RulePriority
+from classes.rule import ConditionFunction, Context, Rule
 
 
 @ConditionFunction(truthy=True)

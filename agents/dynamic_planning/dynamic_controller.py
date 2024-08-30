@@ -5,16 +5,14 @@
 
 """ This module contains PID controllers to perform lateral and longitudinal control. """
 
-from collections import deque
 import math
-import numpy as np
+from collections import deque
+
 import carla
+import numpy as np
 
-from agents.navigation.controller import (VehiclePIDController, PIDLongitudinalController,
-                                          PIDLateralController)
+from agents.navigation.controller import PIDLateralController, PIDLongitudinalController, VehiclePIDController
 from classes.type_protocols import UseableWithDynamicPlanner
-
-
 
 STEERING_UPDATE_SPEED = 0.1
 

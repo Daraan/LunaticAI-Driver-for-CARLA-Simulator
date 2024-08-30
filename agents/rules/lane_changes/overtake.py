@@ -6,14 +6,12 @@
 
 from typing import TYPE_CHECKING
 
-from classes.constants import RoadOption
+from agents.rules.lane_changes.other_rules import rule_lane_change
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
-from classes.constants import Phase, RulePriority
+from classes.constants import Phase, RoadOption, RulePriority
 from classes.evaluation_function import ConditionFunction
 from classes.rule import Rule
-
-from agents.rules.lane_changes.other_rules import rule_lane_change
 
 if TYPE_CHECKING:
     from classes.rule import Context

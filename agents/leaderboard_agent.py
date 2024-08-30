@@ -13,24 +13,22 @@ Attention:
 """
 import operator
 import os
-from typing import Any, Dict, TYPE_CHECKING, Sequence, Tuple, Union, cast
-from typing_extensions import TypedDict
-from omegaconf import OmegaConf
-from hydra import compose, initialize_config_dir
-from hydra.core.utils import configure_log
+from typing import TYPE_CHECKING, Any, Dict, Sequence, Tuple, Union, cast
 
 import carla
 import pygame
+from hydra import compose, initialize_config_dir
+from hydra.core.utils import configure_log
+from omegaconf import OmegaConf
+from typing_extensions import TypedDict
 
 from agents.tools.debug_drawing import draw_route
 from classes.exceptions import UserInterruption
-
-
 from launch_tools import CarlaDataProvider, GameTime, singledispatchmethod
-     
+
 try:
-    from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track # pyright: ignore[reportMissingImports]
-    from leaderboard.utils.route_manipulation import downsample_route          # pyright: ignore[reportMissingImports]
+    from leaderboard.autoagents.autonomous_agent import AutonomousAgent, Track  # pyright: ignore[reportMissingImports]
+    from leaderboard.utils.route_manipulation import downsample_route  # pyright: ignore[reportMissingImports]
 except ModuleNotFoundError:
     # Leaderboard is not a submodule, cannot use it on readthedocs
     if "READTHEDOCS" in os.environ and not TYPE_CHECKING:
@@ -38,20 +36,21 @@ except ModuleNotFoundError:
     else: raise # noqa: E701
 
 from agents.lunatic_agent import LunaticAgent
-
+from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
+from agents.tools.logging import logger
 from classes.constants import READTHEDOCS, Phase
 from classes.keyboard_controls import RSSKeyboardControl
-from classes.worldmodel import GameFramework, WorldModel, AD_RSS_AVAILABLE
-from agents.tools.logging import logger
-from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
+from classes.worldmodel import AD_RSS_AVAILABLE, GameFramework, WorldModel
 
 if TYPE_CHECKING:
     #from scenario_runner.srunner.autoagents.sensor_interface import SensorInterface
     from leaderboard.envs.sensor_interface import SensorInterface
-    from classes.constants import RoadOption
+
     from agents.navigation.local_planner import LocalPlanner
+    from classes.constants import RoadOption
 
 import logging
+
 
 def get_entry_point():
     """Must return the name of the class to be used"""

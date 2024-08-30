@@ -8,13 +8,12 @@
 import random
 from collections import deque
 from enum import IntEnum
+from typing import NamedTuple
 
 import carla
 
 from agents.navigation.controller import VehiclePIDController
 from agents.tools.misc import draw_waypoints, get_speed
-
-from typing import NamedTuple
 
 
 class RoadOption(IntEnum):

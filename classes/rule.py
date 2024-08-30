@@ -1,45 +1,67 @@
 from __future__ import annotations
 
+import inspect
+
 # pyright: strict
 # pyright: reportIndexIssue=information, reportCallIssue=information
 # pyright: reportGeneralTypeIssues=warning
 # pyright: reportUnusedFunction=information, reportUnusedImport=information
 # pyright: reportUnnecessaryIsInstance=false, reportUnnecessaryComparison=false
 # pyright: reportPrivateUsage=none
-
 import random
-import inspect
 from collections.abc import Mapping
 from dataclasses import is_dataclass
 from functools import partial, update_wrapper, wraps
-
-from classes.type_protocols import ConditionFunctionLike, ConditionFunctionLikeT, CallableAction
-from launch_tools import CarlaDataProvider, singledispatchmethod
-import carla
-import pygame
-
 from inspect import isclass
 from itertools import accumulate
-from typing import (Any, ClassVar, Container, FrozenSet, List, Set, TypeVar, Union, Iterable,
-                    Callable, Optional, Dict, Hashable, TYPE_CHECKING, cast)
-from typing_extensions import (overload, Self, ParamSpec, Annotated, Concatenate,
-                               TypedDict, Literal, Unpack, NotRequired, Required)
-from typing import NoReturn
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Container,
+    Dict,
+    FrozenSet,
+    Hashable,
+    Iterable,
+    List,
+    NoReturn,
+    Optional,
+    Set,
+    TypeVar,
+    Union,
+    cast,
+)
 from weakref import CallableProxyType, WeakSet, proxy
 
+import carla
+import pygame
 from omegaconf import DictConfig, OmegaConf
+from typing_extensions import (
+    Annotated,
+    Concatenate,
+    Literal,
+    NotRequired,
+    ParamSpec,
+    Required,
+    Self,
+    TypedDict,
+    Unpack,
+    overload,
+)
 
 from agents.tools.logging import logger
-from classes.exceptions import DoNotEvaluateChildRules, UnblockRuleException
-from classes.worldmodel import GameFramework
 from classes.constants import Hazard, HazardSeverity, Phase, RulePriority, RuleResult
 from classes.evaluation_function import ConditionFunction
+from classes.exceptions import DoNotEvaluateChildRules, UnblockRuleException
+from classes.type_protocols import CallableAction, ConditionFunctionLike, ConditionFunctionLikeT
+from classes.worldmodel import GameFramework
 from data_gathering.information_manager import InformationManager
-
+from launch_tools import CarlaDataProvider, singledispatchmethod
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
-    from agents.tools.config_creation import LiveInfo, RuleConfig, ContextSettings
+    from agents.tools.config_creation import ContextSettings, LiveInfo, RuleConfig
     # NOTE: gameframework.py adds GameFramework to this module's variables
     # at this position it would be a circular import
 
@@ -1268,7 +1290,7 @@ class Rule(_GroupRule):
 class MultiRule(Rule, metarule=True):
     """
     This metarule allows to execute one or multiple rules if it is applicable.
-    Depending on :py:attr:`execute_all_rules` it will either execute all rules or only the first 
+    Depending on :py:attr:`execute_all_rules` it will either execute all rules or only the first
     applicable rule from its :py:attr:`rules` list.
     """
 

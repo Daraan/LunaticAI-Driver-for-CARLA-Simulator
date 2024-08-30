@@ -12,7 +12,8 @@ and the simpler but less flexible {py:class}`agents.leaderboard_agent.LunaticCha
 
 ### LunaticAgent Class
 
-The [](#agents.lunatic_agent.LunaticAgent) can be initialized in different ways and supports all features from the [Configuration](conf/ConfigFiles.md#configuration) section:
+The [](#agents.lunatic_agent.LunaticAgent) can be initialized in different ways
+and supports all features from the [Configuration](conf/ConfigFiles.md#configuration) section:
 
 ```python
 from agents.lunatic_agent import LunaticAgent

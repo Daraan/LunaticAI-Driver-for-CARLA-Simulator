@@ -6,29 +6,33 @@ Note:
 # pyright: reportUnusedImport=false
 # ruff: noqa: F401, F403
 
+from typing import TYPE_CHECKING, Iterable, Optional, Union
+
 import hydra.errors
-from omegaconf import DictConfig, OmegaConf
-from hydra.utils import instantiate, call
 import omegaconf
-
-from agents.rules.behaviour_templates import SetNextWaypointNearby, SlowDownAtIntersectionRule, NormalSpeedRule, ConfigBasedRSSUpdates, DEBUG_RULES
-from agents.rules.lane_changes import RandomLaneChangeRule, SimpleOvertakeRule, AvoidTailgatorRule
-from agents.rules.lane_changes import * # allow to import all new rules
-from agents.rules.obstacles import DriveSlowTowardsTrafficLight, PassYellowTrafficLightRule
-from agents.rules.obstacles import *
-from agents.rules.stopped_long_trigger import StoppedTooLongTrigger
-
-from agents.tools.logging import logger
-
-from typing import TYPE_CHECKING, Optional, Union, Iterable
-
-from classes.constants import Phase
-from classes.rule import Rule
+from hydra.utils import call, instantiate
+from omegaconf import DictConfig, OmegaConf
 from typing_extensions import overload
 
+from agents.rules.behaviour_templates import (
+    DEBUG_RULES,
+    ConfigBasedRSSUpdates,
+    NormalSpeedRule,
+    SetNextWaypointNearby,
+    SlowDownAtIntersectionRule,
+)
+from agents.rules.lane_changes import *  # allow to import all new rules
+from agents.rules.lane_changes import AvoidTailgatorRule, RandomLaneChangeRule, SimpleOvertakeRule
+from agents.rules.obstacles import *
+from agents.rules.obstacles import DriveSlowTowardsTrafficLight, PassYellowTrafficLightRule
+from agents.rules.stopped_long_trigger import StoppedTooLongTrigger
+from agents.tools.logging import logger
+from classes.constants import Phase
+from classes.rule import Rule
+
 if TYPE_CHECKING:
+    from agents.tools.config_creation import CallFunctionFromConfig, CreateRuleFromConfig, RuleCreatingParameters
     from classes.worldmodel import GameFramework
-    from agents.tools.config_creation import RuleCreatingParameters, CreateRuleFromConfig, CallFunctionFromConfig
 
 def create_default_rules(gameframework: Optional["GameFramework"]=None, random_lane_change: bool = False) -> "Iterable[Rule]":
 

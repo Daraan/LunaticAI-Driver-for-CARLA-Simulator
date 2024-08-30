@@ -1,10 +1,9 @@
 from typing import List, Optional, Tuple, Union
+
+import carla
 from typing_extensions import Annotated, Literal, overload
 
 from launch_tools import CarlaDataProvider
-
-import carla
-
 
 create_blueprint = CarlaDataProvider.create_blueprint
 

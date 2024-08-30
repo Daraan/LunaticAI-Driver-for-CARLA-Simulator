@@ -1,24 +1,29 @@
 from __future__ import annotations
 
+import signal
 import threading
 import time
-from typing import Dict, List, TYPE_CHECKING, Any, Optional, Set
-from typing_extensions import TypedDict
-import signal
-
-import numpy as np
-import pylab
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
 import carla
-import pygame
-
-from launch_tools import CarlaDataProvider
-from agents.tools.logging import logger
-#from classes.constants import StreetType
-
-from data_gathering.car_detection_matrix.informationUtils import RoadLaneId, check_ego_on_highway, create_city_matrix, detect_surrounding_cars, get_all_road_lane_ids
-
 import matplotlib
+import numpy as np
+import pygame
+import pylab
+from typing_extensions import TypedDict
+
+from agents.tools.logging import logger
+
+#from classes.constants import StreetType
+from data_gathering.car_detection_matrix.informationUtils import (
+    RoadLaneId,
+    check_ego_on_highway,
+    create_city_matrix,
+    detect_surrounding_cars,
+    get_all_road_lane_ids,
+)
+from launch_tools import CarlaDataProvider
+
 matplotlib.use('Agg')
 import matplotlib.backends.backend_agg as agg
 

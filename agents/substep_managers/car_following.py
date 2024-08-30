@@ -1,13 +1,15 @@
-import numpy as np
-import carla
-
 from typing import TYPE_CHECKING
+
+import carla
+import numpy as np
+
 if TYPE_CHECKING:
-    from classes.type_protocols import HasPlannerWithConfig
     from agents.tools.config_creation import BehaviorAgentSettings, LunaticAgentSettings
+    from classes.type_protocols import HasPlannerWithConfig
 
 
 from agents.tools.misc import get_speed
+
 __epsilon = np.nextafter(0., 1.) # to not divide by 0
 
 def car_following_manager(self: "HasPlannerWithConfig[BehaviorAgentSettings | LunaticAgentSettings]",

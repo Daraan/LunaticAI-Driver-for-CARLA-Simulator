@@ -1,56 +1,54 @@
 """
 Interface classes between CARLA, the agent, and the user interface.
 """
+# pyright: reportOptionalMemberAccess=warning
 
 from __future__ import annotations
 
-# pyright: reportOptionalMemberAccess=warning
-
-from collections.abc import Mapping
 import os
 import sys
 import weakref
-from typing import (Any, ClassVar, List, NoReturn, Optional, Sequence, Union, cast as assure_type,
-                    TYPE_CHECKING, TypeVar, overload)
 
-import numpy as np
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, ClassVar, List, NoReturn, Optional, Sequence, TypeVar, Union, overload
+from typing import cast as assure_type
+
+import carla
 import hydra
+import numpy as np
+import numpy.random as random
+import pygame
 from hydra.core.global_hydra import GlobalHydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf, open_dict
 
-import carla
-import pygame
-import numpy.random as random
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, RssLogLevel, RssRoadBoundariesMode
-from launch_tools import class_or_instance_method
-from classes.hud import HUD, get_actor_display_name
-
-from classes.camera_manager import CameraManager
-from classes.carla_originals.sensors import (CollisionSensor, LaneInvasionSensor, RadarSensor,
-                                             GnssSensor, IMUSensor)
-
 from classes import exceptions as _exceptions
+from classes.camera_manager import CameraManager
+from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 from classes.exceptions import AgentDoneException, ContinueLoopException
-from classes.rss_sensor import RssSensor, AD_RSS_AVAILABLE
-from classes.rss_visualization import RssUnstructuredSceneVisualizer, RssBoundingBoxVisualizer
+from classes.hud import HUD, get_actor_display_name
 from classes.keyboard_controls import KeyboardControl, RSSKeyboardControl
+from classes.rss_sensor import AD_RSS_AVAILABLE, RssSensor
+from classes.rss_visualization import RssBoundingBoxVisualizer, RssUnstructuredSceneVisualizer
 from data_gathering.information_manager import InformationManager
+from launch_tools import class_or_instance_method
 
 if TYPE_CHECKING:
     from types import ModuleType
-    from typing_extensions import Self
+
     from hydra.conf import HydraConf
+    from typing_extensions import Self
+
     from agents.lunatic_agent import LunaticAgent
     from agents.navigation.global_route_planner import GlobalRoutePlanner
     from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, RssRoadBoundariesModeAlias
     from classes._sensor_interface import CustomSensorInterface
     from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 
-from launch_tools.blueprint_helpers import get_actor_blueprints
-from launch_tools import CarlaDataProvider, Literal, carla_service
 from agents.tools.logging import logger
-
+from launch_tools import CarlaDataProvider, Literal, carla_service
+from launch_tools.blueprint_helpers import get_actor_blueprints
 
 _ControllerClass = TypeVar("_ControllerClass", bound=KeyboardControl)
 
@@ -749,7 +747,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
-        from agents.tools.config_creation import LaunchConfig         # circular import
+        from agents.tools.config_creation import LaunchConfig  # circular import
         if not isinstance(args, (Mapping, DictConfig, LaunchConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES

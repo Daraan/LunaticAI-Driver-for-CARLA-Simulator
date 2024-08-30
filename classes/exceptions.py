@@ -1,9 +1,10 @@
 """Helper module that contains all the custom exceptions used in the project"""
 
 from typing import Any
+
 import carla
 
-from classes.constants import RuleResult, Hazard
+from classes.constants import Hazard, RuleResult
 
 __all__ = [
     "UserInterruption",

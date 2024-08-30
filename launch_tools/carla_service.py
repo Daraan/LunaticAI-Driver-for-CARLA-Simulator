@@ -7,10 +7,10 @@ spawn actors, destroy actors, and initialize carla.
 """
 
 from typing import Iterable, Union
+
 import carla
 
 from agents.tools.logging import logger
-
 from classes._sensor_interface import CustomSensorInterface
 from launch_tools import CarlaDataProvider
 

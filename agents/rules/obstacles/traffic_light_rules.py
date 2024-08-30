@@ -1,18 +1,17 @@
 from dataclasses import dataclass
 from typing import NoReturn
+
 import carla
 from omegaconf import II
 
+from agents.tools.config_creation import RuleConfig
 from agents.tools.hints import TrafficLightDetectionResult
 from agents.tools.logging import logger
-
 from agents.tools.misc import get_closest_tl_trigger_wp
 from classes.constants import Hazard, Phase, RulePriority
 from classes.evaluation_function import ConditionFunction
 from classes.exceptions import SkipInnerLoopException
 from classes.rule import BlockingRule, Context, Rule
-
-from agents.tools.config_creation import RuleConfig
 
 __all__ = ["DriveSlowTowardsTrafficLight", "PassYellowTrafficLightRule"]
 

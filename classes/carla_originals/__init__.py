@@ -9,7 +9,7 @@ interface.
 See Also:
     https://github.com/carla-simulator/carla/tree/dev/PythonAPI/examples
 """
-from .sensors import CollisionSensor, LaneInvasionSensor, GnssSensor, RadarSensor, IMUSensor
+from .sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 
 __all__ = [
     'CollisionSensor',

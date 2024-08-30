@@ -17,5 +17,4 @@ __all__ = [
 ]
 
 from . import carla_originals
-
 from ._sensor_interface import CustomSensorInterface

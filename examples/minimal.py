@@ -1,5 +1,7 @@
+"""A minimal example to show how to initialize the agent."""
 import os
 import sys
+
 # Be sure to be in the root-folder of the project
 if "agents" not in os.getcwd():
     print(os.getcwd())

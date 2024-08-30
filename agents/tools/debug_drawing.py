@@ -3,13 +3,12 @@
 # pyright: reportOptionalMemberAccess=information
 import math
 import random
-import carla
-
-
 from typing import TYPE_CHECKING, Any, Optional
 
+import carla
+
+from agents.tools import misc  # draw_waypoints patched from this module
 from classes.constants import RoadOption, RoadOptionColor
-from agents.tools import misc # draw_waypoints patched from this module
 
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent

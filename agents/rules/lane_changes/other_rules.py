@@ -1,8 +1,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from classes.rule import Context
-    from classes.rule import Rule
+    from classes.rule import Context, Rule
 
 __all__ = [
     'rule_lane_change'

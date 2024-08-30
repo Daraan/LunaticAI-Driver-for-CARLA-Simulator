@@ -1,11 +1,11 @@
 import random
+from typing import TYPE_CHECKING, Optional
 
 from agents.tools.logging import logger
 
-from typing import TYPE_CHECKING, Optional
-
 if TYPE_CHECKING:
     import carla
+
     from agents.lunatic_agent import LunaticAgent
     from classes.constants import Hazard
 

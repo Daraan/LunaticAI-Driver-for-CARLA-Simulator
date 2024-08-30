@@ -1,14 +1,12 @@
-from functools import partial, update_wrapper
 import random
-
-from omegaconf._impl import select_node
+from functools import partial, update_wrapper
+from typing import List, Optional
 
 import carla
+from omegaconf._impl import select_node
 
-from classes.constants import Phase, READTHEDOCS
-from classes.rule import Rule, ConditionFunction, Context, always_execute
-
-from typing import List, Optional
+from classes.constants import READTHEDOCS, Phase
+from classes.rule import ConditionFunction, Context, Rule, always_execute
 
 _use_debug_rules = True # TODO: Turn off again #XXX
 DEBUG_RULES: bool = not READTHEDOCS and _use_debug_rules

@@ -1,5 +1,3 @@
-# pyright: strict
-
 """
 This module implements an agent that roams around a track following random
 waypoints and avoiding other vehicles. The agent also responds to traffic lights,
@@ -10,43 +8,52 @@ from __future__ import annotations
 
 import sys
 from copy import deepcopy
-from typing import (Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Sequence, Set, Union,
-                    TYPE_CHECKING, cast as assure_type)
-from typing_extensions import Self, Literal, Unpack
-from agents.rules import rule_from_config
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Sequence, Set, Union
+from typing import cast as assure_type
 
 import carla  # pyright: ignore[reportMissingTypeStubs]
 import omegaconf
 from omegaconf import DictConfig, OmegaConf
-
-
-from classes.exceptions import (AgentDoneException, ContinueLoopException, EmergencyStopException,
-                                LunaticAgentException, UpdatedPathException, NoFurtherRulesException,
-                                UserInterruption, SkipInnerLoopException)
-from classes.constants import (AgentState, HazardSeverity, Phase, Hazard, RoadOption,
-                               AD_RSS_AVAILABLE, READTHEDOCS)
-from classes.worldmodel import WorldModel, CarlaDataProvider
-from classes.rule import BlockingRule, Context, Rule
-
-from agents.tools.config_creation import RssRoadBoundariesModeAlias
-from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult
-from agents.navigation.global_route_planner import GlobalRoutePlanner
-from agents.navigation.behavior_agent import BehaviorAgent
-
-from agents.tools.logging import logger
-from agents.tools.lunatic_agent_tools import (detect_vehicles, must_clear_hazard,
-                                              result_to_context,
-                                              phase_callback, generate_lane_change_path) # type: ignore[unused-import] # noqa: F401
-from agents.tools.misc import lanes_have_same_direction
+from typing_extensions import Literal, Self, Unpack
 
 from agents import substep_managers
 from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlannerWithRss
-
-from agents.tools.config_creation import (AgentConfig, LaunchConfig, LiveInfo, LunaticAgentSettings,
-                                          RuleCreatingParameters)
-
-from data_gathering.information_manager import InformationManager
+from agents.navigation.behavior_agent import BehaviorAgent
+from agents.navigation.global_route_planner import GlobalRoutePlanner
+from agents.rules import rule_from_config
+from agents.tools.config_creation import (
+    AgentConfig,
+    LaunchConfig,
+    LiveInfo,
+    LunaticAgentSettings,
+    RssRoadBoundariesModeAlias,
+    RuleCreatingParameters,
+)
+from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult
+from agents.tools.logging import logger
+from agents.tools.lunatic_agent_tools import (
+    detect_vehicles,
+    generate_lane_change_path,
+    must_clear_hazard,
+    phase_callback,  # type: ignore[unused-import] # noqa: F401
+    result_to_context,
+)
+from agents.tools.misc import lanes_have_same_direction
+from classes.constants import AD_RSS_AVAILABLE, READTHEDOCS, AgentState, Hazard, HazardSeverity, Phase, RoadOption
+from classes.exceptions import (
+    AgentDoneException,
+    ContinueLoopException,
+    EmergencyStopException,
+    LunaticAgentException,
+    NoFurtherRulesException,
+    SkipInnerLoopException,
+    UpdatedPathException,
+    UserInterruption,
+)
+from classes.rule import BlockingRule, Context, Rule
+from classes.worldmodel import CarlaDataProvider, WorldModel
 from data_gathering.car_detection_matrix.run_matrix import AsyncDetectionMatrix, DetectionMatrix
+from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
     import pygame
@@ -951,7 +958,7 @@ class LunaticAgent(BehaviorAgent):
     
     # ------------------ Hazard Detection & Reaction ------------------ #
 
-    from agents.substep_managers import detect_traffic_light # -> TrafficLightDetectionResult
+    from agents.substep_managers import detect_traffic_light  # -> TrafficLightDetectionResult
     traffic_light_manager = detect_traffic_light  # pyright: ignore[reportAssignmentType]
     """Alias of :py:meth:`detect_traffic_light`"""
     
@@ -1078,14 +1085,16 @@ class LunaticAgent(BehaviorAgent):
     # ------------------ External Helpers ------------------ #
 
     # Moved outside of the class for organization
-    from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
-    from agents.substep_managers import car_following_manager  # pyright: ignore[reportAssignmentType]
-    from agents.substep_managers import emergency_manager
-    
+    from agents.substep_managers import (
+        car_following_manager,  # pyright: ignore[reportAssignmentType]
+        emergency_manager,
+    )
+
     # Subfunction of traffic_light_manager. In traffic_light_manager the parameters are chosen automatically
     # which is why traffic_light_manager should be used instead.
     # Kept for backwards compatibility and possible future use.
     from agents.substep_managers.traffic_light import affected_by_traffic_light
+    from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
 
     # ----
 
@@ -1416,10 +1425,12 @@ class LunaticAgent(BehaviorAgent):
     
     # ------------------ Overwritten & Outsourced functions ------------------ #
     
-    from agents.tools.lunatic_agent_tools import max_detection_distance
-    from agents.tools.lunatic_agent_tools import detect_vehicles
+    from agents.tools.lunatic_agent_tools import detect_vehicles, max_detection_distance
+
     # signature of parent is str and not Literal["left", "right"]
-    from agents.tools.lunatic_agent_tools import generate_lane_change_path as _generate_lane_change_path  # pyright: ignore[reportAssignmentType]
+    from agents.tools.lunatic_agent_tools import (
+        generate_lane_change_path as _generate_lane_change_path,  # pyright: ignore[reportAssignmentType]
+    )
    
     # NOTE: the original pedestrian_avoid_manager is still usable
     def pedestrian_avoid_manager(self, waypoint) -> NoReturn:  # type: ignore

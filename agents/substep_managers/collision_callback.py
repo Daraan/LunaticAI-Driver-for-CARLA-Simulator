@@ -1,6 +1,7 @@
+from typing import TYPE_CHECKING
+
 import carla
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 

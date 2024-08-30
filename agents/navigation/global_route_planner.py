@@ -9,10 +9,11 @@ This module provides GlobalRoutePlanner implementation.
 """
 
 import math
-import numpy as np
-import networkx as nx
 
 import carla
+import networkx as nx
+import numpy as np
+
 from agents.navigation.local_planner import RoadOption
 
 # Python 2 compatibility
@@ -20,12 +21,13 @@ TYPE_CHECKING = False
 if TYPE_CHECKING:
     import sys
     if sys.version_info >= (3, 11):
-        from typing import TypedDict, NotRequired
+        from typing import NotRequired, TypedDict
     elif sys.version_info >= (3, 8):
         from typing import TypedDict
+
         from typing_extensions import NotRequired
     else:
-        from typing_extensions import TypedDict, NotRequired
+        from typing_extensions import NotRequired, TypedDict
     
     TopologyDict = TypedDict('TopologyDict', {'entry': carla.Waypoint,
                                               'exit': carla.Waypoint,

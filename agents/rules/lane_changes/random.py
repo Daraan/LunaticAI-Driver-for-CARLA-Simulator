@@ -1,11 +1,12 @@
 from dataclasses import dataclass
+
+import carla
+import numpy as np
+
 from agents.rules.behaviour_templates import DEBUG_RULES
 from agents.tools.config_creation import RuleConfig
 from classes.constants import Phase, RulePriority
 from classes.rule import Context, Rule, always_execute
-
-import carla
-import numpy as np
 
 __all__ = ["RandomLaneChangeRule"]
 

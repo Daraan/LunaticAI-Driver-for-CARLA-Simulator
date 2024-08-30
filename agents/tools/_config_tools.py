@@ -4,33 +4,36 @@ Helper Tools for :py:mod:`.config_tools`.
 
 from __future__ import annotations
 
+import ast
+import inspect
+import logging
+import os
+
 # pyright: reportPrivateUsage=false, reportUnknownLambdaType=false, reportUnusedClass=false
 # pyright: reportPossiblyUnboundVariable=information,reportAttributeAccessIssue=warning
 # pyright: reportUnknownVariableType=information, reportUnknownMemberType=information
-
 import sys
-import ast
-import os
-import carla
-import inspect
-import logging
-
 from dataclasses import is_dataclass
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast, get_type_hints
 
+import carla
 import omegaconf.errors
+from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING, DictConfig, ListConfig, MissingMandatoryValue, OmegaConf, SCMode, open_dict
 from omegaconf._utils import is_structured_config
-from hydra.core.config_store import ConfigStore
+from typing_extensions import TypeAlias, TypeAliasType, TypeVar
 
 from classes.constants import AD_RSS_AVAILABLE, Phase, RssLogLevelStub, RssRoadBoundariesModeStub
 from launch_tools import ast_parse
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast, get_type_hints
-from typing_extensions import TypeAlias, TypeVar, TypeAliasType
-
 if TYPE_CHECKING:
-    from agents.tools.config_creation import (AgentConfig, LunaticAgentSettings,
-                                    RuleCreatingParameters, CreateRuleFromConfig, RuleConfig)
+    from agents.tools.config_creation import (
+        AgentConfig,
+        CreateRuleFromConfig,
+        LunaticAgentSettings,
+        RuleConfig,
+        RuleCreatingParameters,
+    )
     from classes.rule import Rule
 
 #from types import MappingProxyType

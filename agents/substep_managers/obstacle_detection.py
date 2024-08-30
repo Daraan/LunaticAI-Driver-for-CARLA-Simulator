@@ -4,6 +4,7 @@
 from typing import TYPE_CHECKING
 
 from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
+
 if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
 

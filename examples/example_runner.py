@@ -1,10 +1,9 @@
 """
 Executing this files allows to run all files in the examples folder.
 """
+import importlib.util
 import os
 import sys
-import importlib.util
-
 
 # List files
 

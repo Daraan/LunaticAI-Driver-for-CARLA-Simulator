@@ -8,8 +8,10 @@ The code is compatible with Python 2.7, <3.6 and >=3.6. The later uses the typed
 # Modern Python 3.6+ syntax for better type hinting
 
 from typing import NamedTuple, Optional, Union
-from launch_tools import Literal
+
 import carla
+
+from launch_tools import Literal
 
 # Carla code with compatibility
 '''

@@ -28,8 +28,8 @@ __all__ = [
     "ast_parse",
 ]
 
-import os
 import logging
+import os
 
 # If carla is not installed try to find the .egg file
 try:
@@ -41,15 +41,19 @@ except ImportError:
 
 # Import scenario runner from submodule or SCENARIO_RUNNER_ROOT
 from typing import TYPE_CHECKING, Callable, Optional
-from typing_extensions import TypeVar, ParamSpec
 
-from ._import_carla_data_provider import CarlaDataProvider, GameTime  # type: ignore[import]
+from typing_extensions import ParamSpec, TypeVar
+
+# should be first
+from ._import_carla_data_provider import CarlaDataProvider, GameTime  # isort:skip
+from . import (
+    argument_parsing,
+    blueprint_helpers,
+)
+
 # These three need special handling depending on the python version
-from ._version_handling import singledispatchmethod, Literal, ast_parse
-
-from . import argument_parsing # type: ignore[import]
-from . import blueprint_helpers
-from .csv_tools import transform_to_pandas, vehicle_location_to_dataframe, csv_to_transformations
+from ._version_handling import Literal, ast_parse, singledispatchmethod
+from .csv_tools import csv_to_transformations, transform_to_pandas, vehicle_location_to_dataframe
 
 # backwards compatibility
 prepare_blueprints = blueprint_helpers.get_contrasting_blueprints

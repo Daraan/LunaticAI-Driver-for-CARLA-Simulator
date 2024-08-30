@@ -3,16 +3,18 @@
 This submodule provides necessary imports that are not available in all python versions.
 """
 import sys
+
 __all__ = ['singledispatchmethod', 'Literal', 'ast_parse']
 
 
 # singledispatchmethod
 
 if sys.version_info >= (3, 8):
-    from functools import singledispatchmethod # Python 3.8+
+    from functools import singledispatchmethod  # Python 3.8+
 else:
     from functools import singledispatch, update_wrapper
-    from typing import Callable, TypeVar, Any
+    from typing import Any, Callable, TypeVar
+
     from typing_extensions import ParamSpec
     _T = TypeVar('_T')
     _P = ParamSpec('_P')
@@ -63,11 +65,12 @@ else:
     ast_parse = parse
 
 
-# Monkey patch for Concatenate in Python3.7
+# Monkey patch for Concatenate in Python3.7; seems fine now
 if False and sys.version_info < (3, 8):
-    from typing_extensions import ParamSpec, TypeVar
     from typing import _GenericAlias
+
     import typing_extensions
+    from typing_extensions import ParamSpec, TypeVar
     class _ConcatenateGenericAlias(_GenericAlias, _root=True):
         
         def copy_with(self, params):

@@ -16,23 +16,18 @@ except ImportError:
     from launch_tools import carla
 
 import pygame
-from classes import exceptions
+
 import launch_tools
-
-from launch_tools import CarlaDataProvider
-
-from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, AsDictConfig
-
-from classes.keyboard_controls import RSSKeyboardControl # Alternative: PassiveKeyboardControl
-
-from classes.constants import Phase
-from classes.worldmodel import GameFramework, WorldModel
-
-from agents.tools.logging import logger
-from agents.tools.debug_drawing import debug_drawing
-
 from agents.lunatic_agent import LunaticAgent
 from agents.rules import create_default_rules
+from agents.tools.config_creation import AsDictConfig, LaunchConfig, LunaticAgentSettings
+from agents.tools.debug_drawing import debug_drawing
+from agents.tools.logging import logger
+from classes import exceptions
+from classes.constants import Phase
+from classes.keyboard_controls import RSSKeyboardControl  # Alternative: PassiveKeyboardControl
+from classes.worldmodel import GameFramework, WorldModel
+from launch_tools import CarlaDataProvider
 
 # ==============================================================================
 # Globals

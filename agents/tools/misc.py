@@ -12,10 +12,10 @@
 """ Module with auxiliary functions. """
 
 import math
-import numpy as np
+from typing import TYPE_CHECKING, Optional, Sequence
 
 import carla
-from typing import TYPE_CHECKING, Optional, Sequence
+import numpy as np
 
 __all__ = [
     'draw_waypoints',
