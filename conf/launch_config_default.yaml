@@ -76,16 +76,24 @@ agent: ???
 # CameraConfig
 # ------------
 camera:
-  width: 1280
-  height: 720
-  # Gamma correction of the camera
-  gamma: 2.2
+  # With pygame window. Takes the value from the `LaunchConfig`.
+  width: ${width}
+  # Height of pygame window. Takes the value from the `LaunchConfig`.
+  height: ${height}
+  # Gamma correction of the camera. Takes the value from the `LaunchConfig`.
+  gamma: ${gamma}
   # If True will update the engines spectator camera
   spectator: false
+
+  # Cameras and sensors attached to the ego vehicle
+  # that can be viewed by the user in the pygame window.
+  #  
+  # Used with the `CameraManager.sensors`.
+  #  
+  # Attention:
+  #     Usage not yet implemented.
   camera_blueprints:
   - NotImplemented
-  # HUD settings: Not yet implemented. Future settings for the HUD.
-  hud: ???
   recorder:
 
     # Folder to record the camera
@@ -98,16 +106,28 @@ camera:
     output_path: ${hydra:runtime.output_dir}/recorder/session%03d/%08d.bmp
     # Interval to record the camera
     frame_interval: 4
-  detection_matrix:
-    # Whether to draw the detection matrix
-    draw: true
-    # Whether to draw the numerical values as text
-    draw_values: true
-    # Orient vertical (lanes are left to right) instead of horizontal.
-    vertical: true
-    # Settings for the pyplot.imshow function
-    imshow_settings:
-      cmap: jet
-    # Settings for the text of pyplot.text when drawing the numerical values
-    text_settings:
-      color: orange
+  hud:
+    # Whether the HUD is enabled. Not Implemented
+    enabled: true
+    # Font size of the HUD. Not Implemented
+    font_size: 20
+    # Font color of the HUD. Not Implemented
+    font_color:
+    - 255
+    - 255
+    - 255
+    # Font of the HUD. Not Implemented
+    font: arial
+    detection_matrix:
+      # Whether to draw the detection matrix
+      draw: true
+      # Whether to draw the numerical values as text
+      draw_values: true
+      # Orient vertical (lanes are left to right) instead of horizontal.
+      vertical: true
+      # Settings for the pyplot.imshow function
+      imshow_settings:
+        cmap: jet
+      # Settings for the text of pyplot.text when drawing the numerical values
+      text_settings:
+        color: orange

@@ -114,20 +114,20 @@ class HUD:
         self._info_text = [
             'Server:  {: 16.0f} FPS'.format(self.server_fps),
             'Client:  {: 16.0f} FPS'.format(clock.get_fps()),
-            'Map:     {: 20s}'.format(self.map_name), # from rss
+            'Map:     {:>20s}'.format(self.map_name), # from rss
             '',
-            'Vehicle: {: 20s}'.format(get_actor_display_name(player, truncate=20)),
-            'Map:     {: 20s}'.format(world.map.name.split('/')[-1]),
-            'Simulation time: {: 12s}'.format(timedelta(seconds=int(self.simulation_time))),
+            'Vehicle: {:>20s}'.format(get_actor_display_name(player, truncate=20)),
+            'Map:     {:>20s}'.format(world.map.name.split('/')[    -1]),
+            'Simulation time: {!s:>12s}'.format(timedelta(seconds=int(self.simulation_time))),
             '',
             'Speed:   {: 15.0f} km/h'.format(3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)),
-            'Heading:{: 16.0f}\N{DEGREE SIGN} {: 2s}'.format(transform.rotation.yaw, heading),
+            'Heading:{: 16.0f}\N{DEGREE SIGN} {:>2s}'.format(transform.rotation.yaw, heading),
             #  TODO maybe 'Heading: {: 20.2f}'.format(math.radians(transform.rotation.yaw)),
-            'Location:{: 20s}'.format(f'({transform.location.x: 5.1f}, {transform.location.y: 5.1f})'),
+            'Location:{:>20s}'.format(f'({transform.location.x: 5.1f}, {transform.location.y: 5.1f})'),
             'Height:  {: 18.0f} m'.format(transform.location.z)]
         if world.gnss_sensor:
             self._info_text.append(
-                'GNSS:{: 24s}'.format(f'({world.gnss_sensor.lat: 2.6f}, {world.gnss_sensor.lon: 3.6f})'))
+                'GNSS:{:>24s}'.format(f'({world.gnss_sensor.lat: 2.6f}, {world.gnss_sensor.lon: 3.6f})'))
         self._info_text.append('') # empty line
         if isinstance(control, carla.VehicleControl):
             if self.original_vehicle_control:
@@ -158,7 +158,7 @@ class HUD:
             'Collision:',
             collision,
             '',
-            'Number of vehicles: % 8d' % len(obstacles_distances)]
+            f'Number of vehicles: {len(obstacles_distances): 8d}']
 
         if len(obstacles_distances) > 1:
             self._info_text += ['Nearby obstacles:']
@@ -167,7 +167,7 @@ class HUD:
             if distance > 200.0:
                 break
             vehicle_type = get_actor_display_name(vehicle, truncate=22)
-            self._info_text.append('% 4dm %s' % (distance, vehicle_type))
+            self._info_text.append(f'{distance:>4.0f}m {vehicle_type}')
 
     def toggle_info(self):
         """Toggle info on or off"""

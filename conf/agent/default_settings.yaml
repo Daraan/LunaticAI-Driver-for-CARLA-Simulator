@@ -398,33 +398,13 @@ detection_matrix:
   # Activate or deactivate the detection matrix
   enabled: true
 
-  # When the world uses synchronous mode and sync is true, the data matrix will be updated every sync_interval ticks.
+  # When the world uses synchronous mode and sync is true, the detection matrix will be updated every sync_interval ticks.
   # A low value will have a negative impact on the fps.
-  # If the world uses asynchronous mode or sync is False the data matrix will be updated by a different thread.
+  # If the world uses asynchronous mode or sync is False the detection matrix will be updated by a different thread.
   # This increases the fps but updates will be less frequent.
   sync: true
-  # The interval in frames after which the data matrix should be updated. Sync must be true.
+  # The interval in frames after which the detection matrix should be updated. Sync must be true.
   sync_interval: 5
-
-  # TODO: do not have this in Agent config; instead
-  #     hud : ${camera.hud.detection_matrix}
-  #     However: problem cannot interpolate to LaunchConfig
-  #  #drawing_options -> see camera.yaml
-  #  
-  # ---
-  #     
-  # Keyword arguments for `DetectionMatrix.render`
-  #  
-  # Warning:
-  #     `camera.hud.detection_matrix` is preferred.
-  hud:
-    draw: true
-    values: true
-    vertical: true
-    imshow_settings:
-      cmap: jet
-    text_settings:
-      color: orange
 
 # A list of Rule parameters that allow the instantiation of Rules,
 # with the Hydra instantiate feature.

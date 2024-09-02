@@ -580,6 +580,8 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
             If it is a :python:`str`, :py:class:`.AgentConfig` or :py:class:`.DictConfig`, the actual
             return type will be a :py:class:`omegaconf.DictConfig`.
     """
+    if overwrite_options is None:
+        overwrite_options = {}
     if source is None and world_model and world_model._config is not None: # pyright: ignore[reportUnnecessaryComparison]
         logger.debug("Using world model config")
         opt_dict = world_model._config
@@ -610,7 +612,7 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
         source.update(overwrite_options)
         opt_dict = source  # assume the user passed something appropriate
     if isinstance(opt_dict, DictConfig):
-        opt_dict._set_flag("allow_objects", True) # pyright: ignore[reportPrivateUsage]
-        opt_dict.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.
+        opt_dict._set_flag("allow_objects", True)  # pyright: ignore[reportPrivateUsage]
+        opt_dict.__dict__["_parent"] = None  # Remove parent from the config, i.e. make it a top-level config.
     cfg = opt_dict  # pyright: ignore[reportUnknownVariableType]
     return self.BASE_SETTINGS.cast(cfg)  # duck-type it

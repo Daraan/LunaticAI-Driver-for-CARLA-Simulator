@@ -585,9 +585,13 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
                                                 "Setting %s to %s", live_info_key, value[live_info_key])
                                 setattr(live_info_dict, live_info_key, value[live_info_key]) # type: ignore[attr]
                     # Delegate False to a subfield
-                    elif value in (False, None, "None") and self.__dataclass_fields__[key].metadata.get("can_be_false", False):
-                        # Rss or Datamatrix settings
-                        getattr(self, key).update({"enabled" : False})
+                    elif self.__dataclass_fields__[key].metadata.get("can_be_false", False) and value in (False, None, "None", True):
+                        # redirect to .enabled subkey.
+                        if value in (False, None, "None"):
+                            # Rss or Datamatrix settings
+                            getattr(self, key).update({"enabled" : False})
+                        elif value is True:
+                            getattr(self, key).update({"enabled" : True})
                     # NOTE: Do not use Union keys with AgentConfig, else this will throw an error
                     elif issubclass(annotations[key], AgentConfig):
                         getattr(self, key).update(value) # AgentConfig.update
@@ -1437,37 +1441,32 @@ class DetectionMatrixSettings(AgentConfig):
     
     sync: bool = True
     """
-    When the world uses synchronous mode and sync is true, the data matrix will be updated every sync_interval ticks.
+    When the world uses synchronous mode and sync is true, the detection matrix will be updated every sync_interval ticks.
     A low value will have a negative impact on the fps.
-    If the world uses asynchronous mode or sync is False the data matrix will be updated by a different thread.
+    If the world uses asynchronous mode or sync is False the detection matrix will be updated by a different thread.
     This increases the fps but updates will be less frequent.
     """
     
     sync_interval: int = 5
     """
-    The interval in frames after which the data matrix should be updated. Sync must be true.
+    The interval in frames after which the detection matrix should be updated. Sync must be true.
     """
-
-    __hud_default = {
-                    'draw': True,
-                    'values': True,
-                    'vertical' : True,
-                    'imshow_settings': {'cmap': 'jet'},
-                    'text_settings' : {'color': 'orange'}
-                    }
-    hud: DictConfigAlias = field(default_factory=__hud_default.copy) # pyright: ignore[reportArgumentType]
+    
+    hud: Never = MISSING
     """
-    TODO: do not have this in Agent config; instead
+    TODO: Do not have this in Agent config; instead use an interpolation
         hud : ${camera.hud.detection_matrix}
-        However: problem cannot interpolate to LaunchConfig
-     #drawing_options -> see camera.yaml
+        However, non-trivial cannot interpolate to LaunchConfig.
+     #drawing_options -> see camera.yaml; need a singleton LaunchConfig and resolve to it.
     
     ---
         
-    Keyword arguments for `DetectionMatrix.render`
+    Keyword arguments for `DetectionMatrix.render`.
 
     Warning:
-        `camera.hud.detection_matrix` is preferred.
+        Not implemented yet. Use `camera.hud.detection_matrix` instead.
+        
+    :meta exclude:
     """
 
 # ---------------------
@@ -1853,6 +1852,7 @@ class ContextSettings(LunaticAgentSettings):
 # Launch Settings
 # ---------------------
 
+
 @config_path("camera")
 @dataclass
 class CameraConfig(AgentConfig):
@@ -1860,26 +1860,37 @@ class CameraConfig(AgentConfig):
     .. @package camera
     """
     
-    width: int = 1280
-    height: int = 720
-    gamma: float = 2.2
-    """Gamma correction of the camera"""
+    # Use from launch_config
+    width: int = II("width")
+    """With pygame window. Takes the value from the :py:class:`LaunchConfig`."""
+    height: int = II("height")
+    """Height of pygame window. Takes the value from the :py:class:`LaunchConfig`."""
+    gamma: float = II("gamma")
+    """Gamma correction of the camera. Takes the value from the :py:class:`LaunchConfig`."""
     
     spectator: bool = False
     """If True will update the engines spectator camera"""
     
     # NotImplemented
     
-    if TYPE_CHECKING:
-        camera_blueprints : List["CameraBlueprint"] = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
-    else:
-        # In structured mode named tuples and carla Types are problematic
-        camera_blueprints : list = field(default_factory=lambda: [CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")])
+    # In structured mode named tuples and carla Types are problematic
+    camera_blueprints : list = field(default_factory=lambda: [  # pyright: ignore[reportRedeclaration]
+        CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera")
+        ])
+    """
+    Cameras and sensors attached to the ego vehicle
+    that can be viewed by the user in the pygame window.
     
-    hud : Dict[str, Any] = MISSING
+    Used with the :py:attr:`.CameraManager.sensors`.
+    
+    Attention:
+        Usage not yet implemented.
     """
-    HUD settings: Not yet implemented. Future settings for the HUD.
-    """
+
+    if TYPE_CHECKING:
+        camera_blueprints : List["CameraBlueprint"] = field(default_factory=lambda: [
+            CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera"),
+            ])
     
     @config_path("camera/recorder")
     @dataclass
@@ -1914,33 +1925,57 @@ class CameraConfig(AgentConfig):
     recorder : RecorderSettings = field(default_factory=RecorderSettings)
     """.. <take doc|RecorderSettings>"""
     
-    @config_path("camera/detection_matrix")
+    @config_path("camera/hud")
     @dataclass
-    class DetectionMatrixHudConfig(AgentConfig):
+    class HUDConfig(AgentConfig):
         """
-        DetectionMatrix settings for the HUD
-        
-        Attention:
-            Keys must match keywords of :py:meth:`.DetectionMatrix.render`
+        HUD settings for the pygame window.
         """
         
-        draw : bool = True
-        """Whether to draw the detection matrix"""
+        # Block not implemented
+        enabled : bool = True
+        """Whether the HUD is enabled. Not Implemented"""
         
-        draw_values : bool = True
-        """Whether to draw the numerical values as text"""
+        font_size : int = 20
+        """Font size of the HUD. Not Implemented"""
         
-        vertical : bool = True
-        """Orient vertical (lanes are left to right) instead of horizontal."""
+        font_color : Tuple[int, int, int] = (255, 255, 255)
+        """Font color of the HUD. Not Implemented"""
         
-        imshow_settings : Dict[str, Any] = field(default_factory=lambda: {'cmap': 'jet'})
-        """Settings for the pyplot.imshow function"""
-        
-        text_settings : Dict[str, Any] = field(default_factory=lambda: {'color': 'orange'})
-        """Settings for the text of pyplot.text when drawing the numerical values"""
+        font : str = "arial"
+        """Font of the HUD. Not Implemented"""
+        # ----------------------------
+    
+        @config_path("camera/hud/detection_matrix")
+        @dataclass
+        class DetectionMatrixHUDConfig(AgentConfig):
+            """
+            DetectionMatrix settings for the HUD
+            
+            Attention:
+                Keys must match keywords of :py:meth:`.DetectionMatrix.render`
+            """
+            
+            draw : bool = True
+            """Whether to draw the detection matrix"""
+            
+            draw_values : bool = True
+            """Whether to draw the numerical values as text"""
+            
+            vertical : bool = True
+            """Orient vertical (lanes are left to right) instead of horizontal."""
+            
+            imshow_settings : Dict[str, Any] = field(default_factory=lambda: {'cmap': 'jet'})
+            """Settings for the pyplot.imshow function"""
+            
+            text_settings : Dict[str, Any] = field(default_factory=lambda: {'color': 'orange'})
+            """Settings for the text of pyplot.text when drawing the numerical values"""
 
-    detection_matrix : DetectionMatrixHudConfig = field(default_factory=DetectionMatrixHudConfig)
-    """.. <take doc|DetectionMatrixHudConfig>"""
+        detection_matrix : DetectionMatrixHUDConfig = field(default_factory=DetectionMatrixHUDConfig)
+        """.. <take doc|DetectionMatrixHUDConfig>"""
+        
+    hud : HUDConfig = field(default_factory=HUDConfig)
+    """.. <take doc|HUDConfig>"""
 
 
 @config_path("launch_config_default.yaml") # NOTE: this may not be named launch_config
@@ -2066,7 +2101,6 @@ class LaunchConfig(AgentConfig):
     :meta private:
     """
     
-    
     # ---
     
     hydra : Annotated[HydraConf, "Key not guaranteed to be present or complete."] \
@@ -2086,10 +2120,8 @@ class LaunchConfig(AgentConfig):
     
     if READTHEDOCS or TYPE_CHECKING:
         leaderboard : Annotated[DictConfig, "Only present for the", LunaticChallenger] = field(init=False, kw_only=True)
-        
 
-
-
+# ---------------------
 
 def export_schemas(detailed_rules:bool=False):
     """
@@ -2106,13 +2138,23 @@ def export_schemas(detailed_rules:bool=False):
     """
     
     #  Using OmegaConf.set_struct, it is possible to prevent the creation of fields that do not exist:
-    LunaticAgentSettings.export_options("conf/agent/default_settings.yaml", with_comments=True, detailed_rules=detailed_rules)
-    __lc = LaunchConfig()
-    __lc.camera.camera_blueprints = ["NotImplemented"] # type: ignore
-    __lc.export_options("conf/launch_config_default.yaml", with_comments=True, detailed_rules=detailed_rules)
-    __lc.camera.export_options("conf/config_extensions/camera_default.yaml", with_comments=True, detailed_rules=detailed_rules)
-    del __lc
-    LiveInfo.export_options("conf/agent/live_info.yaml", with_comments=True, detailed_rules=detailed_rules)
+    LunaticAgentSettings.export_options("conf/agent/default_settings.yaml",
+                                        with_comments=True,
+                                        detailed_rules=detailed_rules)
+    
+    # Export the launch config
+    lc = LaunchConfig()
+    lc.camera.camera_blueprints = ["NotImplemented"]  # TODO: Currently not converted to yaml layout
+    lc.export_options("conf/launch_config_default.yaml",
+                      with_comments=True,
+                      detailed_rules=detailed_rules)
+    lc.camera.export_options("conf/config_extensions/camera_default.yaml",
+                             with_comments=True,
+                             detailed_rules=detailed_rules)
+    # LiveInfo
+    LiveInfo.export_options("conf/agent/live_info.yaml",
+                            with_comments=True,
+                            detailed_rules=detailed_rules)
     
 
 # Always want the schemas to be up to date

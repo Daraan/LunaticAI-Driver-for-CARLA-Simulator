@@ -1716,13 +1716,12 @@ class BlockingRule(Rule, metarule=True):
                 world_model.controller.render(display)  # type: ignore[attr-defined]
             except AttributeError:
                 pass
-            dm_render_conf = OmegaConf.select(world_model._args, "camera.hud.data_matrix", default=None)  # pyright: ignore[reportPrivateUsage]
-
+            
+            dm_render_conf = world_model._args.camera.hud.detection_matrix  # pyright: ignore[reportPrivateUsage]
             if dm_render_conf and ctx.agent:
-                ctx.agent._render_detection_matrix(display, **dm_render_conf)  # pyright: ignore[reportPrivateUsage]
+                ctx.agent.render_detection_matrix(display, **dm_render_conf)  # pyright: ignore[reportPrivateUsage]
             world_model.finalize_render(display)
         pygame.display.flip()
-
 
     @overload
     def loop_agent(self, ctx: Context, control: Optional[carla.VehicleControl]=None,

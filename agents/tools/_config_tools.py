@@ -368,13 +368,20 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     # First line
     data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
     
+    nested_data : list[CommentedMap] = []
     # add comments to all other attributes
-    def add_comments(container : "DictConfig | NestedConfigDict", data: CommentedMap, lookup : Union[AgentConfig, _NestedStrDict], indent:int=0):
+    def add_comments(container : "DictConfig | NestedConfigDict",
+                     data: CommentedMap,
+                     lookup: Union[AgentConfig, _NestedStrDict],
+                     indent: int=0):
         """
+        Recursively adds comments to the YAML output.
         
         Args:
             container: The current dict to be commented
+            lookup: The lookup dictionary for docstrings
         """
+        nested_data.append(data)
         if isinstance(container, DictConfig):
             containeritems = container.items_ex(resolve=False)
         else:
@@ -395,16 +402,24 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
             if comment_txt is None:
                 continue
             if isinstance(comment_txt, dict):
-                add_comments(comment_txt, data[key], comment_txt, indent=indent+2)
+                # Add comments for nested dataclasses
+                try:
+                    add_comments(comment_txt, data[key], comment_txt, indent=indent+2)
+                except KeyError:
+                    # double nested will throw a KeyError here as key not in data; will only be the
+                    # variable name of the nested dataclass; seems to be okay.
+                    # NOTE: logging level might only be on WARNING here!
+                    logging.debug(f"KeyError for {key} in {cls.__name__} when adding comments. "
+                                  "This should be okay, report if descriptions are missing.")
                 continue
             if (":meta exclude:" in comment_txt) or not include_private and ":meta private:" in comment_txt:
-                # TODO: does nor remove the key
                 data.pop(key)
-                continue # Skip private fields; todo does not skip "_named" fields
+                continue  # Skip private fields; TODO does not skip "_named" fields, is that a problem?
             comment_txt = comment_txt.replace("\n\n","\n \n")
             if comment_txt.count("\n") > 0:
                 comment_txt = "\n"+comment_txt
             data.yaml_set_comment_before_after_key(key, comment_txt, indent=indent)
+    #top_container = container  # for debugging
     add_comments(container, data, cls_doc)  # pyright: ignore[reportArgumentType]
     # data.yaml_add_eol_comment(comment_txt, key = key)
 
@@ -428,7 +443,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
         for entry in has_null_entry:
             parts = entry.partition(":")
             if parts[2] != " null":
-                breakpoint() # should not happen
+                logging.error(f"Error in {cls.__name__} for {entry}. Entry is not ' null'. This should not happen")
                 continue
             entry = parts[0]+":"
             string = re.sub(fr"^{entry}$", entry + " null", string, flags=re.MULTILINE)

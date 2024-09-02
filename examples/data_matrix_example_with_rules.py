@@ -41,13 +41,13 @@ def main():
         camera_thread.start()
 
         # Initialize matrix thread
-        data_matrix = AsyncDetectionMatrix(ego_vehicle, road_lane_ids=road_lane_ids)
-        data_matrix.start()
+        detection_matrix = AsyncDetectionMatrix(ego_vehicle, road_lane_ids=road_lane_ids)
+        detection_matrix.start()
 
         print("Starting game loop")
         while time.time() < t_end:
             # Retrieve the latest matrix from the matrix thread
-            matrix = data_matrix.getMatrix()
+            matrix = detection_matrix.getMatrix()
 
             if matrix is None:
                 continue
@@ -94,7 +94,7 @@ def main():
 
     finally:
         spectator_follow_actor.stop()  # type: ignore[attr-defined]
-        data_matrix.stop()
+        detection_matrix.stop()
         camera_thread.join()
 
 

@@ -33,14 +33,14 @@ from launch_tools import CarlaDataProvider
 # Globals
 # ==============================================================================
 
-AMOUNT_ACTORS = 0
+AMOUNT_ACTORS = 12
 """How many other actors to spawn"""
 
 EGO_SPAWN_IDX = 3
 """Changes the start position of the ego vehicle"""
 
 PRINT_RULES = False
-# this can be messy
+"""Print the rules to the console. This is messy."""
 
 # ==============================================================================
 # -- Game Loop ---------------------------------------------------------
@@ -70,6 +70,7 @@ def game_loop(args: LaunchConfig):
     # you can access args.agent as copy of the original settings
     # To not validate the config against LunaticAgentSettings use OmegaConf.create(args.agent)
     # to create a copy.
+
     agent_config : AsDictConfig[LunaticAgentSettings] = LunaticAgentSettings.create(settings=args.agent)
     
     try:
@@ -94,6 +95,7 @@ def game_loop(args: LaunchConfig):
         ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)  # type: ignore[assignment]
         
         logger.info("Creating agent and WorldModel ...")
+
         agent, world_model, global_planner, controller \
             = game_framework.init_agent_and_interface(ego=None if args.externalActor else ego, # Test externalActor
                                                       agent_class=LunaticAgent,

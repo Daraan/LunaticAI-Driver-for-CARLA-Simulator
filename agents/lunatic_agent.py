@@ -1240,10 +1240,15 @@ class LunaticAgent(BehaviorAgent):
             self._vehicle_lights = current_lights
             self._vehicle.set_light_state(carla.VehicleLightState(self._vehicle_lights))
 
-    def _render_detection_matrix(self, display:"pygame.Surface", **options: Unpack["DetectionMatrix.RenderOptions"]):
+    def render_detection_matrix(self, display:"pygame.Surface", **options: Unpack["DetectionMatrix.RenderOptions"]):
         """
+        See Also:
+            - :py:meth:`DetectionMatrix.render`
+        
         Attention:
-            **options** must
+            **options** must match the arguments of :py:meth:`DetectionMatrix.render`.
+            
+        :meta private:
         """
         if self._detection_matrix:
             # options should align with CameraConfig.DetectionMatrixHudConfig
@@ -1333,7 +1338,7 @@ class LunaticAgent(BehaviorAgent):
         """
         self.ctx.control = control
     
-    def _init_detection_matrix(self):
+    def _init_detection_matrix(self) -> None:
         if self.config.detection_matrix and self.config.detection_matrix.enabled:
             if self.config.detection_matrix.sync and self._world_model.world_settings.synchronous_mode:
                 self._detection_matrix = DetectionMatrix(self._vehicle)

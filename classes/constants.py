@@ -90,7 +90,7 @@ class AgentState(Flag):
     :meta hide-value:
     """
     
-    # Maybe more states like CAR_IN_FRONT <- data matrix
+    # Maybe more states like CAR_IN_FRONT <- detection matrix
 
 
 class RulePriority(IntEnum):

@@ -226,8 +226,11 @@ class DetectionMatrix:
         
         :meta private:
         """
+        from classes.keyboard_controls import RSSKeyboardControl
         logger.info(f"DetectionMatrix: signal {signum} received. Stopping.")
         self.stop()
+        # Can only have one signal handler!
+        RSSKeyboardControl._signal_handler(signum, _) 
         
     def _add_signal_handler(self):
         """

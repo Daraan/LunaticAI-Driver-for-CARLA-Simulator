@@ -258,6 +258,10 @@ class RSSKeyboardControl(KeyboardControl):
         Signal handler for stopping the simulation, e.g. when pressing Ctrl+C
         in the terminal.
         
+        Note:
+            If DetectionMatrix is used this signal handler will be overwritten,
+            but still executed.
+        
         :meta private:
         """
         if not RSSKeyboardControl.signal_received:
@@ -394,7 +398,8 @@ class RSSKeyboardControl(KeyboardControl):
                     self._world_model.hud.notification("Replaying file 'manual_recording.rec'")
                     # replayer
                     # TODO: This likely needs more cleanup!
-                    self._world_model.get_client().replay_file("manual_recording.rec", self._world_model.recording_start, 0, 0)
+                    replay_logs = self._world_model.get_client().replay_file("manual_recording.rec", self._world_model.recording_start, 0, 0)
+                    print("------ Replay logs -------\n", replay_logs)
                     self._world_model.camera_manager.set_sensor(current_index)
                 elif event.key == K_MINUS and (pygame.key.get_mods() & KMOD_CTRL):
                     if pygame.key.get_mods() & KMOD_SHIFT:

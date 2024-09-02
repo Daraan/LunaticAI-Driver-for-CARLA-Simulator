@@ -528,10 +528,10 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_model.tick(self.clock)  # NOTE: Ticks WorldMODEL not CARLA WORLD!  # pyright: ignore[reportOptionalMemberAccess]
         self.world_model.render(self.display, finalize=False)  # pyright: ignore[reportOptionalMemberAccess]
         self.controller.render(self.display)
-        dm_render_conf: "DetectionMatrix.RenderOptions" \
-            = OmegaConf.select(self._args, "camera.hud.data_matrix", default=None)
+        # These two types must be in sync:
+        dm_render_conf: "DetectionMatrix.RenderOptions" = self._args.camera.hud.detection_matrix  # type: ignore[assignment]
         if dm_render_conf and self.agent:
-            self.agent._render_detection_matrix(self.display, **dm_render_conf)
+            self.agent.render_detection_matrix(self.display, **dm_render_conf)
         self.world_model.finalize_render(self.display)  # pyright: ignore[reportOptionalMemberAccess]
         
     @staticmethod

@@ -41,7 +41,7 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context"):
     # Detect if there is a car in front
     vehicle_list = ctx.agent.vehicles_nearby
     
-    # TODO: Improve with data Matrix
+    # TODO: Check if detection matrix is True and use it directly
     # Compared to tailgating we check not so far in front (speed limit / 3)
     check_front = detect_vehicles(ctx.agent, vehicle_list,
                                    ctx.max_detection_distance("overtaking"), # Trigger further ahead

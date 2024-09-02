@@ -63,26 +63,3 @@ if sys.version_info >= (3, 8):
     ast_parse = partial(parse, type_comments=True)
 else:
     ast_parse = parse
-
-
-# Monkey patch for Concatenate in Python3.7; seems fine now
-if False and sys.version_info < (3, 8):
-    from typing import _GenericAlias
-
-    import typing_extensions
-    from typing_extensions import ParamSpec, TypeVar
-    class _ConcatenateGenericAlias(_GenericAlias, _root=True):
-        
-        def copy_with(self, params):
-            if isinstance(params[-1], (list, tuple)):
-                return (*params[:-1], *params[-1])
-            if isinstance(params[-1], _ConcatenateGenericAlias):
-                params = (*params[:-1], *params[-1].__args__)
-            elif params[-1] is not ... and not isinstance(params[-1], ParamSpec):
-                raise TypeError("Python 3.7 Monkey Patch: The last parameter to Concatenate should be a "
-                                "ParamSpec variable or Ellipsis.")
-            return super().copy_with(params)
-    
-    typing_extensions._ConcatenateGenericAlias = _ConcatenateGenericAlias
-    
-        
