@@ -476,7 +476,7 @@ class Scene():
 
 
 class SceneVector(ad._Vector[Scene]):
-    def append(self, arg1: SceneVector, arg2: Scene) -> None:
+    def append(self, arg2: Scene) -> None:
         '''
 
         append( (SceneVector)arg1, (Scene)arg2) -> None :
@@ -486,7 +486,7 @@ class SceneVector(ad._Vector[Scene]):
         '''
         ...
 
-    def count(self, arg1: SceneVector, arg2: Scene) -> int:
+    def count(self, arg2: Scene) -> int:
         '''
 
         count( (SceneVector)arg1, (Scene)arg2) -> int :
@@ -496,7 +496,7 @@ class SceneVector(ad._Vector[Scene]):
         '''
         ...
 
-    def extend(self, arg1: SceneVector, arg2: object) -> None:
+    def extend(self, arg2: object) -> None:
         '''
 
         extend( (SceneVector)arg1, (object)arg2) -> None :
@@ -506,7 +506,7 @@ class SceneVector(ad._Vector[Scene]):
         '''
         ...
 
-    def index(self, arg1: SceneVector, arg2: Scene) -> int:
+    def index(self, arg2: Scene) -> int:
         '''
 
         index( (SceneVector)arg1, (Scene)arg2) -> int :
@@ -516,7 +516,7 @@ class SceneVector(ad._Vector[Scene]):
         '''
         ...
 
-    def insert(self, arg1: SceneVector, arg2: int, arg3: Scene) -> None:
+    def insert(self, arg2: int, arg3: Scene) -> None:
         '''
 
         insert( (SceneVector)arg1, (int)arg2, (Scene)arg3) -> None :
@@ -526,7 +526,7 @@ class SceneVector(ad._Vector[Scene]):
         '''
         ...
 
-    def reverse(self, arg1: SceneVector) -> None:
+    def reverse(self) -> None:
         '''
 
         reverse( (SceneVector)arg1) -> None :
@@ -538,7 +538,7 @@ class SceneVector(ad._Vector[Scene]):
 
 
 class UnstructuredSettings():
-    def assign(self, arg1: UnstructuredSettings, other: UnstructuredSettings) -> UnstructuredSettings:
+    def assign(self, other: UnstructuredSettings) -> UnstructuredSettings:
         '''
 
         assign( (UnstructuredSettings)arg1, (UnstructuredSettings)other) -> UnstructuredSettings :

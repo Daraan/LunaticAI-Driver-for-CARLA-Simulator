@@ -7,7 +7,7 @@ Warning:
 from . import map
 from . import rss
 from . import physics
-from typing import Iterable, Protocol, TypeVar, type_check_only
+from typing import Iterable, Iterator, Protocol, TypeVar, type_check_only
 from typing_extensions import Self
 
 class _FloatLike(Protocol):
@@ -72,7 +72,7 @@ class _Vector(Protocol[_T]):
     def __contains__(self, item: object) -> bool:
         ...
         
-    def __iter__(self) -> Iterable[_T]:
+    def __iter__(self) -> Iterator[_T]:
         ...
 
 class _Calculable(Protocol):

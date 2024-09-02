@@ -43,7 +43,7 @@ __all__ = [
     "SetSimulatePhysics",
     "SetVehicleLightState",
     "ShowDebugTelemetry",
-    "SpawnActor"
+    "SpawnActor",
 ]
 
 class ApplyAngularImpulse(_IsCommand):

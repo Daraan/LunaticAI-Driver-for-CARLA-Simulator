@@ -421,10 +421,10 @@ class ActorAttribute:
 
     # region Dunder Methods
     def __bool__(self) -> bool: ...
-    def __eq__(self, __value: Union[bool, int, float, str, Color, ActorAttribute]) -> bool: ...
+    def __eq__(self, __value: Union[bool, float, str, Color, ActorAttribute]) -> bool: ...
     def __float__(self) -> float: ...
     def __int__(self) -> int: ...
-    def __ne__(self, __value: Union[bool, int, float, str, Color, ActorAttribute]) -> bool: ...
+    def __ne__(self, __value: Union[bool, float, str, Color, ActorAttribute]) -> bool: ...
     def __nonzero__(self) -> bool: ...
     def __str__(self) -> str: ...
     # endregion
@@ -963,7 +963,7 @@ class Client:
             None
         """
 
-    def replay_file(self, name: str, start: float, duration: float, follow_id: int, replay_sensors: bool):
+    def replay_file(self, name: str, start: float, duration: float, follow_id: int, replay_sensors: bool=False) -> str:
         """Load a new world with default settings using `map_name` map. All actors present in the current world will be destroyed, but traffic manager instances will stay alive.
 
         Args:
@@ -972,6 +972,9 @@ class Client:
             `duration (float  - seconds)`: Time that will be reenacted using the information `name` file. If the end is reached, the simulation will continue.\n
             `follow_id (int)`: ID of the actor to follow. If this is 0 then camera is disabled.\n
             `replay_sensors (bool)`: Flag to enable or disable the spawn of sensors during playback.\n
+            
+        Returns:
+            Logging information.
         """
 
     def request_file(self, name: str):
@@ -1903,41 +1906,41 @@ class LandmarkType(Enum):
     # NOTE: Has no attributes for `values` and `names`
     
     # region Instance Variables
-    Danger = "101",
-    LanesMerging = "121",
-    CautionPedestrian = "133",
+    Danger = "101"
+    LanesMerging = "121"
+    CautionPedestrian = "133"
     CautionBicycle = "138"
-    LevelCrossing = "150",
-    StopSign = "206",
-    YieldSign = "205",
-    MandatoryTurnDirection = "209",
-    MandatoryLeftRightDirection = "211",
-    TwoChoiceTurnDirection = "214",
-    Roundabout = "215",
-    PassRightLeft = "222",
-    AccessForbidden = "250",
-    AccessForbiddenMotorvehicles = "251",
-    AccessForbiddenTrucks = "253",
-    AccessForbiddenBicycle = "254",
-    AccessForbiddenWeight = "263",
-    AccessForbiddenWidth = "264",
-    AccessForbiddenHeight = "265",
-    AccessForbiddenWrongDirection = "267",
-    ForbiddenUTurn = "272",
-    MaximumSpeed = "274",
-    ForbiddenOvertakingMotorvehicles = "276",
-    ForbiddenOvertakingTrucks = "277",
-    AbsoluteNoStop = "283",
-    RestrictedStop = "286",
-    HasWayNextIntersection = "301",
-    PriorityWay = "306",
-    PriorityWayEnd = "307",
-    CityBegin = "310",
-    CityEnd = "311",
-    Highway = "330",
-    DeadEnd = "357",
-    RecomendedSpeed = "380",    # NOTE: Wrong Spelling, but is named like this internally!
-    RecomendedSpeedEnd = "381", # NOTE: Wrong Spelling, but is named like this internally!
+    LevelCrossing = "150"
+    StopSign = "206"
+    YieldSign = "205"
+    MandatoryTurnDirection = "209"
+    MandatoryLeftRightDirection = "211"
+    TwoChoiceTurnDirection = "214"
+    Roundabout = "215"
+    PassRightLeft = "222"
+    AccessForbidden = "250"
+    AccessForbiddenMotorvehicles = "251"
+    AccessForbiddenTrucks = "253"
+    AccessForbiddenBicycle = "254"
+    AccessForbiddenWeight = "263"
+    AccessForbiddenWidth = "264"
+    AccessForbiddenHeight = "265"
+    AccessForbiddenWrongDirection = "267"
+    ForbiddenUTurn = "272"
+    MaximumSpeed = "274"
+    ForbiddenOvertakingMotorvehicles = "276"
+    ForbiddenOvertakingTrucks = "277"
+    AbsoluteNoStop = "283"
+    RestrictedStop = "286"
+    HasWayNextIntersection = "301"
+    PriorityWay = "306"
+    PriorityWayEnd = "307"
+    CityBegin = "310"
+    CityEnd = "311"
+    Highway = "330"
+    DeadEnd = "357"
+    RecomendedSpeed = "380"    # NOTE: Wrong Spelling, but is named like this internally!
+    RecomendedSpeedEnd = "381" # NOTE: Wrong Spelling, but is named like this internally!
     # endregion
 
 
@@ -2515,11 +2518,10 @@ class Location(Vector3D):
         """Parses the axis' values to string."""
         ...
     
-    def __isub__(self, rhs: Vector3D) -> Location: ...
-    def __iadd__(self, rhs: Vector3D) -> Location: ...
+    def __isub__(self, rhs: Vector3D) -> Self: ...
+    def __iadd__(self, rhs: Vector3D) -> Self: ...
     
     # endregion
-    pass
 
 
 class Map:
@@ -3082,11 +3084,11 @@ class RssActorConstellationData:
 
     # region Instance Variables
     @property
-    def ego_match_object(self) -> "ad.map.match.Object":
+    def ego_match_object(self) -> ad.map.match.Object:
         """The ego map matched information."""
         
     @property
-    def ego_route(self) -> "ad.map.route.FullRoute":
+    def ego_route(self) -> ad.map.route.FullRoute:
         """The ego route."""
     
     @property
@@ -3094,7 +3096,7 @@ class RssActorConstellationData:
         """Current ego vehicle dynamics regarding the route."""
         
     @property
-    def other_match_object(self) -> "ad.map.match.Object":
+    def other_match_object(self) -> ad.map.match.Object:
         """The other object's map matched information. This is only valid if 'other_actor' is not 'None'."""
 
     @property
@@ -3117,47 +3119,47 @@ class RssActorConstellationResult:
     
     # region Instance Variables
     @property
-    def rss_calculation_mode(self) -> "ad.rss.map.RssMode":
+    def rss_calculation_mode(self) -> ad.rss.map.RssMode:
         """The calculation mode to be applied with the actor."""
         ...
     @rss_calculation_mode.setter
-    def rss_calculation_mode(self, value: "ad.rss.map.RssMode"):
+    def rss_calculation_mode(self, value: ad.rss.map.RssMode):
         """Setter for rss_calculation_mode property."""
         ...
 
     @property
-    def restrict_speed_limit_mode(self) -> "ad.rss.map.RssSceneCreation.RestrictSpeedLimitMode":
+    def restrict_speed_limit_mode(self) -> ad.rss.map.RssSceneCreation.RestrictSpeedLimitMode:
         """The mode for restricting speed limit."""
         ...
     @restrict_speed_limit_mode.setter
-    def restrict_speed_limit_mode(self, value: "ad.rss.map.RssSceneCreation.RestrictSpeedLimitMode"):
+    def restrict_speed_limit_mode(self, value: ad.rss.map.RssSceneCreation.RestrictSpeedLimitMode):
         """Setter for restrict_speed_limit_mode property."""
         ...
 
     @property
-    def ego_vehicle_dynamics(self) -> "ad.rss.world.RssDynamics":
+    def ego_vehicle_dynamics(self) -> ad.rss.world.RssDynamics:
         """The RSS dynamics to be applied for the ego vehicle."""
         ...
     @ego_vehicle_dynamics.setter
-    def ego_vehicle_dynamics(self, value: "ad.rss.world.RssDynamics"):
+    def ego_vehicle_dynamics(self, value: ad.rss.world.RssDynamics):
         """Setter for ego_vehicle_dynamics property."""
         ...
 
     @property
-    def actor_object_type(self) -> "ad.rss.world.ObjectType":
+    def actor_object_type(self) -> ad.rss.world.ObjectType:
         """The RSS object type to be used for the actor."""
         ...
     @actor_object_type.setter
-    def actor_object_type(self, value: "ad.rss.world.ObjectType"):
+    def actor_object_type(self, value: ad.rss.world.ObjectType):
         """Setter for actor_object_type property."""
         ...
 
     @property
-    def actor_dynamics(self) -> "ad.rss.world.RssDynamics":
+    def actor_dynamics(self) -> ad.rss.world.RssDynamics:
         """The RSS dynamics to be applied for the actor."""
         ...
     @actor_dynamics.setter
-    def actor_dynamics(self, value: "ad.rss.world.RssDynamics"):
+    def actor_dynamics(self, value: ad.rss.world.RssDynamics):
         """Setter for actor_dynamics property."""
         ...
     # endregion
@@ -3174,19 +3176,19 @@ class RssEgoDynamicsOnRoute:
     
     # region Instance Variables
     @property
-    def ego_speed(self) -> "ad.physics.Speed":
+    def ego_speed(self) -> ad.physics.Speed:
         """The ego vehicle's speed."""
         
     @property
-    def min_stopping_distance(self) -> "ad.physics.Distance":
+    def min_stopping_distance(self) -> ad.physics.Distance:
         """The current minimum stopping distance."""
         
     @property
-    def ego_center(self) -> "ad.map.point.ENUPoint":
+    def ego_center(self) -> ad.map.point.ENUPoint:
         """The considered enu position of the ego vehicle."""
         
     @property
-    def ego_heading(self) -> "ad.map.point.ENUHeading":
+    def ego_heading(self) -> ad.map.point.ENUHeading:
         """The considered heading of the ego vehicle."""
         
     @property
@@ -3198,39 +3200,39 @@ class RssEgoDynamicsOnRoute:
         """States if the vehicle is already crossing one of the lane borders."""
         
     @property
-    def route_heading(self) -> "ad.map.point.ENUHeading":
+    def route_heading(self) -> ad.map.point.ENUHeading:
         """The considered heading of the route."""
         
     @property
-    def route_nominal_center(self) -> "ad.map.point.ENUPoint":
+    def route_nominal_center(self) -> ad.map.point.ENUPoint:
         """The considered nominal center of the route."""
         
     @property
-    def heading_diff(self) -> "ad.map.point.ENUHeading":
+    def heading_diff(self) -> ad.map.point.ENUHeading:
         """The considered heading diff towards the route."""
         
     @property
-    def route_speed_lat(self) -> "ad.physics.Speed":
+    def route_speed_lat(self) -> ad.physics.Speed:
         """TThe ego vehicle's speed component lat regarding the route."""
             
     @property
-    def route_speed_lon(self) -> "ad.physics.Speed":
+    def route_speed_lon(self) -> ad.physics.Speed:
         """The ego vehicle's speed component lon regarding the route."""
             
     @property
-    def route_accel_lat(self) -> "ad.physics.Acceleration":
+    def route_accel_lat(self) -> ad.physics.Acceleration:
         """The ego vehicle's acceleration component lat regarding the route."""
             
     @property
-    def route_accel_lon(self) -> "ad.physics.Acceleration":
+    def route_accel_lon(self) -> ad.physics.Acceleration:
         """The ego vehicle's acceleration component lon regarding the route."""
             
     @property
-    def avg_route_accel_lat(self) -> "ad.physics.Acceleration":
+    def avg_route_accel_lat(self) -> ad.physics.Acceleration:
         """The ego vehicle's acceleration component lat regarding the route smoothened by an average filter."""
             
     @property
-    def avg_route_accel_lon(self) -> "ad.physics.Acceleration":
+    def avg_route_accel_lon(self) -> ad.physics.Acceleration:
         """The ego acceleration component lon regarding the route smoothened by an average filter."""
     # endregion
 
@@ -3270,7 +3272,7 @@ class RssResponse(SensorData):
         """The proper response that the RSS calculated for the vehicle."""
     
     @property
-    def rss_state_snapshot(self) -> "ad.rss.state.RssStateSnapshot":
+    def rss_state_snapshot(self) -> ad.rss.state.RssStateSnapshot:
         """Detailed RSS states at the current moment in time."""
     
     @property
@@ -3278,11 +3280,11 @@ class RssResponse(SensorData):
         """Current ego vehicle dynamics regarding the route."""
     
     @property
-    def world_model(self) -> "ad.rss.world.WorldModel":
+    def world_model(self) -> ad.rss.world.WorldModel:
         """World model used for calculations."""
     
     @property
-    def situation_snapshot(self) -> "ad.rss.situation.SituationSnapshot":
+    def situation_snapshot(self) -> ad.rss.situation.SituationSnapshot:
         """Detailed RSS situations extracted from the world model."""
     # endregion
 
@@ -3300,9 +3302,9 @@ class RssRestrictor:
     # region Methods
     def restrict_vehicle_control(self,
                                  vehicle_control: VehicleControl,
-                                 proper_response: "ad.rss.state.ProperResponse",
+                                 proper_response: ad.rss.state.ProperResponse,
                                  ego_dynamics_on_route : RssEgoDynamicsOnRoute,
-                                 vehicle_physics : VehiclePhysicsControl
+                                 vehicle_physics : VehiclePhysicsControl,
                                  ) -> VehicleControl:
         """
         Applies the safety restrictions given by a carla.RssSensor to a carla.VehicleCon
@@ -3355,21 +3357,21 @@ class RssSensor(Sensor):
     # region Instance Variables
     
     @property
-    def ego_vehicle_dynamics(self) -> "ad.rss.world.RssDynamics":
+    def ego_vehicle_dynamics(self) -> ad.rss.world.RssDynamics:
         """
         States the [RSS parameters](https://intel.github.io/ad-rss-lib/ad_rss/Appendix-ParameterDiscussion/) that the sensor will consider
         for the ego vehicle if no actor constellation callback is registered.
         """
     
     @property
-    def other_vehicle_dynamics(self) -> "ad.rss.world.RssDynamics":
+    def other_vehicle_dynamics(self) -> ad.rss.world.RssDynamics:
         """
         States the [RSS parameters](https://intel.github.io/ad-rss-lib/ad_rss/Appendix-ParameterDiscussion/) that the sensor will consider
         for the rest of vehicles if no actor constellation callback is registered.
         """
     
     @property
-    def pedestrian_dynamics(self) -> "ad.rss.world.RssDynamics":
+    def pedestrian_dynamics(self) -> ad.rss.world.RssDynamics:
         """
         States the [RSS parameters](https://intel.github.io/ad-rss-lib/ad_rss/Appendix-ParameterDiscussion/) that the sensor will consider
         for pedestrians if no actor constellation callback is registered.
@@ -5399,7 +5401,7 @@ class World:
             `int`\n
         """
 
-    def try_spawn_actor(self, blueprint: ActorBlueprint, transform: Transform, attach_to: Optional[Actor] = None, attachment_type=AttachmentType.Rigid) -> Actor:
+    def try_spawn_actor(self, blueprint: ActorBlueprint, transform: Transform, attach_to: Optional[Actor] = None, attachment_type: AttachmentType=AttachmentType.Rigid) -> Actor:
         """Same as `spawn_actor()` but returns `None` on failure instead of throwing an exception.
 
         Args:
