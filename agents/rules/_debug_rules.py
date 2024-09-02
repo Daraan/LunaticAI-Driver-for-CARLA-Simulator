@@ -205,23 +205,39 @@ simple_rule2B = SimpleRule2B(Phase.UPDATE_INFORMATION | Phase.BEGIN)
 another_rule = Another()
 
 def _test_custom_init_Rule():
-    """Suppress warning message when creating this invalid case"""
+    """Suppress warning message when creating this case"""
     import io
     import re
     import sys
-    from contextlib import redirect_stderr
+    from logging import StreamHandler
+    from contextlib import redirect_stderr, redirect_stdout
+    from agents.tools.logging import logger
     alt_out = io.StringIO()
     # suppress expected message
     
+    org_stream = None
+    # redirect logger output
+    # NOTE: might not be a stream handler in position 0!
+    handlers = logger.handlers + logger.parent.handlers if logger.parent else logger.handlers
+    if handlers and any(isinstance(h, StreamHandler) for h in handlers):
+        handler = next(h for h in handlers if isinstance(h, StreamHandler))
+        if handler.stream is sys.stderr or handler.stream is sys.__stderr__:
+            org_stream = handler.stream
+            handler.stream = alt_out
     with redirect_stderr(alt_out):
         custom_rule = CustomInitRule()
+    if org_stream is not None:
+        try:
+            handler.stream = org_stream
+        except Exception:
+            pass
     
     alt_out.seek(0)
     content = alt_out.read()
     if f"Warning 'condition' argument passed but class {CustomInitRule.__name__}" not in content:
         print("ERROR: Expected warning message not found")
     else:
-        content = re.sub(fr"Warning 'condition' argument passed but class {CustomInitRule.__name__}.+?"
+        content = re.sub(fr"(WARNING:__main__:)?Warning 'condition' argument passed but class {CustomInitRule.__name__}.+?"
                             "This might lead to undesired results.\n", "", content)
     if content:
         print(content, file=sys.stderr)
