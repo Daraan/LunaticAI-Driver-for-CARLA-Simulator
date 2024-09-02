@@ -22,12 +22,12 @@ except ImportError:
         from scenario_runner.srunner.scenariomanager.timer import GameTime
         # Fix import problems if srunner is in PYTHONPATH and submodule is not used.
         del srunner
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         raise e from None
 else:
     try:
         # Check if submodule is available
-        from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider as X
+        from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider as X  # noqa: N814
         del X
     except ImportError:
         import srunner  # pyright: ignore[reportMissingImports]

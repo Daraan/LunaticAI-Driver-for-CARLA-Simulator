@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=none
 from typing import List, Optional, Tuple, Union
 
 import carla
@@ -15,9 +16,9 @@ def get_blueprint_library(world: Optional["carla.World"]=None) -> carla.Blueprin
         Consider using :py:attr:`.CarlaDataProvider._blueprint_library`
         or :py:meth:`.CarlaDataProvider.create_blueprint` instead.
     """
-    if CarlaDataProvider._blueprint_library:
-        return CarlaDataProvider._blueprint_library
-    elif world is None:
+    if CarlaDataProvider._blueprint_library:  # noqa: SLF001
+        return CarlaDataProvider._blueprint_library  # noqa: SLF001
+    if world is None:
         world = CarlaDataProvider.get_world()
     return world.get_blueprint_library()
 
@@ -84,11 +85,8 @@ def get_actor_blueprints(pattern: str, generation: Literal[1, 2, 'all']) -> Unio
         int_generation = int(generation)
         # Check if generation is in available generations
         if int_generation in [1, 2]:
-            bps = [x for x in bps if int(x.get_attribute('generation')) == int_generation]
-            return bps
-        else:
-            print("   Warning! Actor Generation is not valid. No actor will be spawned.")
-            return []
-    except Exception:
-        print("   Warning! Actor Generation is not valid. No actor will be spawned.")
-        return []
+            return [x for x in bps if int(x.get_attribute('generation')) == int_generation]
+    except Exception:  # noqa: S110
+        pass
+    print("   Warning! Actor Generation is not valid. No actor will be spawned.")
+    return []

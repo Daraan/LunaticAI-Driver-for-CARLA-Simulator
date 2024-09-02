@@ -181,7 +181,7 @@ or a subclass of :py:class:`AgentConfig`.
 """
 
 _T = TypeVar("_T")
-_M = TypeVar("_M", Dict[str, Any], DictConfig)
+MT = TypeVar("MT", Dict[str, Any], DictConfig)
 """A generic type variable for a mapping type."""
 
 _AnAgentConfig = TypeVar("_AnAgentConfig", bound="AgentConfig")
@@ -271,7 +271,7 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
                     continue
                 docs[main_body.name].update(docs.get(base.id, {})) # pyright: ignore[reportUnknownArgumentType]
             except Exception:
-                logging.exception(f"Error in {main_body.name}")
+                logging.exception("Error in %s", main_body.name)
 
         target : str
         for i, body in enumerate(main_body.body):
@@ -279,13 +279,13 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
                 # Nested classes, extract recursive
                 extract_annotations(ast.Module([body], type_ignores=[]), docs[main_body.name], global_annotations) # type: ignore[arg-type]
                 continue
-            elif isinstance(body, ast.AnnAssign):
+            if isinstance(body, ast.AnnAssign):
                 target = body.target.id
                 continue
-            elif isinstance(body, ast.Assign):
+            if isinstance(body, ast.Assign):
                 target = body.targets[0].id
                 continue
-            elif isinstance(body, ast.Expr):
+            if isinstance(body, ast.Expr):
                 try:
                     # NOTE: This is different for <Python3.8; this is ast.Str
                     doc: str = body.value.value # type: ignore
@@ -350,7 +350,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
         cls = cls_or_self.__class__
     cls_file = inspect.getfile(cls)
     # Get documentations and store globally
-    global class_annotations
+    global class_annotations  # noqa: PLW0603
     if class_annotations is None:
         with open(cls_file, "r") as f: # NOTE: This file only!
             tree = ast_parse(f.read())
@@ -409,8 +409,8 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
                     # double nested will throw a KeyError here as key not in data; will only be the
                     # variable name of the nested dataclass; seems to be okay.
                     # NOTE: logging level might only be on WARNING here!
-                    logging.debug(f"KeyError for {key} in {cls.__name__} when adding comments. "
-                                  "This should be okay, report if descriptions are missing.")
+                    logging.debug("KeyError for %s in %s when adding comments. "
+                                  "This should be okay, report if descriptions are missing.", key, cls.__name__)
                 continue
             if (":meta exclude:" in comment_txt) or not include_private and ":meta private:" in comment_txt:
                 data.pop(key)
@@ -443,7 +443,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
         for entry in has_null_entry:
             parts = entry.partition(":")
             if parts[2] != " null":
-                logging.error(f"Error in {cls.__name__} for {entry}. Entry is not ' null'. This should not happen")
+                logging.error("Error in %s for %s. Entry is not ' null'. This should not happen", cls.__name__, entry)
                 continue
             entry = parts[0]+":"
             string = re.sub(fr"^{entry}$", entry + " null", string, flags=re.MULTILINE)
@@ -622,7 +622,7 @@ def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfig
     try:
         annotations = get_type_hints(base)
     except TypeError:
-        logging.debug("Error getting type hints for", base.__name__, "with container", type(container))
+        logging.debug("Error getting type hints for %s with container %s", base.__name__, type(container))
         return
     keys: "list[str]" = container.__dataclass_fields__.keys() if is_dataclass(container) else container.keys() # type: ignore
     for key in keys:

@@ -32,6 +32,7 @@ class CustomSensorInterface:
                 destroyed = self.sensor.destroy()
             self.sensor = None  # type: ignore
             return destroyed
+        return None
         
     def stop(self) -> None:
         """

@@ -222,7 +222,7 @@ class Phase(Flag):
     """
     
     TAKE_NORMAL_STEP = auto()
-    """
+    r"""
     During this phase the :external-icon-parse:`:py:class:\`carla.VehicleControl\``
     is calculated by the local planner.
     
@@ -293,7 +293,7 @@ class Phase(Flag):
     """
     
     COLLISION = auto()
-    """
+    r"""
     Special phase that is executed out-of-order when a
     :external-icon-parse:`:py:class:\`carla.Sensor\`` detects a collision.
     
@@ -507,8 +507,7 @@ class Phase(Flag):
         """
         elements = string.split("|") # Phase.NAME
         elements = [cls[e.split(".")[-1].strip()] for e in elements]
-        phase = reduce(lambda x, y: x | y, elements) # build union
-        return  phase
+        return reduce(lambda x, y: x | y, elements) # build union -> Phase
 
 
 class Hazard(Flag):
@@ -793,7 +792,7 @@ class RuleResult(Enum):
     :meta hide-value:
     """
     
-    NOT_APPLICABLE = object()
+    NOT_APPLICABLE = object()  # noqa: PIE796
     """
     Object that indicates that no action was executed, e.g. because the rule is on cooldown or blocked.
     

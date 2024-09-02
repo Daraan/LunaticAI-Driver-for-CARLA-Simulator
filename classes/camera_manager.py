@@ -1,6 +1,6 @@
 import weakref
 from threading import Event, Thread
-from typing import TYPE_CHECKING, ClassVar, List, NoReturn, Optional, cast
+from typing import TYPE_CHECKING, ClassVar, List, Optional, cast
 
 import carla
 import numpy as np
@@ -40,7 +40,7 @@ _follow_car_event = Event()
 """Use the :py:meth:`treading.Event.set` method to stop the thread."""
 
 # Solutions see: https://stackoverflow.com/questions/69107143/how-to-end-a-while-loop-in-another-thread
-def spectator_follow_actor(actor : carla.Actor) -> NoReturn:
+def spectator_follow_actor(actor : carla.Actor):
     """
     Continuously follow the ego vehicle with the spectator view.
     

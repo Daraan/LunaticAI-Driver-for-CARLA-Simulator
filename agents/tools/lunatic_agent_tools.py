@@ -50,10 +50,6 @@ if sys.version_info >= (3, 8):
     _AgentFunction = Callable[Concatenate["LunaticAgent", _P], _T]
 else:
     _AgentFunction = Callable[[Concatenate["LunaticAgent", _P]], _T]
-    
-_C = TypeVar("_C", bound=Callable[..., Any])
-
-_Actor_co = TypeVar("_Actor_co", bound=carla.Actor, covariant=True)
 
 # ------------------------------
 # Decorators

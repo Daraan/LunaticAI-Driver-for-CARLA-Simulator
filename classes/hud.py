@@ -92,8 +92,8 @@ class HUD:
         heading += 'E' if 179.5 > transform.rotation.yaw > 0.5 else ''
         heading += 'W' if -0.5 > transform.rotation.yaw > -179.5 else ''
         colhist = world.collision_sensor.get_collision_history()
-        collision = [colhist[x + self.frame - 200] for x in range(0, 200)]
-        max_col = max(1.0, max(collision))
+        collision = [colhist[x + self.frame - 200] for x in range(200)]
+        max_col = max(1.0, max(collision))  # noqa: PLW3301
         collision = [x / max_col for x in collision]
         obstacles = obstacles or world.world.get_actors().filter('vehicle.*')
         
@@ -250,7 +250,7 @@ class HUD:
                             # pygame.draw.rect(display, (255, 255, 255), rect)
                             pygame.draw.rect(display, (255, 255, 255), rect, input_value_rect_fill)
                     item = item[0]
-                if item:  # At this point has to be a str.
+                if item:  # At this point has to be a str
                     surface = self._font_mono.render(item, True, text_color)
                     display.blit(surface, (8, v_offset))
                 v_offset += 18

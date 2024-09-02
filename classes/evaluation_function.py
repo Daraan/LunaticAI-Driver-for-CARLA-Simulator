@@ -175,8 +175,7 @@ class ConditionFunction(Generic[_CP, _CH]):
             return partial(cls, name=name, truthy=truthy, use_self=use_self)  # type: ignore[return-value]
         assert isinstance(first_argument, (Callable, staticmethod)), f"First argument must be a callable, not {type(first_argument)}"
         # @ConditionFunction or ConditionFunction(function)
-        instance = super().__new__(cls)
-        return instance
+        return super().__new__(cls)  # new instance
     
     if READTHEDOCS and not TYPE_CHECKING:
         __new__.__annotations__["first_argument"] = Optional["str[name]" | AnyCallableCondition]  # noqa: F821
@@ -288,8 +287,7 @@ class ConditionFunction(Generic[_CP, _CH]):
     @staticmethod
     def _complete_func_to_string(func: Callable[..., Any]) -> str:
         func_lines = inspect.getsourcelines(func)[0]
-        func_string = "".join(func_lines).strip()
-        return func_string
+        return "".join(func_lines).strip() # as string
 
     @staticmethod
     def _func_to_string(func : Callable[..., Any]) -> str:

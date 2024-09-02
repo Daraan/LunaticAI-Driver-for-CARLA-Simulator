@@ -66,7 +66,6 @@ if TYPE_CHECKING:
     # at this position it would be a circular import
 
 _T = TypeVar("_T")
-_H = TypeVar("_H", bound=Hashable)
 _P = ParamSpec("_P")
 _Rule = TypeVar("_Rule", bound="Rule")
 
@@ -281,9 +280,9 @@ class Context(CarlaDataProvider):
         """
         if match == "exact":
             return hazard in self.detected_hazards
-        elif match == "subset":
+        if match == "subset":
             return any(hazard in h for h in self.detected_hazards)
-        elif match == "intersection":
+        if match == "intersection":
             return any(hazard & h for h in self.detected_hazards)
         raise ValueError(f"match must be 'exact', 'subset' or 'intersection', not {match}.")
 
@@ -868,7 +867,11 @@ class Rule(_GroupRule):
                                     "__func__",
                                     getattr(self.condition, "func", self.condition))
                 if self_func != condition: # Compare method with function
-                    logger.warning(f"Warning 'condition' argument passed but class {self.__class__.__name__} already implements a different function 'self.condition'. Overwriting {self.condition} with passed condition {getattr(condition, '__name__', str(condition))}. This might lead to undesired results.")
+                    logger.warning(
+                        f"Warning 'condition' argument passed but class {self.__class__.__name__} "
+                        "already implements a different function 'self.condition'. "
+                        f"Overwriting {self.condition} with passed condition {getattr(condition, '__name__', str(condition))}. "
+                        "This might lead to undesired results.")
                 
                 # NOTE: IMPORTANT: self.condition = condition overwrites methods with functions
                 # To keep methods as methods the condition parameter is removed with
@@ -977,10 +980,7 @@ class Rule(_GroupRule):
         if not cls._auto_init_ or metarule: # TODO: Check for multirule, should _auto_init_ be set to False?
             return
         
-        if "__init__" in cls.__dict__:
-            custom_init = cls.__dict__["__init__"]
-        else:
-            custom_init = False
+        custom_init = cls.__dict__.get("__init__", False)
             
         # Members that are not overwritten and passed as default arguments (None) into the __init__
         do_not_overwrite = ["phases"]
@@ -1193,8 +1193,7 @@ class Rule(_GroupRule):
         :meta private:
         """
         self._ctx = proxy(ctx)      # use with care and access over function
-        result = self.condition(ctx)
-        return result
+        return self.condition(ctx)
     
     def evaluate_children(self, ctx: Context) -> "NoReturn": # pylint: disable=unused-argument
         """
@@ -1761,8 +1760,7 @@ class BlockingRule(Rule, metarule=True):
         # > Phase.UPDATE_INFORMATION | Phase.BEGIN
         self.update_world(ctx, execute_phases=execute_phases)
         if execute_planner:
-            control = ctx.get_or_calculate_control()
-            return control
+            return ctx.get_or_calculate_control()
         return None
 
     @staticmethod
@@ -1840,10 +1838,10 @@ class BlockingRule(Rule, metarule=True):
             if self.max_tick_callback:
                 self.max_tick_callback(ctx)
                 if self.ticks_passed > self.MAX_TICKS:
-                    raise UnblockRuleException()
+                    raise UnblockRuleException
                 # max_tick_callback can override the ticks passed
             else:
-                raise UnblockRuleException()
+                raise UnblockRuleException
         
         self._render_everything(ctx)
 

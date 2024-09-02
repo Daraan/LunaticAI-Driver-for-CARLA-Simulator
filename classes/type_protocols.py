@@ -59,7 +59,6 @@ __all__ = [
 ]
 
 _T = TypeVar("_T", default=Any)
-_H = TypeVar("_H", bound=Hashable)   # Free
 _CH = TypeVar("_CH", bound=Hashable, default=Hashable)  # Generic of ConditionFunction
 
 _P = ParamSpec("_P", default=[])   # Free, e.g. for action function.
@@ -234,7 +233,6 @@ class HasPlannerWithConfig(HasPlanner["DynamicLocalPlanner"], HasConfig[AgentCon
     """
     Uses a :py:class:`.DynamicLocalPlanner` that works with a :py:class:`.AgentConfig`
     """
-    ...
     
 class HasContext(Protocol):
     ctx: "Context"
@@ -256,13 +254,11 @@ class Has_Vehicle(Protocol):
     
 class UseableWithDynamicPlanner(HasPlannerWithConfig, Has_Vehicle, HasContext, Protocol):
     """Can be used with :py:class:`.DynamicLocalPlanner`."""
-    ...
 
 class CanDetectObstacles(Has_Vehicle, HasPlanner,
                          HasConfig["BehaviorAgentSettings | LunaticAgentSettings"],
                          Protocol):
     """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles`."""
-    ...
     
 class CanDetectNearbyObstacles(CanDetectObstacles, Protocol):
     """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`."""

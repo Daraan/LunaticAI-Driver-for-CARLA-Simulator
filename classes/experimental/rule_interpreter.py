@@ -50,20 +50,20 @@ class RuleInterpreter:
 
     def execute_all_functions(self, driver, matrix, i_car, j_car, tm):
         results = {}
-        for function_name, function_data in self.functions.items():
-            try:
-                if isinstance(function_data, dict):
-                    logic = compile(function_data['logic'], '', 'exec')
-                    local_vars = {**locals().copy(), **function_data.get('optional_parameters', {})}
-                    exec(logic, globals(), local_vars)
-                    func = local_vars.get(function_name)
-                else:
-                    func = function_data
+        try:
+            for function_name, function_data in self.functions.items():
+                    if isinstance(function_data, dict):
+                        logic = compile(function_data['logic'], '', 'exec')
+                        local_vars = {**locals().copy(), **function_data.get('optional_parameters', {})}
+                        exec(logic, globals(), local_vars)
+                        func = local_vars.get(function_name)
+                    else:
+                        func = function_data
 
-                if callable(func):
-                    func_result = func(driver, matrix, i_car, j_car, tm)
-                    results[function_name] = func_result if func_result is not None else "No return value"
-            except Exception as e:
-                results[function_name] = f"Error executing function: {e}"
-                raise
+                    if callable(func):
+                        func_result = func(driver, matrix, i_car, j_car, tm)
+                        results[function_name] = func_result if func_result is not None else "No return value"
+        except Exception as e:
+            results[function_name] = f"Error executing function: {e}"
+            raise
         return results

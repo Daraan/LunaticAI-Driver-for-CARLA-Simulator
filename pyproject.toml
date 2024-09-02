@@ -78,6 +78,12 @@ ignore = [
     "RUF012",
     "ANN201",
 ]
+"agents/tools/config_creation.py" = [
+    "SIM118", # OmegaConf in dict and in dict.keys() is different
+]
+"agents/tools/_config_tools.py" = [
+    "SIM118", # OmegaConf in dict and in dict.keys() is different
+]
 "classes/hud.py" = [
     "UP032", # Format instead of percent
 ]

@@ -77,10 +77,9 @@ class RssStateInfo:
         # type: (carla.World) -> carla.Actor | None
         if self.rss_state.objectId == 18446744073709551614:
             return None # "Border Left"
-        elif self.rss_state.objectId == 18446744073709551615:
+        if self.rss_state.objectId == 18446744073709551615:
             return None # "Border Right"
-        else:
-            return world.get_actor(self.rss_state.objectId)
+        return world.get_actor(self.rss_state.objectId)
 
     def __str__(self):
         return "RssStateInfo: object=" + str(self.rss_state.objectId) + " dangerous=" + str(self.is_dangerous)
@@ -421,14 +420,10 @@ class RssSensor(CustomSensorInterface):
         return pedestrian_dynamics
 
     def get_steering_ranges(self) -> List[Tuple[float, float]]:
-        ranges = []
-        for heading_range in self._allowed_heading_ranges:
-            ranges.append(
-                (
-                    (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.begin)) / self._max_steer_angle,  # pyright: ignore
-                    (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.end)) / self._max_steer_angle)    # pyright: ignore
-            )
-        return ranges
+        return [
+            ((float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.begin)) / self._max_steer_angle,  # pyright: ignore[reportArgumentType]
+             (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.end)) / self._max_steer_angle)    # pyright: ignore[reportArgumentType]
+            for heading_range in self._allowed_heading_ranges]
 
     def _on_rss_response(self, response : "carla.RssResponse"):
         if not self or not response:
@@ -459,10 +454,12 @@ class RssSensor(CustomSensorInterface):
 
             if self.unstructured_scene_visualizer:
                 self.unstructured_scene_visualizer.tick(response.frame, response, self._allowed_heading_ranges)
-
-            new_states = []
-            for rss_state in response.rss_state_snapshot.individualResponses:
-                new_states.append(RssStateInfo(rss_state, response.ego_dynamics_on_route, response.world_model))
+            
+            new_states = [
+                RssStateInfo(rss_state,
+                             response.ego_dynamics_on_route,
+                             response.world_model)
+                for rss_state in response.rss_state_snapshot.individualResponses]
             if len(new_states) > 0:
                 new_states.sort(key=lambda rss_states: rss_states.distance)
             self.individual_rss_states = new_states

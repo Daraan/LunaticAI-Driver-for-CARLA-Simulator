@@ -68,9 +68,10 @@ def wrap_matrix_functionalities(ego_vehicle : carla.Actor,
         return None
     # Removes the information about "left_outer_lane" by replacing it with numeric values.
     # TODO: Should possibly revert this.
-    new_matrix = dict(enumerate(matrix.values()))
-    matrix = new_matrix
-    return matrix
+    #new_matrix = dict(enumerate(matrix.values()))
+    #matrix = new_matrix
+    #return matrix
+    return dict(enumerate(matrix.values()))
 
 
 class DetectionMatrix:
@@ -124,6 +125,7 @@ class DetectionMatrix:
         if self.running:
             self.matrix = self._calculate_update()
             return self.matrix
+        return None
 
     def getMatrix(self) -> Dict[int, List[int]]:
         return self.matrix
@@ -230,7 +232,7 @@ class DetectionMatrix:
         logger.info(f"DetectionMatrix: signal {signum} received. Stopping.")
         self.stop()
         # Can only have one signal handler!
-        RSSKeyboardControl._signal_handler(signum, _) 
+        RSSKeyboardControl._signal_handler(signum, _)
         
     def _add_signal_handler(self):
         """
@@ -314,7 +316,7 @@ def get_car_coords(matrix) -> tuple[int, int]:
     for lane, occupations in matrix.items():
         try:
             return (lane, occupations.index(1)) # find the 1 entry in a efficient way
-        except ValueError:
+        except ValueError:  # noqa: PERF203
             continue
 
     return i_car, j_car

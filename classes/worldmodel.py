@@ -261,13 +261,12 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     def load_hydra_config(config_name: str="conf/launch_config") -> "LaunchConfig":
         if GameFramework.hydra_initialized():
             return assure_type(LaunchConfig, hydra.compose(config_name=config_name))
-        else:
-            config_dir, config_name = os.path.split(config_name)
-            import inspect
-            frame = inspect.stack()[-1]
-            module = inspect.getmodule(frame[0])
-            name = module.__file__ if module and module.__file__ else "unknown"
-            return GameFramework.initialize_hydra(config_dir, config_name, job_name=name)
+        config_dir, config_name = os.path.split(config_name)
+        import inspect
+        frame = inspect.stack()[-1]
+        module = inspect.getmodule(frame[0])
+        name = module.__file__ if module and module.__file__ else "unknown"
+        return GameFramework.initialize_hydra(config_dir, config_name, job_name=name)
             
     
     def __init__(self, args: "LaunchConfig",
@@ -647,9 +646,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                 except Exception:
                     pass
         finally:
-            if disable_sync:
-                # Prevent freezing of the editor
-                if CarlaDataProvider.get_world() is not None:
+            # Prevent freezing of the editor
+            if disable_sync and CarlaDataProvider.get_world() is not None:
                     # Disable Synchronous Mode
                     world_settings = carla.WorldSettings(synchronous_mode=False,
                                                         fixed_delta_seconds=0.0)
@@ -1095,10 +1093,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         # Clean external actors restarting a second time
         if self.external_actor and self._args.restart_clean_sensors is not False \
            and not self._first_start or self._args.restart_clean_sensors is True:
-            ego_sensors : List[carla.Actor] = []
-            for actor in self.world.get_actors():
-                if actor.parent == self.player:
-                    ego_sensors.append(actor)
+            ego_sensors = [actor for actor in self.world.get_actors() if actor.parent == self.player]
 
             # Remove all old sensors
             for ego_sensor in ego_sensors:
@@ -1168,6 +1163,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             if self.sync:
                 return self.world.tick()
             return self.world.wait_for_tick()
+        return None
 
     #def tick(self, clock):
     #    self.hud.tick(self.player, clock) # RSS example. TODO: Check which has to be used!

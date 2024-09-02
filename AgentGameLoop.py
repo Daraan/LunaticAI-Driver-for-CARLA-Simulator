@@ -47,7 +47,7 @@ PRINT_RULES = False
 # ==============================================================================
 
 def game_loop(args: LaunchConfig):
-    """
+    r"""
     Main loop of the simulation.
     
     It sets up the simulation, spawns the vehicles, and initializes the agent.

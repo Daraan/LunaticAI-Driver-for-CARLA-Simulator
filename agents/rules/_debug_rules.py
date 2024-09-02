@@ -1,4 +1,3 @@
-# noqa: ALL
 """These are rules for testing and debugging"""
 from __future__ import annotations
 
@@ -51,7 +50,7 @@ def eval_context_function(ctx : "Context") -> int:
 
 def ctx_action(ctx : Context):
     _check_type(ctx, Context)
-    
+
 def ctx_self_action(self, ctx : Context):
     _check_type(self, Rule)
     _check_type(ctx, Context)
@@ -59,7 +58,7 @@ def ctx_self_action(self, ctx : Context):
 def ctx_action_kwargs(ctx : Context, arg1):
     assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
     _check_type(ctx, Context)
-    
+
 def ctx_self_action_kwargs(self, ctx : Context, arg1):
     _check_type(self, Rule)
     assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
@@ -121,7 +120,7 @@ class DebugRuleWithEval(Rule):
         assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
         assert isinstance(ctx, Context)
         assert isinstance(self, DebugRuleWithEval)
-        return None
+        return
     
     if TYPE_CHECKING:
         assert_type(true_action, Callable[[Self, Context], None])
@@ -145,7 +144,7 @@ class DebugRuleWithEval2(Rule):
         assert isinstance(ctx, Context)
         assert isinstance(self, DebugRuleWithEval)
         return 1.0
-        
+
 if TYPE_CHECKING:
     from typing import cast
     c = cast(Context, None)
@@ -181,20 +180,20 @@ class CustomInitRule(Rule):
         # NOTE: The
         super().__init__(phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, condition=always_execute, action=lambda ctx: _check_type(ctx, Context))
         self._custom = True
-    
+
     phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
-    
+
     _cooldown = 0
-    condition = lambda ctx: [][1] # This should not be executed, overwritten in the custom Init # noqa: E731
-    
+    condition = lambda ctx: [][1] # This should not be executed, overwritten in the custom Init # noqa: E731, PLE0643
+
     actions = {True: lambda self, ctx: (_check_type(self, Rule), _check_type(ctx, Context)),
             False: lambda ctx: _check_type(ctx, Context)}
-    
+
 class RuleAttributes(Another):
     DEFAULT_COOLDOWN_RESET = 10
     start_cooldown = 20
     cooldown_reset_value = 50
-    
+
 test_init = RuleAttributes()
 
 new_rule = DebugRuleWithEval()
@@ -210,7 +209,7 @@ def _test_custom_init_Rule():
     import re
     import sys
     from logging import StreamHandler
-    from contextlib import redirect_stderr, redirect_stdout
+    from contextlib import redirect_stderr
     from agents.tools.logging import logger
     alt_out = io.StringIO()
     # suppress expected message
@@ -251,7 +250,7 @@ custom_rule = _test_custom_init_Rule()
 class CheckDescription(Rule):
     """This is my description"""
     phase = Phase.BEGIN
-    
+
 assert CheckDescription.description == """This is my description"""
 cd_rule = CheckDescription(Phase.END, # type: ignore[reportCallIssue]
                             action=lambda ctx: _check_type(ctx, Context),

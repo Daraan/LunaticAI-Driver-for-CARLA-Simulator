@@ -305,13 +305,16 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
             lines = RssUnstructuredSceneVisualizer.get_trajectory_sets(
                 rss_response.rss_state_snapshot, self._camera.get_transform(), self._calibration)
 
-            polygons = []
-            for heading_range in allowed_heading_ranges:
-                polygons.append((RssUnstructuredSceneVisualizer.transform_points(
+            polygons = [
+                (RssUnstructuredSceneVisualizer.transform_points(
                     RssUnstructuredSceneVisualizer._get_points_from_pairs(
                         RssUnstructuredSceneVisualizer.draw_heading_range(
-                            heading_range, rss_response.ego_dynamics_on_route)),
-                    self._camera.get_transform(), self._calibration), (0, 0, 255)))
+                        heading_range,
+                        rss_response.ego_dynamics_on_route)),
+                    self._camera.get_transform(),
+                    self._calibration),
+                (0, 0, 255))
+                for heading_range in allowed_heading_ranges]
 
             RssUnstructuredSceneVisualizer.draw_lines(surface, lines)
             RssUnstructuredSceneVisualizer.draw_polygons(surface, polygons)
@@ -397,10 +400,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
         cords_y_minus_z_x = np.concatenate([cords_x_y_z[1, :], -cords_x_y_z[2, :], cords_x_y_z[0, :]])
         ts = np.transpose(np.dot(calibration, cords_y_minus_z_x))
         camera_ts = np.concatenate([ts[:, 0] / ts[:, 2], ts[:, 1] / ts[:, 2], ts[:, 2]], axis=1)
-        line_to_draw = []
-        for point in camera_ts:
-            line_to_draw.append((int(point[0, 0]), int(point[0, 1])))
-        return line_to_draw
+        return [(int(point[0, 0]), int(point[0, 1])) for point in camera_ts]  # line_to_draw
 
     @staticmethod
     def _get_trajectory_set_points(trajectory_set):
@@ -570,8 +570,9 @@ class RssBoundingBoxVisualizer:
         """
 
         world_cord = RssBoundingBoxVisualizer._vehicle_to_world(cords, vehicle)
-        sensor_cord = RssBoundingBoxVisualizer._world_to_sensor(world_cord, camera_transform)
-        return sensor_cord
+        # Sensor coordinates
+        return RssBoundingBoxVisualizer._world_to_sensor(world_cord, camera_transform)
+
 
     @staticmethod
     def _vehicle_to_world(cords, vehicle):
@@ -583,8 +584,9 @@ class RssBoundingBoxVisualizer:
         bb_vehicle_matrix = get_matrix(bb_transform)
         vehicle_world_matrix = get_matrix(vehicle.get_transform())
         bb_world_matrix = np.dot(vehicle_world_matrix, bb_vehicle_matrix)
-        world_cords = np.dot(bb_world_matrix, np.transpose(cords))
-        return world_cords
+        # World coordinates
+        return np.dot(bb_world_matrix, np.transpose(cords))
+
 
     @staticmethod
     def _world_to_sensor(cords, camera_transform):
@@ -594,8 +596,7 @@ class RssBoundingBoxVisualizer:
 
         sensor_world_matrix = get_matrix(camera_transform)
         world_sensor_matrix = np.linalg.inv(sensor_world_matrix)
-        sensor_cords = np.dot(world_sensor_matrix, cords)
-        return sensor_cords
+        return np.dot(world_sensor_matrix, cords) # sensor coordinates
 
 # ==============================================================================
 # -- RssDebugVisualizer ------------------------------------------------------------

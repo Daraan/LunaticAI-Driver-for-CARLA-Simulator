@@ -127,7 +127,7 @@ class PassiveKeyboardControl(KeyboardControl):
         H/?          : toggle help
     """
 
-    def parse_events(self):
+    def parse_events(self) -> "None | Literal[True]":
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
@@ -136,6 +136,7 @@ class PassiveKeyboardControl(KeyboardControl):
                     return True
                 if self._check_help_event(event):
                     pass
+        return None
 
 class RSSKeyboardControl(KeyboardControl):
     """
@@ -287,7 +288,7 @@ class RSSKeyboardControl(KeyboardControl):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
-            elif event.type == pygame.KEYUP:
+            if event.type == pygame.KEYUP:
                 if self._is_quit_shortcut(event.key):
                     return True
                 
@@ -466,8 +467,9 @@ class RSSKeyboardControl(KeyboardControl):
             if pygame.mouse.get_pressed()[0]:
                 self._parse_mouse(pygame.mouse.get_pos())
             self._control.reverse = self._control.gear < 0
-            return
+            return None
             # Moved Code from Carla example to WorldModel
+        return None
  
 
     def _parse_vehicle_keys(self, keys, milliseconds):

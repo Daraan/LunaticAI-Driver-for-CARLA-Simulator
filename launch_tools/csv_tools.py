@@ -24,9 +24,8 @@ def transform_to_pandas(transform: carla.Transform) -> pd.Series[float]:
     """
     loc = transform.location
     rot = transform.rotation
-    s = pd.Series({"x": loc.x, "y": loc.y, "z": loc.z,
+    return pd.Series({"x": loc.x, "y": loc.y, "z": loc.z,
                    "pitch": rot.pitch, "yaw": rot.yaw, "roll": rot.roll})
-    return s
 
 
 def vehicle_location_to_dataframe(vehicles: list[carla.Actor]) -> pd.DataFrame:

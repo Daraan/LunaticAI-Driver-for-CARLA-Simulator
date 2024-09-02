@@ -11,13 +11,12 @@ def list_py_files(directory):
     """
     Lists all .py files in the given directory and its subdirectories.
     """
-    py_files = []
-    for root, dirs, files in os.walk(directory):  # noqa: B007
-        for file in files:
-            if file.endswith(".py") and not file.startswith("_") and file != "example_runner.py":
-                py_files.append(os.path.join(root, file))
-    return py_files
-
+    return [
+        os.path.join(root, file)
+        for root, dirs, files in os.walk(directory)
+        for file in files
+        if file.endswith(".py") and not file.startswith("_") and file != "example_runner.py"
+    ]
 
 if os.path.basename(os.getcwd()) == "examples":
     os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))  # run from main folder
@@ -54,6 +53,7 @@ print("\n\n")
 
 spec = importlib.util.spec_from_file_location("__main__", file_path)
 if not spec:
-    raise FileNotFoundError(f"File {file_path} not found.")
+    msg = f"File {file_path} not found."
+    raise FileNotFoundError(msg)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)  # type: ignore[attr-defined]

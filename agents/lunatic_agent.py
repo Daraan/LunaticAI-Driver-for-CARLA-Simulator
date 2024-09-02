@@ -33,7 +33,6 @@ from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionRes
 from agents.tools.logging import logger
 from agents.tools.lunatic_agent_tools import (
     detect_vehicles,
-    generate_lane_change_path,
     must_clear_hazard,
     phase_callback,  # type: ignore[unused-import] # noqa: F401
     result_to_context,
@@ -85,7 +84,7 @@ class LunaticAgent(BehaviorAgent):
     When initialized the rules are deep copied from :py:attr:`DEFAULT_RULES`.
     """
     
-    ctx : "Context"
+    ctx : Context
     """The context object of the current step"""
     
     # Information from the InformationManager
@@ -371,6 +370,7 @@ class LunaticAgent(BehaviorAgent):
         """
         if self._detection_matrix:
             return self._detection_matrix.getMatrix()
+        return None
         
     # ------------------ Hazard ------------------ #
     
@@ -1054,7 +1054,7 @@ class LunaticAgent(BehaviorAgent):
             # NOTE: should slow down here
             return True, detection_result
         # NOTE detected but not stopping -> ADD avoidance behavior
-        elif detection_result.obstacle_was_found:
+        if detection_result.obstacle_was_found:
             logger.debug("Detected a pedestrian but determined no intervention necessary (too far away).")
         return False, detection_result
         
@@ -1222,6 +1222,7 @@ class LunaticAgent(BehaviorAgent):
                     self.set_destination(end_location=other_wpt.transform.location,  # type: ignore[arg-type]
                                          start_location=end_waypoint.transform.location, clean_queue=True)
                     return True
+        return None
         
     # ------------------ Other Function ------------------ #
     

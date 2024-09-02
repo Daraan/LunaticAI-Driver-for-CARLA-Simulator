@@ -386,7 +386,7 @@ def detect_surrounding_cars(
     ego_location : carla.Location,
     ego_vehicle :  carla.Actor,
     matrix : dict[str | tuple[int, int], list[int]],
-    road_lane_ids,
+    road_lane_ids : set[RoadLaneId],
     world,
     radius,
     on_highway,
@@ -418,7 +418,7 @@ def detect_surrounding_cars(
         on_highway (bool): True if the ego vehicle is on a highway, False otherwise.
         highway_shape (tuple): Tuple containing highway_type, number of straight highway lanes, entry waypoint tuple and/ exit waypoint tuple.
             Format: (highway_type: string, straight_lanes: int, entry_wps: ([wp,..], [wp,..]), exit_wps: ([wp,..], [wp,..]))
-        ghost (bool): Ghost mode when ego is exiting/entrying a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
+        ghost (bool): Ghost mode when ego is exiting/entering a highway - fix a location of an imaginary vehicle on highway to correctly build matrix from this ghost perspective.
 
     Returns:
         collections.OrderedDict: The updated city matrix with detected surrounding cars.
@@ -476,46 +476,44 @@ def detect_surrounding_cars(
         exit_wps = highway_shape[3]  # Tuple with start and end waypoint of the exit: ([start_wp, start_wp..], [end_wp, end_wp..])
 
         # get all road id's of entry and exit and previous/next road
-        entry_road_id = []
-        exit_road_id = []
+        entry_road_ids = []
+        exit_road_ids = []
         entry_city_road = [] # road before an entry in city
         exit_city_road = [] # road after an exit in city
-        entry_highway_road = [] # road after an entry on highway
-        exit_highway_road = [] # road before an exit on highway
+        entry_highway_road: list[int] # road after an entry on highway
+        exit_highway_road : list[int] # road before an exit on highway
         if entry_wps:
             for entry_wp in entry_wps[0]: # entry_wps[0] contains all start waypoints of entry
                 entry_city_road.append(entry_wp.previous(3)[0].road_id)
-                entry_road_id.append(entry_wp.road_id)
-            for entry_wp in entry_wps[1]: # entry_wps[1] contains all end waypoints of entry
-                entry_highway_road.append(entry_wp.next(3)[0].road_id)
+                entry_road_ids.append(entry_wp.road_id)
             # TODO: Check if all cars on highway entry are captured: especially on road after entry on highway
             if (entry_wp.next(3)[0] and entry_wp.next(3)[0].get_left_lane()
                     and entry_wp.next(3)[0].road_id == entry_wp.next(3)[0].get_left_lane().road_id):
                 entry_highway_road = []
+            else:
+                entry_highway_road = [entry_wp.next(3)[0].road_id for entry_wp in entry_wps[1]]
+        else:
+            entry_highway_road = []
         if exit_wps:
             for exit_wp in exit_wps[1]: # exit_wps[1] contains all end waypoints of exit
                 exit_city_road.append(exit_wp.next(3)[0].road_id)
-                exit_road_id.append(exit_wp.road_id)
-            for exit_wp in exit_wps[0]: # exit_wps[0] contains all start waypoints of exit
-                exit_highway_road.append(exit_wp.previous(3)[0].road_id)
+                exit_road_ids.append(exit_wp.road_id)
             # TODO: Check if all cars on highway exit are captured: especially on road before exit on highway
             if (exit_wp.next(3)[0] and exit_wp.next(3)[0].get_left_lane()
                     and exit_wp.next(3)[0].road_id == exit_wp.next(3)[0].get_left_lane().road_id):
                 exit_highway_road = []
+            else:
+                exit_highway_road = [exit_wp.previous(3)[0].road_id for exit_wp in exit_wps[0]]
+        else:
+            entry_highway_road = []
+            
+        road_ids: list[int] = entry_road_ids + entry_city_road + exit_road_ids + exit_city_road + exit_highway_road + entry_highway_road
 
     # Update matrix based on the lane and position/distance to ego vehicle of other car
     if (
         on_highway
-        and (highway_shape is not None)
-        and (
-            ego_vehicle_road_id
-            in entry_road_id
-            + entry_city_road
-            + exit_road_id
-            + exit_city_road
-            + exit_highway_road
-            + entry_highway_road
-        )
+        and highway_shape is not None  # below are bound if this is True
+        and ego_vehicle_road_id in road_ids
     ):
         surrounding_cars_on_highway_entryExit.append(ego_vehicle)
     
@@ -532,16 +530,8 @@ def detect_surrounding_cars(
         # ignore car on highway entry / Exit bc. considered in update_matrix()
         if (
             on_highway
-            and (highway_shape is not None)
-            and (
-                other_car_road_id
-                in entry_road_id
-                + entry_city_road
-                + exit_road_id
-                + exit_city_road
-                + exit_highway_road
-                + entry_highway_road
-            )
+            and highway_shape is not None
+            and other_car_road_id in road_ids
         ):
             surrounding_cars_on_highway_entryExit.append(car)
             continue
@@ -827,7 +817,7 @@ def is_highway_junction(ego_vehicle, ego_wp, junction, road_lane_ids, direction_
     )
 
     highway_junction = False
-    for _, lanes in lanes_all.items():
+    for lanes in lanes_all.values():
         if len(lanes) >= 8:
             highway_junction = True
             break

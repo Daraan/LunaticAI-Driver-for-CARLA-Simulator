@@ -1,4 +1,6 @@
+# ruff: noqa: SLF001
 # pylint: disable=protected-access, no-member
+# pyright: reportPrivateUsage=false
 """
 Provides tools to interact with carla: access the client, world, map,
 spawn actors, destroy actors, and initialize carla.
@@ -90,7 +92,7 @@ def destroy_actors(actors: "Iterable[carla.Actor | CustomSensorInterface]"):
             if "time-out" in str(e):
                 pass
             else:
-                raise e
+                raise
         else:
             for command in batch:
                 if CarlaDataProvider.actor_id_exists(command.actor_id):

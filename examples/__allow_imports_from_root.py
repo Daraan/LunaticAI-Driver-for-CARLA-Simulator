@@ -21,6 +21,6 @@ if p is None:
     # TODO: add support for example/<subfolders>
     p = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..")
-    )  # todo: could be more elegant and more fail safe.
+    )  # note: could be more elegant and more fail safe.
 sys.path.append(p)
 print(f"Added to sys.path: {p}")
