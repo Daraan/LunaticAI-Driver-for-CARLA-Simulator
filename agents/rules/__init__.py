@@ -26,7 +26,7 @@ from agents.rules.lane_changes import AvoidTailgatorRule, RandomLaneChangeRule, 
 from agents.rules.obstacles import *
 from agents.rules.obstacles import DriveSlowTowardsTrafficLight, PassYellowTrafficLightRule
 from agents.rules.stopped_long_trigger import StoppedTooLongTrigger
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from classes.constants import Phase
 from classes.rule import Rule
 

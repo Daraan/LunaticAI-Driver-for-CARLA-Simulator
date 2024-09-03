@@ -9,7 +9,7 @@ import carla
 from carla import TrafficLightState
 
 from agents.tools.hints import TrafficLightDetectionResult
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from agents.tools.misc import is_within_distance
 from classes.constants import AgentState
 from data_gathering.information_manager import InformationManager

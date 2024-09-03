@@ -29,7 +29,7 @@ from agents.tools.config_creation import (
     RssRoadBoundariesModeAlias,
     RuleCreatingParameters,
 )
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from agents.tools.lunatic_agent_tools import (
     detect_vehicles,
     must_clear_hazard,

@@ -11,7 +11,7 @@ import pygame
 import pylab
 from typing_extensions import TypedDict
 
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 
 #from classes.constants import StreetType
 from data_gathering.car_detection_matrix.informationUtils import (
@@ -296,7 +296,7 @@ class AsyncDetectionMatrix(DetectionMatrix):
         if self.worker_thread.is_alive():
             self.worker_thread.join(timeout)
         else:
-            from agents.tools.logging import logger
+            from agents.tools.logs import logger
             logger.info("DetectionMatrix.stop called multiple times.")
         self.matrix = None # prevent rendering # type: ignore[assignment]
     

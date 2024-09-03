@@ -3,7 +3,7 @@
 from typing import List
 
 from agents.rules.behaviour_templates import DEBUG_RULES
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from classes.constants import AgentState, Phase
 from classes.rule import ConditionFunction, Context, MultiRule, Rule
 

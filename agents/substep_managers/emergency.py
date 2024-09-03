@@ -1,7 +1,7 @@
 import random
 from typing import TYPE_CHECKING, Optional
 
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 
 if TYPE_CHECKING:
     import carla

@@ -49,7 +49,7 @@ from typing_extensions import (
     overload,
 )
 
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from classes.constants import Hazard, HazardSeverity, Phase, RulePriority, RuleResult
 from classes.evaluation_function import ConditionFunction
 from classes.exceptions import DoNotEvaluateChildRules, UnblockRuleException

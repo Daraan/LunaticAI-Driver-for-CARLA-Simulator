@@ -37,7 +37,7 @@ except ModuleNotFoundError:
 
 from agents.lunatic_agent import LunaticAgent
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from classes.constants import READTHEDOCS, Phase
 from classes.keyboard_controls import RSSKeyboardControl
 from classes.worldmodel import AD_RSS_AVAILABLE, GameFramework, WorldModel

@@ -18,7 +18,7 @@ from typing import cast as assure_type
 
 import carla
 
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from classes._sensor_interface import CustomSensorInterface
 from classes.constants import AD_RSS_AVAILABLE, RssLogLevel, RssLogLevelAlias
 from classes.rss_visualization import (  # pylint: disable=relative-import

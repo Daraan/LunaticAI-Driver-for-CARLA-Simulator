@@ -22,7 +22,7 @@ from agents.lunatic_agent import LunaticAgent
 from agents.rules import create_default_rules
 from agents.tools.config_creation import AsDictConfig, LaunchConfig, LunaticAgentSettings
 from agents.tools.debug_drawing import debug_drawing
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from classes import exceptions
 from classes.constants import Phase
 from classes.keyboard_controls import RSSKeyboardControl  # Alternative: PassiveKeyboardControl

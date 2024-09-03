@@ -9,7 +9,7 @@ import carla
 import numpy as np
 from cachetools import LRUCache, cached
 
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from launch_tools import CarlaDataProvider
 
 

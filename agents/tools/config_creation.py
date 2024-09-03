@@ -327,7 +327,7 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         Raises:
             Exception: If the overwrites cannot be merged into the agent settings.
         """
-        from agents.tools.logging import logger
+        from agents.tools.logs import logger
 
         behavior: cls
         if settings is None:

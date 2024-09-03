@@ -25,7 +25,7 @@ from typing_extensions import Concatenate, Literal, ParamSpec, TypeVar, assert_n
 
 from agents.tools.config_creation import AgentConfig
 from agents.tools.hints import ObstacleDetectionResult
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from agents.tools.misc import is_within_distance
 from classes.constants import Phase, RoadOption
 from classes.exceptions import EmergencyStopException, LunaticAgentException

@@ -18,7 +18,7 @@ import carla
 from cachetools import cached
 from typing_extensions import Concatenate, ParamSpec, Self
 
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from classes.constants import AgentState
 from launch_tools import CarlaDataProvider
 

@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from classes._sensor_interface import CustomSensorInterface
     from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 
-from agents.tools.logging import logger
+from agents.tools.logs import logger
 from launch_tools import CarlaDataProvider, Literal, carla_service
 from launch_tools.blueprint_helpers import get_actor_blueprints
 

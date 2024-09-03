@@ -209,7 +209,7 @@ def _test_custom_init_Rule():
     import sys
     from logging import StreamHandler
     from contextlib import redirect_stderr
-    from agents.tools.logging import logger
+    from agents.tools.logs import logger
     alt_out = io.StringIO()
     # suppress expected message
     
