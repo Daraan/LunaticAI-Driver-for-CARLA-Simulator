@@ -554,7 +554,7 @@ def detect_surrounding_cars(
         # insert car in matrix
         if matrix:
             # if road id & lane id of other exist already in matrix (normal case, w/o other car on different road_id in front/behind)
-            if other_car_road_lane_id in matrix.keys():
+            if other_car_road_lane_id in matrix:
                 if car.id == ego_vehicle.id:
                     matrix[other_car_road_lane_id][col] = 1
                 else:
@@ -564,7 +564,7 @@ def detect_surrounding_cars(
             # elif road id changes in front / behind then place other car based on lane id
             elif (lanes_exist_further or lanes_existed_before) and (
                 other_car_lane_id
-             in [road_lane[1] for road_lane in matrix.keys()]):
+             in [road_lane[1] for road_lane in matrix]):
                 if car.id == ego_vehicle.id:
                     matrix[(ego_vehicle_road_id, other_car_lane_id)][
                         col
@@ -648,19 +648,17 @@ def get_forward_vector_distance(ego_vehicle_location: carla.Location,
         if left_lane_wp:
             old_left_lane_wps.append(left_lane_wp.id)
             left_lane_wp = left_lane_wp.get_left_lane()
-            if left_lane_wp:
-                if left_lane_wp.lane_id == other_lane_id:
-                    perpendicular_wp = left_lane_wp
-                    break
+            if left_lane_wp and left_lane_wp.lane_id == other_lane_id:
+                perpendicular_wp = left_lane_wp
+                break
         
         # check if one waypoint to the right is on same lane as other car
         if right_lane_wp:
             old_right_lane_wps.append(right_lane_wp.id)
             right_lane_wp = right_lane_wp.get_right_lane()
-            if right_lane_wp:
-                if right_lane_wp.lane_id == other_lane_id:
-                    perpendicular_wp = right_lane_wp
-                    break
+            if right_lane_wp and right_lane_wp.lane_id == other_lane_id:
+                perpendicular_wp = right_lane_wp
+                break
 
 
     # calculate distance between ego and perpendicular waypoint (i.e. distance we go left/right in parallel to street)
@@ -866,9 +864,7 @@ def is_junction_ahead(ego_waypoint, distance):
     for x in list(range(1, distance + 1)):
         if ego_waypoint.next(x)[0].is_junction:
             return True
-    if ego_waypoint.is_junction:
-        return True
-    return False
+    return bool(ego_waypoint.is_junction)
 
 
 def is_junction_behind(ego_waypoint, distance):
@@ -886,9 +882,7 @@ def is_junction_behind(ego_waypoint, distance):
     for x in list(range(1, distance + 1)):
         if ego_waypoint.previous(x)[0].is_junction:
             return True
-    if ego_waypoint.is_junction:
-        return True
-    return False
+    return bool(ego_waypoint.is_junction)
 
 
 def get_junction_ahead(ego_waypoint, distance):
@@ -1048,11 +1042,9 @@ def detect_ego_before_junction(
         0
     ].is_junction:  # doesn't matter how many columns: write "1" in the cell clostest to junction inner part
         c = columns - 1
-    elif columns == 2:  # if 2 columns that it must be the cell farsest away
-        c = columns - 2
-    elif ego_wp.next(int(distance_to_junc / columns) * 2)[
-        0
-    ].is_junction:  # if 3 columns check if junction is closer than 10m, then middle cell
+    elif (columns == 2  # if 2 columns that it must be the cell farsest away
+          or  # if 3 columns check if junction is closer than 10m, then middle cell
+          ego_wp.next(int(distance_to_junc / columns) * 2)[0].is_junction):
         c = columns - 2
     else:  # if 3 columns and further away than 10m, then cell farsest away
         c = columns - 3

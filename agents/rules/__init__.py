@@ -109,7 +109,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
         cfg.phases = [Phase.from_string(phase) if isinstance(phase, str) else phase for phase in cfg.phases]  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
     
     # Throw out all keys that are not valid for the target, i.e. MISSING
-    valid_keys = list({k for k in cfg.keys() if not OmegaConf.is_missing(cfg, k)})  # _target_ is kept for instantiate
+    valid_keys = list({k for k in cfg if not OmegaConf.is_missing(cfg, k)})  # _target_ is kept for instantiate
     clean_cfg : RuleCreatingParameters = OmegaConf.masked_copy(cfg, valid_keys)   # pyright: ignore[reportArgumentType]
     
     if "_args_" in clean_cfg and clean_cfg._args_ is None:
@@ -134,7 +134,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
                     from agents.tools.config_creation import LunaticAgentSettings
                     parent : LunaticAgentSettings = OmegaConf.structured(LunaticAgentSettings(rules=[]),
                                                                          flags={"allow_objects": True})
-                    for key in parent.live_info.keys():
+                    for key in parent.live_info.keys():  # noqa: SIM118,RUF100
                         if key == "executed_direction":
                             parent.live_info[key] = "VOID"
                         try:

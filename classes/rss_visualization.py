@@ -407,10 +407,8 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
         """
         """
         cords = np.zeros((len(trajectory_set), 4))
-        i = 0
-        for pt in trajectory_set:
+        for i, pt in enumerate(trajectory_set):
             cords[i, :] = np.array([pt.x, -pt.y, 0, 1])
-            i += 1
         return cords
 
     @staticmethod
@@ -418,10 +416,8 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
         """
         """
         cords = np.zeros((len(trajectory_set), 4))
-        i = 0
-        for pt in trajectory_set:
+        for i, pt in enumerate(trajectory_set):
             cords[i, :] = np.array([pt[0], -pt[1], 0, 1])
-            i += 1
         return cords
 
     @staticmethod
@@ -462,9 +458,8 @@ class RssBoundingBoxVisualizer:
                 return
 
         # only render on new frame
-        if len(self._surface_for_frame) > 0:
-            if self._surface_for_frame[0][0] == frame:
-                return
+        if len(self._surface_for_frame) > 0 and self._surface_for_frame[0][0] == frame:
+            return
 
         surface = pygame.Surface(self._dim)
         surface.set_colorkey(pygame.Color('black'))

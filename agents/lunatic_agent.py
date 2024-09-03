@@ -333,7 +333,7 @@ class LunaticAgent(BehaviorAgent):
         for rule in rules:
             for phase in rule.phases:
                 self.rules[phase].append(rule)
-        for phase in self.rules.keys():
+        for phase in self.rules.keys():  # noqa: SIM118
             self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
             
     def add_config_rules(self, config: Optional[Union[LunaticAgentSettings, List[RuleCreatingParameters]]]=None):
@@ -343,7 +343,8 @@ class LunaticAgent(BehaviorAgent):
         if config is None:
             config = self.config
         rule_list : List[RuleCreatingParameters]
-        if isinstance(config, (AgentConfig, DictConfig)) and "rules" in config.keys():
+        # "rules" in config is also false for rules == MISSING
+        if isinstance(config, (AgentConfig, DictConfig)) and "rules" in config.keys():  # noqa: SIM118, RUF100
             try:
                 rule_list = config.rules
             except omegaconf.MissingMandatoryValue:
