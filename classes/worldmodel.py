@@ -15,14 +15,14 @@ from typing import cast as assure_type
 
 import carla
 import hydra
-import numpy as np
-import numpy.random as random
+from numpy import random as nprandom
 import pygame
+import random
 from hydra.core.global_hydra import GlobalHydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf, open_dict
 
-from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, RssLogLevel, RssRoadBoundariesMode
+from agents.tools.config_creation import LaunchConfig, RssLogLevel, RssRoadBoundariesMode
 from classes import exceptions as _exceptions
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
     from agents.lunatic_agent import LunaticAgent
     from agents.navigation.global_route_planner import GlobalRoutePlanner
-    from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings, RssRoadBoundariesModeAlias
+    from agents.tools.config_creation import LunaticAgentSettings, RssRoadBoundariesModeAlias
     from classes._sensor_interface import CustomSensorInterface
     from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 
@@ -284,7 +284,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         """
         if args.seed:
             random.seed(args.seed)
-            np.random.seed(args.seed)
+            nprandom.seed(args.seed)
         self._args = args
         self.world_settings: carla.WorldSettings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
         
@@ -756,9 +756,9 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             except ValueError:
                 # Hydra already initialized
                 args = GameFramework.load_hydra_config(config_name)
-            except Exception as e:
+            except Exception:
                 print("Problem with", type(args), args)
-                raise e
+                raise
             args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
         self._args : LaunchConfig = assure_type(LaunchConfig, args)
         
@@ -834,10 +834,12 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         
         self._weather_presets = CarlaDataProvider.find_weather_presets()
         self._weather_index = 0
-        self.weather: str = None
+        self.weather: str = "NotSet"
         """
         Name of currently used weather preset.
         See also: :py:class:`CarlaDataProvider.find_weather_presets()<CarlaDataProvider>`
+        
+        :meta hide-value:
         """
         
         self.actors: List[Union[carla.Actor, CustomSensorInterface]] = []
@@ -1046,8 +1048,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             if self.player is None or self.camera_manager is not None:
                 # First pass without a player or second pass -> new player
                 blueprint: carla.ActorBlueprint = assure_type(carla.ActorBlueprint,
-                    random.choice(get_actor_blueprints(self._actor_filter, self._actor_generation)))  # type: ignore[arg-type]
-                blueprint.set_attribute('role_name', self.actor_role_name) # type: ignore
+                    random.choice(get_actor_blueprints(self._actor_filter, self._actor_generation)))
+                blueprint.set_attribute('role_name', self.actor_role_name)  # type: ignore[arg-type]
                 if blueprint.has_attribute('color'):
                     color = random.choice(blueprint.get_attribute('color').recommended_values)
                     blueprint.set_attribute('color', color)

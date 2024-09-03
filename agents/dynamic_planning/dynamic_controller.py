@@ -7,12 +7,15 @@
 
 import math
 from collections import deque
+from typing import TYPE_CHECKING
 
 import carla
 import numpy as np
 
 from agents.navigation.controller import PIDLateralController, PIDLongitudinalController, VehiclePIDController
-from classes.type_protocols import UseableWithDynamicPlanner
+
+if TYPE_CHECKING:
+    from classes.type_protocols import UseableWithDynamicPlanner
 
 STEERING_UPDATE_SPEED = 0.1
 

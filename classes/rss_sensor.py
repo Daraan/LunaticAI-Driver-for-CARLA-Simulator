@@ -120,8 +120,7 @@ class RssSensor(CustomSensorInterface):
         physics_control = parent_actor.get_physics_control()
         self._max_steer_angle = 0.0
         for wheel in physics_control.wheels:
-            if wheel.max_steer_angle > self._max_steer_angle:
-                self._max_steer_angle = wheel.max_steer_angle
+            self._max_steer_angle = max(self._max_steer_angle, wheel.max_steer_angle)
         self._max_steer_angle = math.radians(self._max_steer_angle)
 
         bp = CarlaDataProvider._blueprint_library.find('sensor.other.rss')

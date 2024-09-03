@@ -18,7 +18,7 @@ except ImportError:
         print("Using srunner from ", srunner.__file__)
         # Allows submodules to detect the "srunner" package
         import sys
-        sys.path.append(srunner.__path__[0].rsplit("/", 1)[0])
+        sys.path.append(next(iter(srunner.__path__)).rsplit("/", 1)[0])
         from scenario_runner.srunner.scenariomanager.timer import GameTime
         # Fix import problems if srunner is in PYTHONPATH and submodule is not used.
         del srunner
@@ -43,5 +43,5 @@ else:
 
 if TYPE_CHECKING:
     # still use submodule for type-hints
-    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-    from scenario_runner.srunner.scenariomanager.timer import GameTime
+    from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider  # noqa: TCH004
+    from scenario_runner.srunner.scenariomanager.timer import GameTime  # noqa: TCH004

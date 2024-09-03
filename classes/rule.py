@@ -34,7 +34,6 @@ from typing import (
 )
 from weakref import CallableProxyType, WeakSet, proxy
 
-import carla
 import pygame
 from omegaconf import DictConfig, OmegaConf
 from typing_extensions import (
@@ -54,12 +53,13 @@ from agents.tools.logging import logger
 from classes.constants import Hazard, HazardSeverity, Phase, RulePriority, RuleResult
 from classes.evaluation_function import ConditionFunction
 from classes.exceptions import DoNotEvaluateChildRules, UnblockRuleException
-from classes.type_protocols import CallableAction, ConditionFunctionLike, ConditionFunctionLikeT
 from classes.worldmodel import GameFramework
 from data_gathering.information_manager import InformationManager
 from launch_tools import CarlaDataProvider, singledispatchmethod
 
 if TYPE_CHECKING:
+    import carla
+    from classes.type_protocols import CallableAction, ConditionFunctionLike, ConditionFunctionLikeT
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import ContextSettings, LiveInfo, RuleConfig
     # NOTE: gameframework.py adds GameFramework to this module's variables
@@ -299,7 +299,7 @@ class Context(CarlaDataProvider):
     
 #@ConditionFunction["Rule", [], Literal[True]] # python 3.9+ syntax
 @ConditionFunction
-def always_execute(ctx : Context) -> Literal[True]: # pylint: disable=unused-argument
+def always_execute(ctx : Context) -> Literal[True]: # pylint: disable=unused-argument, # noqa: ARG001
     """
     This is an :py:class:`.ConditionFunction` that always returns :python:`True`. It can be used to always execute an action.
     """
@@ -313,6 +313,7 @@ def _use_temporary_config(func: Callable[Concatenate[_Rule,
     During the condition evaluation the ctx.config should have the overwrite settings applied
     but not in a permanent way.
     """
+    # TODO: To avoid unused argument error, consume the dict; however this might be harder to understand
     
     @wraps(func)
     def wrapper(self: _Rule, ctx: Context, overwrite: Optional[Dict[str, Any]] = None, *args: _P.args, **kwargs: _P.kwargs) -> _T:
@@ -734,13 +735,14 @@ class Rule(_GroupRule):
                 assert clsdict and isinstance(bases, tuple)
                 class_name = phases
                 new_rule_class = type(class_name, (cls, *bases), clsdict, metarule=True, **kwargs)
-                assert issubclass(new_rule_class, cls) # for type-hints
-                return new_rule_class
             except Exception:
                 print("ERROR: If you want to initialize a rule be sure that you pass a Phase object as the first argument."
                       "A string assumes that you've used class NewSubclass(metaclass=Rule) "
                       "This is DEPRECATED use class NewSubclass(Rule, metarule=True) instead.")
                 raise
+            else:
+                assert issubclass(new_rule_class, cls)  # for type-hints
+                return new_rule_class
         # Normal instance
         return super().__new__(cls)
 
@@ -832,7 +834,7 @@ class Rule(_GroupRule):
                 phases = frozenset([phases]) # single element
         for p in phases:
             if not isinstance(p, Phase):
-                raise ValueError(f"phase must be of type Phases, not {type(p)}")
+                raise TypeError(f"phase must be of type Phases, not {type(p)}")
         self.phases = phases
         
         # Check Rule
@@ -884,12 +886,17 @@ class Rule(_GroupRule):
         if action is not None and actions is not None:
             try:
                 if len(actions) == 1 and action is actions[True]:
-                    logger.info("`action` and `actions` have been both been used when initializing %s. Did you use `condition.register_action`? Then you can omit the action parameter / attribute.", self)
+                    logger.info(
+                        "`action` and `actions` have been both been used when initializing %s. "
+                         "Did you use `condition.register_action`? Then you can omit the action parameter.",
+                         self)
                     action = None
                 else:
                     raise ValueError("Only one of 'action' and 'actions' can be set.")
-            except Exception as e:
-                raise ValueError("Either only one of 'action' and 'actions' can be set, or actions[True] must be the same as action - other actions are currently not supported.") from e
+            except (KeyError, ValueError) as e:
+                raise ValueError(
+                    "Either only one of 'action' and 'actions' can be set, or actions[True] must be the same as action "
+                    "- other actions are currently not supported.") from e
         if action is None and actions is None and not hasattr(self, "actions"):
             # NOTE: the k in params check below is essential for this to work correctly.
             raise TypeError(
@@ -919,7 +926,7 @@ class Rule(_GroupRule):
         # Assure that method(self, ctx) like functions are accessible like them
         for key, func in self.actions.items():
             if not callable(func):
-                raise ValueError(f"Action for key {key} must be callable, not {type(func)}")
+                raise TypeError(f"Action for key {key} must be callable, not {type(func)}")
             multiple_parameters = len(inspect.signature(func).parameters) >= 2
             if multiple_parameters and getattr(func, "use_self", True):
                 # NOTE: could use types.MethodType
@@ -927,7 +934,7 @@ class Rule(_GroupRule):
         
         # Check Description
         if not isinstance(description, str):
-            raise ValueError(f"description must be of type str, not {type(description)}")
+            raise TypeError(f"description must be of type str, not {type(description)}")
         self.description = description
         super().__init__(group or self.group, cooldown_reset_value, enabled) # or self.group for subclassing
         self.priority : float | int | RulePriority = priority # used by agent.add_rule
@@ -1071,7 +1078,7 @@ class Rule(_GroupRule):
                 # e.g. forgot a action, or rules attribute (MultiRule)
                 if "missing" in str(e):
                     logger.error("Class %s has likely missing attributes that cannot be passed to init. Check if all required attributes are set in the class definition.", cls.__name__)
-                raise e
+                raise
         update_wrapper(partial_init, cls.__init__)  # pyright: ignore[reportUnknownArgumentType]
         cls.__init__ = partial_init  # pyright: ignore[reportIncompatibleMethodOverride, reportAttributeAccessIssue]
 
@@ -1170,7 +1177,7 @@ class Rule(_GroupRule):
 
     @_use_temporary_config
     def evaluate(self, ctx : Context,
-                 overwrite: Optional[Dict[str, Any]] = None  # pylint: ignore=unused-argument
+                 overwrite: Optional[Dict[str, Any]] = None  # pylint: ignore=unused-argument # noqa: ARG002
                  ) -> Union[bool, Hashable, "Literal[RuleResult.NO_RESULT]"]:
         """
         Note:

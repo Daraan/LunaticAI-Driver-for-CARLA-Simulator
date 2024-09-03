@@ -296,9 +296,10 @@ class LocalPlanner:
         else:
             try:
                 wpt, direction = self._waypoints_queue[-1]
-                return wpt, direction
             except IndexError:
                 return None, RoadOption.VOID
+            else:
+                return wpt, direction
 
     def get_plan(self):
         # type: () -> deque[tuple[carla.Waypoint, RoadOption]]

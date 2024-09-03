@@ -5,7 +5,6 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
-import carla
 import matplotlib
 import numpy as np
 import pygame
@@ -26,6 +25,9 @@ from launch_tools import CarlaDataProvider
 
 matplotlib.use('Agg')
 import matplotlib.backends.backend_agg as agg
+
+if TYPE_CHECKING:
+    import carla
 
 __all__ = [
     'DetectionMatrix',

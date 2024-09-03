@@ -3,7 +3,9 @@ from __future__ import annotations
 
 # pyright: reportUnknownMemberType=none
 # pyright: reportUnknownVariableType=information
-from os import PathLike
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from os import PathLike
 
 import carla
 import pandas as pd

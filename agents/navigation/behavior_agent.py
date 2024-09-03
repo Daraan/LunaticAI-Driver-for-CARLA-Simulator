@@ -51,7 +51,6 @@ class BehaviorAgent(BasicAgent):
         self._incoming_direction = None
         self._incoming_waypoint = None
         self._min_speed = 5
-        self._behavior = None
         self._sampling_resolution = 4.5  # NOTE also set in default behaviors
 
         print("Behavior of Agent", behavior)
@@ -121,8 +120,8 @@ class BehaviorAgent(BasicAgent):
         behind_vehicle_state, behind_vehicle, _ = self._vehicle_obstacle_detected(vehicle_list, max(
             self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, low_angle_th=160)
         if behind_vehicle_state and self._speed < get_speed(behind_vehicle):
-            if (right_turn == carla.LaneChange.Right or right_turn ==
-                carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
+            if (right_turn in {carla.LaneChange.Right, carla.LaneChange.Both}
+                 and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving):
                 new_vehicle_state, _, _ = self._vehicle_obstacle_detected(vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=1)
                 if not new_vehicle_state:

@@ -9,7 +9,7 @@ from classes.rule import ConditionFunction, Context, Rule
 
 
 @ConditionFunction(truthy=True)
-def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
+def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context"):
     """
     Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
     and did not avoided tailgating in the last 200 steps
@@ -36,7 +36,7 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context") -> bool:
 
     # If there is a tailgator check if faster
     # TODO: or evaluation a bit faster
-    if check_behind.obstacle_was_found and ctx.live_info.current_speed < get_speed(check_behind.obstacle):
+    if check_behind.obstacle_was_found and ctx.live_info.current_speed < get_speed(check_behind.obstacle):  # pyright: ignore[reportArgumentType]
         return check_behind
     return False
 

@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from typing import NoReturn
 
     # NOTE: to prevent this circular import when classes.rule are imported Rule and Context are set accordingly for this module
-    from classes.rule import Context, Rule  # circular import
+    from classes.rule import Context, Rule  # circular import  # noqa: TCH004,RUF100
 
 
 _T = TypeVar("_T")

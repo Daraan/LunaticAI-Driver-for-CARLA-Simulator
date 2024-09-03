@@ -194,11 +194,11 @@ class HUD:
             for item in self._info_text:
                 if v_offset + 18 > self.dim[1]:
                     break
+                first_item = None
                 if isinstance(item, list):
                     if len(item) > 1:
                         points = [(x + 8, v_offset + 8 + (1 - y) * 30) for x, y in enumerate(item)]
                         pygame.draw.lines(display, (255, 136, 0), False, points, 2)
-                    item = None
                     v_offset += 18
                 elif isinstance(item, tuple):
                     if isinstance(item[1], bool):
@@ -249,9 +249,9 @@ class HUD:
                         if rect:
                             # pygame.draw.rect(display, (255, 255, 255), rect)
                             pygame.draw.rect(display, (255, 255, 255), rect, input_value_rect_fill)
-                    item = item[0]
-                if item:  # At this point has to be a str
-                    surface = self._font_mono.render(item, True, text_color)
+                    first_item = item[0]
+                if first_item:  # At this point has to be a str
+                    surface = self._font_mono.render(first_item, True, text_color)
                     display.blit(surface, (8, v_offset))
                 v_offset += 18
 

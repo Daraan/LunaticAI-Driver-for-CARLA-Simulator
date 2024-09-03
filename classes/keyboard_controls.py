@@ -517,8 +517,8 @@ class RSSKeyboardControl(KeyboardControl):
         lateral = float(pos[0] - self._mouse_steering_center[0])
         longitudinal = float(pos[1] - self._mouse_steering_center[1])
         max_val = self.MOUSE_STEERING_RANGE
-        lateral = -max_val if lateral < -max_val else max_val if lateral > max_val else lateral
-        longitudinal = -max_val if longitudinal < -max_val else max_val if longitudinal > max_val else longitudinal
+        lateral = -max_val if lateral < -max_val else min(lateral, max_val)
+        longitudinal = -max_val if longitudinal < -max_val else min(longitudinal, max_val)
         self._control.steer = lateral / max_val
         if longitudinal < 0.0:
             self._control.throttle = -longitudinal / max_val

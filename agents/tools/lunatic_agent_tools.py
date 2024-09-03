@@ -29,17 +29,17 @@ from agents.tools.logging import logger
 from agents.tools.misc import is_within_distance
 from classes.constants import Phase, RoadOption
 from classes.exceptions import EmergencyStopException, LunaticAgentException
-from classes.type_protocols import (
-    AgentConfigT,
-    CallableT,
-    CanDetectNearbyObstacles,
-    CanDetectObstacles,
-    HasBaseSettings,
-    HasConfig,
-)
 from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:
+    from classes.type_protocols import (
+        AgentConfigT,
+        CallableT,
+        CanDetectNearbyObstacles,
+        CanDetectObstacles,
+        HasBaseSettings,
+        HasConfig,
+    )
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import BehaviorAgentSettings, LunaticAgentSettings
     from classes.worldmodel import WorldModel

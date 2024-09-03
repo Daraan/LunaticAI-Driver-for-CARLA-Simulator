@@ -29,7 +29,6 @@ from agents.tools.config_creation import (
     RssRoadBoundariesModeAlias,
     RuleCreatingParameters,
 )
-from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult
 from agents.tools.logging import logger
 from agents.tools.lunatic_agent_tools import (
     detect_vehicles,
@@ -55,6 +54,7 @@ from data_gathering.car_detection_matrix.run_matrix import AsyncDetectionMatrix,
 from data_gathering.information_manager import InformationManager
 
 if TYPE_CHECKING:
+    from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult
     import pygame
 
 class LunaticAgent(BehaviorAgent):
@@ -586,8 +586,7 @@ class LunaticAgent(BehaviorAgent):
         """
         normal_next = self.current_phase.next_phase() # sanity checking if everything is correct
         if self._validate_phases:
-            assert (normal_next == Phase.USER_CONTROLLED
-                    or phase == normal_next
+            assert (normal_next in {phase, Phase.USER_CONTROLLED}
                     or phase & Phase.EXCEPTIONS
                     or phase & Phase.USER_CONTROLLED),\
                     f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
@@ -702,10 +701,11 @@ class LunaticAgent(BehaviorAgent):
             try:
                 planned_control = self._inner_step(debug=debug)  # debug=True draws waypoints
                 if self.detected_hazards:
-                    raise EmergencyStopException(self.detected_hazards)
+                    # The must_clear_hazard decorator will raise this, but in case the _inner_step is overwritten
+                    raise EmergencyStopException(self.detected_hazards)  # noqa: TRY301
             # Reraise Exceptions
-            except UserInterruption as ui:
-                raise ui
+            except UserInterruption:
+                raise
 
             # Handled Exceptions
             except EmergencyStopException as emergency:
@@ -1058,9 +1058,9 @@ class LunaticAgent(BehaviorAgent):
         if detection_result.obstacle_was_found:
             logger.debug("Detected a pedestrian but determined no intervention necessary (too far away).")
         return False, detection_result
-        
+            
     def car_following_behavior(self,
-                               vehicle_detected: bool,
+                               vehicle_detected: bool,  # noqa: ARG002,RUF100 # pylint: disable=unused-argument
                                vehicle: carla.Actor,
                                distance: float) -> carla.VehicleControl:
         """
@@ -1196,12 +1196,12 @@ class LunaticAgent(BehaviorAgent):
         for direction in order:
             if direction == "right":
                 right_turn = waypoint.right_lane_marking.lane_change
-                can_change = (right_turn == carla.LaneChange.Right or right_turn == carla.LaneChange.Both)
+                can_change = (right_turn in {carla.LaneChange.Right, carla.LaneChange.Both})
                 other_wpt = waypoint.get_right_lane()
                 lane_offset = 1
             elif direction == "left":
                 left_turn = waypoint.left_lane_marking.lane_change
-                can_change = (left_turn == carla.LaneChange.Left or left_turn == carla.LaneChange.Both)
+                can_change = (left_turn in {carla.LaneChange.Left, carla.LaneChange.Both})
                 other_wpt = waypoint.get_left_lane()
                 lane_offset = -1
             else:

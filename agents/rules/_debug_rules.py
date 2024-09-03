@@ -120,7 +120,6 @@ class DebugRuleWithEval(Rule):
         assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
         assert isinstance(ctx, Context)
         assert isinstance(self, DebugRuleWithEval)
-        return
     
     if TYPE_CHECKING:
         assert_type(true_action, Callable[[Self, Context], None])
@@ -184,7 +183,7 @@ class CustomInitRule(Rule):
     phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
 
     _cooldown = 0
-    condition = lambda ctx: [][1] # This should not be executed, overwritten in the custom Init # noqa: E731, PLE0643
+    condition = lambda _: [][1] # This should not be executed, overwritten in the custom Init # noqa: E731, PLE0643
 
     actions = {True: lambda self, ctx: (_check_type(self, Rule), _check_type(ctx, Context)),
             False: lambda ctx: _check_type(ctx, Context)}
@@ -254,7 +253,8 @@ class CheckDescription(Rule):
 assert CheckDescription.description == """This is my description"""
 cd_rule = CheckDescription(Phase.END, # type: ignore[reportCallIssue]
                             action=lambda ctx: _check_type(ctx, Context),
-                            condition=lambda self, ctx: (_check_type(self, Rule)))
+                            condition=lambda self, _: (_check_type(self, Rule),
+                                                       _check_type(_, Context)))
 #print(cd_rule.phases)
 phase = list(cd_rule.phases).pop() # does not work with frozenset
 cd_rule.phases = set() # type: ignore

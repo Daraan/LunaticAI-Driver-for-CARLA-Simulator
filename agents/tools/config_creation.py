@@ -657,13 +657,13 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
                         "ERROR: Key '%s' not found in %s default options. Consider updating or creating a new class to avoid this message.",
                         key, self.__class__.__name__
                     )
-        except InterpolationKeyError as e:
-            logging.exception(e)
+        except InterpolationKeyError:
+            logging.exception("Interpolation error")
             print("Interpolation error in", self.__class__.__name__)
             # breakpoint()
             raise
         except Exception as e:
-            logging.exception(e)
+            logging.exception("Error")
             print("\n\nError updating", self.__class__.__name__, "key:", key, "value:", value, "Error:", e)  # type: ignore
             #breakpoint()
             raise

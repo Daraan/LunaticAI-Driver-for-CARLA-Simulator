@@ -1,11 +1,12 @@
 import json
 import os
-from typing import Optional, Union
+from typing import Optional, Union, TYPE_CHECKING
 
 import carla
 
-from classes.experimental.vehicle import Vehicle
 from launch_tools import CarlaDataProvider
+if TYPE_CHECKING:
+    from classes.experimental.vehicle import Vehicle
 
 TRAFFIC_MANAGER_CONFIG_SUBDIR = ""
 

@@ -927,7 +927,7 @@ def get_junction_behind(ego_waypoint, distance):
 
 
 def get_waypoint_direction(
-    ego_vehicle, closest_start_wp, junction_waypoint, direction_angle
+    ego_vehicle, closest_start_wp: carla.Waypoint, junction_waypoint: carla.Waypoint, direction_angle: float
 ):
     """
     Get the direction of a waypoint from ego vehicle's perspective relative to a junction.
@@ -1663,7 +1663,7 @@ def insert_in_matrix(matrix, car, ego_vehicle, col, row):
                 ego_vehicle.get_transform().rotation,
             )
             if dot_product > 0:
-                if row == 6 or row == 7:
+                if row in {6,7}:
                     matrix[row - 1][1][col] = 2
                 elif row == 5 and col < 7:
                     matrix[row][1][col + 1] = 2

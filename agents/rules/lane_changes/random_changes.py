@@ -11,7 +11,7 @@ from classes.rule import Context, Rule, always_execute
 __all__ = ["RandomLaneChangeRule"]
 
 class RandomLaneChangeRule(Rule):
-    phases = Phase.TAKE_NORMAL_STEP | Phase.BEGIN
+    phase = Phase.TAKE_NORMAL_STEP | Phase.BEGIN
     condition = always_execute # TODO: Could implement check here, instead of relying on `lane_change`
     cooldown_reset_value = None
 

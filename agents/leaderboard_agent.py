@@ -145,7 +145,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             logger.info("Setup with conf file %s", path_to_conf_file)
             config_dir, config_name = os.path.split(path_to_conf_file)
             # TODO: Maybe move to init so its available during set_global_plan
-            global args
+            global args  # Unused
             overrides=["agent=leaderboard"]
             if not GameFramework.hydra_initialized():
                 initialize_config_dir(version_base=None,
@@ -213,7 +213,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         LunaticAgent.__init__(self, config, self.world_model)
         print("LunaticAgent initialized")
         
-        from agents.rules.lane_changes.random import RandomLaneChangeRule
+        from agents.rules.lane_changes.random_changes import RandomLaneChangeRule
         for rules in self.rules.values():
             for rule in rules:
                 if isinstance(rule, RandomLaneChangeRule):
@@ -292,7 +292,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     # This allows BlockingRules to pick up the coorect function
     @singledispatchmethod
-    def run_step(self, debug:bool=False, second_pass=False) -> carla.VehicleControl:
+    def run_step(self, debug:bool=False, second_pass=False) -> carla.VehicleControl:  # noqa: ARG002
         """
         Attention:
             Use :py:meth:`__call__` instead of this method!
@@ -301,7 +301,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         return super(AutonomousAgent, self).run_step(debug=self.args.debug, second_pass=second_pass)
 
     @run_step.register(dict)
-    def _(self, input_data: Dict[str, Tuple[int, Any]], timestamp: float=-1) -> carla.VehicleControl:
+    def _(self, input_data: Dict[str, Tuple[int, Any]], timestamp: float=-1) -> carla.VehicleControl:  # noqa: ARG002
         """Function that is called by leaderboard framework"""
         try:
             if self._print_input_data(input_data) and "OpenDRIVE" in input_data:
@@ -326,19 +326,20 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=control)
             if self.controller.parse_events(self.get_control()):
                 print("Exiting by user input.")
-                raise UserInterruption("Exiting by user input.")
+                raise UserInterruption("Exiting by user input.")  # noqa: TRY301
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
             
             self.execute_phase(Phase.EXECUTION | Phase.BEGIN, prior_results=control)
             final_controls: carla.VehicleControl = self.get_control()  # type: ignore[assignment]
             
             # TODO: Update HUD controls info
-            return final_controls
         except Exception as e:
             if not isinstance(e, UserInterruption):
-                logger.error("Error in LunaticChallenger.run_step:", exc_info=True)
+                logger.exception("Error in LunaticChallenger.run_step:")
             self.destroy()
-            raise e
+            raise
+        else:
+            return final_controls
         
     # NOTE: to update the doc use
     #run_step.func.__doc__ += "\n" + LunaticAgent.run_step.__doc__

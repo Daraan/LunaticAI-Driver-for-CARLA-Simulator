@@ -6,7 +6,7 @@ waypoint following based on PID controllers.
 from __future__ import annotations
 
 from collections import deque
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 import carla
 
@@ -14,8 +14,9 @@ from agents.dynamic_planning.dynamic_controller import DynamicVehiclePIDControll
 from agents.navigation.local_planner import LocalPlanner, PlannedWaypoint
 from agents.tools.misc import draw_waypoints, get_speed
 from classes.constants import RoadOption
-from classes.rss_sensor import RssSensor
-from classes.type_protocols import UseableWithDynamicPlanner
+if TYPE_CHECKING:
+    from classes.type_protocols import UseableWithDynamicPlanner
+    from classes.rss_sensor import RssSensor
 
 
 class DynamicLocalPlanner(LocalPlanner):

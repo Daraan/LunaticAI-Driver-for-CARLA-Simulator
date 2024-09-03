@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import carla
 from carla import TrafficLightState
@@ -12,9 +12,11 @@ from agents.tools.hints import TrafficLightDetectionResult
 from agents.tools.logging import logger
 from agents.tools.misc import is_within_distance
 from classes.constants import AgentState
-from classes.type_protocols import ActorList, CanDetectNearbyTrafficLights
 from data_gathering.information_manager import InformationManager
 from launch_tools import CarlaDataProvider
+
+if TYPE_CHECKING:
+    from classes.type_protocols import ActorList, CanDetectNearbyTrafficLights
 
 
 def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:

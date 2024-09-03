@@ -39,7 +39,7 @@ except ValueError:
     try:
         idx = int(input("Enter number of file to run: ")) - 1
     except KeyboardInterrupt:
-        exit()
+        sys.exit()
 if idx is not None:
     file_path = py_files[idx]
 

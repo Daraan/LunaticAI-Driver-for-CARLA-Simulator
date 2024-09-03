@@ -170,4 +170,4 @@ class ConfigBasedRSSUpdates(Rule):
 # ----------- Tests -----------
 
 if __name__ == "__main__" or DEBUG_RULES:
-    from ._debug_rules import debug_rules as debug_rules
+    from ._debug_rules import debug_rules as debug_rules # mark as reexport # noqa: PLC0414

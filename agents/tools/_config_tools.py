@@ -35,6 +35,7 @@ if TYPE_CHECKING:
         RuleCreatingParameters,
     )
     from classes.rule import Rule
+    from ruamel.yaml.comments import CommentedMap
 
 #from types import MappingProxyType
 #ALLOW_OBJECTS = cast(Dict[str, Literal[True]], MappingProxyType({"allow_objects" : True}))
@@ -358,7 +359,6 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
             extract_annotations(tree, docs=class_annotations, global_annotations=class_annotations)
     
     from ruamel.yaml import YAML
-    from ruamel.yaml.comments import CommentedMap
     yaml2 = YAML(typ='rt')
     #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
     data : CommentedMap = yaml2.load(string)
@@ -437,15 +437,15 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
         end = string.find("\n", start)
         # quote On/Off; to not be interpreted as boolean
         string = string[:start+len("use_stay_on_road_feature: ")] + "'" + string[start+len("use_stay_on_road_feature: "):end] + "'" + string[end:]
-        # entry: null has been replaced by entry: null
+    # entry: null has been replaced by entry:\n
     if has_null_entry:
         entry: str
         for entry in has_null_entry:
             parts = entry.partition(":")
             if parts[2] != " null":
-                logging.error("Error in %s for %s. Entry is not ' null'. This should not happen", cls.__name__, entry)
+                logging.debug("Warning: %s for entry %s. Entry is not ' null'. This should not happen", cls.__name__, entry)
                 continue
-            entry = parts[0]+":"
+            entry = parts[0]+":"  # noqa: PLW2901 # entry should be the same
             string = re.sub(fr"^{entry}$", entry + " null", string, flags=re.MULTILINE)
     return string
 
@@ -456,32 +456,13 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
     Convert the options to a YAML string representation.
 
     Args:
-        resolve : Whether to resolve interpolations. Defaults to False.
-        yaml_commented : Whether to include comments in the YAML output. Defaults to True.
-        detailed_rules : Whether to include detailed rules in the YAML output. Defaults to False.
-        include_private : Whether to include fields that are marked as private. Defaults to False.
+        resolve : Whether to resolve interpolations. Defaults to :code:`False`.
+        yaml_commented : Whether to include comments in the YAML output. Defaults to :python:`True`.
+        detailed_rules : Whether to include detailed rules in the YAML output. Defaults to :code:`False`.
+        include_private : Whether to include fields that are marked as private. Defaults to :code:`False`.
 
     Returns:
-        str: The YAML string representation of the options.
-    """
-    
-    """
-    # Draft a dumper
-    from omegaconf._utils import get_omega_conf_dumper
-    Dumper = get_omega_conf_dumper()
-    org_func = Dumper.str_representor
-    def str_representor(dumper, data: str):
-        result = org_func(dumper, data)
-        return result
-    
-    Dumper.add_representor(str, str_representor)
-    string = yaml.dump(  # type: ignore
-        container,
-        default_flow_style=False,
-        allow_unicode=True,
-        sort_keys=kwargs.get("sort_keys", False),
-        Dumper=Dumper,
-    )
+        The YAML string representation of the options.
     """
     import yaml
     from omegaconf._utils import get_omega_conf_dumper
@@ -569,7 +550,7 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
     if not yaml_commented:
         return string
     # Extend
-    return get_commented_yaml(cls_or_self, string, container)  # type: ignore[arg-type]
+    return get_commented_yaml(cls_or_self, string, container, include_private=include_private)  # type: ignore[arg-type]
 
 def export_options(cls_or_self: Union[type[AgentConfig], AgentConfig],
                     path: Union[str, "os.PathLike[str]"],

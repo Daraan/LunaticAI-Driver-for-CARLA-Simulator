@@ -3,10 +3,12 @@
 #
 # pyright: reportAttributeAccessIssue=warning
 
+from __future__ import annotations
+
 import math
 import weakref
 from enum import Enum
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union
 from typing import cast as assure_type
 
 import carla
@@ -21,17 +23,18 @@ if AD_RSS_AVAILABLE:
     from carla import ad
 if TYPE_CHECKING:
     assert ad  # remove Unbound type # type: ignore
+    from classes.rss_sensor import RssStateInfo
 
 
 class RssStateVisualizer:
 
-    def __init__(self, display_dimensions, font : pygame.font.Font, world):
+    def __init__(self, display_dimensions: tuple[int, int], font : pygame.font.Font, world: carla.World):
         self._surface = None
         self._display_dimensions = display_dimensions
         self._font = font
-        self._world = world
+        self._world = CarlaDataProvider.get_world()
 
-    def tick(self, individual_rss_states):
+    def tick(self, individual_rss_states: Iterable["RssStateInfo"]) -> None:
         state_surface = pygame.Surface((220, self._display_dimensions[1]))
         state_surface.set_colorkey(pygame.Color('black'))
         v_offset = 0
@@ -47,7 +50,7 @@ class RssStateVisualizer:
             elif state.rss_state.objectId == 18446744073709551615:
                 object_name = "Border Right"
             else:
-                other_actor : carla.Actor = state.get_actor(self._world)
+                other_actor = state.get_actor(self._world)
                 if other_actor:
                     li = list(other_actor.type_id.split("."))
                     if li:
@@ -76,14 +79,21 @@ class RssStateVisualizer:
             pygame.draw.circle(state_surface, color, (12, v_offset + 7), 5)
             xpos = 184
             if state.actor_calculation_mode == ad.rss.map.RssMode.Structured:
-                if not state.rss_state.longitudinalState.isSafe and ((state.rss_state.longitudinalState.rssStateInformation.evaluator == "LongitudinalDistanceSameDirectionOtherInFront") or (state.rss_state.longitudinalState.rssStateInformation.evaluator == "LongitudinalDistanceSameDirectionEgoFront")):
+                # TODO: # CRITICAL is string comparison valid here?
+                if (not state.rss_state.longitudinalState.isSafe
+                    and ((state.rss_state.longitudinalState.rssStateInformation.evaluator == "LongitudinalDistanceSameDirectionOtherInFront")
+                        or (state.rss_state.longitudinalState.rssStateInformation.evaluator == "LongitudinalDistanceSameDirectionEgoFront"))
+                ):
                     pygame.draw.polygon(
                         state_surface, (
                             255, 255, 255), ((xpos + 1, v_offset + 1 + 4), (xpos + 6, v_offset + 1 + 0), (xpos + 11, v_offset + 1 + 4),
                                              (xpos + 7, v_offset + 1 + 4), (xpos + 7, v_offset + 1 + 12), (xpos + 5, v_offset + 1 + 12), (xpos + 5, v_offset + 1 + 4)))
                     xpos += 14
 
-                if not state.rss_state.longitudinalState.isSafe and ((state.rss_state.longitudinalState.rssStateInformation.evaluator == "LongitudinalDistanceOppositeDirectionEgoCorrectLane") or (state.rss_state.longitudinalState.rssStateInformation.evaluator == "LongitudinalDistanceOppositeDirection")):
+                if (not state.rss_state.longitudinalState.isSafe
+                    and ((state.rss_state.longitudinalState.rssStateInformation.evaluator == "LongitudinalDistanceOppositeDirectionEgoCorrectLane")
+                         or (state.rss_state.longitudinalState.rssStateInformation.evaluator == "LongitudinalDistanceOppositeDirection"))
+                ):
                     pygame.draw.polygon(
                         state_surface, (
                             255, 255, 255), ((xpos + 2, v_offset + 1 + 8), (xpos + 6, v_offset + 1 + 12), (xpos + 10, v_offset + 1 + 8),
@@ -134,7 +144,35 @@ def get_matrix(transform : carla.Transform):
     s_r = np.sin(np.radians(rotation.roll))
     c_p = np.cos(np.radians(rotation.pitch))
     s_p = np.sin(np.radians(rotation.pitch))
-    matrix = np.matrix(np.identity(4))
+    matrix = np.matrix(np.identity(4))  # TODO: should be replaced (deprecated)
+    matrix[0, 3] = location.x
+    matrix[1, 3] = location.y
+    matrix[2, 3] = location.z
+    matrix[0, 0] = c_p * c_y
+    matrix[0, 1] = c_y * s_p * s_r - s_y * c_r
+    matrix[0, 2] = -c_y * s_p * c_r - s_y * s_r
+    matrix[1, 0] = s_y * c_p
+    matrix[1, 1] = s_y * s_p * s_r + c_y * c_r
+    matrix[1, 2] = -s_y * s_p * c_r + c_y * s_r
+    matrix[2, 0] = s_p
+    matrix[2, 1] = -c_p * s_r
+    matrix[2, 2] = c_p * c_r
+    return matrix
+
+def get_matrix_new(transform : carla.Transform):
+    """
+    Creates matrix from carla transform.
+    """
+
+    rotation = transform.rotation
+    location = transform.location
+    c_y = np.cos(np.radians(rotation.yaw))
+    s_y = np.sin(np.radians(rotation.yaw))
+    c_r = np.cos(np.radians(rotation.roll))
+    s_r = np.sin(np.radians(rotation.roll))
+    c_p = np.cos(np.radians(rotation.pitch))
+    s_p = np.sin(np.radians(rotation.pitch))
+    matrix = np.identity(4)
     matrix[0, 3] = location.x
     matrix[1, 3] = location.y
     matrix[2, 3] = location.z
@@ -163,12 +201,12 @@ class RssUnstructuredSceneVisualizerMode(Enum):
 class RssUnstructuredSceneVisualizer(CustomSensorInterface):
     """Gives a top-view over the setting?"""
 
-    def __init__(self, parent_actor, world, display_dimensions, gamma_correction=2.2):
+    def __init__(self, parent_actor: carla.Actor, world, display_dimensions: tuple[int, int], gamma_correction: float=2.2):
         self._last_rendered_frame = -1
         self._surface = None
         self._current_rss_surface : Optional[Tuple[int, pygame.Surface]] = None
         self.current_camera_surface : Tuple[int, pygame.Surface] = (0, None)
-        self._world : carla.World = world
+        self._world : carla.World = CarlaDataProvider.get_world()
         self._parent_actor = parent_actor
         self._display_dimensions = display_dimensions
         self._camera = None  # type: ignore[assignment]
@@ -178,7 +216,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
         self.restart(RssUnstructuredSceneVisualizerMode.window)
         
     @property
-    def sensor(self):
+    def sensor(self) -> carla.Sensor:
         return self._camera
     
     @sensor.setter
@@ -216,7 +254,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
             (2.0 * np.tan(90.0 * np.pi / 360.0))  # fov default: 90.0
 
             bp_library = CarlaDataProvider._blueprint_library
-            bp : carla.ActorBlueprint = bp_library.find('sensor.camera.rgb')
+            bp: carla.ActorBlueprint = bp_library.find('sensor.camera.rgb')
             bp.set_attribute('image_size_x', str(self._dim[0]))
             bp.set_attribute('image_size_y', str(self._dim[1]))
             if bp.has_attribute('gamma'):
@@ -267,7 +305,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
             self.restart(RssUnstructuredSceneVisualizerMode.window)
 
     @staticmethod
-    def _parse_image(weak_self : "weakref.ReferenceType[RssUnstructuredSceneVisualizer]", image: carla.Image):
+    def _parse_image(weak_self: "weakref.ReferenceType[RssUnstructuredSceneVisualizer]", image: carla.Image):
         self = weak_self()
         if not self:
             return
@@ -437,7 +475,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
 
 class RssBoundingBoxVisualizer:
 
-    def __init__(self, display_dimensions, world, camera):
+    def __init__(self, display_dimensions, world, camera: carla.Sensor):
         self._last_camera_frame = 0
         self._surface_for_frame = []
         self._world = world
@@ -631,14 +669,14 @@ class RssDebugVisualizer:
         print(f"New Debug Visualizer Mode {self._visualization_mode}")
 
     def tick(self, route, dangerous, individual_rss_states, ego_dynamics_on_route):
-        if self._visualization_mode == RssDebugVisualizationMode.RouteOnly or \
-                self._visualization_mode == RssDebugVisualizationMode.VehicleStateAndRoute or \
-                self._visualization_mode == RssDebugVisualizationMode.All:
+        if self._visualization_mode in {RssDebugVisualizationMode.RouteOnly,
+                                        RssDebugVisualizationMode.VehicleStateAndRoute,
+                                        RssDebugVisualizationMode.All}:
             self.visualize_route(dangerous, route)
 
-        if self._visualization_mode == RssDebugVisualizationMode.VehicleStateOnly or \
-                self._visualization_mode == RssDebugVisualizationMode.VehicleStateAndRoute or \
-                self._visualization_mode == RssDebugVisualizationMode.All:
+        if self._visualization_mode in {RssDebugVisualizationMode.VehicleStateOnly,
+                                        RssDebugVisualizationMode.VehicleStateAndRoute,
+                                        RssDebugVisualizationMode.All}:
             self.visualize_rss_results(individual_rss_states)
 
         if self._visualization_mode == RssDebugVisualizationMode.All:

@@ -203,19 +203,19 @@ class HasConfig(Protocol[AgentConfigT]):
         """
         ...
 
-_LocalPlannerT = TypeVar("_LocalPlannerT",
+LocalPlannerT = TypeVar("LocalPlannerT",
                          bound="LocalPlanner",
                          default="LocalPlanner",
-                         covariant=True)
+                         infer_variance=True) # is covariant, but avoid _co style for documentation
 """:py:class:`typing.TypeVar`: A type variable for a :py:class:`.LocalPlanner` type."""
 
-class HasPlanner(Protocol[_LocalPlannerT]):
+class HasPlanner(Protocol[LocalPlannerT]):
     """
     Uses a Local planner to calculate controls
     """
     
     @property
-    def _local_planner(self) -> _LocalPlannerT:
+    def _local_planner(self) -> LocalPlannerT:
         """
         read-only attribute for a :py:class:`.LocalPlanner` object; can also be a normal attribute.
         
@@ -287,5 +287,17 @@ class CanDetectNearbyTrafficLights(CanDetectObstacles, HasStates, Has_WorldModel
     """Actors that are considered to be near the actor."""
     
     _last_traffic_light : Optional[carla.TrafficLight]
+    """
+    Last traffic light that was detected. At a red traffic light it can be checked if this is still
+    red.
+    
+    Attention:
+        Not necessarily the same as :py:attr:`.InformationManager.Information.relevant_traffic_light`.
+    
+    :meta public:
+    """
     
     _current_waypoint : carla.Waypoint
+    """
+    :meta public:
+    """
