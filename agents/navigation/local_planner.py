@@ -80,11 +80,11 @@ class LocalPlanner:
         else:
             self._map = self._world.get_map()
 
-        self._vehicle_controller = None # type: VehiclePIDController # type: ignore[assignment]
+        self._vehicle_controller = None  # type: VehiclePIDController # type: ignore[assignment]
         self.target_waypoint = None     # type: carla.Waypoint # type: ignore[assignment]
         self.target_road_option = None  # type: RoadOption # type: ignore[assignment]
 
-        self._waypoints_queue = deque(maxlen=10000) # type: deque[tuple[carla.Waypoint, RoadOption]]
+        self._waypoints_queue = deque(maxlen=10000)  # type: deque[tuple[carla.Waypoint, RoadOption]]
         self._min_waypoint_queue_length = 100
         self._stop_waypoint_creation = False
 
@@ -134,7 +134,7 @@ class LocalPlanner:
 
     def reset_vehicle(self):
         """Reset the ego-vehicle"""
-        self._vehicle = None # type: carla.Vehicle # type: ignore[assignment]
+        self._vehicle = None  # type: carla.Vehicle # type: ignore[assignment]
 
     def _init_controller(self):
         """Controller initialization"""

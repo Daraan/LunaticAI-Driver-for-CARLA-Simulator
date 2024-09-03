@@ -19,7 +19,7 @@ __all__ = ["transform_to_pandas",
 LOC_DF = pd.DataFrame(columns=["x", "y", "z", "pitch", "yaw", "roll"])
 
 # -----------------------------------
-# pyright: strict
+
 def transform_to_pandas(transform: carla.Transform) -> pd.Series[float]:
     """
     Format a :py:class:`carla.Transform` object to a :py:class:`pandas.Series`.

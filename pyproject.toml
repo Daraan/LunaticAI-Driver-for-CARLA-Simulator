@@ -44,6 +44,10 @@ select = [
     "PLE",
 
     "PGH005",
+
+    "T10", # breakpoints
+
+    # "PIE790", # unnecessary pass and ...
 ]
 
 ignore = [
@@ -51,7 +55,7 @@ ignore = [
     "I001",
     "UP007",
     "W293",
-    "E501",
+    "E501", # line to long
     "UP036",
     "UP006",
     "PGH004",

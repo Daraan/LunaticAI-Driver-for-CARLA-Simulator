@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # Copyright (c) 2020 Intel Corporation
 #
 # Based on CARLA example : https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/rss/rss_visualization.py
@@ -32,7 +30,7 @@ if AD_RSS_AVAILABLE:
     from carla import ad
 
 if TYPE_CHECKING:
-    assert ad # remove Unbound type # type: ignore
+    assert ad  # remove Unbound type # type: ignore
 
 # ==============================================================================
 # -- RssSensor -----------------------------------------------------------------
@@ -69,16 +67,16 @@ class RssStateInfo:
         if rss_state.lateralStateRight.rssStateInformation.evaluator != "None":
             lateral_margin_right = rss_state.lateralStateRight.rssStateInformation.currentDistance - rss_state.lateralStateRight.rssStateInformation.safeDistance
             if self.lateral_margin is None or self.lateral_margin > lateral_margin_right:
-                self.lateral_margin=lateral_margin_right
-        if self.lateral_margin is not None and self.lateral_margin>0:
+                self.lateral_margin = lateral_margin_right
+        if self.lateral_margin is not None and self.lateral_margin > 0:
             self.margin += self.lateral_margin
 
     def get_actor(self, world):
         # type: (carla.World) -> carla.Actor | None
         if self.rss_state.objectId == 18446744073709551614:
-            return None # "Border Left"
+            return None  # "Border Left"
         if self.rss_state.objectId == 18446744073709551615:
-            return None # "Border Right"
+            return None  # "Border Right"
         return world.get_actor(self.rss_state.objectId)
 
     def __str__(self):
@@ -95,7 +93,7 @@ class RssSensor(CustomSensorInterface):
                  *,
                  visualizer_mode=RssDebugVisualizationMode.Off,
                  routing_targets=None,
-                 log_level: RssLogLevelAlias=RssLogLevel.off):
+                 log_level: RssLogLevelAlias = RssLogLevel.off):
         world = CarlaDataProvider.get_world()
         assert world
         self.unstructured_scene_visualizer = unstructured_scene_visualizer
@@ -333,23 +331,23 @@ class RssSensor(CustomSensorInterface):
     def increase_log_level(self):
         print(f"increase {self.log_level}")
         if self.log_level < carla.RssLogLevel.off:
-            self.log_level = carla.RssLogLevel.values[self.log_level+1]
+            self.log_level = carla.RssLogLevel.values[self.log_level + 1]
         self.sensor.set_log_level(self.log_level)
 
     def decrease_log_level(self):
         print(f"decrease {self.log_level}")
         if self.log_level > carla.RssLogLevel.trace:
-            self.log_level = carla.RssLogLevel.values[self.log_level-1]
+            self.log_level = carla.RssLogLevel.values[self.log_level - 1]
         self.sensor.set_log_level(self.log_level)
 
     def increase_map_log_level(self):
         if self.map_log_level < carla.RssLogLevel.off:
-            self.map_log_level = self.map_log_level+1
+            self.map_log_level = self.map_log_level + 1
         self.sensor.set_map_log_level(self.map_log_level)
 
     def decrease_map_log_level(self):
         if self.map_log_level > carla.RssLogLevel.trace:
-            self.map_log_level = self.map_log_level-1
+            self.map_log_level = self.map_log_level - 1
         self.sensor.set_map_log_level(self.map_log_level)
 
     def drop_route(self):

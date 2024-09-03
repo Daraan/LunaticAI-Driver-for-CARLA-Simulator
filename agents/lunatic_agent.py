@@ -130,11 +130,11 @@ class LunaticAgent(BehaviorAgent):
     
     @classmethod
     def create_world_and_agent(cls, args: LaunchConfig, *,
-                               vehicle : Optional[carla.Vehicle]=None,
+                               vehicle : Optional[carla.Vehicle] = None,
                                sim_world : carla.World,
-                               settings_archetype: "Optional[type[AgentConfig]]"=None,
-                               agent_config: Optional["LunaticAgentSettings"]=None,
-                               overwrites: Optional[Dict[str, Any]]=None
+                               settings_archetype: "Optional[type[AgentConfig]]" = None,
+                               agent_config: Optional["LunaticAgentSettings"] = None,
+                               overwrites: Optional[Dict[str, Any]] = None
                                ) -> tuple[Self, WorldModel, GlobalRoutePlanner]:
         """
         Setup function to create the agent from the :py:class:`LaunchConfig` settings.
@@ -169,19 +169,19 @@ class LunaticAgent(BehaviorAgent):
         else:
             logger.debug("A config was passed, using it as is.")
         
-        world_model = WorldModel(agent_config, args=args, carla_world=sim_world, player=vehicle) # TEST: without args
-        agent_config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps  # pyright: ignore[reportPrivateUsage]
+        world_model = WorldModel(agent_config, args=args, carla_world=sim_world, player=vehicle)  # TEST: without args
+        agent_config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1 / world_model._args.fps  # pyright: ignore[reportPrivateUsage]
         
         agent = cls(agent_config, world_model)
         return agent, world_model, agent.get_global_planner()
 
     def __init__(self,
                  settings: Union[str, LunaticAgentSettings],
-                 world_model: Optional[WorldModel]=None,
+                 world_model: Optional[WorldModel] = None,
                  *,
-                 vehicle: Optional[carla.Vehicle]=None,
-                 overwrite_options: Optional[dict[str, Any]]=None,
-                 debug: bool=True):
+                 vehicle: Optional[carla.Vehicle] = None,
+                 overwrite_options: Optional[dict[str, Any]] = None,
+                 debug: bool = True):
         """
         Initialize the LunaticAgent.
 
@@ -212,7 +212,7 @@ class LunaticAgent(BehaviorAgent):
         # World Model
         if world_model is None:
             world_model = WorldModel(self.config, player=vehicle)
-            self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1/world_model._args.fps # pyright: ignore[reportPrivateUsage]
+            self.config.planner.dt = world_model.world_settings.fixed_delta_seconds or 1 / world_model._args.fps  # pyright: ignore[reportPrivateUsage]
         
         self._world_model : WorldModel = world_model
         self._world : carla.World = world_model.world
@@ -240,7 +240,7 @@ class LunaticAgent(BehaviorAgent):
         """
 
         # Initialize the planners
-        self._global_planner = CarlaDataProvider.get_global_route_planner() # NOTE: THIS does not use self.config.planner.sampling_resolution
+        self._global_planner = CarlaDataProvider.get_global_route_planner()  # NOTE: THIS does not use self.config.planner.sampling_resolution
         if not self._global_planner:
             logger.error("Global Route Planner not set - This should not happen, if the CarlaDataProvider has been initialized.")
             self._global_planner = GlobalRoutePlanner(CarlaDataProvider.get_map(), self.config.planner.sampling_resolution)
@@ -260,14 +260,14 @@ class LunaticAgent(BehaviorAgent):
 
         # Rule Framework
         # 1. add all rules from the class, if any - else this is a dict with empty lists
-        self.rules = deepcopy(self.__class__.DEFAULT_RULES) # Copies the ClassVar to the instance
+        self.rules = deepcopy(self.__class__.DEFAULT_RULES)  # Copies the ClassVar to the instance
         
         # 2. add rules from the config
         self.add_config_rules()
         
         # Information Manager
         self.information_manager = InformationManager(self)
-        self.current_states = self.information_manager.state_counter # share the dict
+        self.current_states = self.information_manager.state_counter  # share the dict
         
         # Blocking Rules
         self._active_blocking_rules = set()
@@ -277,7 +277,7 @@ class LunaticAgent(BehaviorAgent):
     def _set_collision_sensor(self):
         # see: https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
         # and https://carla.readthedocs.io/en/latest/python_api/#carla.Sensor.listen
-        blueprint = CarlaDataProvider._blueprint_library.find('sensor.other.collision') # pyright: ignore[reportPrivateUsage]
+        blueprint = CarlaDataProvider._blueprint_library.find('sensor.other.collision')  # pyright: ignore[reportPrivateUsage]
         self._collision_sensor : carla.Sensor = assure_type(carla.Sensor, CarlaDataProvider.get_world().spawn_actor(
                                                             blueprint, carla.Transform(), attach_to=self._vehicle))
 
@@ -304,7 +304,7 @@ class LunaticAgent(BehaviorAgent):
         
     # --------------------- Adding rules ------------------------
 
-    def add_rule(self, rule : Rule, position:Union[int, None]=None):
+    def add_rule(self, rule : Rule, position: Union[int, None] = None):
         """
         Add a rule to the agent. The rule will be inserted at the given position.
         
@@ -336,7 +336,7 @@ class LunaticAgent(BehaviorAgent):
         for phase in self.rules.keys():  # noqa: SIM118
             self.rules[phase].sort(key=lambda r: r.priority, reverse=True)
             
-    def add_config_rules(self, config: Optional[Union[LunaticAgentSettings, List[RuleCreatingParameters]]]=None):
+    def add_config_rules(self, config: Optional[Union[LunaticAgentSettings, List[RuleCreatingParameters]]] = None):
         """
         Adds rules
         """
@@ -356,7 +356,7 @@ class LunaticAgent(BehaviorAgent):
         for rule in rule_list:
             self.add_rules(rule_from_config(rule))  # each call could produce one or more rules
             
-            self.add_rules(rule_from_config(rule)) # each call could produce one or more rules
+            self.add_rules(rule_from_config(rule))  # each call could produce one or more rules
 
     #  --------------------- Properties ------------------------
     
@@ -426,7 +426,7 @@ class LunaticAgent(BehaviorAgent):
     
     @property
     def _map(self) -> carla.Map:
-        """Get the current map of the world.""" # Needed *only* for set_destination
+        """Get the current map of the world."""  # Needed *only* for set_destination
         return CarlaDataProvider.get_map()
     
     # ------------------
@@ -438,7 +438,7 @@ class LunaticAgent(BehaviorAgent):
 
     # ------------------ Information functions ------------------ #
 
-    def update_information(self, second_pass: bool=False):
+    def update_information(self, second_pass: bool = False):
         """
         Updates the information regarding the ego vehicle based on the surrounding world.
         
@@ -457,7 +457,7 @@ class LunaticAgent(BehaviorAgent):
         self._update_information(second_pass=second_pass)
         self.execute_phase(Phase.UPDATE_INFORMATION | Phase.END, prior_results=None)
     
-    def _update_information(self, *, second_pass: bool=False):
+    def _update_information(self, *, second_pass: bool = False):
         """
         This method updates the information regarding the ego
         vehicle based on the surrounding world.
@@ -482,7 +482,7 @@ class LunaticAgent(BehaviorAgent):
             # First Pass for expensive and tick-constant information
             
             # --- InformationManager ---
-            information: InformationManager.Information = self.information_manager.tick() # NOTE: # Warning: Currently not route-dependant, might need to be changed later
+            information: InformationManager.Information = self.information_manager.tick()  # NOTE: # Warning: Currently not route-dependant, might need to be changed later
             self.tick_information = information
             
             self._current_waypoint = information.current_waypoint
@@ -520,12 +520,12 @@ class LunaticAgent(BehaviorAgent):
                 if (self._road_matrix_counter % self.config.detection_matrix.sync_interval) == 0:
                     #logger.debug("Updating Road Matrix")
                     # TODO: Still prevent async mode from using too much resources and slowing fps down too much.
-                    self._detection_matrix.update() # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
+                    self._detection_matrix.update()  # NOTE: Does nothing if in async mode. self.road_matrix is updated by another thread.
                 else:
                     pass
             
             # used for self._local_planner.get_incoming_waypoint_and_direction
-            self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10) # TODO: Maybe make this an interpolation and make more use of it
+            self._look_ahead_steps = int((self.live_info.current_speed_limit) / 10)  # TODO: Maybe make this an interpolation and make more use of it
             
             #  ----- Follow speed limits -------
             # NOTE: This is once again set in the local planner, but only on the Context config!
@@ -575,7 +575,7 @@ class LunaticAgent(BehaviorAgent):
             
     # ------------------ Step & Loop Logic ------------------ #
     
-    def execute_phase(self, phase : Phase, *, prior_results: Any, update_controls:Optional[carla.VehicleControl]=None) -> Context:
+    def execute_phase(self, phase : Phase, *, prior_results: Any, update_controls: Optional[carla.VehicleControl] = None) -> Context:
         """
         Sets the current phase of the agent and executes all rules that are associated with it.
         
@@ -584,24 +584,24 @@ class LunaticAgent(BehaviorAgent):
             prior_results : The results of the previous phase, e.g. :py:attr:`detected_hazards`.
             update_controls : Optionally controls that should be used from now onward.
         """
-        normal_next = self.current_phase.next_phase() # sanity checking if everything is correct
+        normal_next = self.current_phase.next_phase()  # sanity checking if everything is correct
         if self._validate_phases:
             assert (normal_next in {phase, Phase.USER_CONTROLLED}
                     or phase & Phase.EXCEPTIONS
                     or phase & Phase.USER_CONTROLLED),\
                     f"Phase {phase} is not the next phase of {self.current_phase} or an exception phase. Expected {normal_next}"
         
-        self.current_phase = phase # set next phase
+        self.current_phase = phase  # set next phase
         
         if update_controls is not None:
             self.set_control(update_controls)
         self.ctx.prior_result = prior_results
         self.ctx.phase_results[phase] = prior_results
         
-        rules_to_check = self.rules.get(phase, ()) # use get if a custom phase is added, without a rule
+        rules_to_check = self.rules.get(phase, ())  # use get if a custom phase is added, without a rule
         try:
-            for rule in rules_to_check: # todo: maybe dict? grouped by phase?
-                assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}" # TODO remove:
+            for rule in rules_to_check:  # todo: maybe dict? grouped by phase?
+                assert self.current_phase in rule.phases, f"Current phase {self.current_phase} not in Rule {rule.phases}"  # TODO remove:
                 rule(self.ctx)
                 # NOTE: Blocking rules can change the and above assertion will fail.
                 if phase != self.current_phase:
@@ -618,7 +618,7 @@ class LunaticAgent(BehaviorAgent):
             raise
         return self.ctx
     
-    def _plan_path_phase(self, *, second_pass:bool, debug:bool=False):
+    def _plan_path_phase(self, *, second_pass: bool, debug: bool = False):
         try:
             self.execute_phase(Phase.PLAN_PATH | Phase.BEGIN, prior_results=None)
             # User defined action
@@ -639,12 +639,12 @@ class LunaticAgent(BehaviorAgent):
         self.ctx = ctx
         return ctx
     
-    def __call__(self, debug: bool=False) -> carla.VehicleControl:
+    def __call__(self, debug: bool = False) -> carla.VehicleControl:
         """Calculates the next vehicle control object."""
-        return self.run_step(debug, second_pass=False) # debug should be positional!
+        return self.run_step(debug, second_pass=False)  # debug should be positional!
                 
     # Python 3.8+ add / for positional only arguments
-    def run_step(self, debug: bool=False, second_pass: bool=False) -> carla.VehicleControl:
+    def run_step(self, debug: bool = False, second_pass: bool = False) -> carla.VehicleControl:
         """
         Calculates the next vehicle control object.
         
@@ -686,14 +686,14 @@ class LunaticAgent(BehaviorAgent):
             # Check whether the agent has reached its destination.
             if self.done():
                 # NOTE: Might be in NONE phase here.
-                self.execute_phase(Phase.DONE| Phase.BEGIN, prior_results=None)
+                self.execute_phase(Phase.DONE | Phase.BEGIN, prior_results=None)
                 if self.done():
                     # No Rule set a new destination
                     logger.info("The target has been reached, stopping the simulation")
                     self.execute_phase(Phase.TERMINATING | Phase.BEGIN, prior_results=None)
                     raise AgentDoneException
                 self.execute_phase(Phase.DONE | Phase.END, prior_results=None)
-                return self.run_step(debug, second_pass=True) # NOTE! For child classes like the leaderboard agent this calls the higher level run_step.
+                return self.run_step(debug, second_pass=True)  # NOTE! For child classes like the leaderboard agent this calls the higher level run_step.
             
             # ----------------------------
             # Phase NONE - Before Running step
@@ -720,7 +720,7 @@ class LunaticAgent(BehaviorAgent):
                 self.execute_phase(Phase.EMERGENCY | Phase.END,
                                    update_controls=emergency_controls,
                                    prior_results=emergency.hazards_detected)
-                planned_control = self.get_control() # type: carla.VehicleControl # type: ignore[assignment]
+                planned_control = self.get_control()  # type: carla.VehicleControl # type: ignore[assignment]
             
             except SkipInnerLoopException as skip:
                 self.set_control(skip.planned_control)
@@ -741,7 +741,7 @@ class LunaticAgent(BehaviorAgent):
                 if self.ctx.control is None:
                     raise ValueError(f"A VehicleControl object must be set on the agent when {type(lae).__name__} is "
                                      "raised during `._inner_step`") from lae
-                planned_control = self.get_control() # type: ignore[assignment]
+                planned_control = self.get_control()  # type: ignore[assignment]
             # assert ctx.control
             
             # ----------------------------
@@ -756,7 +756,7 @@ class LunaticAgent(BehaviorAgent):
                                      prior_results=None,
                                      update_controls=planned_control)
             if AD_RSS_AVAILABLE and self.config.rss and self.config.rss.enabled:
-                rss_updated_controls = self._world_model.rss_check_control(ctx.control) # type: ignore[arg-type]
+                rss_updated_controls = self._world_model.rss_check_control(ctx.control)  # type: ignore[arg-type]
             else:
                 rss_updated_controls = None
             # NOTE: rss_updated_controls could be None.
@@ -770,13 +770,13 @@ class LunaticAgent(BehaviorAgent):
             if self.ctx.control is None:
                 raise ValueError(f"A VehicleControl object must be set on the agent when {type(e).__name__} is raised during `._inner_step`") from e
         
-        planned_control = self.ctx.control # type: carla.VehicleControl # type: ignore[assignment]
+        planned_control = self.ctx.control  # type: carla.VehicleControl # type: ignore[assignment]
         planned_control.manual_gear_shift = False
         return self.get_control()          # type: ignore[return-value]
 
     @must_clear_hazard
     @result_to_context("control")
-    def _inner_step(self, debug:bool=False) -> carla.VehicleControl:
+    def _inner_step(self, debug: bool = False) -> carla.VehicleControl:
         """
         This is is the internal function to provide the next control object for
         the agent; it should run every tick.
@@ -808,7 +808,7 @@ class LunaticAgent(BehaviorAgent):
             # If no Rule with Phase.EMERGENCY | BEGIN clears pedestrians_or_traffic_light
             # An EmergencyStopException is raised
             # ----------------------------
-            self.react_to_hazard(pedestrians_and_tlight_hazard) # Optional[NoReturn]
+            self.react_to_hazard(pedestrians_and_tlight_hazard)  # Optional[NoReturn]
     
         # -----------------------------
         # Phase Detect Static Obstacles
@@ -830,7 +830,7 @@ class LunaticAgent(BehaviorAgent):
         # Phase 3 - Detection of Cars
         # ----------------------------
             
-        self.execute_phase(Phase.DETECT_CARS | Phase.BEGIN, prior_results=None) # TODO: Maybe add some prio result
+        self.execute_phase(Phase.DETECT_CARS | Phase.BEGIN, prior_results=None)  # TODO: Maybe add some prio result
         vehicle_detection_result = self.detect_obstacles_in_path(self.vehicles_nearby)
         
         # TODO: add a way to let the execution overwrite
@@ -851,7 +851,7 @@ class LunaticAgent(BehaviorAgent):
             return self.get_control()  # type: ignore[return-value]
         
         #TODO: maybe new phase instead of END or remove CAR_DETECTED and handle as rules (maybe better)
-        self.execute_phase(Phase.DETECT_CARS | Phase.END, prior_results=None) # NOTE: avoiding tailgate here
+        self.execute_phase(Phase.DETECT_CARS | Phase.END, prior_results=None)  # NOTE: avoiding tailgate here
         
         # Intersection behavior
         # NOTE: is_taking_turn <- incoming_direction in (RoadOption.LEFT, RoadOption.RIGHT)
@@ -864,7 +864,7 @@ class LunaticAgent(BehaviorAgent):
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.BEGIN, prior_results=None)
             control = self._calculate_control(debug=debug)
             self.execute_phase(Phase.TURNING_AT_JUNCTION | Phase.END, update_controls=control, prior_results=None)
-            return self.get_control() # type: ignore[return-value]
+            return self.get_control()  # type: ignore[return-value]
 
         # ----------------------------
         # Phase 4 - Plan Path normally
@@ -876,9 +876,9 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.TAKE_NORMAL_STEP | Phase.END, prior_results=None, update_controls=control)
 
         # Leave loop and apply controls outside
-        return self.get_control() # type: ignore[return-value]
+        return self.get_control()  # type: ignore[return-value]
     
-    def _calculate_control(self, debug: bool=False):
+    def _calculate_control(self, debug: bool = False):
         """
         Plan the next step of the agent. This will execute the local planner
         to retrieve the next control fitting the current path and settings.
@@ -906,8 +906,8 @@ class LunaticAgent(BehaviorAgent):
         
         return self._local_planner.run_step(debug)
 
-    def parse_keyboard_input(self, allow_user_updates:bool =True,
-                             *, control: Optional[carla.VehicleControl]=None) -> None:
+    def parse_keyboard_input(self, allow_user_updates: bool = True,
+                             *, control: Optional[carla.VehicleControl] = None) -> None:
         """
         Parse the current user input and allow manual updates of the controls.
         
@@ -923,13 +923,13 @@ class LunaticAgent(BehaviorAgent):
         self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=planned_control)
         
         # Controls can be updated inplace by the user.
-        if self._world_model.controller.parse_events(planned_control if allow_user_updates else carla.VehicleControl()): # pyright: ignore[reportOptionalMemberAccess]
+        if self._world_model.controller.parse_events(planned_control if allow_user_updates else carla.VehicleControl()):  # pyright: ignore[reportOptionalMemberAccess]
             print("Exiting by user input.")
             raise UserInterruption("Exiting by user input.")
        
         self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.END, prior_results=None)
     
-    def apply_control(self, control: Optional[carla.VehicleControl]=None):
+    def apply_control(self, control: Optional[carla.VehicleControl] = None):
         """
         Applies the control to the agent's actor.
         Will execute the :py:class:`Phase.EXECUTION | Phase.BEGIN <classes.constants.Phase>`
@@ -979,7 +979,7 @@ class LunaticAgent(BehaviorAgent):
         if tlight_detection_result.traffic_light_was_found:
             if tlight_detection_result.traffic_light.state == carla.TrafficLightState.Red:  # pyright: ignore[reportOptionalMemberAccess]
                 self.add_hazard(Hazard.TRAFFIC_LIGHT_RED)
-            else: # NOTE: self.config.obstacles.detect_yellow_tlights must be True
+            else:  # NOTE: self.config.obstacles.detect_yellow_tlights must be True
                 self.add_hazard(Hazard.TRAFFIC_LIGHT_YELLOW, HazardSeverity.WARNING)
             
             #assert self.live_info.next_traffic_light.id == tlight_detection_result.traffic_light.id, "Next assumed traffic light should be the same as the detected one." # TEMP
@@ -1079,7 +1079,7 @@ class LunaticAgent(BehaviorAgent):
             # Note: If the passed set is not cleared by a Phase.EMERGENCY | Phase.BEGIN rule,
             # an EmergencyStopException is raised.
             self.add_hazard(Hazard.CAR)
-            self.react_to_hazard(hazard_detected={Hazard.CAR}) # Optional[NoReturn]
+            self.react_to_hazard(hazard_detected={Hazard.CAR})  # Optional[NoReturn]
         controls = self.car_following_manager(vehicle, exact_distance)
         return controls
 
@@ -1100,7 +1100,7 @@ class LunaticAgent(BehaviorAgent):
     # ----
 
     #@override
-    def add_emergency_stop(self, control: carla.VehicleControl, reasons:"Optional[set[str]]"=None) -> carla.VehicleControl:
+    def add_emergency_stop(self, control: carla.VehicleControl, reasons: "Optional[set[str]]" = None) -> carla.VehicleControl:
         """
         Modifies the control values to perform an emergency stop.
         The steering remains unchanged to avoid going out of the lane during turns.
@@ -1108,15 +1108,15 @@ class LunaticAgent(BehaviorAgent):
         :param control: (carla.VehicleControl) control to be modified
         :param enable_random_steer: (bool, optional) Flag to enable random steering
         """
-        return self.emergency_manager(reasons=reasons, control=control) # type: ignore[arg-type]
+        return self.emergency_manager(reasons=reasons, control=control)  # type: ignore[arg-type]
     
     def lane_change(self,
                     direction: Literal['left', 'right'],
-                    same_lane_time: float=0,
-                    other_lane_time: float=0,
-                    lane_change_time: float=2,
+                    same_lane_time: float = 0,
+                    other_lane_time: float = 0,
+                    lane_change_time: float = 2,
                     *,
-                    check: bool=False):
+                    check: bool = False):
         """
         Changes the path so that the vehicle performs a lane change.
         Use 'direction' to specify either a 'left' or 'right' lane change,
@@ -1144,17 +1144,17 @@ class LunaticAgent(BehaviorAgent):
             - :py:func:`agents.tools.lunatic_agent_tools.generate_lane_change_path`
             - :py:meth:`set_global_plan`
         """
-        speed = self.live_info.current_speed / 3.6 # m/s
+        speed = self.live_info.current_speed / 3.6  # m/s
         # This is a staticfunction from BasicAgent function
         path: list[tuple[carla.Waypoint, RoadOption]] = self._generate_lane_change_path(
-            self._current_waypoint, # NOTE: Assuming exact_waypoint
+            self._current_waypoint,  # NOTE: Assuming exact_waypoint
             direction,
-            same_lane_time * speed, # get direction in meters t*V
+            same_lane_time * speed,  # get direction in meters t*V
             other_lane_time * speed,
             lane_change_time * speed,
             check=check,
             lane_changes=1,     # changes only one lane
-            step_distance= self.config.planner.sampling_resolution
+            step_distance=self.config.planner.sampling_resolution
         )
         if not path:
             logger.info("Ignoring the lane change as no path was found")
@@ -1166,9 +1166,9 @@ class LunaticAgent(BehaviorAgent):
         
     # TODO: Use generate_lane_change_path to finetune
     def make_lane_change(self,
-                         order: Sequence[Literal["left", "right"]]=["left", "right"],
-                         up_angle_th: int=180,
-                         low_angle_th: int=0) -> "None | Literal[True]":
+                         order: Sequence[Literal["left", "right"]] = ["left", "right"],
+                         up_angle_th: int = 180,
+                         low_angle_th: int = 0) -> "None | Literal[True]":
         """
         Move to the left/right lane if possible
 
@@ -1187,7 +1187,7 @@ class LunaticAgent(BehaviorAgent):
             - :python:`check_behind.obstacle_was_found and self.config.live_info.current_speed < get_speed(check_behind.obstacle)`
         """
         vehicle_list = self.vehicles_nearby
-        waypoint = self._current_waypoint # todo use a getter
+        waypoint = self._current_waypoint  # todo use a getter
 
         # There is a faster car behind us
         if isinstance(order, str):
@@ -1206,7 +1206,7 @@ class LunaticAgent(BehaviorAgent):
                 lane_offset = -1
             else:
                 raise ValueError(f"Direction must be 'left' or 'right', was {direction}")
-            if (can_change # other_wpt is not None
+            if (can_change  # other_wpt is not None
                 and lanes_have_same_direction(waypoint, other_wpt)  # type: ignore[arg-type]
                 and other_wpt.lane_type == carla.LaneType.Driving):  # type: ignore[attr-defined]
                 # Detect if right lane is free
@@ -1242,7 +1242,7 @@ class LunaticAgent(BehaviorAgent):
             self._vehicle_lights = current_lights
             self._vehicle.set_light_state(carla.VehicleLightState(self._vehicle_lights))
 
-    def render_detection_matrix(self, display:"pygame.Surface", **options: Unpack["DetectionMatrix.RenderOptions"]):
+    def render_detection_matrix(self, display: "pygame.Surface", **options: Unpack["DetectionMatrix.RenderOptions"]):
         """
         See Also:
             - :py:meth:`DetectionMatrix.render`
@@ -1257,9 +1257,9 @@ class LunaticAgent(BehaviorAgent):
             self._detection_matrix.render(display, **options)
             
             
-    def verify_settings(self, config: Optional[LunaticAgentSettings] =None, *,
-                        verify_dataclass: Union["type[AgentConfig]", bool] =True,
-                        strictness: Literal[-1, 0, 1, 2, 3, 4]=0):
+    def verify_settings(self, config: Optional[LunaticAgentSettings] = None, *,
+                        verify_dataclass: Union["type[AgentConfig]", bool] = True,
+                        strictness: Literal[-1, 0, 1, 2, 3, 4] = 0):
         """
         Verifies the settings of the LunaticAgent.
         Foremost this checks if the :py:obj:`.planner.dt` value has been set
@@ -1355,11 +1355,11 @@ class LunaticAgent(BehaviorAgent):
         # From the parent class, but without type-hints
         def set_destination(self,
                             end_location: carla.Location,
-                            start_location: Optional[carla.Location]=None,
-                            clean_queue:bool=True) -> None:
+                            start_location: Optional[carla.Location] = None,
+                            clean_queue: bool = True) -> None:
             ...
     
-    def set_vehicle(self, vehicle:carla.Actor) -> None:
+    def set_vehicle(self, vehicle: carla.Actor) -> None:
         """
         Set the vehicle for the agent (experimental if applied a second time)
         
@@ -1399,9 +1399,9 @@ class LunaticAgent(BehaviorAgent):
         if self.config.speed.follow_speed_limits:
             print("WARNING: The max speed is currently set to follow the speed limits. "
                   "Use 'follow_speed_limits' to deactivate this")
-        self.config.speed.target_speed = speed # shared with planner
+        self.config.speed.target_speed = speed  # shared with planner
 
-    def follow_speed_limits(self, value:bool=True) -> None:
+    def follow_speed_limits(self, value: bool = True) -> None:
         """
         If active, the agent will dynamically change the target speed according to the speed limits.
         
@@ -1410,21 +1410,21 @@ class LunaticAgent(BehaviorAgent):
         """
         self.config.speed.follow_speed_limits = value
 
-    def ignore_traffic_lights(self, active: bool=True) -> None:
+    def ignore_traffic_lights(self, active: bool = True) -> None:
         """(De)activates the checks for traffic lights"""
         self.config.obstacles.ignore_traffic_lights = active
 
-    def ignore_stop_signs(self, active: bool=True) -> None:
+    def ignore_stop_signs(self, active: bool = True) -> None:
         """(De)activates the checks for stop signs"""
         self.config.obstacles.ignore_stop_signs = active
 
-    def ignore_vehicles(self, active: bool=True) -> None:
+    def ignore_vehicles(self, active: bool = True) -> None:
         """(De)activates the checks for stop signs"""
         self.config.obstacles.ignore_vehicles = active
         
     def rss_set_road_boundaries_mode(self,
                                      road_boundaries_mode: Optional[
-                                         Union[bool, RssRoadBoundariesModeAlias]]=None) -> None:
+                                         Union[bool, RssRoadBoundariesModeAlias]] = None) -> None:
         if road_boundaries_mode is None:
             road_boundaries_mode = self.config.rss.use_stay_on_road_feature
         self._world_model.rss_set_road_boundaries_mode(road_boundaries_mode)

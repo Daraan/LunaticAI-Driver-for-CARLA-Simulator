@@ -98,7 +98,7 @@ class _RuleResultException(LunaticAgentException):
     
     result : Any = RuleResult.NO_RESULT
     
-    def __init__(self, result: Any=RuleResult.NO_RESULT, *args : object):
+    def __init__(self, result: Any = RuleResult.NO_RESULT, *args : object):
         super().__init__(*args)
         self.result = result
 

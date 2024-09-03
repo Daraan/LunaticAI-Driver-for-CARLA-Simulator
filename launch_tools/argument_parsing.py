@@ -15,7 +15,7 @@ def subparser(func) -> argparse.ArgumentParser:
     """This decorator allows to join multiple subparsers in a flexible way."""
 
     @wraps(func)
-    def wrapper(parser:Optional[argparse.ArgumentParser]=None, *args, **kwargs) -> argparse.ArgumentParser:
+    def wrapper(parser: Optional[argparse.ArgumentParser] = None, *args, **kwargs) -> argparse.ArgumentParser:
         if parser is None:  # create a parser if none is given
             parser = argparse.ArgumentParser()
         # else: TODO: are subparsers useful?
@@ -31,7 +31,7 @@ def subparser(func) -> argparse.ArgumentParser:
 
 
 @subparser
-def client_settings(parser:argparse.ArgumentParser):
+def client_settings(parser: argparse.ArgumentParser):
     parser.add_argument(
         '--host',
         metavar='H',
@@ -47,11 +47,11 @@ def client_settings(parser:argparse.ArgumentParser):
     parser.add_argument('--fps', help='Frames per second.', default=20, type=int)
 
 @subparser
-def interactive_mode(parser:argparse.ArgumentParser):
+def interactive_mode(parser: argparse.ArgumentParser):
     parser.add_argument('-I', '--interactive', action='store_true', help='Interactive mode', default=False)
 
 @subparser
-def interactive_control_example(parser:argparse.ArgumentParser):
+def interactive_control_example(parser: argparse.ArgumentParser):
     parser.add_argument(
         '--rolename',
         metavar='NAME',
@@ -68,7 +68,7 @@ def interactive_control_example(parser:argparse.ArgumentParser):
         help='attaches to externally created actor by role name')
 
 @subparser
-def automatic_control_example(argparser:argparse.ArgumentParser):
+def automatic_control_example(argparser: argparse.ArgumentParser):
     argparser.description = 'CARLA Lunatic Agent Example'
     argparser.add_argument(
         '-v', '--verbose',

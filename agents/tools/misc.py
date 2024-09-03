@@ -1,13 +1,11 @@
-# pyright: reportTypeCommentUsage=none
-# pyright: reportUnknownMemberType=information
-
-#!/usr/bin/env python
-
 # Copyright (c) 2018 Intel Labs.
 # authors: German Ros (german.ros@intel.com)
 #
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
+
+# pyright: reportTypeCommentUsage=none
+# pyright: reportUnknownMemberType=information
 
 """ Module with auxiliary functions. """
 
@@ -91,7 +89,7 @@ def get_trafficlight_trigger_location(traffic_light: carla.TrafficLight) -> carl
 
 def is_within_distance(target_transform: carla.Transform,
                        reference_transform: carla.Transform,
-                       max_distance: float, angle_interval: Optional[Sequence[float]]=None) -> bool:
+                       max_distance: float, angle_interval: Optional[Sequence[float]] = None) -> bool:
     """
     Check if a location is both within a certain distance from a reference object.
     By using 'angle_interval', the angle between the location and reference transform
@@ -103,11 +101,11 @@ def is_within_distance(target_transform: carla.Transform,
     :param angle_interval: only locations between [min, max] angles will be considered. This isn't checked by default.
     :return: boolean
     """
-    target_vector = np.array([ # type: ignore
+    target_vector = np.array([  # type: ignore
         target_transform.location.x - reference_transform.location.x,
         target_transform.location.y - reference_transform.location.y
     ])
-    norm_target = np.linalg.norm(target_vector) # type: ignore
+    norm_target = np.linalg.norm(target_vector)  # type: ignore
 
     # If the vector is too short, we can simply stop here
     if norm_target < 0.001:
@@ -125,8 +123,8 @@ def is_within_distance(target_transform: carla.Transform,
     max_angle = angle_interval[1]
 
     fwd = reference_transform.get_forward_vector()
-    forward_vector = np.array([fwd.x, fwd.y]) # type: ignore
-    angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.))) # pyright: ignore
+    forward_vector = np.array([fwd.x, fwd.y])  # type: ignore
+    angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.)))  # pyright: ignore
 
     return min_angle < angle < max_angle
 
@@ -147,7 +145,7 @@ def compute_magnitude_angle(target_location, current_location, orientation):
     forward_vector = np.array([math.cos(math.radians(orientation)), math.sin(math.radians(orientation))])
     d_angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.)))
 
-    return (norm_target, d_angle) # type: ignore
+    return (norm_target, d_angle)  # type: ignore
 
 
 def distance_vehicle(waypoint, vehicle_transform):
@@ -182,7 +180,7 @@ def vector(location_1, location_2):
     z = location_2.z - location_1.z
     norm = np.linalg.norm([x, y, z]) + _EPS
 
-    return [x / norm, y / norm, z / norm] # type: ignore
+    return [x / norm, y / norm, z / norm]  # type: ignore
 
 
 def compute_distance(location_1: carla.Vector3D, location_2: carla.Vector3D) -> float:

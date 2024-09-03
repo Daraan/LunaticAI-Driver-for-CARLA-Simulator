@@ -1,7 +1,7 @@
+#!/usr/bin/env python
 """
 Example of a game loop for the :py:class:`.LunaticAgent` class.
 """
-
 
 import random
 from pprint import pprint
@@ -85,7 +85,7 @@ def game_loop(args: LaunchConfig):
         # Spawn Others
         CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3",
                                                     AMOUNT_ACTORS,
-                                                    spawn_points=[sp for i, sp in enumerate(spawn_points[:AMOUNT_ACTORS+1])
+                                                    spawn_points=[sp for i, sp in enumerate(spawn_points[:AMOUNT_ACTORS + 1])
                                                                      if i != EGO_SPAWN_IDX],
                                                     autopilot=True,
                                                     tick=False)
@@ -97,7 +97,7 @@ def game_loop(args: LaunchConfig):
         logger.info("Creating agent and WorldModel ...")
 
         agent, world_model, global_planner, controller \
-            = game_framework.init_agent_and_interface(ego=None if args.externalActor else ego, # Test externalActor
+            = game_framework.init_agent_and_interface(ego=None if args.externalActor else ego,  # Test externalActor
                                                       agent_class=LunaticAgent,
                                                       config=agent_config)
         logger.debug("Created agent and WorldModel.\n")
@@ -110,7 +110,7 @@ def game_loop(args: LaunchConfig):
             default_rules = create_default_rules()
             agent.add_rules(default_rules)
                 
-        if PRINT_RULES: # NOTE: this can be a bit messy as some attributes have a long repr
+        if PRINT_RULES:  # NOTE: this can be a bit messy as some attributes have a long repr
             print("Lunatic Agent Rules")
             pprint(agent.rules)
         
@@ -132,7 +132,7 @@ def game_loop(args: LaunchConfig):
         """
         An example how to construct a loop for the agent.
         """
-        agent.verify_settings() # Validate if the planner.dt is set up, should match the simulation time delta.
+        agent.verify_settings()  # Validate if the planner.dt is set up, should match the simulation time delta.
         
         """
         This is the main loop, raising for example a AgentDoneException inside the
@@ -217,8 +217,8 @@ def game_loop(args: LaunchConfig):
                 to allow a smooth continuation of the agent.
                 """
                 agent.set_destination(destination)
-                game_framework.continue_loop = True # if not set to True we will exit the loop
-                agent.execute_phase(Phase.DONE| Phase.END, prior_results=None)
+                game_framework.continue_loop = True  # if not set to True we will exit the loop
+                agent.execute_phase(Phase.DONE | Phase.END, prior_results=None)
         
             # Optional: final phase of agents lifetime; could be used for cleanup tasks.
         agent.execute_phase(Phase.TERMINATING | Phase.END, prior_results=None)
@@ -239,7 +239,7 @@ def game_loop(args: LaunchConfig):
             # save world for usage after CDP cleanup
             game_framework.cleanup()    # includes/or is CarlaDataProvider.cleanup()
         else:
-            CarlaDataProvider.cleanup() # NOTE: unsets world, map, client, destroys actors
+            CarlaDataProvider.cleanup()  # NOTE: unsets world, map, client, destroys actors
         agent = None
         world_model = None
         game_framework = None
@@ -287,6 +287,7 @@ def main(args: LaunchConfig):
         print('\nCancelled by user. Bye!')
     else:
         return result
+
 
 # pyright: reportAssignmentType=none
 if __name__ == '__main__':

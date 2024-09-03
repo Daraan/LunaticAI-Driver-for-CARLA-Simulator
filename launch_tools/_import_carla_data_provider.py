@@ -9,7 +9,7 @@ __all__ = ['CarlaDataProvider', 'GameTime']
 
 try:
     # SCENARIO_RUNNER_ROOT takes precedence
-    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider # pyright: ignore[reportMissingImports]
+    from srunner.scenariomanager.carla_data_provider import CarlaDataProvider  # pyright: ignore[reportMissingImports]
     from srunner.scenariomanager.timer import GameTime                        # pyright: ignore[reportMissingImports]
 except ImportError:
     try:
@@ -35,7 +35,7 @@ else:
         del srunner
     else:
         import os
-        if "READTHEDOCS" not in os.environ: # this module is mocked
+        if "READTHEDOCS" not in os.environ:  # this module is mocked
             print("=====================================================")
             print("WARNING: srunner is likely in PYTHONPATH, submodule `scenario_runner` is not used. "
                   "CarlaDataProvider might be duplicated and not used correctly.")

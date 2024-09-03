@@ -77,7 +77,7 @@ class DynamicLocalPlanner(LocalPlanner):
         try:
             if map_inst:
                 if isinstance(map_inst, carla.Map):
-                    self._map : carla.Map= map_inst
+                    self._map : carla.Map = map_inst
                 else:
                     print("Warning: Ignoring the given map as it is not a 'carla.Map'")
                     self._map : carla.Map = self._world.get_map()
@@ -87,7 +87,7 @@ class DynamicLocalPlanner(LocalPlanner):
             print(e)
 
         # set in _init_controller
-        self._vehicle_controller : DynamicVehiclePIDController = None # type: ignore[assignment]
+        self._vehicle_controller : DynamicVehiclePIDController = None  # type: ignore[assignment]
         self.target_waypoint : carla.Waypoint = None  # type: ignore[assignment]
         """The next waypoint in the queue, as long as it is not empty."""
         self.target_road_option : RoadOption = None  # type: ignore[assignment]
@@ -141,7 +141,7 @@ class DynamicLocalPlanner(LocalPlanner):
         """
         self.config.speed.follow_speed_limits = value
 
-    @property # allows to use _compute_next_waypoints of parent
+    @property  # allows to use _compute_next_waypoints of parent
     def _sampling_radius(self):
         return self.config.planner.sampling_radius
 
@@ -206,10 +206,10 @@ class DynamicLocalPlanner(LocalPlanner):
 class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
     
     def __init__(self, agent,
-                 opt_dict:None=None,
-                 map_inst: carla.Map=None, # type: ignore # keep for compatibility, inform user
-                 world: carla.World=None,  # type: ignore # keep for compatibility, inform user
-                 rss_sensor: Optional[RssSensor]=None):
+                 opt_dict: None = None,
+                 map_inst: carla.Map = None,  # type: ignore # keep for compatibility, inform user
+                 world: carla.World = None,  # type: ignore # keep for compatibility, inform user
+                 rss_sensor: Optional[RssSensor] = None):
         super().__init__(agent, opt_dict, map_inst, world)
         self._rss_sensor = rss_sensor
         
@@ -232,19 +232,19 @@ class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
         # Remake the waypoints queue if the new plan has a higher length than the queue
         new_plan_length = len(current_plan) + len(self._waypoints_queue)
         if new_plan_length > self._waypoints_queue.maxlen:  # type: ignore # is bounded
-            new_waypoint_queue : deque[Tuple[carla.Waypoint, RoadOption]]= deque(maxlen=new_plan_length)
+            new_waypoint_queue : deque[Tuple[carla.Waypoint, RoadOption]] = deque(maxlen=new_plan_length)
             for wp in self._waypoints_queue:
                 new_waypoint_queue.append(wp)
             self._waypoints_queue = new_waypoint_queue
 
         if self._rss_sensor:
             self._rss_sensor.sensor.reset_routing_targets()
-            assert len(self._rss_sensor.sensor.routing_targets) == 0, f"Routing targets not cleared. Remaining: {self._rss_sensor.sensor.routing_targets}" # TODO: End remove.
+            assert len(self._rss_sensor.sensor.routing_targets) == 0, f"Routing targets not cleared. Remaining: {self._rss_sensor.sensor.routing_targets}"  # TODO: End remove.
         for elem in current_plan:
             self._waypoints_queue.append(elem)
             if self._rss_sensor:
                 self._rss_sensor.sensor.append_routing_target(elem[0].transform)
         if self._rss_sensor:
-            self._rss_sensor.drop_route() # Replans from remaining routing targets
+            self._rss_sensor.drop_route()  # Replans from remaining routing targets
 
         self._stop_waypoint_creation = stop_waypoint_creation

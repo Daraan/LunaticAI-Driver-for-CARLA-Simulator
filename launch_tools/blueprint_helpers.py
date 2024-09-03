@@ -8,7 +8,7 @@ from launch_tools import CarlaDataProvider
 
 create_blueprint = CarlaDataProvider.create_blueprint
 
-def get_blueprint_library(world: Optional["carla.World"]=None) -> carla.BlueprintLibrary:
+def get_blueprint_library(world: Optional["carla.World"] = None) -> carla.BlueprintLibrary:
     """
     Get the blueprint library of the given world.
     
@@ -22,8 +22,8 @@ def get_blueprint_library(world: Optional["carla.World"]=None) -> carla.Blueprin
         world = CarlaDataProvider.get_world()
     return world.get_blueprint_library()
 
-def get_contrasting_blueprints(ego_vehicle: str="vehicle.lincoln.mkz_2020",
-                               ego_color: str="255,0,0") \
+def get_contrasting_blueprints(ego_vehicle: str = "vehicle.lincoln.mkz_2020",
+                               ego_color: str = "255,0,0") \
     -> Tuple[Annotated[carla.ActorBlueprint, "ego"], Annotated[carla.ActorBlueprint, "NPC"]]:
     """
     Convenience function to acquire two different colored blueprints,

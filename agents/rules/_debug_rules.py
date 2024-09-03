@@ -18,9 +18,9 @@ if x.description != "Always accept RSS updates if :any:`rss.always_accept_update
 test = AlwaysAcceptRSSUpdates()
 
 # Check static type hints
-class_like = ConditionFunction(truthy=True) # this is actually a partial[type[ConditionFunction]]
+class_like = ConditionFunction(truthy=True)  # this is actually a partial[type[ConditionFunction]]
 assert issubclass(class_like.func, ConditionFunction)  # type: ignore
-inst = ConditionFunction(int) # type: ignore # just test
+inst = ConditionFunction(int)  # type: ignore # just test
 assert isinstance(inst, ConditionFunction)
 
 
@@ -73,7 +73,7 @@ class SimpleRule1:
 
 
 class SimpleRule(Rule):
-    phases = Phase.UPDATE_INFORMATION | Phase.BEGIN # type: ignore[assignment]
+    phases = Phase.UPDATE_INFORMATION | Phase.BEGIN  # type: ignore[assignment]
     condition = context_method
     action = lambda self, ctx: ctx_self_action(self, ctx)  # noqa: E731
 
@@ -89,16 +89,16 @@ class ReverseWhenCollide(Rule):
 @Rule
 class SimpleRule1B:
     phases = Phase.UPDATE_INFORMATION | Phase.BEGIN
-    condition = eval_context_function.copy() # TODO: can I copy this via a __set__
+    condition = eval_context_function.copy()  # TODO: can I copy this via a __set__
     condition.register_action(ctx_self_action_kwargs, arg1="arg1")
     
 class SimpleRule2B(Rule):
     phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
-    condition = eval_context_function.copy() # TODO: can I copy this via a __set__
+    condition = eval_context_function.copy()  # TODO: can I copy this via a __set__
     condition.register_action(ctx_action_kwargs, use_self=False, arg1="arg1")
 
 class SimpleRuleB(Rule):
-    phases = Phase.UPDATE_INFORMATION | Phase.BEGIN # type: ignore[assignment]
+    phases = Phase.UPDATE_INFORMATION | Phase.BEGIN  # type: ignore[assignment]
     condition = eval_context_method.copy()
     condition.register_action(ctx_action)
 
@@ -116,7 +116,7 @@ class DebugRuleWithEval(Rule):
         assert_type(condition, ConditionFunction[[], int])
     
     @condition.register_action(True, arg1="arg1")
-    def true_action(self, ctx: "Context", arg1:str) -> None:
+    def true_action(self, ctx: "Context", arg1: str) -> None:
         assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
         assert isinstance(ctx, Context)
         assert isinstance(self, DebugRuleWithEval)
@@ -137,12 +137,14 @@ class DebugRuleWithEval2(Rule):
         assert_type(condition, ConditionFunction[[], int])
     
     deco = condition.register_action(True, arg1="arg1")
+    
     @deco
-    def true_action(self, ctx: "Context", arg1:str) -> float:
+    def true_action(self, ctx: "Context", arg1: str) -> float:
         assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
         assert isinstance(ctx, Context)
         assert isinstance(self, DebugRuleWithEval)
         return 1.0
+
 
 if TYPE_CHECKING:
     from typing import cast
@@ -175,7 +177,7 @@ class Another(Rule):
 a = Another()
 
 class CustomInitRule(Rule):
-    def __init__(self, phases:Optional[Phase]=None):
+    def __init__(self, phases: Optional[Phase] = None):
         # NOTE: The
         super().__init__(phases or Phase.UPDATE_INFORMATION | Phase.BEGIN, condition=always_execute, action=lambda ctx: _check_type(ctx, Context))
         self._custom = True
@@ -183,7 +185,7 @@ class CustomInitRule(Rule):
     phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
 
     _cooldown = 0
-    condition = lambda _: [][1] # This should not be executed, overwritten in the custom Init # noqa: E731, PLE0643
+    condition = lambda _: [][1]  # This should not be executed, overwritten in the custom Init # noqa: E731, PLE0643
 
     actions = {True: lambda self, ctx: (_check_type(self, Rule), _check_type(ctx, Context)),
             False: lambda ctx: _check_type(ctx, Context)}
@@ -192,6 +194,7 @@ class RuleAttributes(Another):
     DEFAULT_COOLDOWN_RESET = 10
     start_cooldown = 20
     cooldown_reset_value = 50
+
 
 test_init = RuleAttributes()
 
@@ -242,6 +245,7 @@ def _test_custom_init_Rule():
     assert custom_rule._custom
     return custom_rule
 
+
 custom_rule = _test_custom_init_Rule()
 
 # Check Doc -> Descritpion
@@ -250,14 +254,15 @@ class CheckDescription(Rule):
     """This is my description"""
     phase = Phase.BEGIN
 
+
 assert CheckDescription.description == """This is my description"""
-cd_rule = CheckDescription(Phase.END, # type: ignore[reportCallIssue]
+cd_rule = CheckDescription(Phase.END,  # type: ignore[reportCallIssue]
                             action=lambda ctx: _check_type(ctx, Context),
                             condition=lambda self, _: (_check_type(self, Rule),
                                                        _check_type(_, Context)))
 #print(cd_rule.phases)
-phase = list(cd_rule.phases).pop() # does not work with frozenset
-cd_rule.phases = set() # type: ignore
+phase = list(cd_rule.phases).pop()  # does not work with frozenset
+cd_rule.phases = set()  # type: ignore
 #print(cd_rule.phases, cd_rule.phase)
 assert phase == Phase.END, f"Expected {Phase.END} but got {phase}"
 assert not cd_rule.phases

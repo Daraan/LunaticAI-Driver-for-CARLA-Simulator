@@ -10,12 +10,12 @@ if TYPE_CHECKING:
 
 from agents.tools.misc import get_speed
 
-__epsilon = np.nextafter(0., 1.) # to not divide by 0
+__epsilon = np.nextafter(0., 1.)  # to not divide by 0
 
 def car_following_manager(self: "HasPlannerWithConfig[BehaviorAgentSettings | LunaticAgentSettings]",
                           vehicle: carla.Vehicle,
                           distance: float,
-                          debug: bool=False) -> carla.VehicleControl:
+                          debug: bool = False) -> carla.VehicleControl:
     """
     Module in charge of car-following behaviors when there's
     someone in front of us.

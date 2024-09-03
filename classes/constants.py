@@ -79,9 +79,9 @@ class AgentState(Flag):
     
     OVERTAKING = auto()             #: :meta hide-value:
     
-    AGAINST_LANE_DIRECTION = auto() #: :meta hide-value:
+    AGAINST_LANE_DIRECTION = auto()  #: :meta hide-value:
     
-    PARKED = _parked | STOPPED # we want this to be a combination of the two
+    PARKED = _parked | STOPPED  # we want this to be a combination of the two
     """Includes :py:attr:`STOPPED`"""
     
     BLOCKED = BLOCKED_OTHER | BLOCKED_BY_VEHICLE | BLOCKED_RED_LIGHT | BLOCKED_BY_STATIC
@@ -417,12 +417,12 @@ class Phase(Flag):
         :meta private:
         """
         # Hardcoded transitions
-        if self in (Phase.NONE, Phase.EXECUTION|Phase.END): # Begin loop
+        if self in (Phase.NONE, Phase.EXECUTION | Phase.END):  # Begin loop
             return Phase.BEGIN | Phase.UPDATE_INFORMATION
         #if self in (Phase.EXECUTION|Phase.END, Phase.DONE| Phase.END) : # End loop
         #    return Phase.NONE
         if self == Phase.EXECUTION | Phase.BEGIN:
-            return Phase.USER_CONTROLLED # Cannot know what the next phase is
+            return Phase.USER_CONTROLLED  # Cannot know what the next phase is
         if Phase.BEGIN in self:
             return (self & ~Phase.BEGIN) | Phase.END
         # Note these should all be END phases
@@ -433,16 +433,16 @@ class Phase(Flag):
             return Phase.RSS_EVALUATION | Phase.BEGIN
         if Phase.USER_CONTROLLED & self:
             # cannot know what the next phase is
-            return Phase.USER_CONTROLLED | Phase.BEGIN # assure that is a BEGIN or END phase
+            return Phase.USER_CONTROLLED | Phase.BEGIN  # assure that is a BEGIN or END phase
         if Phase.TERMINATING in self:
             return Phase.NONE
-        if Phase.END in self: # Safeguard
+        if Phase.END in self:  # Safeguard
             return Phase.BEGIN | Phase((self & ~Phase.END).value * 2)
         raise ValueError(f"Phase {self} is not a valid phase")
         return Phase(self.value * 2)
     
 
-    def validate_next_phase(current_phase, next_phase : "Phase") -> None: # type: ignore
+    def validate_next_phase(current_phase, next_phase : "Phase") -> None:  # type: ignore
         """
         :meta private:
         """
@@ -490,10 +490,10 @@ class Phase(Flag):
         
         :meta private:
         """
-         # TODO: Get this from EXCEPTIONS
+        # TODO: Get this from EXCEPTIONS
         exceptions = [cls.TURNING_AT_JUNCTION, cls.HAZARD, cls.EMERGENCY, cls.COLLISION, cls.CAR_DETECTED, cls.DONE]
         exception_phases : "list[Phase]" = []
-        for e in exceptions: # improve with itertools
+        for e in exceptions:  # improve with itertools
             exception_phases.append(e | cls.BEGIN)
             exception_phases.append(e | cls.END)
         return exception_phases
@@ -506,9 +506,9 @@ class Phase(Flag):
         NOTE:
             Only supports the operator :code:`|`. :code:`NAME` must be a valid Phase name.
         """
-        elements = string.split("|") # Phase.NAME
+        elements = string.split("|")  # Phase.NAME
         elements = [cls[e.split(".")[-1].strip()] for e in elements]
-        return reduce(operator.or_, elements) # build union -> Phase
+        return reduce(operator.or_, elements)  # build union -> Phase
 
 
 class Hazard(Flag):
@@ -533,7 +533,7 @@ class Hazard(Flag):
     
     OTHER = auto()    #: :meta hide-value:
 
-    JUNCTION = auto() #: :meta hide-value:
+    JUNCTION = auto()  #: :meta hide-value:
     
     OBSTACLE = PEDESTRIAN | CAR | STATIC_OBSTACLE
     """
@@ -576,17 +576,18 @@ class HazardSeverity(Flag):
     """
 
     # Aliases - Always register at the end!
-    CRITICAL = WARNING | CRITICAL_ONLY # Level 2
+    CRITICAL = WARNING | CRITICAL_ONLY  # Level 2
     """
     Includes :py:attr:`WARNING`
     """
     
-    EMERGENCY = CRITICAL | EMERGENCY_ONLY # Level 3
+    EMERGENCY = CRITICAL | EMERGENCY_ONLY  # Level 3
     """
     Includes :py:attr:`WARNING` and :py:attr:`CRITICAL`
     """
 
 # ----------------- RoadOptions -----------------
+
 
 if TYPE_CHECKING:
     # For type-checkers these classes should be the same.
@@ -664,28 +665,28 @@ class RoadOptionColor(metaclass=__ItemAccessMeta):
     Supports :python:`__getitem__(name)` and :python:`__call__(RoadOption)` for easy access.
     """
     
-    VOID = carla.Color(0, 128, 0) # Green
+    VOID = carla.Color(0, 128, 0)  # Green
     """
     Green
     
     :meta hide-value:
     """
     
-    LEFT = carla.Color(128, 128, 0) # Yellow
+    LEFT = carla.Color(128, 128, 0)  # Yellow
     """
     Yellow
     
     :meta hide-value:
     """
     
-    RIGHT = carla.Color(0, 128, 128) # Cyan
+    RIGHT = carla.Color(0, 128, 128)  # Cyan
     """
     Cyan
     
     :meta hide-value:
     """
     
-    STRAIGHT = carla.Color(64, 64, 64) # Gray
+    STRAIGHT = carla.Color(64, 64, 64)  # Gray
     """
     Gray
     
@@ -706,7 +707,7 @@ class RoadOptionColor(metaclass=__ItemAccessMeta):
     :meta hide-value:
     """
     
-    CHANGELANERIGHT = carla.Color(0, 32, 128) # Dark Cyan
+    CHANGELANERIGHT = carla.Color(0, 32, 128)  # Dark Cyan
     """
     Dark Cyan
     
@@ -753,6 +754,7 @@ class RssRoadBoundariesModeStub(_CarlaIntEnum):
     """
     Off = 0
     On = 1
+
 
 # assert that the stubs are correct
 if AD_RSS_AVAILABLE:
@@ -825,4 +827,4 @@ class StreetOccupation(IntEnum):
     
     def __str__(self) -> str:
         s = super().__str__()
-        return f"{s:^7}" # center the word
+        return f"{s:^7}"  # center the word

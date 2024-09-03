@@ -6,6 +6,7 @@ Interface classes between CARLA, the agent, and the user interface.
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 import time
 import weakref
@@ -136,7 +137,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     # ----- Init Functions -----
     
     @classmethod
-    def quickstart(cls, launch_config: Optional[LaunchConfig]=None, *, logging: bool=False) -> "Self":
+    def quickstart(cls, launch_config: Optional[LaunchConfig] = None, *, logging: bool = False) -> "Self":
         """
         Initializes Hydra_ in a limited way, i.e. does not allow for command line overrides.
         
@@ -173,8 +174,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     # Hydra Tools
     # TODO: this could be some launch_tools MixinClass
     @staticmethod
-    def initialize_hydra(config_dir: str="./conf",
-                         config_name: str="launch_config",
+    def initialize_hydra(config_dir: str = "./conf",
+                         config_name: str = "launch_config",
                          version_base=None, *,
                          job_name="LunaticAgentJob",
                          logging=True,
@@ -225,7 +226,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                 if LaunchConfig._config_path:
                     # Load defined schema from the config Store
                     cn = config_store.load(LaunchConfig._config_path)
-                    schema: Optional[DictConfig] = cn.node # type: ignore[assignment]
+                    schema: Optional[DictConfig] = cn.node  # type: ignore[assignment]
                     with open_dict(schema):
                         schema.merge_with(dict_config)
                     config = assure_type(LaunchConfig, schema)
@@ -235,7 +236,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                 schema = None
             if schema is None:
                 logger.debug("No schema found for structured init file %s. Falling back to LaunchConfig", config_name)
-                launch_config = LaunchConfig(**dict_config) # type: ignore
+                launch_config = LaunchConfig(**dict_config)  # type: ignore
                 config : LaunchConfig = OmegaConf.structured(launch_config,
                                                             flags={'allow_objects' : True})
         else:
@@ -248,17 +249,17 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             hydra_conf.set_config(config)       # type: ignore
             os.makedirs(config.hydra.runtime.output_dir, exist_ok=True)
             if logging:
-                 # Assure that our logger works
-                configure_log(config.hydra.job_logging, logger.name) # type: ignore
+                # Assure that our logger works
+                configure_log(config.hydra.job_logging, logger.name)  # type: ignore
             with open_dict(config):
                 del config["hydra"]
         config.agent._set_flag("allow_objects", True)
-        config.agent.__dict__["_parent"] = None # Remove parent from the config, i.e. make it a top-level config.
+        config.agent.__dict__["_parent"] = None  # Remove parent from the config, i.e. make it a top-level config.
         return config
         
     # TODO: Maybe unify these settings; make overrides available in the config.
     @staticmethod
-    def load_hydra_config(config_name: str="conf/launch_config") -> "LaunchConfig":
+    def load_hydra_config(config_name: str = "conf/launch_config") -> "LaunchConfig":
         if GameFramework.hydra_initialized():
             return assure_type(LaunchConfig, hydra.compose(config_name=config_name))
         config_dir, config_name = os.path.split(config_name)
@@ -271,9 +272,9 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             
     
     def __init__(self, args: "LaunchConfig",
-                 config: Optional[DictConfig]=None,
-                 timeout:float=10.0,
-                 worker_threads:int =0,
+                 config: Optional[DictConfig] = None,
+                 timeout: float = 10.0,
+                 worker_threads: int = 0,
                  *, map_layers=carla.MapLayer.All):
         """
         Parameters:
@@ -303,12 +304,12 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         
         # Import here to avoid circular imports
         from classes.rule import BlockingRule, Rule  # noqa: PLC0415,RUF100
-        self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
+        self.cooldown_framework = Rule.CooldownFramework()  # used in context manager. # NOTE: Currently can be constant
         BlockingRule._gameframework = weakref.proxy(self)
         
     @class_or_instance_method
-    def init_pygame(cls_or_self: "Self | type[Self]", launch_config: Optional[LaunchConfig]=None,
-                    recreate: bool=False) -> tuple[pygame.time.Clock, pygame.Surface]:
+    def init_pygame(cls_or_self: "Self | type[Self]", launch_config: Optional[LaunchConfig] = None,
+                    recreate: bool = False) -> tuple[pygame.time.Clock, pygame.Surface]:
         """
         Parameters:
             launch_config: Will use the :py:attr:`width<.LaunchConfig.width>` and
@@ -323,7 +324,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         """
         if recreate or GameFramework.clock is None or GameFramework.display is None:
             if launch_config is None:
-                launch_config = getattr(cls_or_self, "_args", None) # get from inst.
+                launch_config = getattr(cls_or_self, "_args", None)  # get from inst.
             if getattr(launch_config, "pygame", True):
                 pygame.init()
                 pygame.font.init()
@@ -336,10 +337,10 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         return GameFramework.clock, GameFramework.display
     
     @staticmethod
-    def init_carla(args: Optional[LaunchConfig]=None,
-                   timeout: float =10.0,
-                   worker_threads: int=0, *,
-                   map_layers: carla.MapLayer=carla.MapLayer.All) -> carla.WorldSettings:
+    def init_carla(args: Optional[LaunchConfig] = None,
+                   timeout: float = 10.0,
+                   worker_threads: int = 0, *,
+                   map_layers: carla.MapLayer = carla.MapLayer.All) -> carla.WorldSettings:
         """
         Initializes the :py:class:`carla.Client` and the connects it to the simulator.
         
@@ -362,7 +363,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                                            fps=args.fps)
         return CarlaDataProvider.get_world().get_settings()
     
-    def init_traffic_manager(self, port: Optional[int]=None) -> carla.TrafficManager:
+    def init_traffic_manager(self, port: Optional[int] = None) -> carla.TrafficManager:
         """
         Returns an instance of the :py:class:`carla.TrafficManager`
         related to the specified port. If it does not exist, this will be created.
@@ -380,16 +381,16 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         if self._args.handle_ticks:
             if self._args.sync:
                 traffic_manager.set_synchronous_mode(True)
-            traffic_manager.set_hybrid_physics_mode(True) # Note default 50m
-            traffic_manager.set_hybrid_physics_radius(50.0) # TODO: make a LaunchConfig config variable
+            traffic_manager.set_hybrid_physics_mode(True)  # Note default 50m
+            traffic_manager.set_hybrid_physics_radius(50.0)  # TODO: make a LaunchConfig config variable
         self.traffic_manager = traffic_manager
         return traffic_manager
     
     def init_agent_and_interface(self,
             ego: Optional[carla.Vehicle],
             agent_class: "type[LunaticAgent]",
-            config: Optional[LunaticAgentSettings]=None,
-            overwrites: Optional[dict[str, Any]]=None
+            config: Optional[LunaticAgentSettings] = None,
+            overwrites: Optional[dict[str, Any]] = None
         ) -> "tuple[LunaticAgent, WorldModel, GlobalRoutePlanner, RSSKeyboardControl]":
         """
         Quick setup for the agent and the world model.
@@ -425,14 +426,14 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                                                agent_config=config,
                                                overwrites=overwrites)
         self.config = self.agent.config
-        controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
+        controller = self.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False)  # Note: stores weakref to controller
         self.world_model.game_framework = weakref.proxy(self)
         self.world_model.tick_server_world()
-        self.agent.verify_settings(strictness=-1) # NOTE: Here live info is already available and will throw some errors
+        self.agent.verify_settings(strictness=-1)  # NOTE: Here live info is already available and will throw some errors
         return self.agent, self.world_model, self.global_planner, controller
     
     def make_world_model(self, config: "LunaticAgentSettings",
-                         player: Optional[carla.Vehicle]=None) -> "WorldModel":
+                         player: Optional[carla.Vehicle] = None) -> "WorldModel":
         """
         Creates a :py:class:`WorldModel` with a backreference to the GameFramework.
         """
@@ -442,7 +443,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     def make_controller(self,
                         world_model: "WorldModel",
-                        controller_class: "type[_ControllerClass]"=RSSKeyboardControl,
+                        controller_class: "type[_ControllerClass]" = RSSKeyboardControl,
                         **kwargs):
         """
         Creates a keyboard controller and attaches it to the world model.
@@ -457,7 +458,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                                         clock=self.clock,
                                         **kwargs)
         self.controller = weakref.proxy(controller)
-        return controller # NOTE: does not return the proxy object.
+        return controller  # NOTE: does not return the proxy object.
     
     @staticmethod
     def hydra_initialized() -> bool:
@@ -469,15 +470,14 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
 
     @overload
     @staticmethod
-    def get_hydra_config(raw: Literal[False]=False) -> "HydraConf":
-        ...
+    def get_hydra_config(raw: Literal[False] = False) -> "HydraConf": ...
+    
     @overload
     @staticmethod
-    def get_hydra_config(raw: Literal[True]) -> HydraConfig:
-        ...
+    def get_hydra_config(raw: Literal[True]) -> HydraConfig: ...
 
     @staticmethod
-    def get_hydra_config(raw: bool=False) -> "HydraConfig | HydraConf":
+    def get_hydra_config(raw: bool = False) -> "HydraConfig | HydraConf":
         """
         Retrieves the Hydra_ configuration object.
         
@@ -502,9 +502,9 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         
         :meta private:
         """
-        self.controller = controller # type: ignore ; maybe use proxy
+        self.controller = controller  # type: ignore ; maybe use proxy
     
-    def set_config(self, config:DictConfig) -> None:
+    def set_config(self, config: DictConfig) -> None:
         """
         Change the :py:attr:`config`.
         
@@ -514,7 +514,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     # ----- UI Functions -----
     
-    def parse_rss_controller_events(self, final_controls:carla.VehicleControl):
+    def parse_rss_controller_events(self, final_controls: carla.VehicleControl):
         return self.controller.parse_events(final_controls)
     
     def render_everything(self):
@@ -564,13 +564,13 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.agent = agent
         self.world_model = agent._world_model
         try:
-            if self.world_model.controller: # weakref.proxy
+            if self.world_model.controller:  # weakref.proxy
                 self.controller = self.world_model.controller
         except ReferenceError:
             self.controller = None                            # type: ignore[assignment]
         if not self.controller:
             logger.debug("Creating new controller.")
-            self.controller = self.make_controller(self.world_model, start_in_autopilot=self._args.autopilot) # hard reference # type: ignore
+            self.controller = self.make_controller(self.world_model, start_in_autopilot=self._args.autopilot)  # hard reference # type: ignore
             self.world_model.controller = self.controller  # hard instead of weak reference
         self.agent._validate_phases = False
         return self
@@ -583,9 +583,9 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         if self.controller is None:
             raise ValueError("Controller not initialized.")
         
-        self.clock.tick() # self.args.fps)
+        self.clock.tick()  # self.args.fps)
         frame = None
-        if self._args.handle_ticks: # i.e. no scenario runner doing it for us
+        if self._args.handle_ticks:  # i.e. no scenario runner doing it for us
             if CarlaDataProvider.is_sync_mode():
                 frame = self.world_model.world.tick()
             else:
@@ -609,15 +609,15 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             elif isinstance(exc_val, ContinueLoopException):
                 logger.error("ContinueLoopException(%s) should be thrown during `agent.run_step` but caught by GameFramework this should not happen. Skipping this step; no controls are applied!", exc_val)
             else:
-                return # skip render and likely terminate.
+                return  # skip render and likely terminate.
         self.render_everything()
         pygame.display.flip()
 
     @class_or_instance_method
     def cleanup(cls_or_self: "type[Self] | Self",
                 *,
-                disable_sync: bool=True,
-                quit_pygame: bool=True):
+                disable_sync: bool = True,
+                quit_pygame: bool = True):
         """
         Cleans up resources and actors.
         
@@ -643,15 +643,15 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             if disable_sync and cls_or_self.traffic_manager:
                 try:
                     cls_or_self.traffic_manager.set_synchronous_mode(False)
-                except Exception:
+                except Exception:  # noqa
                     pass
         finally:
             # Prevent freezing of the editor
             if disable_sync and CarlaDataProvider.get_world() is not None:
-                    # Disable Synchronous Mode
-                    world_settings = carla.WorldSettings(synchronous_mode=False,
+                # Disable Synchronous Mode
+                world_settings = carla.WorldSettings(synchronous_mode=False,
                                                         fixed_delta_seconds=0.0)
-                    cls_or_self._world.apply_settings(world_settings)
+                cls_or_self._world.apply_settings(world_settings)
             CarlaDataProvider.cleanup()
             if quit_pygame:
                 pygame.quit()
@@ -706,12 +706,12 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     """
 
     def __init__(self, config: "LunaticAgentSettings",
-                 args: Union[LaunchConfig, Mapping[str, Any], "os.PathLike[str]", str] ="./conf/launch_config.yaml",
+                 args: Union[LaunchConfig, Mapping[str, Any], "os.PathLike[str]", str] = "./conf/launch_config.yaml",
                  agent: Optional[LunaticAgent] = None,
                  *,
-                 carla_world: Optional[carla.World] =None,
-                 player: Optional[carla.Vehicle] =None,
-                 map_inst: Optional[carla.Map] =None):
+                 carla_world: Optional[carla.World] = None,
+                 player: Optional[carla.Vehicle] = None,
+                 map_inst: Optional[carla.Map] = None):
         """Constructor method"""
         # Set World
         if self.get_world() is None:
@@ -725,9 +725,9 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         """Object containing some data about the simulation such as synchrony between client and server or rendering mode."""
         
         if agent:
-            agent._world_model = self # backreference, if needed; the LunaticAgent sets this as well.
+            agent._world_model = self  # backreference, if needed; the LunaticAgent sets this as well.
         
-        if self.map is not None: # if this is set accesses CarlaDataProvider
+        if self.map is not None:  # if this is set accesses CarlaDataProvider
             if map_inst and self.map != map_inst:
                 raise ValueError("CarlaDataProvider.get_map() and passed map_inst are not the same.")
         elif map_inst:
@@ -737,7 +737,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 logger.warning("Warning: Ignoring the given map as it is not a 'carla.Map'")
         if self.map is None:
             try:
-                self.set_world(self.world) # CDP function
+                self.set_world(self.world)  # CDP function
             except RuntimeError as error:
                 print(f'RuntimeError: {error}')
                 print('  The server could not send the OpenDRIVE (.xodr) file:')
@@ -745,7 +745,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
-        if not isinstance(args, (Mapping, DictConfig, LaunchConfig)): # TODO: should rather check for string like
+        if not isinstance(args, (Mapping, DictConfig, LaunchConfig)):  # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
             # When passed as path with directory
@@ -758,7 +758,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             except Exception:
                 print("Problem with", type(args), args)
                 raise
-            args.externalActor = not (player is not None or agent is not None) # TEMP: Remove to force clean config.
+            args.externalActor = not (player is not None or agent is not None)  # TEMP: Remove to force clean config.
         self._args : LaunchConfig = assure_type(LaunchConfig, args)
         
         self.hud: HUD = HUD(self._args.width, self._args.height, self.world)
@@ -819,13 +819,13 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             # If player is None here, will set in in restart()
             self.player = player  # pyright: ignore[reportAttributeAccessIssue]
 
-        assert self.player is not None or self.external_actor # Note: Former optional. Player set in restart
+        assert self.player is not None or self.external_actor  # Note: Former optional. Player set in restart
 
         self.collision_sensor : CollisionSensor = None   # type: ignore # set in restart
-        self.lane_invasion_sensor : LaneInvasionSensor = None # type: ignore # set in restart
+        self.lane_invasion_sensor : LaneInvasionSensor = None  # type: ignore # set in restart
         self.gnss_sensor : Optional[GnssSensor] = None
         self.imu_sensor : Optional[IMUSensor] = None     # from interactive
-        self.radar_sensor : Optional[RadarSensor] = None # from interactive
+        self.radar_sensor : Optional[RadarSensor] = None  # from interactive
         self.camera_manager : CameraManager = None       # type: ignore # set in restart
         """
         Manages cameras for the user interface and :py:class:`.HUD`.
@@ -872,7 +872,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         # RSS
         # set in restart
         self.rss_sensor: Optional[RssSensor] = None
-        self.rss_unstructured_scene_visualizer: RssUnstructuredSceneVisualizer = None # type: ignore[assignment]
+        self.rss_unstructured_scene_visualizer: RssUnstructuredSceneVisualizer = None  # type: ignore[assignment]
         self.rss_bounding_box_visualizer: RssBoundingBoxVisualizer = None  # type: ignore[assignment]
         
         if config.rss:
@@ -895,16 +895,16 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
         
         if CarlaDataProvider._traffic_light_map is None:
-            logger.error("Traffic light map not set at this point") # should not have happened
+            logger.error("Traffic light map not set at this point")  # should not have happened
             CarlaDataProvider.set_world(self._world)
         elif not CarlaDataProvider._traffic_light_map:
-            logger.error("Traffic light map is empty") # should not have happened
+            logger.error("Traffic light map is empty")  # should not have happened
             CarlaDataProvider.prepare_map()
 
     def rss_set_road_boundaries_mode(self,
                                      road_boundaries_mode: Optional[Union['RssRoadBoundariesModeAlias',
                                                                           carla.RssRoadBoundariesMode,
-                                                                          bool]]=None) -> None:
+                                                                          bool]] = None) -> None:
         """
         Choose wether or not to use the RSS road boundaries feature.
         
@@ -967,7 +967,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     @staticmethod
     def _find_external_actor(world: carla.World,
                              role_name: str,
-                             actor_list: Optional[carla.ActorList]=None) -> Optional[carla.Actor]:
+                             actor_list: Optional[carla.ActorList] = None) -> Optional[carla.Actor]:
         """
         Looks to find an actor with a matching **role_name**.
         """
@@ -990,7 +990,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             SystemExit: If the actor is not found within the time period.
         """
         assert self.actor_role_name
-        self.tick_server_world() # Tick the world?
+        self.tick_server_world()  # Tick the world?
         start = time.time()
         t = start
         while t < start + timeout:
@@ -999,8 +999,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 return player
             logger.info("...External actor not found. Waiting to find external actor named `%s`",
                         self.actor_role_name)
-            time.sleep(sleep) # Note if on same thread, nothing will happen. Put function into thread?
-            self.tick_server_world() # Tick the world?
+            time.sleep(sleep)  # Note if on same thread, nothing will happen. Put function into thread?
+            self.tick_server_world()  # Tick the world?
             t = time.time()
         logger.error(f"External actor `{self.actor_role_name}` not found. Exiting...")
         print(f"External actor `{self.actor_role_name}` not found. Exiting...")
@@ -1026,7 +1026,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             # Check whether there is already an actor with defined role name
             if not self.actor_role_name:
                 raise ValueError("When using external actor, rolename must be set.")
-            actor_list = self.world.get_actors() # In sync mode the actor list could be empty
+            actor_list = self.world.get_actors()  # In sync mode the actor list could be empty
             external_actor = self._find_external_actor(self.world, self.actor_role_name, actor_list)
             if self.player is None:
                 if external_actor:
@@ -1034,7 +1034,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 else:
                     self.player = assure_type(carla.Vehicle,
                                     self._wait_for_external_actor(timeout=20))
-            elif external_actor and self.player.id != external_actor.id: # NOTE: even with same id different instances and hashes.
+            elif external_actor and self.player.id != external_actor.id:  # NOTE: even with same id different instances and hashes.
                 logger.warning("External actor found with role_name `%s` but different id. "
                                "Keeping the current actor (%s) and ignoring the external actor (%s)",
                                self.actor_role_name, self.player.id, external_actor.id)
@@ -1052,7 +1052,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     color = random.choice(blueprint.get_attribute('color').recommended_values)
                     blueprint.set_attribute('color', color)
                 # From Interactive:
-                if blueprint.has_attribute('terramechanics'): # For Tire mechanics/Physics? # Todo is that needed?
+                if blueprint.has_attribute('terramechanics'):  # For Tire mechanics/Physics? # Todo is that needed?
                     blueprint.set_attribute('terramechanics', 'false')
                 if blueprint.has_attribute('driver_id'):
                     driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
@@ -1072,7 +1072,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 spawn_point.location.z += 2.0
                 spawn_point.rotation.roll = 0.0
                 spawn_point.rotation.pitch = 0.0
-                if self.camera_manager is not None: # None at first start; not None if player was already set before
+                if self.camera_manager is not None:  # None at first start; not None if player was already set before
                     self.destroy()
                     self.player = assure_type(carla.Vehicle, self.world.try_spawn_actor(blueprint, spawn_point))
                 self.modify_vehicle_physics(self.player)
@@ -1081,8 +1081,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     print('There are no spawn points available in your map/town.')
                     print('Please add some Vehicle Spawn Point to your UE4 scene.')
                     sys.exit(1)
-                spawn_points  = self.map.get_spawn_points()
-                spawn_point : carla.Transform = random.choice(spawn_points) if spawn_points else carla.Transform() # type: ignore
+                spawn_points = self.map.get_spawn_points()
+                spawn_point : carla.Transform = random.choice(spawn_points) if spawn_points else carla.Transform()  # type: ignore
                 self.player = assure_type(carla.Vehicle,
                                           self.world.try_spawn_actor(blueprint, spawn_point))
                 # From Interactive:
@@ -1103,7 +1103,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
-        self.gnss_sensor = None # GnssSensor(self.player) # TODO: make it optional
+        self.gnss_sensor = None  # GnssSensor(self.player) # TODO: make it optional
         self.imu_sensor = None  # IMUSensor(self.player)
         self.actors.extend([
             self.collision_sensor,
@@ -1124,7 +1124,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player,
                                                                                 self.world,
                                                                                 self.dim,
-                                                                                gamma_correction=self._gamma) # TODO: use args instead of gamma
+                                                                                gamma_correction=self._gamma)  # TODO: use args instead of gamma
         self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim,
                                                                     self.world,
                                                                     self.camera_manager.sensor)
@@ -1137,9 +1137,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     else:
                         log_level = carla.RssLogLevel(log_level)
                 except Exception as e:
-                    raise KeyError("Could not convert '{log_level}' to RssLogLevel must be in {valid}".format(  # noqa: UP032
-                                    log_level=log_level, valid=list(carla.RssLogLevel.names.keys()))
-                    ) from e
+                    msg = f"Could not convert '{log_level}' to RssLogLevel must be in {list(carla.RssLogLevel.names.keys())}"
+                    raise KeyError(msg) from e
                 logger.info("Carla Log level was not a RssLogLevel")
             self.rss_sensor = RssSensor(self.player,
                                     self.rss_unstructured_scene_visualizer,
@@ -1172,7 +1171,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         """Method for every tick"""
         self.hud.tick(self, clock, InformationManager.obstacles)
 
-    def next_weather(self, reverse: bool =False) -> None:
+    def next_weather(self, reverse: bool = False) -> None:
         """Get next weather setting"""
         self._weather_index += -1 if reverse else 1
         self._weather_index %= len(self._weather_presets)
@@ -1181,13 +1180,13 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self.player.get_world().set_weather(preset[0])
         self.weather = preset[1]
 
-    def next_map_layer(self, reverse: bool =False) -> None:
+    def next_map_layer(self, reverse: bool = False) -> None:
         self.current_map_layer += -1 if reverse else 1
         self.current_map_layer %= len(self.map_layer_names)
         selected = self.map_layer_names[self.current_map_layer]
         self.hud.notification(f'LayerMap selected: {selected}')
 
-    def load_map_layer(self, unload: bool=False):
+    def load_map_layer(self, unload: bool = False):
         selected = self.map_layer_names[self.current_map_layer]
         if unload:
             self.hud.notification(f'Unloading map layer: {selected}')
@@ -1215,7 +1214,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             while os.path.exists(dir_name_formatted):
                 self.recording_dir_num += 1
                 dir_name_formatted = dir_name % self.recording_dir_num
-            self.recording_file_format = os.path.join(dir_name, filename) # keep unformatted.
+            self.recording_file_format = os.path.join(dir_name, filename)  # keep unformatted.
             self.recording_frame_num = 0
             os.makedirs(dir_name_formatted)
             self.hud.notification(f'Started recording (folder: {dir_name_formatted})')
@@ -1241,7 +1240,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             physics_control.use_sweep_wheel_collision = True
             actor.apply_physics_control(physics_control)
         except Exception:
-            pass
+            logger.warning("Could not modify vehicle physics for actor: %s", actor)
 
     def finalize_render(self, display : pygame.Surface):
         """
@@ -1258,7 +1257,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 logger.error("Could not save image format: `%s` % (self.recording_dir_num, self.recording_frame_num): %s", self.recording_file_format, e)
             self.recording_frame_num += 1
 
-    def render(self, display : pygame.Surface, finalize:bool=True):
+    def render(self, display : pygame.Surface, finalize: bool = True):
         """
         Render world
         
@@ -1290,7 +1289,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         if self.radar_sensor is not None:
             self.toggle_radar()  # destroys it if not None
 
-    def destroy(self, destroy_ego: bool=False):
+    def destroy(self, destroy_ego: bool = False):
         """
         Destroys all actors
         
@@ -1302,7 +1301,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         if self.world_tick_id and self.world:
             self.world.remove_on_tick(self.world_tick_id)
         self.destroy_sensors()
-        if destroy_ego and self.player not in self.actors: # do not destroy external actors.
+        if destroy_ego and self.player not in self.actors:  # do not destroy external actors.
             logger.debug("Adding player to destruction list.")
             self.actors.append(self.player)
         elif not destroy_ego and self.player in self.actors:
@@ -1327,7 +1326,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 except AttributeError as e:
                     logger.debug("Error with actor {}: {}", actor, e)
                 try:
-                    x = actor.destroy() # Non carla instances
+                    x = actor.destroy()  # Non carla instances
                     print(x)
                 except RuntimeError:
                     logger.warning("Could not destroy actor: " + str(actor))
@@ -1339,7 +1338,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             runtime_dir = GameFramework.get_hydra_config().runtime.output_dir
             for dir_name_formatted in self._recording_dirs:
                 dirname = os.path.split(dir_name_formatted)[1]
-                os.system(f'ffmpeg -an -sn -i "{dir_name_formatted}/%08d.bmp" -framerate 1 -vcodec mpeg4 -r 60 "{os.path.join(runtime_dir, dirname)}.avi"')  # noqa: E501
+                subprocess.run(["ffmpeg", "-an", "-sn", "-i", f"{dir_name_formatted}/%08d.bmp", "-framerate", "1", "-vcodec", "mpeg4", "-r", "60", f"{os.path.join(runtime_dir, dirname)}.avi"])  # noqa: E501
+                #os.system(f'ffmpeg -an -sn -i "{dir_name_formatted}/%08d.bmp" -framerate 1 -vcodec mpeg4 -r 60 "{os.path.join(runtime_dir, dirname)}.avi"')  # noqa: E501
                 print(f"Recording saved in {os.path.join(runtime_dir, dirname)}.avi")
             
         
@@ -1355,7 +1355,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         if (self.rss_sensor.log_level <= carla.RssLogLevel.warn
             and self.rss_sensor.ego_dynamics_on_route
             and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route):
-            logger.warning("RSS: Not on route! " +  str(self.rss_sensor.ego_dynamics_on_route)[:97] + "...")
+            logger.warning("RSS: Not on route! " + str(self.rss_sensor.ego_dynamics_on_route)[:97] + "...")
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:

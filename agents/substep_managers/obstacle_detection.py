@@ -11,20 +11,20 @@ if TYPE_CHECKING:
 # TODO: Unify distance and obstacle thresholds
 
 def collision_detection_manager(self : "LunaticAgent"):
-        """
-        This module is in charge of warning in case of a collision
-        with vehicles or static obstacles.
+    """
+    This module is in charge of warning in case of a collision
+    with vehicles or static obstacles.
 
-            :param location: current location of the agent
-            :return vehicle_state: True if there is a vehicle nearby, False if not
-            :return vehicle: nearby vehicle
-            :return distance: distance to nearby vehicle
+        :param location: current location of the agent
+        :return vehicle_state: True if there is a vehicle nearby, False if not
+        :return vehicle: nearby vehicle
+        :return distance: distance to nearby vehicle
 
-        # NOTE: Former collision_and_car_avoid_manager, which evaded car via the tailgating function
-        now rule based.
-        """
+    # NOTE: Former collision_and_car_avoid_manager, which evaded car via the tailgating function
+    now rule based.
+    """
 
-        vehicle_detection_result = detect_obstacles_in_path(self, self.vehicles_nearby)
-        static_obstacle_detection_result = detect_obstacles_in_path(self, self.static_obstacles_nearby)
-        
-        return vehicle_detection_result, static_obstacle_detection_result
+    vehicle_detection_result = detect_obstacles_in_path(self, self.vehicles_nearby)
+    static_obstacle_detection_result = detect_obstacles_in_path(self, self.static_obstacles_nearby)
+    
+    return vehicle_detection_result, static_obstacle_detection_result

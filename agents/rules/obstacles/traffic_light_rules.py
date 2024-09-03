@@ -48,7 +48,7 @@ class PassYellowTrafficLightRule(Rule):
             ctx.config.speed.target_speed = self.self_config.passing_speed
             ctx.discard_hazard(Hazard.TRAFFIC_LIGHT_YELLOW, match="exact")
         else:
-            ctx.add_hazard(Hazard.TRAFFIC_LIGHT_YELLOW) # -> Emergency Rules
+            ctx.add_hazard(Hazard.TRAFFIC_LIGHT_YELLOW)  # -> Emergency Rules
                       
         
 
@@ -61,7 +61,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
     
     phase = Phase.EMERGENCY | Phase.BEGIN
     
-    MAX_TICKS = 2000 # 2000 * 0.05 = 100 seconds
+    MAX_TICKS = 2000  # 2000 * 0.05 = 100 seconds
     
     DEFAULT_COOLDOWN_RESET = 500
     
@@ -75,7 +75,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         return ctx.has_hazard(Hazard.TRAFFIC_LIGHT, "intersection") and not ctx.has_hazard(Hazard.OBSTACLE)
     
     # Important need to turn this of to have custom speed limits.
-    overwrite_settings = {"speed" : {"follow_speed_limits" : False},}
+    overwrite_settings = {"speed" : {"follow_speed_limits" : False}, }
     
     @dataclass
     class self_config(RuleConfig):
@@ -95,14 +95,14 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
 
         last_traffic_light = ctx.agent.current_traffic_light
         if not last_traffic_light:
-            return # should not happen
+            return  # should not happen
         
         # We do not accidentally want to drive away from the traffic light
         # Problems:
         #  Trigger Waypoint is before the traffic light, need an alternative
         clostest_wp, distance = get_closest_tl_trigger_wp(ctx.live_info.current_location, last_traffic_light)
         traffic_light_group = last_traffic_light.get_group_traffic_lights()
-        last_distance =float("inf")
+        last_distance = float("inf")
         
         # Smaller list of lights to check, however calls the simulator!
         
@@ -119,9 +119,9 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
             # this will be the same as the next_control object acquired below.
             
             if distance < ctx.config.obstacles.base_tlight_threshold + 0.5:
-                break # End loop -> Other Emergency Rule
+                break  # End loop -> Other Emergency Rule
             
-            if not ctx.control: # Not yet set; this is the expected case
+            if not ctx.control:  # Not yet set; this is the expected case
                 # Change settings before calculating the control object
                 ctx.config.speed.target_speed = min(ctx.config.speed.target_speed, distance * 2)
                 ctx.config.controls.max_brake = self.self_config.max_brake
@@ -150,7 +150,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
             print("Control: ", control)
             
             # It is up to the user wether or not to apply controls inside a blocking rule
-            ctx.agent.parse_keyboard_input(control=control) # NOTE: if skipped the user has no option to stop the agent
+            ctx.agent.parse_keyboard_input(control=control)  # NOTE: if skipped the user has no option to stop the agent
             ctx.agent.apply_control(control)
             
             # NOTE: This ticks the world forward by one step
@@ -175,7 +175,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
                     ctx.agent.add_hazard(Hazard.PEDESTRIAN)
                 else:
                     ctx.agent.add_hazard(Hazard.OBSTACLE)
-                break # End loop -> Other Emergency Rule
+                break  # End loop -> Other Emergency Rule
             
             affected = ctx.agent.detect_traffic_light(traffic_light_group)
             if affected.traffic_light_was_found:
@@ -187,7 +187,7 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
             distance = ctx.live_info.current_location.distance(clostest_wp.transform.location)
         
         logger.info("Exiting DriveSlowTowardsTrafficLight rule after %s ticks.", self.ticks_passed)
-        if ctx.control: # NOTE: This is unset with self.update_world
+        if ctx.control:  # NOTE: This is unset with self.update_world
             raise SkipInnerLoopException(ctx.control)
 
     def max_tick_callback(self, ctx: Context) -> NoReturn:

@@ -39,7 +39,7 @@ if DEBUG_RULES:
     from agents.rules._debug_rules import SimpleRule1, SimpleRule1B, debug_rules
     
 
-def create_default_rules(gameframework: Optional["GameFramework"]=None, random_lane_change: bool = False) -> "Iterable[Rule]":
+def create_default_rules(gameframework: Optional["GameFramework"] = None, random_lane_change: bool = False) -> "Iterable[Rule]":
 
     avoid_tailgator_rule = AvoidTailgatorRule()
     simple_overtake_rule = SimpleOvertakeRule()
@@ -94,7 +94,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
     # Lazy dotpath from globals
     # Allow to write NormalSpeedRule instead of agents.rules.behaviour_templates.NormalSpeedRule
     if cfg._target_ in globals():  # pyright: ignore[reportPrivateUsage]
-        cfg._target_ = globals()[cfg._target_].__module__ + "." + cfg._target_ # pyright: ignore[reportPrivateUsage]
+        cfg._target_ = globals()[cfg._target_].__module__ + "." + cfg._target_  # pyright: ignore[reportPrivateUsage]
         # NOTE: Could use rule_class for a more direct way compared to the block with
         # except (omegaconf.MissingMandatoryValue, omegaconf.errors.InterpolationKeyError)
         #rule_class = globals()[cfg._target_]
@@ -143,6 +143,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
                         try:
                             parent.live_info[key] = 0
                         except Exception:
+                            logger.debug("Could not set %s to 0", key)
                             continue
                     clean_cfg.self_config._set_parent(parent)
                     clean_cfg._set_parent(parent)  # pyright: ignore[reportPrivateUsage]
@@ -151,7 +152,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
                 
             rule: Rule = instantiate(clean_cfg, _convert_="none")
             if "self_config" in clean_cfg:
-                rule.self_config.merge_with(clean_cfg.self_config) # Interpolations are resolved, adding them back as strings
+                rule.self_config.merge_with(clean_cfg.self_config)  # Interpolations are resolved, adding them back as strings
             return rule
         else:
             rule_or_rules : Union[Rule, Iterable[Rule]] = call(clean_cfg, _convert_="none")

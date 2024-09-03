@@ -23,7 +23,7 @@ def import_carla():
     """
     if CARLA_ROOT is None:
         # Best guess
-        path = os.path.abspath(os.path.join("..","**", FILE_NAME))
+        path = os.path.abspath(os.path.join("..", "**", FILE_NAME))
     else:
         path = os.path.abspath(os.path.join(CARLA_ROOT, FILE_NAME))
     try:
@@ -31,9 +31,10 @@ def import_carla():
         print("Appended to sys path:", sys.path[-1])
         import carla  # pylint: disable=import-outside-toplevel, redefined-outer-name # noqa: PLC0415
     except IndexError:
-        print("ERROR: Cannot find", os.path.abspath(os.path.join("..","**", FILE_NAME)))
+        print("ERROR: Cannot find", os.path.abspath(os.path.join("..", "**", FILE_NAME)))
         return None
     else:
         return carla
+
 
 carla = import_carla()

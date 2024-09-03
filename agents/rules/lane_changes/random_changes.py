@@ -12,7 +12,7 @@ __all__ = ["RandomLaneChangeRule"]
 
 class RandomLaneChangeRule(Rule):
     phase = Phase.TAKE_NORMAL_STEP | Phase.BEGIN
-    condition = always_execute # TODO: Could implement check here, instead of relying on `lane_change`
+    condition = always_execute  # TODO: Could implement check here, instead of relying on `lane_change`
     cooldown_reset_value = None
 
     priority = RulePriority.LOWEST
@@ -25,7 +25,7 @@ class RandomLaneChangeRule(Rule):
     # to have type-hint, auto-completion use a setup like this:
     # When the rule is initialized, the values are copied to the instance
     
-    @dataclass # <-- NOTE: DO NOT FORGET TO ADD, else the keys will be missing
+    @dataclass  # <-- NOTE: DO NOT FORGET TO ADD, else the keys will be missing
     class self_config(RuleConfig):
         random_lane_change_interval : int = 200
         """Cooldown value for a lane change in the 'lane_change' group."""
@@ -49,7 +49,7 @@ class RandomLaneChangeRule(Rule):
         print("Changing Lane randomly")
         p_left = self.self_config.random_left_lanechange_percentage
         p_right = self.self_config.random_right_lanechange_percentage
-        p_stay = max(0, 1 - p_left - p_right) # weight to stay in the same lane
+        p_stay = max(0, 1 - p_left - p_right)  # weight to stay in the same lane
         direction : carla.LaneChange = carla.LaneChange(np.random.choice( (1, 0, 2), p=(p_left, p_stay, p_right)))
         print("Direction: ", direction)
         if direction == 0:

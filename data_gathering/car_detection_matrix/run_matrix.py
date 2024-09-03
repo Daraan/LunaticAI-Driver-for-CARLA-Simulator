@@ -5,7 +5,7 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
-import matplotlib
+import matplotlib  # noqa: ICN001
 import numpy as np
 import pygame
 import pylab
@@ -39,7 +39,7 @@ def wrap_matrix_functionalities(ego_vehicle : carla.Actor,
                                 world : carla.World,
                                 world_map : carla.Map,
                                 road_lane_ids: "set[RoadLaneId]",
-                                radius: float =100.0,
+                                radius: float = 100.0,
                                 highway_shape=None):
     """
     Parameters:
@@ -103,7 +103,7 @@ class DetectionMatrix:
         Currently the keys are replaces by numbers.
     """
     
-    def __init__(self, ego_vehicle : carla.Actor, road_lane_ids: Optional[Set[RoadLaneId]]=None):
+    def __init__(self, ego_vehicle : carla.Actor, road_lane_ids: Optional[Set[RoadLaneId]] = None):
         self._ego_vehicle = ego_vehicle
         self._world = CarlaDataProvider.get_world()
         self._world_map = CarlaDataProvider.get_map()
@@ -159,12 +159,12 @@ class DetectionMatrix:
     
     def render(self,
                display: pygame.Surface,
-               imshow_settings: dict[str, Any]={'cmap':'jet'},  # noqa: B006
-               vertical: bool=True,
-               draw_values: bool=True,
-               text_settings: dict[str, Any]={'color':'orange'},  # noqa: B006
+               imshow_settings: dict[str, Any] = {'cmap': 'jet'},  # noqa: B006
+               vertical: bool = True,
+               draw_values: bool = True,
+               text_settings: dict[str, Any] = {'color': 'orange'},  # noqa: B006
                *,
-               draw: bool=True):
+               draw: bool = True):
         """
         Renders the matrix on the given surface.
         
@@ -172,13 +172,13 @@ class DetectionMatrix:
         """
         if not draw:
             return
-        matrix = self.to_numpy() # lanes are horizontal, OneLane: left to right, Left Lane at the top.
+        matrix = self.to_numpy()  # lanes are horizontal, OneLane: left to right, Left Lane at the top.
         if matrix is None:
             return
         ax : pylab.Axes
         fig, ax = pylab.subplots(figsize=(2, 2), dpi=100)
         if vertical:
-            matrix = np.rot90(matrix) # 1st/3rd perspective
+            matrix = np.rot90(matrix)  # 1st/3rd perspective
         ax.imshow(matrix, **imshow_settings)
         if draw_values:
             for (i, j), val in np.ndenumerate(matrix):
@@ -193,7 +193,7 @@ class DetectionMatrix:
         size = canvas.get_width_height()
         surf = pygame.image.frombuffer(buffer_data, size, "RGBA")
         
-        display.blit(surf, (220, display.get_height() - surf.get_height()- 40 ))
+        display.blit(surf, (220, display.get_height() - surf.get_height() - 40 ))
         pylab.close(fig)
 
     @property
@@ -212,13 +212,13 @@ class DetectionMatrix:
     def stop(self):
         """Prevents the matrix from updating."""
         self.running = False
-        self.matrix = None # prevent rendering # type: ignore[assignment]
+        self.matrix = None  # prevent rendering # type: ignore[assignment]
          
     def __del__(self):
         if self.running:
             try:
                 self.stop()
-            except Exception:
+            except Exception:  # noqa
                 pass
 
     def _signal_handler(self, signum: int, _):
@@ -282,9 +282,9 @@ class AsyncDetectionMatrix(DetectionMatrix):
 
     def start(self):
         self.running = True
-        self.worker_thread.start() # NOTE: This does not allow restart
+        self.worker_thread.start()  # NOTE: This does not allow restart
 
-    def stop(self, timeout: float | None=None):
+    def stop(self, timeout: float | None = None):
         """
         See Also:
             :meth:`threading.Thread.join`
@@ -297,13 +297,13 @@ class AsyncDetectionMatrix(DetectionMatrix):
             self.worker_thread.join(timeout)
         else:
             logger.info("DetectionMatrix.stop called multiple times.")
-        self.matrix = None # prevent rendering # type: ignore[assignment]
+        self.matrix = None  # prevent rendering # type: ignore[assignment]
     
     def __del__(self):
         self.running = False
         try:
             self.worker_thread.join(3.0)
-        except Exception:
+        except Exception:  # noqa
             pass
         self.matrix = None  # type: ignore[assignment]
 
@@ -316,7 +316,7 @@ def get_car_coords(matrix) -> tuple[int, int]:
     (i_car, j_car) = (0, 0)
     for lane, occupations in matrix.items():
         try:
-            return (lane, occupations.index(1)) # find the 1 entry in a efficient way
+            return (lane, occupations.index(1))  # find the 1 entry in a efficient way
         except ValueError:  # noqa: PERF203
             continue
 

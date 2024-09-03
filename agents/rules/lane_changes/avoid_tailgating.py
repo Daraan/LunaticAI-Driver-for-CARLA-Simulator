@@ -23,8 +23,8 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context"):
     waypoint = ctx.agent._current_waypoint
 
     # Cheap to get, do we plan to continue in the same lane? We are not at a junction and have some minimum speed
-    pre_conditions = (ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW \
-            and not waypoint.is_junction and ctx.live_info.current_speed > 10  #TODO Hardcoded
+    pre_conditions = (ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW
+            and not waypoint.is_junction and ctx.live_info.current_speed > 10  # TODO Hardcoded
             )
     if not pre_conditions:
         return False

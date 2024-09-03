@@ -18,11 +18,12 @@ def list_py_files(directory):
         if file.endswith(".py") and not file.startswith("_") and file != "example_runner.py"
     ]
 
+
 if os.path.basename(os.getcwd()) == "examples":
     os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))  # run from main folder
     print("Changed to directory", os.getcwd(), "from", os.path.basename(os.getcwd()))
 py_files = sorted(list_py_files("examples"))
-sys.path.insert(0,"")  # for import __allow_imports_from_root to work
+sys.path.insert(0, "")  # for import __allow_imports_from_root to work
 # Choose file
 
 for i, file in enumerate(py_files):

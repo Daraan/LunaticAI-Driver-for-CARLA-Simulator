@@ -20,12 +20,12 @@ get_client = CarlaDataProvider.get_client
 get_world = CarlaDataProvider.get_world
 get_map = CarlaDataProvider.get_map
 
-def initialize_carla(map_name="Town04", ip="127.0.0.1", port:int=2000, *,
-                     timeout:float=10.0, worker_threads=0,
-                     reload_world: bool=False, reset_settings: bool=True,
-                     map_layers: carla.MapLayer=carla.MapLayer.All,
-                     sync: Union[bool, None]=True,
-                     fps: int=20):
+def initialize_carla(map_name="Town04", ip="127.0.0.1", port: int = 2000, *,
+                     timeout: float = 10.0, worker_threads=0,
+                     reload_world: bool = False, reset_settings: bool = True,
+                     map_layers: carla.MapLayer = carla.MapLayer.All,
+                     sync: Union[bool, None] = True,
+                     fps: int = 20):
     client = CarlaDataProvider.get_client()
     if client is None:
         client = carla.Client(ip, port, worker_threads)
@@ -35,7 +35,7 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port:int=2000, *,
     world = CarlaDataProvider.get_world()
     if not world:
         world = client.get_world()
-    _map = world.get_map() # CarlaDataProvider map not yet set ->  set_world
+    _map = world.get_map()  # CarlaDataProvider map not yet set ->  set_world
     
     if map_name and _map.name != "Carla/Maps/" + map_name:
         world: carla.World = client.load_world(map_name, reset_settings, map_layers)
@@ -54,7 +54,7 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port:int=2000, *,
             logger.debug("Using synchronous mode.")
             # apply synchronous mode if wanted
             world_settings.synchronous_mode = True
-            world_settings.fixed_delta_seconds = 1/fps # 0.05
+            world_settings.fixed_delta_seconds = 1 / fps  # 0.05
             world.apply_settings(world_settings)
         else:
             logger.debug("Using asynchronous mode.")
@@ -66,6 +66,7 @@ def initialize_carla(map_name="Town04", ip="127.0.0.1", port:int=2000, *,
     
     map_ = CarlaDataProvider.get_map()
     return client, world, map_
+
 
 spawn_actor = CarlaDataProvider.spawn_actor
 
@@ -96,6 +97,6 @@ def destroy_actors(actors: "Iterable[carla.Actor | CustomSensorInterface]"):
         else:
             for command in batch:
                 if CarlaDataProvider.actor_id_exists(command.actor_id):
-                    del CarlaDataProvider._carla_actor_pool[command.actor_id] # remove by batch and not by individual command
+                    del CarlaDataProvider._carla_actor_pool[command.actor_id]  # remove by batch and not by individual command
     elif not CarlaDataProvider._client:
         print("WARNING: No client available to destroy actors.")

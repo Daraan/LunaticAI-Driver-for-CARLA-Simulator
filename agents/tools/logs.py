@@ -30,15 +30,15 @@ def log(text: str):
     if logging:
         print(datetime.datetime.now(), text)
 
-def _setup_logger(name : str ="__main__", level : int = logging.DEBUG):
+def _setup_logger(name : str = "__main__", level : int = logging.DEBUG):
     """Backup when Hydra_ is not available."""
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
     # NOTE: un-comment a line to adjust the format
-    form  = (""
+    form = (""
     #+ "/////////////////////////\n"                          # When using multiple lines, e.g. for full path
-    + "[%(levelname)s][%(filename)s:%(lineno)d, %(funcName)s]: %(message)s" # note blank space before filename for IDE support
+    + "[%(levelname)s][%(filename)s:%(lineno)d, %(funcName)s]: %(message)s"  # note blank space before filename for IDE support
     #+ "\nin %(pathname)s %(lineno)d, %(funcName)s"
     #+ "\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" # escaping so double the characters
     )
@@ -81,6 +81,7 @@ def make_logger(name: Optional[str] = None, level: int = logging.DEBUG) -> loggi
     if hydra_logging:
         return logging.getLogger(DEFAULT_NAME)
     return _setup_logger(name, level)
+
 
 logger: logging.Logger = make_logger()
 """

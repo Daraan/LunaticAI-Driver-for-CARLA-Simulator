@@ -3,12 +3,12 @@ from functools import partial, update_wrapper
 from typing import List, Optional
 
 import carla
-from omegaconf._impl import select_node # noqa: PLC2701
+from omegaconf._impl import select_node  # noqa: PLC2701
 
 from classes.constants import READTHEDOCS, Phase
 from classes.rule import ConditionFunction, Context, Rule, always_execute
 
-_use_debug_rules = True # TODO: Turn off again #XXX
+_use_debug_rules = True  # TODO: Turn off again #XXX
 DEBUG_RULES: bool = not READTHEDOCS and _use_debug_rules
 
 #TODO: maybe create some omega conf dict creator that allows to create settings more easily
@@ -31,7 +31,7 @@ def if_config(config_path, value):
     func = update_wrapper(func, _if_config_checker)
     return ConditionFunction(func,
                               name=f"Checks if {config_path} is {value}",
-                              use_self=False #NOTE: Has to be used as _if_config_checker has > 1 argument and no self usage.
+                              use_self=False  # NOTE: Has to be used as _if_config_checker has > 1 argument and no self usage.
                               )
 
 # ---
@@ -82,14 +82,14 @@ class NormalSpeedRule(Rule):
     Speed to apply when the car drives under normal circumstances,
     i.e. no junctions, no obstacles, etc. detected.
     """
-    phases = Phase.TAKE_NORMAL_STEP | Phase.BEGIN # type: ignore[assignment]
+    phases = Phase.TAKE_NORMAL_STEP | Phase.BEGIN  # type: ignore[assignment]
     condition = always_execute
     action = set_default_speed
     description = "Set speed to normal speed"
 
 # ----------- Plan next waypoint -----------
 
-def random_spawnpoint_destination(ctx: "Context", waypoints: Optional[List[carla.Waypoint]]=None):
+def random_spawnpoint_destination(ctx: "Context", waypoints: Optional[List[carla.Waypoint]] = None):
     """
     Set a random waypoint as the next target.
     """
@@ -147,6 +147,7 @@ def accept_rss_updates(ctx : Context):
     assert isinstance(ctx.prior_result, carla.VehicleControl)
     ctx.control = ctx.prior_result
     
+
 assert isinstance(if_config("rss.enabled", True), ConditionFunction)
 
 class AlwaysAcceptRSSUpdates(Rule):
@@ -154,14 +155,14 @@ class AlwaysAcceptRSSUpdates(Rule):
     Always accept RSS updates if rss is enabled in the config.
     
     """
-    phases = Phase.RSS_EVALUATION | Phase.END # type: ignore[assignment]
-    condition=if_config("rss.enabled", True)
+    phases = Phase.RSS_EVALUATION | Phase.END  # type: ignore[assignment]
+    condition = if_config("rss.enabled", True)
     action = accept_rss_updates
     description = "Always accepts the updates calculated by the RSS System."
 
 class ConfigBasedRSSUpdates(Rule):
     """Always accept RSS updates if :any:`rss.always_accept_update <LunaticAgentSettings.rss>` is set to True in the config."""
-    phases = Phase.RSS_EVALUATION | Phase.END # type: ignore[assignment]
+    phases = Phase.RSS_EVALUATION | Phase.END  # type: ignore[assignment]
     condition = if_config("rss.always_accept_update", True)
     action = accept_rss_updates
     #description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
@@ -170,4 +171,4 @@ class ConfigBasedRSSUpdates(Rule):
 # ----------- Tests -----------
 
 if __name__ == "__main__" or DEBUG_RULES:
-    from ._debug_rules import debug_rules as debug_rules # mark as reexport # noqa: PLC0414
+    from ._debug_rules import debug_rules as debug_rules  # mark as reexport # noqa: PLC0414

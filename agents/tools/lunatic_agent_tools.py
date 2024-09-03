@@ -137,7 +137,7 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
     
     # Validate prior_result -> Callable
     if prior_result_getter and not callable(prior_result_getter):
-        prior_result_getter = attrgetter(prior_result_getter) # raises Type Error if not string
+        prior_result_getter = attrgetter(prior_result_getter)  # raises Type Error if not string
 
     # Pay attention to prior_result which should not be prior_result
     def decorator(func : _AgentFunction[_P, _T]):
@@ -145,8 +145,9 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
             print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
                     f"decorator for function {func.__name__}. Ignoring decorator.")
             if TYPE_CHECKING:
-                assert_never(func) # we ignore this # pyright: ignore
+                assert_never(func)  # we ignore this # pyright: ignore
             return func
+
         @wraps(func)
         def wrapper(self: "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
             if on_enter:
@@ -217,7 +218,7 @@ def max_detection_distance(self: HasConfig["BehaviorAgentSettings | LunaticAgent
 
 
 def detect_obstacles_in_path(self: "CanDetectNearbyObstacles",
-                             obstacle_list: Optional[Union[Sequence[carla.Actor], carla.ActorList,\
+                             obstacle_list: Optional[Union[Sequence[carla.Actor], carla.ActorList,
                                                            Literal['all']]]) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
@@ -260,12 +261,12 @@ def detect_obstacles_in_path(self: "CanDetectNearbyObstacles",
 
 
 def detect_obstacles(self: "CanDetectObstacles",
-                    actor_list: Optional[Sequence[carla.Actor] | carla.ActorList]=None,
-                    max_distance: Optional[float]=None,
-                    up_angle_th: float=90,
-                    low_angle_th: float=0,
+                    actor_list: Optional[Sequence[carla.Actor] | carla.ActorList] = None,
+                    max_distance: Optional[float] = None,
+                    up_angle_th: float = 90,
+                    low_angle_th: float = 0,
                     *,
-                    lane_offset: int=0) -> ObstacleDetectionResult:
+                    lane_offset: int = 0) -> ObstacleDetectionResult:
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
 
@@ -297,15 +298,15 @@ def detect_obstacles(self: "CanDetectObstacles",
         # NOTE: If empty list is passed e.g. for walkers this pulls all vehicles
         # TODO: Propose update to original carla
         actor_list = self._vehicle.get_world().get_actors().filter("*vehicle*")
-    elif len(actor_list) == 0: # Case for no pedestrians
+    elif len(actor_list) == 0:  # Case for no pedestrians
         return ObstacleDetectionResult(False, None, -1)
 
     if not max_distance:
-        max_distance = self.config.obstacles.base_vehicle_threshold # TODO: This is not modified with the dynamic threshold
+        max_distance = self.config.obstacles.base_vehicle_threshold  # TODO: This is not modified with the dynamic threshold
     
     def get_route_polygon() -> None | Polygon:
         # Note nested functions can access variables from the outer scope
-        route_bb = [] # type: list[list[float]]
+        route_bb = []  # type: list[list[float]]
         extent_y = self._vehicle.bounding_box.extent.y
         r_ext = extent_y + self.config.planner.offset
         l_ext = -extent_y + self.config.planner.offset
@@ -406,11 +407,11 @@ def detect_obstacles(self: "CanDetectObstacles",
 
 
 def detect_vehicles(self: "CanDetectObstacles",
-                    vehicle_list: Optional[Sequence[carla.Actor] | carla.ActorList]=None,
-                    max_distance: Optional[float]=None,
-                    up_angle_th: float=90,
-                    low_angle_th: float=0,
-                    lane_offset: int=0) -> ObstacleDetectionResult:
+                    vehicle_list: Optional[Sequence[carla.Actor] | carla.ActorList] = None,
+                    max_distance: Optional[float] = None,
+                    up_angle_th: float = 90,
+                    low_angle_th: float = 0,
+                    lane_offset: int = 0) -> ObstacleDetectionResult:
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
 
@@ -439,6 +440,7 @@ def detect_vehicles(self: "CanDetectObstacles",
                             up_angle_th, low_angle_th,
                             lane_offset=lane_offset)
 
+
 # Untested
 detect_obstacles_in_front = partial(detect_vehicles, up_angle_th=90, low_angle_th=0)
 """
@@ -456,13 +458,13 @@ detect_obstacles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th
 # ------------------------------
 
 def generate_lane_change_path(waypoint : carla.Waypoint,
-                              direction: Literal['left', 'right']='left',
-                              distance_same_lane: float=10,
-                              distance_other_lane: float=25,
-                              lane_change_distance: float=25,
-                              check: bool=True,
-                              lane_changes: int=1,
-                              step_distance: float=2) -> "list[tuple[carla.Waypoint, RoadOption]]":
+                              direction: Literal['left', 'right'] = 'left',
+                              distance_same_lane: float = 10,
+                              distance_other_lane: float = 25,
+                              lane_change_distance: float = 25,
+                              check: bool = True,
+                              lane_changes: int = 1,
+                              step_distance: float = 2) -> "list[tuple[carla.Waypoint, RoadOption]]":
     """
     This method generates a path that results in a lane change.
     Use the different distances to fine-tune the maneuver.
@@ -503,7 +505,7 @@ def generate_lane_change_path(waypoint : carla.Waypoint,
         plan.append((next_wp, RoadOption.LANEFOLLOW))  # next waypoint to the path
 
     # TEMP
-    assert direction in ('left', 'right') # TODO: # END: remove at end of project
+    assert direction in ('left', 'right')  # TODO: # END: remove at end of project
     
     if direction == 'left':
         option = RoadOption.CHANGELANELEFT
@@ -556,9 +558,9 @@ def generate_lane_change_path(waypoint : carla.Waypoint,
     return plan
     
 def create_agent_config(self: HasBaseSettings[AgentConfigT],
-                        source: Union["type[AgentConfigT]", AgentConfigT, DictConfig, str, None]=None,
-                        world_model: Optional["WorldModel"]=None,
-                        overwrite_options: Optional[Dict[str, Any]]=None) -> AgentConfigT:
+                        source: Union["type[AgentConfigT]", AgentConfigT, DictConfig, str, None] = None,
+                        world_model: Optional["WorldModel"] = None,
+                        overwrite_options: Optional[Dict[str, Any]] = None) -> AgentConfigT:
     """
     Method to create the :py:class:`.AgentConfig` from different input types.
     
@@ -578,18 +580,18 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
     """
     if overwrite_options is None:
         overwrite_options = {}
-    if source is None and world_model and world_model._config is not None: # pyright: ignore[reportUnnecessaryComparison]
+    if source is None and world_model and world_model._config is not None:  # pyright: ignore[reportUnnecessaryComparison]
         logger.debug("Using world model config")
         opt_dict = world_model._config
     elif source is None:
         raise ValueError("Must pass a valid config as behavior or a world model with a set config.")
-    elif isinstance(source, str): # Assuming Path
+    elif isinstance(source, str):  # Assuming Path
         logger.debug("Creating config from yaml file")
         opt_dict = self.BASE_SETTINGS.from_yaml(source)
-    elif isinstance(source, AgentConfig) or isclass(source) and issubclass(source, AgentConfig): # pyright: ignore[reportUnnecessaryIsInstance]
+    elif isinstance(source, AgentConfig) or isclass(source) and issubclass(source, AgentConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
         logger.debug("Config is a dataclass / AgentConfig")
         _cfg = source.to_dict_config()
-        _cfg.merge_with(overwrite_options) # Note uses DictConfig.update
+        _cfg.merge_with(overwrite_options)  # Note uses DictConfig.update
         opt_dict = assure_type(source.__class__, _cfg)
     elif isinstance(source, DictConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
         logger.debug("Config is a DictConfig")
@@ -598,7 +600,7 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
     elif isclass(source):
         logger.warning("Config is a class of type %s but not an AgentConfig, this is unexpected.",
                        type(source))
-        opt_dict  = assure_type(source, source(**overwrite_options))
+        opt_dict = assure_type(source, source(**overwrite_options))
     elif not overwrite_options:
         logger.warning("Settings of type %s are not a supported Config class", type(source))
         opt_dict = source  # assume the user passed something appropriate

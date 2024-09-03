@@ -7,15 +7,17 @@ repos:
     - id: check-yaml
     - id: check-added-large-files
     - id: check-toml
+# apply format fixes
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
   rev: v0.6.3
   hooks:
     # Run the linter.
     - id: ruff
-      args: [--select, W291, W391, --fix ]
+      args: [--select, "C4,W291,W391,E1,E22,E231,E24,E25,E261,E262,E27,E301,E304,E305,E306,E502", --fix, --preview, --ignore, "E116"]
     # Run the formatter.
     #- id: ruff-format
+# report from pyproject.toml
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
   rev: v0.6.3

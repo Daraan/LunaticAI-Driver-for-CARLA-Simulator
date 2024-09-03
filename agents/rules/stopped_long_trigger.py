@@ -34,6 +34,7 @@ class StoppedTooLongTrigger(MultiRule):
     # ... Child rules to be executed
     rules: List[Rule] = []
 
+
 if __name__ == "__main__" or DEBUG_RULES:
 
     StoppedTooLongTrigger()

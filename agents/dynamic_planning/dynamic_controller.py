@@ -217,8 +217,8 @@ class DynamicPIDLateralController(PIDLateralController):
             # Displace the wp to the side
             w_tran = waypoint.transform
             r_vec = w_tran.get_right_vector()
-            w_loc = w_tran.location + carla.Location(x=self.config.planner.offset*r_vec.x,
-                                                     y=self.config.planner.offset*r_vec.y)
+            w_loc = w_tran.location + carla.Location(x=self.config.planner.offset * r_vec.x,
+                                                     y=self.config.planner.offset * r_vec.y)
         else:
             w_loc = waypoint.transform.location
 
@@ -232,7 +232,7 @@ class DynamicPIDLateralController(PIDLateralController):
         else:
             _dot = math.acos(np.clip(np.dot(w_vec, v_vec) / (wv_linalg), -1.0, 1.0))
         _cross = np.cross(v_vec, w_vec)
-        if _cross[2] < 0: # TODO: Why is this mentioned as unbound
+        if _cross[2] < 0:  # TODO: Why is this mentioned as unbound
             _dot *= -1.0
 
         self._e_buffer.append(_dot)

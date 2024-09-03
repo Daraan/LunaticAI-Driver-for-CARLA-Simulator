@@ -62,7 +62,7 @@ _T = TypeVar("_T", default=Any)
 _CH = TypeVar("_CH", bound=Hashable, default=Hashable)  # Generic of ConditionFunction
 
 _P = ParamSpec("_P", default=[])   # Free, e.g. for action function.
-_CP = ParamSpec("_CP", default=[]) # Generic of ConditionFunction
+_CP = ParamSpec("_CP", default=[])  # Generic of ConditionFunction
 
 RuleT = TypeVar("RuleT", bound="Rule", default="Rule")
 """:py:class:`typing.TypeVar`: A type variable for a :py:class:`.Rule` type."""
@@ -122,7 +122,7 @@ or alternatively a :py:class:`Rule` and a :py:class:`Context` object (in this or
 The function must return a :term:`Hashable` value.
 """
 
-ConditionFunctionLikeT = ... # Version limitation, fixing done below
+ConditionFunctionLikeT = ...  # Version limitation, fixing done below
 """:py:class:`.TypeVar` version of :py:obj:`ConditionFunctionLike`"""
 
 
@@ -158,7 +158,7 @@ elif sys.version_info[:2] <= (3, 10):
     __ConcatC = Concatenate["Context", __ellipsis_dummy]
     
     AnyCallableAction = CallableAction["Rule", __ellipsis_dummy, Any]
-    AnyCallableCondition = CallableCondition["Rule",  __ellipsis_dummy, Hashable]
+    AnyCallableCondition = CallableCondition["Rule", __ellipsis_dummy, Hashable]
     
     __ConditionFunctionLikeBound = ConditionFunctionLike["Rule", __ellipsis_dummy, Hashable]
     
@@ -174,7 +174,7 @@ elif sys.version_info[:2] <= (3, 10):
     AnyCallableAction.__args__[1].__args__ = (__ConcatC, Any)
     AnyCallableCondition.__parameters__ = AnyCallableCondition.__args__[0].__parameters__ = \
         AnyCallableCondition.__args__[1].__parameters__ = AnyCallableAction.__parameters__ = \
-        AnyCallableAction.__args__[0].__parameters__ = AnyCallableAction.__args__[1].__parameters__= \
+        AnyCallableAction.__args__[0].__parameters__ = AnyCallableAction.__args__[1].__parameters__ = \
         __ConditionFunctionLikeBound.__parameters__ = ()
     
     ConditionFunctionLikeT = TypeVar("ConditionFunctionLikeT", bound=__ConditionFunctionLikeBound)
@@ -196,17 +196,18 @@ class HasBaseSettings(Protocol[AgentConfigT]):
     BASE_SETTINGS: type[AgentConfigT]
     
 class HasConfig(Protocol[AgentConfigT]):
-    @property # Note: Must be read-only, can be normal attribute when implemented
+    @property  # Note: Must be read-only, can be normal attribute when implemented
     def config(self) -> AgentConfigT:
         """
         read-only attribute of a :py:class:`.AgentConfig` object; can also be a normal attribute.
         """
         ...
 
+
 LocalPlannerT = TypeVar("LocalPlannerT",
                          bound="LocalPlanner",
                          default="LocalPlanner",
-                         infer_variance=True) # is covariant, but avoid _co style for documentation
+                         infer_variance=True)  # is covariant, but avoid _co style for documentation
 """:py:class:`typing.TypeVar`: A type variable for a :py:class:`.LocalPlanner` type."""
 
 class HasPlanner(Protocol[LocalPlannerT]):
@@ -223,7 +224,7 @@ class HasPlanner(Protocol[LocalPlannerT]):
         """
         ...
     
-    def _calculate_control(self, debug: bool=False, *args, **kwargs) -> carla.VehicleControl:  # pyright: ignore
+    def _calculate_control(self, debug: bool = False, *args, **kwargs) -> carla.VehicleControl:  # pyright: ignore
         """
         :meta public:
         """

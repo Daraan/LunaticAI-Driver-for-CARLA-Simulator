@@ -22,4 +22,4 @@ def rule_lane_change(self: "Rule", ctx: "Context", order=("left", "right"), **kw
     changed = ctx.agent.make_lane_change(order, **kwargs)
     if not changed:
         # The rule has triggered but the action was not successful
-        self.reset_cooldown(0) # resets the whole group
+        self.reset_cooldown(0)  # resets the whole group

@@ -35,7 +35,7 @@ except ModuleNotFoundError:
     # Leaderboard is not a submodule, cannot use it on readthedocs
     if "READTHEDOCS" in os.environ and not TYPE_CHECKING:
         class AutonomousAgent: pass # noqa
-    else: raise # noqa: E701
+    else: raise  # noqa: E701
 
 from agents.lunatic_agent import LunaticAgent
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
@@ -57,6 +57,7 @@ import logging
 def get_entry_point():
     """Must return the name of the class to be used"""
     return "LunaticChallenger"
+
 
 # --- DEBUG OVERWRITES ---
 # as the leaderboard agent cannot accept command line overrides these can be set here.
@@ -103,7 +104,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         to acquire the next control.
     """
     
-    sensor_interface: "SensorInterface" #: :meta private:
+    sensor_interface: "SensorInterface"  #: :meta private:
     
     _global_plan: "list[tuple[_GPSDataDict, RoadOption]]" = None  # type: ignore[assignment]
     _global_plan_world_coord: "list[tuple[carla.Transform, RoadOption]]" = None  # type: ignore[assignment]
@@ -148,20 +149,20 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             config_dir, config_name = os.path.split(path_to_conf_file)
             # TODO: Maybe move to init so its available during set_global_plan
             global args  # Unused
-            overrides=["agent=leaderboard"]
+            overrides = ["agent=leaderboard"]
             if not GameFramework.hydra_initialized():
                 initialize_config_dir(version_base=None,
                                         config_dir=os.path.abspath(config_dir),
                                         job_name="LeaderboardAgent")
                 if ENABLE_DATA_MATRIX is not None:
                     overrides.append("agent.detection_matrix.enabled=" + str(ENABLE_DATA_MATRIX).lower())
-                overrides.append("agent.detection_matrix.sync="+str(DATA_MATRIX_ASYNC).lower())
+                overrides.append("agent.detection_matrix.sync=" + str(DATA_MATRIX_ASYNC).lower())
                 if ENABLE_RSS is not None:
                     overrides.append("agent.rss.enabled=" + str(ENABLE_RSS).lower())
                 args = cast(LaunchConfig,
                             compose(config_name=config_name,
                                     return_hydra_config=True,
-                                    overrides=overrides) # uses conf/agent/leaderboard
+                                    overrides=overrides)  # uses conf/agent/leaderboard
                             )
                 args.debug = DEBUG
                 # Let scenario manager decide
@@ -180,7 +181,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 HydraConfig.instance().set_config(args)  # type: ignore[arg-type]
                 os.makedirs(args.hydra.runtime.output_dir, exist_ok=True)
                 # Assure that our logger works
-                configure_log(args.hydra.job_logging, logger.name) # type: ignore[arg-type]
+                configure_log(args.hydra.job_logging, logger.name)  # type: ignore[arg-type]
                 
                 if DATA_MATRIX_ASYNC is not None:
                     args.agent.detection_matrix.sync = not DATA_MATRIX_ASYNC
@@ -191,7 +192,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 args = cast(LaunchConfig,
                             compose(config_name=config_name,
                                     return_hydra_config=True,
-                                    overrides=overrides) # uses conf/agent/leaderboard
+                                    overrides=overrides)  # uses conf/agent/leaderboard
                             )
             logger.setLevel(logging.DEBUG)
             self.args = args
@@ -201,7 +202,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             self.args = path_to_conf_file
             config = self.args.agent
         if OmegaConf.is_missing(config.planner, "dt"):
-            config.planner.dt = 1/20 # TODO: maybe get from somewhere else
+            config.planner.dt = 1 / 20  # TODO: maybe get from somewhere else
         
         self.game_framework = GameFramework(self.args, config)
         print("Game framework setup")
@@ -209,7 +210,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self.world_model = WorldModel(config, args=self.args)
         self.game_framework.world_model = self.world_model
         print("World Model setup")
-        self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
+        self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False)  # Note: stores weakref to controller
         print("Initializing agent")
         LunaticAgent.__init__(self, config, self.world_model)
         # super(AutonomousAgent, self).__init__(self, config, self.world_model)
@@ -225,7 +226,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         if self._global_plan_waypoints:
             self._local_planner_set_plan(self._global_plan_waypoints)
         
-        self.game_framework.agent = self # TODO: Remove this circular reference
+        self.game_framework.agent = self  # TODO: Remove this circular reference
         self.agent_engaged = False
         # Print controller docs
         try:
@@ -257,7 +258,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             The LunaticChallenger does not use any sensors; the usage of 'sensor.opendrive_map' is experimental, however
             there is yet no parsing done for the data.
         """
-        sensors: list = super().sensors() # This should be empty
+        sensors: list = super().sensors()  # This should be empty
         
         # temp; remove
         try:
@@ -294,7 +295,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     # This allows BlockingRules to pick up the coorect function
     @singledispatchmethod
-    def run_step(self, debug:bool=False, second_pass=False) -> carla.VehicleControl:  # noqa: ARG002
+    def run_step(self, debug: bool = False, second_pass=False) -> carla.VehicleControl:  # noqa: ARG002
         """
         Attention:
             Use :py:meth:`__call__` instead of this method!
@@ -303,7 +304,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         return super(AutonomousAgent, self).run_step(debug=self.args.debug, second_pass=second_pass)
 
     @run_step.register(dict)
-    def _(self, input_data: Dict[str, Tuple[int, Any]], timestamp: float=-1) -> carla.VehicleControl:  # noqa: ARG002
+    def _(self, input_data: Dict[str, Tuple[int, Any]], timestamp: float = -1) -> carla.VehicleControl:  # noqa: ARG002
         """Function that is called by leaderboard framework"""
         try:
             if self._print_input_data(input_data) and "OpenDRIVE" in input_data:
@@ -318,10 +319,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                     Path("opendrive.xml").write_text(data)
                 else:
                     print("OpenDRIVE data unchanged")
-            self.agent_engaged = True # remove this, if not used
+            self.agent_engaged = True  # remove this, if not used
             
             with self.game_framework:
-                control = self.run_step(self.args.debug) # Call Lunatic Agent run_step
+                control = self.run_step(self.args.debug)  # Call Lunatic Agent run_step
             # Handle render updates
             
             self.execute_phase(Phase.APPLY_MANUAL_CONTROLS | Phase.BEGIN, prior_results=control)
@@ -366,7 +367,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         #print("Plan GPS", global_plan_gps[:10])
         #print("Plan World Coord", global_plan_world_coord[:10])
         
-        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, DOWNSAMPLING_FACTOR_OF_ROUTE_COORDINATES) # Downsample to less distance. TODO: should increase this
+        ds_ids: "list[int]" = downsample_route(global_plan_world_coord, DOWNSAMPLING_FACTOR_OF_ROUTE_COORDINATES)  # Downsample to less distance. TODO: should increase this
         #print("Downsampled ids", ds_ids)
         
         # Reduce the global plan to the downsampled ids
@@ -375,7 +376,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self._global_plan = [global_plan_gps[x] for x in ds_ids]
         self._global_plan_waypoints = [(self._transform_to_waypoint(transform), road_option) for transform, road_option in self._global_plan_world_coord]
         if self._local_planner is not None:
-             # TODO: maybe waypoints is not necessary as we extract locations
+            # TODO: maybe waypoints is not necessary as we extract locations
             self._local_planner_set_plan(self._global_plan_waypoints)
     
     def __call__(self) -> carla.VehicleControl:

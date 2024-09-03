@@ -33,8 +33,8 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context"):
     waypoint = ctx.agent._current_waypoint
 
     # Cheap to get, do we plan to continue in the same lane? We are not at a junction and have some minimum speed
-    pre_conditions = (ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW \
-            and not waypoint.is_junction and ctx.live_info.current_speed > 10  #TODO Hardcoded
+    pre_conditions = (ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW
+            and not waypoint.is_junction and ctx.live_info.current_speed > 10  # TODO Hardcoded
             )
     if not pre_conditions:
         return False
@@ -44,7 +44,7 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context"):
     # TODO: Check if detection matrix is True and use it directly
     # Compared to tailgating we check not so far in front (speed limit / 3)
     check_front = detect_vehicles(ctx.agent, vehicle_list,
-                                   ctx.max_detection_distance("overtaking"), # Trigger further ahead
+                                   ctx.max_detection_distance("overtaking"),  # Trigger further ahead
                                    up_angle_th=30,
                                    lane_offset=0)
 
@@ -63,5 +63,5 @@ class SimpleOvertakeRule(Rule):
     priority = RulePriority.LOW
     
     condition = overtake_check.copy()
-    condition.register_action(rule_lane_change, True, order=("left", "right")) # less strict
+    condition.register_action(rule_lane_change, True, order=("left", "right"))  # less strict
     cooldown_reset_value = 200

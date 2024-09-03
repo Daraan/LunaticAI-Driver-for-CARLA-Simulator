@@ -58,6 +58,7 @@ def spectator_follow_actor(actor : carla.Actor):
     while not _follow_car_event.is_set():
         _spectator_to_actor(actor)
 
+
 spectator_follow_actor.stop = lambda: _follow_car_event.set()  # type: ignore[attr-defined]
 
 
@@ -71,7 +72,7 @@ class CameraManager(CustomSensorInterface):
                  parent_actor: carla.Actor,
                  hud : "HUD",
                  args: "LaunchConfig",
-                 sensors:Optional[List[CameraBlueprint]]=CameraBlueprintsSimple,
+                 sensors: Optional[List[CameraBlueprint]] = CameraBlueprintsSimple,
                  ):
         """
         Constructor method.
@@ -82,14 +83,14 @@ class CameraManager(CustomSensorInterface):
         self.sensor = None  # Needs call to set_sensor
         self.index : int = None  # Needs call to set_sensor
         
-        self._surface : Optional[pygame.Surface] = None # set on _parse_image, # type: ignore
+        self._surface : Optional[pygame.Surface] = None  # set on _parse_image, # type: ignore
         self._parent = parent_actor
         self._hud : "HUD" = hud
         self.current_frame = -1
         self.recording = False
         self._args = args
-        self._frame_interval = args.camera.recorder.frame_interval # todo freeze
-        self.outpath = args.camera.recorder.output_path # todo freeze
+        self._frame_interval = args.camera.recorder.frame_interval  # todo freeze
+        self.outpath = args.camera.recorder.output_path  # todo freeze
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
@@ -119,7 +120,7 @@ class CameraManager(CustomSensorInterface):
             try:
                 if item.actual_blueprint is not None:
                     continue
-            except AttributeError: # not a named tuple
+            except AttributeError:  # not a named tuple
                 pass
             blp = bp_library.find(item[0])
             if item[0].startswith('sensor.camera'):
@@ -131,7 +132,7 @@ class CameraManager(CustomSensorInterface):
                 blp.set_attribute('range', '50')
             try:
                 # Named tuple
-                self.sensors[i] = item._replace(actual_blueprint=blp) # update with actual blueprint added
+                self.sensors[i] = item._replace(actual_blueprint=blp)  # update with actual blueprint added
             except AttributeError:
                 self.sensors[i] = CameraBlueprint(item[0], item[1], item[2], blp)
                 
@@ -153,7 +154,7 @@ class CameraManager(CustomSensorInterface):
                 self.destroy()
                 self._surface = None
             self.sensor = cast(carla.Sensor, CarlaDataProvider.get_world().spawn_actor(
-                self.sensors[index][-1], # type: ignore
+                self.sensors[index][-1],  # type: ignore
                 self._camera_transforms[self.transform_index][0],
                 attach_to=self._parent,
                 attachment_type=self._camera_transforms[self.transform_index][1]))
@@ -178,7 +179,7 @@ class CameraManager(CustomSensorInterface):
     def destroy(self) -> None:
         super().destroy()
         self.index = None   # type: ignore
-        self._surface = None # type: ignore
+        self._surface = None  # type: ignore
 
     def render(self, display : pygame.surface.Surface) -> None:
         """Renders method the current camera image"""
@@ -204,7 +205,7 @@ class CameraManager(CustomSensorInterface):
             lidar_img[tuple(lidar_data.T)] = (255, 255, 255)
             self._surface = pygame.surfarray.make_surface(lidar_img)
         else:
-            image.convert(self.sensors[self.index][1]) # apply color converter
+            image.convert(self.sensors[self.index][1])  # apply color converter
             array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (image.height, image.width, 4))
             array = array[:, :, :3]
@@ -222,7 +223,7 @@ class CameraManager(CustomSensorInterface):
      
     @class_or_instance_method
     def follow_actor(cls_or_self: "Self | type[Self]",
-                     actor: Optional[carla.Actor]=None,
+                     actor: Optional[carla.Actor] = None,
                      updater=spectator_follow_actor) -> None:
         """
         Follows the actor with the spectator view.

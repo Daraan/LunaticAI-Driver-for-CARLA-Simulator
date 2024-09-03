@@ -35,10 +35,10 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T")
 _H = TypeVar("_H", bound=Hashable)   # Free
-_CH = TypeVar("_CH", bound=Hashable) # Generic of ConditionFunction
+_CH = TypeVar("_CH", bound=Hashable)  # Generic of ConditionFunction
 
 _P = ParamSpec("_P")   # Free, e.g. for action function.
-_CP = ParamSpec("_CP") # Generic of ConditionFunction
+_CP = ParamSpec("_CP")  # Generic of ConditionFunction
 
 
 if TYPE_CHECKING:
@@ -142,27 +142,27 @@ class ConditionFunction(Generic[_CP, _CH]):
     """Forbidden names for action functions."""
     
     @overload
-    def __new__(cls, first_argument: Optional[Annotated[str, "name"]]=None, name: str="ConditionFunction", *,
-                truthy:Literal[False]=False, use_self: Optional[bool]=None) -> Callable[[CallableCondition[RuleT, _P, _H]], ConditionFunction[_P, _H]]: ...
+    def __new__(cls, first_argument: Optional[Annotated[str, "name"]] = None, name: str = "ConditionFunction", *,
+                truthy: Literal[False] = False, use_self: Optional[bool] = None) -> Callable[[CallableCondition[RuleT, _P, _H]], ConditionFunction[_P, _H]]: ...
     
     @overload
-    def __new__(cls, first_argument: Optional[Annotated[str, "name"]]=None, name: str="ConditionFunction", *,
-                truthy:Literal[True], use_self: Optional[bool]=None) -> Callable[[CallableCondition[RuleT, _P, Any]], ConditionFunction[_P, bool]]: ...
+    def __new__(cls, first_argument: Optional[Annotated[str, "name"]] = None, name: str = "ConditionFunction", *,
+                truthy: Literal[True], use_self: Optional[bool] = None) -> Callable[[CallableCondition[RuleT, _P, Any]], ConditionFunction[_P, bool]]: ...
         
     @overload
-    def __new__(cls, first_argument: CallableCondition[RuleT, _CP, _CH], name: str="ConditionFunction", *,
-                truthy:bool=False, use_self: Optional[bool]=None) -> Self: ...
+    def __new__(cls, first_argument: CallableCondition[RuleT, _CP, _CH], name: str = "ConditionFunction", *,
+                truthy: bool = False, use_self: Optional[bool] = None) -> Self: ...
     
     def __new__(cls,
-                first_argument: Optional[Annotated[str, "name"] | CallableCondition[RuleT, _CP, _CH]]=None,
-                name: str="ConditionFunction",
+                first_argument: Optional[Annotated[str, "name"] | CallableCondition[RuleT, _CP, _CH]] = None,
+                name: str = "ConditionFunction",
                 *,
-                truthy: bool=False,
-                use_self: Optional[bool]=None) \
+                truthy: bool = False,
+                use_self: Optional[bool] = None) \
                 -> (
                     Callable[[CallableCondition[RuleT, _P, _H]], ConditionFunction[_P, _H]]  # default decorator
-                    | Callable[[CallableCondition[RuleT, _P, Any]], ConditionFunction[_P, bool]] # truthy=True
-                    | Self # function way
+                    | Callable[[CallableCondition[RuleT, _P, Any]], ConditionFunction[_P, bool]]  # truthy=True
+                    | Self  # function way
                 ):
         # example usage: @ConditionFunction("name")
         if isinstance(first_argument, str):
@@ -183,10 +183,10 @@ class ConditionFunction(Generic[_CP, _CH]):
     
     def __init__(self,
                  evaluation_function: CallableCondition[RuleT, _CP, _CH],
-                 name: str="ConditionFunction",
+                 name: str = "ConditionFunction",
                  *,
-                 truthy: bool=False,
-                 use_self: Optional[bool]=None):
+                 truthy: bool = False,
+                 use_self: Optional[bool] = None):
         update_wrapper(self,
                        evaluation_function,  # pyright: ignore[reportArgumentType]
                        assigned=("__qualname__", "__module__", "__annotations__", "__doc__"))
@@ -213,15 +213,15 @@ class ConditionFunction(Generic[_CP, _CH]):
 
     # Possible Pyright <1.1.377 : bug when this is active
     @overload
-    def __call__(self, ctx: "Rule", _: "Context", *args:_CP.args, **kwargs:_CP.kwargs) -> _CH: ...
+    def __call__(self, ctx: "Rule", _: "Context", *args: _CP.args, **kwargs: _CP.kwargs) -> _CH: ...
         
     @overload
-    def __call__(self, ctx: "Context", *args:_CP.args, **kwargs:_CP.kwargs) -> _CH: ...
+    def __call__(self, ctx: "Context", *args: _CP.args, **kwargs: _CP.kwargs) -> _CH: ...
 
     @overload
-    def __call__(self, ctx: Union["Rule", "Context"], *args:_CP.args, **kwargs:_CP.kwargs) -> _CH: ...
+    def __call__(self, ctx: Union["Rule", "Context"], *args: _CP.args, **kwargs: _CP.kwargs) -> _CH: ...
     
-    def __call__(self, ctx: Union["Rule", "Context"], *args:_CP.args, **kwargs:_CP.kwargs) -> _CH:  # pyright: ignore[reportInconsistentOverload]
+    def __call__(self, ctx: Union["Rule", "Context"], *args: _CP.args, **kwargs: _CP.kwargs) -> _CH:  # pyright: ignore[reportInconsistentOverload]
         """
         Note:
             To handle the method vs. function difference depending on __get__
@@ -229,7 +229,7 @@ class ConditionFunction(Generic[_CP, _CH]):
             In the method case the real Context object is args[0]!
         """
         try:
-            rule_result = self.evaluation_function(ctx, *args, **kwargs) # type: ignore[arg-type]
+            rule_result = self.evaluation_function(ctx, *args, **kwargs)  # type: ignore[arg-type]
         except Exception:
             print(f"ERROR: in Rule {self.name} with function {self.evaluation_function}")
             raise
@@ -244,7 +244,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         return rule_result
     
     @overload
-    def __get__(self, instance: "Rule", objtype: Any=None) -> "Self": ...
+    def __get__(self, instance: "Rule", objtype: Any = None) -> "Self": ...
     
     @overload
     def __get__(self, instance: None, objtype: Optional["type[Rule]"]) -> "partial[_CH]": ...
@@ -252,16 +252,16 @@ class ConditionFunction(Generic[_CP, _CH]):
     @overload
     def __get__(self, instance: None, objtype: "type[Rule]") -> "partial[_CH]": ...
     
-    def __get__(self, instance: "Optional[Rule]", objtype: Optional["type[Rule]"]=None) -> "Self | partial[_CH]":
+    def __get__(self, instance: "Optional[Rule]", objtype: Optional["type[Rule]"] = None) -> "Self | partial[_CH]":
         """
         :term:`Descriptor Protocol <descriptor>`, for in class usage like Rule.condition
         """
         # NOTE: instance.condition is not an ConditionFunction, it is a partial of one.
         if instance is None:
-            return self # called on class Rule.condition
-        return partial(self, instance) # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
+            return self  # called on class Rule.condition
+        return partial(self, instance)  # NOTE: This fixes "ctx" to instance in __call__, the real "ctx" in __call__ is provided through *args
     
-    def copy(self, copy_actions: bool=False):
+    def copy(self, copy_actions: bool = False):
         """
         Copies the class by creating a new instance.
         
@@ -287,7 +287,7 @@ class ConditionFunction(Generic[_CP, _CH]):
     @staticmethod
     def _complete_func_to_string(func: Callable[..., Any]) -> str:
         func_lines = inspect.getsourcelines(func)[0]
-        return "".join(func_lines).strip() # as string
+        return "".join(func_lines).strip()  # as string
 
     @staticmethod
     def _func_to_string(func : Callable[..., Any]) -> str:
@@ -303,16 +303,16 @@ class ConditionFunction(Generic[_CP, _CH]):
         
     @overload
     def _check_action(self, action_function: CallableT, key: Hashable,
-                      *, use_self: Optional[bool]=None) -> CallableT: ...
+                      *, use_self: Optional[bool] = None) -> CallableT: ...
     
     @overload
     def _check_action(self, action_function: Callable[_P, _T], key: Hashable,
-                      *, use_self: Optional[bool]=None,
+                      *, use_self: Optional[bool] = None,
                       **preset_kwargs: _P.kwargs
                       ) -> "_Wrapped[_P, _T, _P, _T]": ...
         
     def _check_action(self, action_function: Callable[_P, _T], key: Hashable,
-                      *, use_self: Optional[bool]=None,
+                      *, use_self: Optional[bool] = None,
                       **preset_kwargs: _P.kwargs
                       ) -> "Callable[_P, _T] | _Wrapped[_P, _T, _P, _T]":
         """
@@ -347,11 +347,11 @@ class ConditionFunction(Generic[_CP, _CH]):
         # Preset kwargs.
         @wraps(action_function)
         def action_function_with_kwargs(*args: _P.args, **kwargs: _P.kwargs) -> _T:
-             # inserts args when called and kwargs from check action
-             # allows overrides
+            # inserts args when called and kwargs from check action
+            # allows overrides
             return action_function(*args, **preset_kwargs, **kwargs)  # type: ignore
         if use_self is not None:
-            action_function_with_kwargs.use_self = use_self  # type: ignore[attr-defined
+            action_function_with_kwargs.use_self = use_self  # type: ignore[attr-defined]
         return action_function_with_kwargs
     
     if TYPE_CHECKING:
@@ -370,9 +370,9 @@ class ConditionFunction(Generic[_CP, _CH]):
     
     @singledispatchmethod
     def register_action(self,
-                        key: typing.Hashable=True,
+                        key: typing.Hashable = True,
                         *,
-                        use_self: Optional[bool]=None,
+                        use_self: Optional[bool] = None,
                         **kwargs: _P.kwargs) \
             -> "_RegisterActionDecorator":
         """
@@ -432,9 +432,9 @@ class ConditionFunction(Generic[_CP, _CH]):
     @register_action.register(collections.abc.Callable)  # type: ignore
     def _register_action_directly(self,
                                   action_function: CallableT,
-                                  key: Hashable=True,
+                                  key: Hashable = True,
                                   *,
-                                  use_self: Optional[bool]=None,
+                                  use_self: Optional[bool] = None,
                                   **kwargs: _P.kwargs) -> CallableT:
         """
         - Case 1
@@ -448,7 +448,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         checked_action = self._check_action(action_function, key,
                                             use_self=use_self, **kwargs)
         # Case 1 and 2 (without kwargs): checked_action is the action function, else wrapped.
-        self.actions[key] = checked_action # register action
+        self.actions[key] = checked_action  # register action
         return checked_action
     
     # ----------------------
@@ -483,7 +483,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         # NOTE: arguments are, lost. For type hints need to make ConditionFunction generic
         def combined_func(ctx: "Context", *args: _CP.args, **kwargs: _CP.kwargs):
             return func1(ctx, *args, **kwargs) and func2(ctx, *args, **kwargs)
-        return cls(combined_func, name=f"{func1.name}_and_{func2.name}") # type: ignore
+        return cls(combined_func, name=f"{func1.name}_and_{func2.name}")  # type: ignore
 
     @classmethod
     def OR(cls, func1 : "ConditionFunction[_CP,  _CH]", func2 : "ConditionFunction[_CP, _H]") -> "ConditionFunction[_CP, _CH | _H]":
@@ -498,7 +498,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         """Invert the return value of a function."""
         def combined_func(ctx: "Context | Rule", *args: _CP.args, **kwargs: _CP.kwargs):
             return not func(ctx, *args, **kwargs)
-        return cls(combined_func, name=f"not_{func.name}") # type: ignore
+        return cls(combined_func, name=f"not_{func.name}")  # type: ignore
 
     def __add__(self, other: "ConditionFunction[_CP, _H]") -> "ConditionFunction[_CP, _CH | _H]":
         """Combine with another function using :py:meth:`AND`."""
@@ -531,7 +531,7 @@ class ActionFunction(ConditionFunction[_P, _T]):
     :meta private:
     """
     
-    def __init__(self, action_function: CallableAction[RuleT, _P, _T], name: str="ActionFunction", *, use_self: Optional[bool]=None):
+    def __init__(self, action_function: CallableAction[RuleT, _P, _T], name: str = "ActionFunction", *, use_self: Optional[bool] = None):
         super().__init__(action_function, name, use_self=use_self)
 
     @classmethod

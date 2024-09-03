@@ -28,8 +28,8 @@ def _is_red_or_yellow(traffic_light : "carla.TrafficLight") -> bool:
     return traffic_light.state in (TrafficLightState.Red, TrafficLightState.Yellow)
 
 def affected_by_traffic_light(self : "CanDetectNearbyTrafficLights",
-                              lights_list : Optional[ActorList[carla.TrafficLight]]=None,
-                              max_distance : Optional[float]=None) -> TrafficLightDetectionResult:
+                              lights_list : Optional[ActorList[carla.TrafficLight]] = None,
+                              max_distance : Optional[float] = None) -> TrafficLightDetectionResult:
     """
     Method to check if there is a red light affecting the vehicle.
 
@@ -48,7 +48,7 @@ def affected_by_traffic_light(self : "CanDetectNearbyTrafficLights",
     if self._last_traffic_light:
         if self._last_traffic_light.state != TrafficLightState.Red and (not detect_yellow_tlighs or self._last_traffic_light.state != TrafficLightState.Yellow):
             self._last_traffic_light = None
-        else: # Still Red
+        else:  # Still Red
             return TrafficLightDetectionResult(True, self._last_traffic_light)
     
     if lights_list is None:
@@ -60,13 +60,13 @@ def affected_by_traffic_light(self : "CanDetectNearbyTrafficLights",
     if len(lights_list) == 0:
         return TrafficLightDetectionResult(False, None)
 
-    if not max_distance: # NOTE: dynamic selection is done in traffic_light_manager
+    if not max_distance:  # NOTE: dynamic selection is done in traffic_light_manager
         max_distance = self.config.obstacles.base_tlight_threshold
 
     ego_vehicle_location = self.config.live_info.current_location
     ego_vehicle_waypoint = self._current_waypoint
 
-    filtered_lights = filter(_is_red_or_yellow if detect_yellow_tlighs else _is_red_light, lights_list) # type: ignore
+    filtered_lights = filter(_is_red_or_yellow if detect_yellow_tlighs else _is_red_light, lights_list)  # type: ignore
     
     for traffic_light in filtered_lights:
         trigger_wp = InformationManager.get_trafficlight_trigger_waypoint(traffic_light)
@@ -91,7 +91,7 @@ def affected_by_traffic_light(self : "CanDetectNearbyTrafficLights",
     return TrafficLightDetectionResult(False, None)
 
 def detect_traffic_light(self: CanDetectNearbyTrafficLights,
-                         traffic_lights : Optional[ActorList[carla.TrafficLight]] =None) -> TrafficLightDetectionResult:
+                         traffic_lights : Optional[ActorList[carla.TrafficLight]] = None) -> TrafficLightDetectionResult:
     """
     This method is in charge of behaviors for red lights.
     """

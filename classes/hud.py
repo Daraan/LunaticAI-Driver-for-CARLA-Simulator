@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 FONT_SIZE = 20
 
 
-def get_actor_display_name(actor : carla.Actor, truncate:int=250):
+def get_actor_display_name(actor : carla.Actor, truncate: int = 250):
     """Method to get actor display name"""
     name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
     return (name[:truncate - 1] + '\u2026') if len(name) > truncate else name
@@ -37,7 +37,7 @@ class HUD:
     """Class for HUD text"""
     default_font : ClassVar[str] = 'ubuntumono'
 
-    def __init__(self, width:int, height:int, world : carla.World, help_text:Optional[str]=RSSKeyboardControl.__doc__):
+    def __init__(self, width: int, height: int, world : carla.World, help_text: Optional[str] = RSSKeyboardControl.__doc__):
         """Constructor method"""
         self.dim = (width, height)
         self._world = world
@@ -60,7 +60,7 @@ class HUD:
         # RSS
         self.original_vehicle_control: Optional[carla.VehicleControl] = None
         # Not None if original_vehicle_control is not None
-        self.restricted_vehicle_control: carla.VehicleControl = None # type: ignore[assignment]
+        self.restricted_vehicle_control: carla.VehicleControl = None  # type: ignore[assignment]
         self.allowed_steering_ranges: List[Tuple[float, float]] = []
         self.rss_state_visualizer = RssStateVisualizer(self.dim, self._font_mono, self._world)
 
@@ -72,7 +72,7 @@ class HUD:
         self.frame = timestamp.frame
         self.simulation_time = timestamp.timestamp.elapsed_seconds
 
-    def tick(self, world : "WorldModel", clock: pygame.time.Clock, obstacles: Optional[Iterable[carla.Actor]]=None):
+    def tick(self, world : "WorldModel", clock: pygame.time.Clock, obstacles: Optional[Iterable[carla.Actor]] = None):
         """
         HUD method for every tick
         
@@ -106,19 +106,19 @@ class HUD:
             str,
             tuple[str, bool],
             #Sequence[Union[str, float]],
-            tuple[str, float, float, float], # min value max
+            tuple[str, float, float, float],  # min value max
             tuple[str, float, float, float, float],
             #tuple[str, float, float, float, float, list[list[float]]], #
-            tuple[str, float, float, float, float, list[tuple[float, float]]], # steering
+            tuple[str, float, float, float, float, list[tuple[float, float]]],  # steering
             list[float]]]
 
         self._info_text = [
             'Server:  {: 16.0f} FPS'.format(self.server_fps),
             'Client:  {: 16.0f} FPS'.format(clock.get_fps()),
-            'Map:     {:>20s}'.format(self.map_name), # from rss
+            'Map:     {:>20s}'.format(self.map_name),  # from rss
             '',
             'Vehicle: {:>20s}'.format(get_actor_display_name(player, truncate=20)),
-            'Map:     {:>20s}'.format(world.map.name.split('/')[    -1]),
+            'Map:     {:>20s}'.format(world.map.name.split('/')[ -1]),
             'Simulation time: {!s:>12s}'.format(timedelta(seconds=int(self.simulation_time))),
             '',
             'Speed:   {: 15.0f} km/h'.format(3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)),
@@ -129,7 +129,7 @@ class HUD:
         if world.gnss_sensor:
             self._info_text.append(
                 'GNSS:{:>24s}'.format(f'({world.gnss_sensor.lat: 2.6f}, {world.gnss_sensor.lon: 3.6f})'))
-        self._info_text.append('') # empty line
+        self._info_text.append('')  # empty line
         if isinstance(control, carla.VehicleControl):
             if self.original_vehicle_control:
                 orig_control = self.original_vehicle_control
@@ -164,7 +164,7 @@ class HUD:
         if len(obstacles_distances) > 1:
             self._info_text += ['Nearby obstacles:']
 
-        for distance, vehicle in sorted(obstacles_distances, key=operator.itemgetter(0))[:20]: # display at most 20 actors
+        for distance, vehicle in sorted(obstacles_distances, key=operator.itemgetter(0))[:20]:  # display at most 20 actors
             if distance > 200.0:
                 break
             vehicle_type = get_actor_display_name(vehicle, truncate=22)
@@ -174,7 +174,7 @@ class HUD:
         """Toggle info on or off"""
         self._show_info = not self._show_info
 
-    def notification(self, text: str, seconds: float=2.0):
+    def notification(self, text: str, seconds: float = 2.0):
         """Notification text"""
         self._notifications.set_text(text, seconds=seconds)
 
@@ -236,7 +236,7 @@ class HUD:
                                 pygame.draw.rect(display, (255, 0, 0), rect)
                                                                                     
                         if TYPE_CHECKING:
-                            assert len(item) > 2 # narrow some types
+                            assert len(item) > 2  # narrow some types
                         f = (item[1] - item[2]) / (item[3] - item[2])
                         rect = None
                         if item[2] < 0.0:
@@ -277,7 +277,7 @@ class FadingText:
         self.seconds_left = 0
         self.surface = pygame.Surface(self.dim)
 
-    def set_text(self, text: str, color:"ColorValue"=(255, 255, 255), seconds:float=2.0):
+    def set_text(self, text: str, color: "ColorValue" = (255, 255, 255), seconds: float = 2.0):
         """Set fading text"""
         text_texture = self.font.render(text, True, color)
         self.surface = pygame.Surface(self.dim)
@@ -289,7 +289,7 @@ class FadingText:
         """Fading text method for every tick"""
         delta_seconds = 1e-3 * clock.get_time()
         self.seconds_left = max(0.0, self.seconds_left - delta_seconds)
-        self.surface.set_alpha(500.0 * self.seconds_left) # type: ignore[arg-type]
+        self.surface.set_alpha(500.0 * self.seconds_left)  # type: ignore[arg-type]
 
     def render(self, display: pygame.Surface):
         """Render fading text method"""
@@ -304,7 +304,7 @@ class FadingText:
 class HelpText:
     """Helper class to handle text output using pygame"""
 
-    def __init__(self, font: pygame.font.Font, width:int, height:int, doc: Optional[Union[str, bool]] = None):
+    def __init__(self, font: pygame.font.Font, width: int, height: int, doc: Optional[Union[str, bool]] = None):
         """Constructor method"""
         self.line_space = 18
         self.font = font

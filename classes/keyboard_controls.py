@@ -1,3 +1,4 @@
+import logging
 import sys
 import inspect
 import signal
@@ -75,7 +76,7 @@ class KeyboardControl:
                 Show a notice about the help keys.
         """
         self._world_model = world
-        if  world.hud.help.surface is None:
+        if world.hud.help.surface is None:
             world.hud.help.create_surface(self.get_docstring())
         if help_notice:
             world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
@@ -101,7 +102,7 @@ class KeyboardControl:
         Parse the input events and return True if the loop should end.
         """
         events = events if events is None else pygame.event.get()
-        for event in events: # pylint: disable=unused-variable
+        for event in events:  # pylint: disable=unused-variable
             self._check_help_event(event)
     
     @staticmethod
@@ -112,9 +113,9 @@ class KeyboardControl:
     
     def _check_help_event(self, event : pygame.event.Event):
         """Check if the event is a help event"""
-        if not hasattr(event, 'unicode'): # No KEYUP/DOWN event
+        if not hasattr(event, 'unicode'):  # No KEYUP/DOWN event
             return None
-        if event.unicode.lower() in ('h', '?'): # type: ignore[attr-defined]
+        if event.unicode.lower() in ('h', '?'):  # type: ignore[attr-defined]
             self._world_model.hud.help.toggle()
             return True
         return False
@@ -193,13 +194,13 @@ class RSSKeyboardControl(KeyboardControl):
 
     # TODO: should be a toggle between None, Autopilot, Agent
 
-    def __init__(self, world_model : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True, clock:pygame.time.Clock=None, config=None):
+    def __init__(self, world_model : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True, clock: pygame.time.Clock = None, config=None):
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
         super().__init__(world_model)
         
         self._world_model = world_model
-        self._config = config # Note: currently unused
+        self._config = config  # Note: currently unused
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         world_model.controller = weakref.proxy(self)
@@ -277,9 +278,9 @@ class RSSKeyboardControl(KeyboardControl):
             return
         sys.exit(1)
 
-    def parse_events(self, control:"Optional[carla.VehicleControl]"=None):
+    def parse_events(self, control: "Optional[carla.VehicleControl]" = None):
         if control:
-            self._control = control # Note this might be the rss updated controls
+            self._control = control  # Note this might be the rss updated controls
         if RSSKeyboardControl.signal_received:
             print('\nAccepted signal. Stopping loop...')
             return True
@@ -362,7 +363,7 @@ class RSSKeyboardControl(KeyboardControl):
                             self._world_model.show_vehicle_telemetry = True
                             self._world_model.hud.notification("Enabled Vehicle Telemetry")
                         except Exception:
-                            pass
+                            logging.debug("Could not enable vehicle telemetry")
                 elif event.key == K_o:
                     try:
                         # TODO: Should be set on the agent
@@ -375,7 +376,7 @@ class RSSKeyboardControl(KeyboardControl):
                             self._world_model.doors_are_open = True
                             self._world_model.player.open_door(carla.VehicleDoor.All)
                     except Exception:
-                        pass
+                        logging.warning("Could not open/close doors")
                 # --- Experimental, recording ----
                 elif event.key == K_r and (pygame.key.get_mods() & KMOD_CTRL):
                     if (self._world_model.recording_enabled):

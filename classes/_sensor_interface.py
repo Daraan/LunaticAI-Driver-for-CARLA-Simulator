@@ -43,7 +43,7 @@ class CustomSensorInterface:
             return
         if isinstance(self.sensor, carla.Sensor):
             if self.sensor.is_listening():
-                self.sensor.stop() # NOTE: calls simulation
+                self.sensor.stop()  # NOTE: calls simulation
         else:
             self.sensor.stop()  # type: ignore
 

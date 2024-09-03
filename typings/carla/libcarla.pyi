@@ -892,7 +892,7 @@ class Client:
                 Defaults to False.
         """
 
-    def apply_batch_sync(self, commands: Sequence[command._IsCommand], do_tick: bool=False) -> list[command.Response]:
+    def apply_batch_sync(self, commands: Sequence[command._IsCommand], do_tick: bool = False) -> list[command.Response]:
         """Executes a list of commands on a single simulation step, blocks until the commands are linked, and returns a list of command.Response that can be used to determine whether a single command succeeded or not. Here is an example of it being used to spawn actors.
 
         https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/generate_traffic.py
@@ -963,7 +963,7 @@ class Client:
             None
         """
 
-    def replay_file(self, name: str, start: float, duration: float, follow_id: int, replay_sensors: bool=False) -> str:
+    def replay_file(self, name: str, start: float, duration: float, follow_id: int, replay_sensors: bool = False) -> str:
         """Load a new world with default settings using `map_name` map. All actors present in the current world will be destroyed, but traffic manager instances will stay alive.
 
         Args:
@@ -1290,7 +1290,7 @@ class DebugHelper:
     """
 
     # region Methods
-    def draw_arrow(self, begin: Location, end: Location, thickness=0.1, arrow_size=0.1, color: Color =Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_arrow(self, begin: Location, end: Location, thickness=0.1, arrow_size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
         """
         Draws an arrow from `begin` to `end` pointing in that direction.
 
@@ -1304,7 +1304,7 @@ class DebugHelper:
         """
         ...
         
-    def draw_hud_arrow(self, begin: Location, end: Location, thickness=0.1, arrow_size=0.1, color: Color =Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_hud_arrow(self, begin: Location, end: Location, thickness=0.1, arrow_size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
         """
         Draws an arrow on the HUD from `begin` to `end` which can only be seen server-side.
         
@@ -1317,7 +1317,7 @@ class DebugHelper:
             life_time (float, optional): Shape's lifespan. By default it only lasts one frame. Set this to `0` for permanent shapes (seconds). Defaults to -1.0.
         """
 
-    def draw_box(self, box: BoundingBox, rotation: Rotation, thickness=0.1, color: Color =Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_box(self, box: BoundingBox, rotation: Rotation, thickness=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
         """Draws a box, usually to act for object colliders.
 
         Args:
@@ -1329,7 +1329,7 @@ class DebugHelper:
         """
         ...
         
-    def draw_hud_box(self, box: BoundingBox, rotation: Rotation, thickness=0.1, color: Color =Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_hud_box(self, box: BoundingBox, rotation: Rotation, thickness=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
         """
         Draws a box on the HUD, usually to act for object colliders. The box can only be seen server-side.
 
@@ -1343,7 +1343,7 @@ class DebugHelper:
         ...
     
 
-    def draw_line(self, begin: Location, end: Location, thickness=0.1, color: Color =Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_line(self, begin: Location, end: Location, thickness=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
         """
         Draws a line in between `begin` and `end`.
 
@@ -1356,7 +1356,7 @@ class DebugHelper:
         """
         ...
         
-    def draw_hud_line(self, begin: Location, end: Location, thickness=0.1, color: Color =Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_hud_line(self, begin: Location, end: Location, thickness=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
         """
         Draws a line on the HUD in between `begin` and `end`. The line can only be seen server-side.
 
@@ -1369,7 +1369,7 @@ class DebugHelper:
         """
         ...
 
-    def draw_point(self, location: Location, size=0.1, color: Color=Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_point(self, location: Location, size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
         """
         Draws a point location.
 
@@ -1381,7 +1381,7 @@ class DebugHelper:
         """
         ...
         
-    def draw_hud_point(self, location: Location, size=0.1, color: Color=Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_hud_point(self, location: Location, size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
         """
         Draws a point on the HUD at `location`. The point can only be seen server-side.
 
@@ -1940,7 +1940,7 @@ class LandmarkType(Enum):
     Highway = "330"
     DeadEnd = "357"
     RecomendedSpeed = "380"    # NOTE: Wrong Spelling, but is named like this internally!
-    RecomendedSpeedEnd = "381" # NOTE: Wrong Spelling, but is named like this internally!
+    RecomendedSpeedEnd = "381"  # NOTE: Wrong Spelling, but is named like this internally!
     # endregion
 
 
@@ -2479,9 +2479,9 @@ class Location(Vector3D):
     def __init__(self, rhs: Vector3D): ...
 
     @overload
-    def __init__(self, x: float=0.0, y: float=0.0, z: float=0.0): ...
+    def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0): ...
 
-    def __init__(self, x: float=0.0, y: float=0.0, z: float=0.0):
+    def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
         """Represents a spot in the world.
 
         Args:
@@ -2635,14 +2635,14 @@ class Map:
         ...
 
     @overload
-    def get_waypoint(self, location: Location, project_to_road: Literal[True]=True, lane_type: Literal[LaneType.Driving, LaneType.Any]=LaneType.Driving) -> Waypoint:
+    def get_waypoint(self, location: Location, project_to_road: Literal[True] = True, lane_type: Literal[LaneType.Driving, LaneType.Any] = LaneType.Driving) -> Waypoint:
         ...
 
     @overload
-    def get_waypoint(self, location: Location, project_to_road :bool | None=True, lane_type: LaneType=LaneType.Driving) -> Waypoint | None:
+    def get_waypoint(self, location: Location, project_to_road : bool | None = True, lane_type: LaneType = LaneType.Driving) -> Waypoint | None:
         ...
     
-    def get_waypoint(self, location: Location, project_to_road: bool | None=True, lane_type: LaneType=LaneType.Driving) -> Waypoint | None:
+    def get_waypoint(self, location: Location, project_to_road: bool | None = True, lane_type: LaneType = LaneType.Driving) -> Waypoint | None:
         """Returns a waypoint that can be located in an exact location or translated to the center of the nearest lane. Said lane type can be defined using flags such as `LaneType.Driving & LaneType.Shoulder`.
 
         The method will return `None` if the waypoint is not found, which may happen only when trying to retrieve a waypoint for an exact location. That eases checking if a point is inside a certain road, as otherwise, it will return the corresponding waypoint.
@@ -2766,13 +2766,13 @@ class OpendriveGenerationParameters:
     # endregion
     
     # region Methods
-    def __init__(self, vertex_distance: float =2.0,
-                 max_road_length:float = 50.0,
-                 wall_height:float = 1.0,
-                 additional_width: float=0.6,
-                 smooth_junctions: bool =True,
-                 enable_mesh_visibility: bool=True,
-                 enable_pedestrian_navigation: bool=True):
+    def __init__(self, vertex_distance: float = 2.0,
+                 max_road_length: float = 50.0,
+                 wall_height: float = 1.0,
+                 additional_width: float = 0.6,
+                 smooth_junctions: bool = True,
+                 enable_mesh_visibility: bool = True,
+                 enable_pedestrian_navigation: bool = True):
         """Constructor method"""
         ...
 
@@ -3386,7 +3386,7 @@ class RssSensor(Sensor):
         ...
     
     @property
-    def routing_targets(self) -> list[Transform]: # declared as vector<carla.Transform>
+    def routing_targets(self) -> list[Transform]:  # declared as vector<carla.Transform>
         """The current list of targets considered to route the vehicle. If no routing targets are defined, a route is generated at random."""
 
     # region Methods
@@ -4143,7 +4143,7 @@ class Transform:
     # endregion
 
     # region Methods
-    def __init__(self, location: Location = Location(0,0,0), rotation: Rotation = Rotation(0,0,0)): ...
+    def __init__(self, location: Location = Location(0, 0, 0), rotation: Rotation = Rotation(0, 0, 0)): ...
 
     def transform(self, in_point: Vector3D) -> Vector3D:
         """
@@ -4529,7 +4529,7 @@ class VehicleControl:
     def throttle(self) -> float:
         """A scalar value to control the vehicle throttle [0.0, 1.0]. Default is 0.0."""
     @throttle.setter
-    def throttle(self, value: float):...
+    def throttle(self, value: float): ...
 
     @property
     def steer(self) -> float:
@@ -4715,23 +4715,23 @@ class VehiclePhysicsControl:
 
     # region Methods
     def __init__(self,
-                 torque_curve: list[Vector2D | Annotated[Sequence[float], "length 2"]]=[[0.0, 500.0], [5000.0, 500.0]],
-                 max_rpm: float=5000.0,
-                 moi: float=1.0,
-                 damping_rate_full_throttle: float=0.15,
-                 damping_rate_zero_throttle_clutch_engaged: float=2.0,
-                 damping_rate_zero_throttle_clutch_disengaged: float=0.35,
-                 use_gear_autobox: bool=True,
-                 gear_switch_time: float=0.5,
-                 clutch_strength: float=10.0,
-                 final_ratio: float=4.0,
-                 forward_gears: list[GearPhysicsControl]=[],
-                 drag_coefficient: float =0.3,
+                 torque_curve: list[Vector2D | Annotated[Sequence[float], "length 2"]] = [[0.0, 500.0], [5000.0, 500.0]],
+                 max_rpm: float = 5000.0,
+                 moi: float = 1.0,
+                 damping_rate_full_throttle: float = 0.15,
+                 damping_rate_zero_throttle_clutch_engaged: float = 2.0,
+                 damping_rate_zero_throttle_clutch_disengaged: float = 0.35,
+                 use_gear_autobox: bool = True,
+                 gear_switch_time: float = 0.5,
+                 clutch_strength: float = 10.0,
+                 final_ratio: float = 4.0,
+                 forward_gears: list[GearPhysicsControl] = [],
+                 drag_coefficient: float = 0.3,
                  center_of_mass: Location = Location(0.0, 0.0, 0.0),
                  steering_curve: list[Vector2D | Annotated[Sequence[float], "length 2"]] = [[0.0, 1.0], [10.0, 0.5]],
                  wheels=[],
-                 use_sweep_wheel_collision: bool=False,
-                 mass: float =1000.0):
+                 use_sweep_wheel_collision: bool = False,
+                 mass: float = 1000.0):
         """VehiclePhysicsControl constructor.
 
         Args:
@@ -4954,7 +4954,7 @@ class WalkerControl:
     # endregion
 
     # region Methods
-    def __init__(self, direction=Vector3D(1.0, 0.0, 0.0), speed:float =0.0, jump: bool=False):
+    def __init__(self, direction=Vector3D(1.0, 0.0, 0.0), speed: float = 0.0, jump: bool = False):
         """This class defines specific directions that can be commanded to a `carla.Walker` to control it via script.
 
         Args:
@@ -5401,7 +5401,7 @@ class World:
             `int`\n
         """
 
-    def try_spawn_actor(self, blueprint: ActorBlueprint, transform: Transform, attach_to: Optional[Actor] = None, attachment_type: AttachmentType=AttachmentType.Rigid) -> Actor:
+    def try_spawn_actor(self, blueprint: ActorBlueprint, transform: Transform, attach_to: Optional[Actor] = None, attachment_type: AttachmentType = AttachmentType.Rigid) -> Actor:
         """Same as `spawn_actor()` but returns `None` on failure instead of throwing an exception.
 
         Args:

@@ -43,14 +43,15 @@ if TYPE_CHECKING:
 
 # ----------- Resolvers -------------
 
-def look_ahead_time(speed: float, time_to_collision: float, plus: float=0) -> float:
+def look_ahead_time(speed: float, time_to_collision: float, plus: float = 0) -> float:
     """
     Convert the current speed in km /h and a time to collision in seconds to a distance in meters
     and adds a slight buffer on top.
 
     Use as :python:`"${look_ahead_time: ${live_info.current_speed}, time, }"`
     """
-    return speed / 3.6 * time_to_collision + plus # km / h * s = m
+    return speed / 3.6 * time_to_collision + plus  # km / h * s = m
+
 
 # need this check for readthedocs
 if not READTHEDOCS and os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
@@ -78,7 +79,7 @@ config_store = ConfigStore.instance()
 POSTPOND_REGISTER = sys.version_info < (3, 10)
 postpond_register: dict[str, type[Any]] = {}
 
-def register_hydra_schema(obj: "type[Any]", name: Optional[str]=None):
+def register_hydra_schema(obj: "type[Any]", name: Optional[str] = None):
     """
     Uses Hydra's ConfigStore to register the schema of the current class in the
     :py:obj:`ConfigStore <config_store>`.
@@ -108,7 +109,7 @@ def config_path(path: Optional[str] = None):
     
         def _register(obj : "type[_AnAgentConfig]") -> "type[_AnAgentConfig]":  # pyright: ignore[reportRedeclaration]
             if path is None:
-                name = obj._config_path # type: ignore[attr-defined]
+                name = obj._config_path  # type: ignore[attr-defined]
             else:
                 name = path
             if name is None or name == "NOT_GIVEN":
@@ -117,7 +118,7 @@ def config_path(path: Optional[str] = None):
             if dots > 0 and not (dots == 1 and name.endswith(".yaml")):
                 raise ValueError(f"Use '/' as separator and not dots. E.g. {name.replace('.', '/')} and not '{name}'")
             obj._config_path = name
-            if not is_dataclass(obj) and not TYPE_CHECKING: # type: ignore
+            if not is_dataclass(obj) and not TYPE_CHECKING:  # type: ignore
                 raise ValueError(f"Only dataclasses can be registered. {obj.__name__} is not a dataclass.")
             register_hydra_schema(obj, name)
             return obj
@@ -144,7 +145,7 @@ def set_readonly_keys(conf : Union[DictConfig, ListConfig], keys : List[str]):
     if isinstance(keys, str):
         keys = [keys]
     for key in keys:
-        OmegaConf.set_readonly(conf._get_node(key), True) # pyright: ignore[reportArgumentType]
+        OmegaConf.set_readonly(conf._get_node(key), True)  # pyright: ignore[reportArgumentType]
 
 def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
     """
@@ -156,10 +157,10 @@ def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
         OmegaConf.set_readonly(conf, True)
     elif isinstance(conf, DictConfig):
         for key in conf:
-            set_readonly_interpolations(conf._get_node(key)) # pyright: ignore[reportArgumentType]
+            set_readonly_interpolations(conf._get_node(key))  # pyright: ignore[reportArgumentType]
     elif isinstance(conf, ListConfig):                                # type: ignore
         for key in range(len(conf)):
-            set_readonly_interpolations(conf._get_node(key)) # pyright: ignore[reportArgumentType]
+            set_readonly_interpolations(conf._get_node(key))  # pyright: ignore[reportArgumentType]
     else:
         print("WARNING: Could not set readonly for", type(conf))
 
@@ -210,7 +211,7 @@ if READTHEDOCS and not TYPE_CHECKING:
     """
 
     # prevent unpack of nested types
-    NestedConfigDict = TypeAliasType("NestedConfigDict", dict[str, "AgentConfig | DictConfig | Any |  NestedConfigDict"]) # type: ignore
+    NestedConfigDict = TypeAliasType("NestedConfigDict", dict[str, "AgentConfig | DictConfig | Any |  NestedConfigDict"])  # type: ignore
     """
     Type alias for nested configurations: :python:`Dict[str, NestedConfigDict | AgentConfig | DictConfig | Any]`
 
@@ -261,9 +262,9 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
         for base in reversed(main_body.bases):
             # Fill in parent information
             try:
-                if isinstance(base, ast.IfExp) and base.test.id == "TYPE_CHECKING": # (DictConfig if TYPE_CHECKING else object):
+                if isinstance(base, ast.IfExp) and base.test.id == "TYPE_CHECKING":  # (DictConfig if TYPE_CHECKING else object):
                     continue
-                docs[main_body.name].update(docs.get(base.id, {})) # pyright: ignore[reportUnknownArgumentType]
+                docs[main_body.name].update(docs.get(base.id, {}))  # pyright: ignore[reportUnknownArgumentType]
             except Exception:
                 logging.exception("Error in %s", main_body.name)
 
@@ -271,7 +272,7 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
         for i, body in enumerate(main_body.body):
             if isinstance(body, ast.ClassDef):
                 # Nested classes, extract recursive
-                extract_annotations(ast.Module([body], type_ignores=[]), docs[main_body.name], global_annotations) # type: ignore[arg-type]
+                extract_annotations(ast.Module([body], type_ignores=[]), docs[main_body.name], global_annotations)  # type: ignore[arg-type]
                 continue
             if isinstance(body, ast.AnnAssign):
                 target = body.target.id
@@ -282,12 +283,12 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
             if isinstance(body, ast.Expr):
                 try:
                     # NOTE: This is different for <Python3.8; this is ast.Str
-                    doc: str = body.value.value # type: ignore
+                    doc: str = body.value.value  # type: ignore
                 except AttributeError:
                     # Try < 3.8 code
                     doc = body.value.s          # type: ignore
                 assert isinstance(doc, str)
-                if i == 0: # Docstring of class
+                if i == 0:  # Docstring of class
                     target = "__doc__"
                 # else: use last found target
             else:
@@ -301,7 +302,7 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
                     try:
                         # Do global look up, docs is here _class_annotations
                         # Move fitting sub-class to key
-                        docs[main_body.name][target] = global_annotations[key] # pyright: ignore[reportOptionalSubscript]
+                        docs[main_body.name][target] = global_annotations[key]  # pyright: ignore[reportOptionalSubscript]
                         continue
                     except Exception:
                         pass
@@ -309,7 +310,7 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
                 continue
             doc = inspect.cleandoc(doc)
             if target == "__doc__":
-                header = ("-" * len(main_body.name)) + "\n" # + main_body.name + "\n" + ("-" * len(main_body.name)) + "\n" + doc
+                header = ("-" * len(main_body.name)) + "\n"  # + main_body.name + "\n" + ("-" * len(main_body.name)) + "\n" + doc
                 footer = "\n" + ("-" * len(main_body.name))
 
                 if doc.startswith(".. @package"):
@@ -330,14 +331,15 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
             doc = re.sub(r":py:\w+:\\?`[~.!]*(.+?)\\?`", r"`\1`", doc)
             doc = re.sub(r":(?::|\w|-)+?:`+(.+?)`+", r"`\1`", doc)
             docs[main_body.name][target] = doc
-            del target # delete to get better errors
+            del target  # delete to get better errors
             del doc
+
 
 class_annotations : Optional[Dict[str, _NestedStrDict]] = None
 """Nested documentation strings for classes; used for YAML comments."""
 
-def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], string:str, container: "DictConfig | NestedConfigDict",
-                        *, include_private:bool=False) -> str:
+def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], string: str, container: "DictConfig | NestedConfigDict",
+                        *, include_private: bool = False) -> str:
     if inspect.isclass(cls_or_self):
         cls = cls_or_self
     else:
@@ -366,7 +368,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     def add_comments(container : "DictConfig | NestedConfigDict",
                      data: CommentedMap,
                      lookup: Union[AgentConfig, _NestedStrDict],
-                     indent: int=0):
+                     indent: int = 0):
         """
         Recursively adds comments to the YAML output.
         
@@ -384,11 +386,11 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
                 assert isinstance(key, str)
             if isinstance(value, dict) and isinstance(cls_doc.get(key, None), dict):
                 # Add nested comments
-                add_comments(value, data[key], cls_doc[key], indent=indent+2) # type: ignore[arg-type]
+                add_comments(value, data[key], cls_doc[key], indent=indent + 2)  # type: ignore[arg-type]
                 comment_txt = "\n" + cls_doc[key].get("__doc__", "")                     # type: ignore
                 assert isinstance(comment_txt, str)
                 # no @package in subfields
-                if comment_txt.startswith("\n@package "): # already striped here
+                if comment_txt.startswith("\n@package "):  # already striped here
                     comment_txt = "\n".join(comment_txt.split("\n")[2:]).strip()
             else:
                 comment_txt = lookup.get(key, None)
@@ -397,7 +399,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
             if isinstance(comment_txt, dict):
                 # Add comments for nested dataclasses
                 try:
-                    add_comments(comment_txt, data[key], comment_txt, indent=indent+2)
+                    add_comments(comment_txt, data[key], comment_txt, indent=indent + 2)
                 except KeyError:
                     # double nested will throw a KeyError here as key not in data; will only be the
                     # variable name of the nested dataclass; seems to be okay.
@@ -408,9 +410,9 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
             if (":meta exclude:" in comment_txt) or not include_private and ":meta private:" in comment_txt:
                 data.pop(key)
                 continue  # Skip private fields; TODO does not skip "_named" fields, is that a problem?
-            comment_txt = comment_txt.replace("\n\n","\n \n")
+            comment_txt = comment_txt.replace("\n\n", "\n \n")
             if comment_txt.count("\n") > 0:
-                comment_txt = "\n"+comment_txt
+                comment_txt = "\n" + comment_txt
             data.yaml_set_comment_before_after_key(key, comment_txt, indent=indent)
     #top_container = container  # for debugging
     add_comments(container, data, cls_doc)  # pyright: ignore[reportArgumentType]
@@ -427,7 +429,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
         start = string.find("use_stay_on_road_feature: ")
         end = string.find("\n", start)
         # quote On/Off; to not be interpreted as boolean
-        string = string[:start+len("use_stay_on_road_feature: ")] + "'" + string[start+len("use_stay_on_road_feature: "):end] + "'" + string[end:]
+        string = string[:start + len("use_stay_on_road_feature: ")] + "'" + string[start + len("use_stay_on_road_feature: "):end] + "'" + string[end:]
     # entry: null has been replaced by entry:\n
     if has_null_entry:
         entry: str
@@ -436,13 +438,13 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
             if parts[2] != " null":
                 logging.debug("Warning: %s for entry %s. Entry is not ' null'. This should not happen", cls.__name__, entry)
                 continue
-            entry = parts[0]+":"  # noqa: PLW2901 # entry should be the same
+            entry = parts[0] + ":"  # noqa: PLW2901 # entry should be the same
             string = re.sub(fr"^{entry}$", entry + " null", string, flags=re.MULTILINE)
     return string
 
 
-def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=False, yaml_commented:bool=True,
-            detailed_rules:bool=False, *, include_private:bool = False) -> str:
+def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve: bool = False, yaml_commented: bool = True,
+            detailed_rules: bool = False, *, include_private: bool = False) -> str:
     """
     Convert the options to a YAML string representation.
 
@@ -483,17 +485,17 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
                     rule: Rule = rule_from_config(rule_cfg)
                     self_config: RuleConfig = rule.self_config
                     if OmegaConf.is_missing(rule_cfg, "phases"):
-                        rule_cfg.phases = next(iter(self_config.instance.phases)) # only support one atm
+                        rule_cfg.phases = next(iter(self_config.instance.phases))  # only support one atm
                     with open_dict(self_config):
                         del self_config["instance"]
                     if OmegaConf.is_missing(rule_cfg, "self_config"):
-                        rule_cfg.self_config = OmegaConf.to_container(self_config, enum_to_str=True) # type: ignore
+                        rule_cfg.self_config = OmegaConf.to_container(self_config, enum_to_str=True)  # type: ignore
                     else:
                         try:
                             rule_cfg.self_config.update(self_config)
                         except Exception:
                             with open_dict(rule_cfg):
-                                rule_cfg.self_config = OmegaConf.to_container(OmegaConf.merge(self_config, rule_cfg.self_config), enum_to_str=True) # type: ignore
+                                rule_cfg.self_config = OmegaConf.to_container(OmegaConf.merge(self_config, rule_cfg.self_config), enum_to_str=True)  # type: ignore
                 
                 if "phases" in rule_cfg and not isinstance(rule_cfg.phases, str):
                     assert isinstance(rule_cfg.phases, Phase), "Currently only supports a Phase as string or Phase object."
@@ -510,9 +512,9 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
             missing_keys = {k for k in rule_cfg.keys() if OmegaConf.is_missing(rule_cfg, k)}
             clean_rule = OmegaConf.masked_copy(rule_cfg, set(rule_cfg.keys()) - missing_keys)  # pyright: ignore[reportArgumentType]
             masked_rules.append(clean_rule)
-        cfg.rules = masked_rules # type: ignore[attr-defined]
+        cfg.rules = masked_rules  # type: ignore[attr-defined]
         
-    container: Dict[str, Any] = OmegaConf.to_container(cfg, resolve=resolve, enum_to_str=True) # pyright: ignore[reportAssignmentType]
+    container: Dict[str, Any] = OmegaConf.to_container(cfg, resolve=resolve, enum_to_str=True)  # pyright: ignore[reportAssignmentType]
     if AD_RSS_AVAILABLE:
         def replace_carla_enum(content: _T) -> _T:
             # retrieve name from the stubs
@@ -524,7 +526,7 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
         
         def recursive_replace(content: _T) -> _T:
             if isinstance(content, dict):
-                return {k: recursive_replace(v) for k, v in content.items()} # type: ignore
+                return {k: recursive_replace(v) for k, v in content.items()}  # type: ignore
             if isinstance(content, list):
                 return [recursive_replace(v) for v in content]               # type: ignore
             return replace_carla_enum(content)
@@ -593,7 +595,7 @@ def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfig
     except TypeError:
         logging.debug("Error getting type hints for %s with container %s", base.__name__, type(container))
         return
-    keys: "list[str]" = container.__dataclass_fields__.keys() if is_dataclass(container) else container.keys() # type: ignore
+    keys: "list[str]" = container.__dataclass_fields__.keys() if is_dataclass(container) else container.keys()  # type: ignore
     for key in keys:
         if key == "overwrites" or key not in annotations:
             continue
@@ -608,8 +610,8 @@ def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfig
         if value == MISSING:
             continue
         typ = annotations[key]
-        if is_structured_config(typ): # is structured dataclass or attrs
-            if OmegaConf.get_type(value) is dict: # but is not
+        if is_structured_config(typ):  # is structured dataclass or attrs
+            if OmegaConf.get_type(value) is dict:  # but is not
                 if isinstance(value, DictConfig):
                     #value._metadata.object_type = typ
                     if hasattr(typ, "create"):
@@ -618,19 +620,19 @@ def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfig
                         setattr(container, key, OmegaConf.structured(typ(**value), flags={"allow_objects" : True}))
                 # Below might rise type-errors if the schema is not correct
                 elif hasattr(typ, "uses_overwrite_interface") and typ.uses_overwrite_interface():  # type: ignore[attr-defined]
-                    setattr(container, key, typ(overwrites=value)) # type: ignore[arg-type]
+                    setattr(container, key, typ(overwrites=value))  # type: ignore[arg-type]
                 else:
                     setattr(container, key, typ(**value))
             if isinstance(value, (DictConfig, dict)) or is_dataclass(value):
-                set_container_type(typ, value) # type: ignore[arg-type]
+                set_container_type(typ, value)  # type: ignore[arg-type]
                 
 
         
-def _flatten_dict(source : NestedConfigDict, target : NestedConfigDict, resolve : bool=False) -> None:
+def _flatten_dict(source : NestedConfigDict, target : NestedConfigDict, resolve : bool = False) -> None:
     if isinstance(source, DictConfig):
         items = source.items_ex(resolve=resolve)
     else:
-        items = source.items() # normal case after to_container
+        items = source.items()  # normal case after to_container
     for k, v in items:
         if isinstance(v, dict):
             _flatten_dict(v, target)

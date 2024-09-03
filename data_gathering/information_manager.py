@@ -28,8 +28,8 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 _P = ParamSpec("_P")
 
-DRIVING_SPEED_THRESHOLD = 0.05 # m/s >= check
-STOPPED_SPEED_THRESHOLD = 0.05 # m/s < check
+DRIVING_SPEED_THRESHOLD = 0.05  # m/s >= check
+STOPPED_SPEED_THRESHOLD = 0.05  # m/s < check
 
 class InformationManager:
     """
@@ -55,7 +55,7 @@ class InformationManager:
     Is float('inf') if :py:attr:`relevant_traffic_light` is None.
     """
     
-    _relevant_traffic_light_location: carla.Location = None # type: ignore[assignment]
+    _relevant_traffic_light_location: carla.Location = None  # type: ignore[assignment]
     """
     Note:
         Is None if :py:attr:`relevant_traffic_light` is :code:`None`
@@ -67,7 +67,7 @@ class InformationManager:
     Tracks different :py:class:`AgentState` and the amount of ticks the agent is in this state.
     """
     
-    _vehicle_speed : float # m/s
+    _vehicle_speed : float  # m/s
     
     gathered_information : "InformationManager.Information"
     """:py:class:`.InformationManager.Information` gathered during :py:meth:`tick`"""
@@ -101,25 +101,25 @@ class InformationManager:
         self._agent = agent
         self.live_info = agent.live_info
         
-        self._vehicle = agent._vehicle # maybe use a property # pyright: ignore[reportPrivateUsage]
+        self._vehicle = agent._vehicle  # maybe use a property # pyright: ignore[reportPrivateUsage]
         
         # Share the dict
         if getattr(agent, "current_states", None) is not None:
             self.state_counter = agent.current_states
         else:
             self.state_counter = agent.current_states = dict.fromkeys(AgentState, 0)
-        self._states_checked = {s: False for s in AgentState}
+        self._states_checked = dict.fromkeys(AgentState, False)
         if update_information:
             self.tick()
     
     # AgentState detection
     
     #@staticmethod # not possible in python3.7
-    def _check_state(state: AgentState): # pyright: ignore[reportSelfClsParameterName, reportGeneralTypeIssues]
+    def _check_state(state: AgentState):  # pyright: ignore[reportSelfClsParameterName, reportGeneralTypeIssues]
         """
         Updates the state counter and the state checked dict when the function is called.
         """
-        def wrapper(func : Callable[Concatenate[Self,_P], _T]) ->  Callable[Concatenate[Self,_P], _T]:# -> _Wrapped[Callable[Concatenate[Self, _P], Any], bool | Non...:
+        def wrapper(func : Callable[Concatenate[Self, _P], _T]) ->  Callable[Concatenate[Self, _P], _T]:  # -> _Wrapped[Callable[Concatenate[Self, _P], Any], bool | Non...:
             @wraps(func)
             def inner(self: Self, *args: _P.args, **kwargs: _P.kwargs):
                 result = func(self, *args, **kwargs)
@@ -252,16 +252,16 @@ class InformationManager:
         
         self.live_info.velocity_vector = self._vehicle.get_velocity()
         
-        self._vehicle_speed = CarlaDataProvider.get_velocity(self._vehicle) # used for AgentState Checks
-        self.live_info.current_speed = self._vehicle_speed * 3.6 # km/h
+        self._vehicle_speed = CarlaDataProvider.get_velocity(self._vehicle)  # used for AgentState Checks
+        self.live_info.current_speed = self._vehicle_speed * 3.6  # km/h
         
         # - Location -
         # NOTE: That transform.location and location are similar but not identical.
         self.live_info.current_transform = CarlaDataProvider.get_transform(self._vehicle)  # pyright: ignore[reportAttributeAccessIssue]
-        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle) # NOTE: is None if past run not cleaned # noqa: E501 # type: ignore
+        self.live_info.current_location = _current_loc = CarlaDataProvider.get_location(self._vehicle)  # NOTE: is None if past run not cleaned # noqa: E501 # type: ignore
         # Only exact waypoint. TODO: update in agent
         # Comment should be visible in traceback.
-        current_waypoint = cast(carla.Waypoint, CarlaDataProvider.get_map().get_waypoint(_current_loc)) # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet. # noqa: E501 # pyright: ignore[reportCallIssue, reportArgumentType]
+        current_waypoint = cast(carla.Waypoint, CarlaDataProvider.get_map().get_waypoint(_current_loc))  # NOTE: Might throw error if past run was not cleaned; or the world did not tick yet. # noqa: E501 # pyright: ignore[reportCallIssue, reportArgumentType]
         
         # Traffic Light
         # NOTE: Must be AFTER the location update
@@ -276,7 +276,7 @@ class InformationManager:
         def dist(v : carla.Actor):
             if not v.is_alive:
                 logger.warning("Actor is not alive - this should not happen.")
-                return _v_filter_dist # filter out
+                return _v_filter_dist  # filter out
             return v.get_location().distance(_current_loc)  # pyright: ignore[reportArgumentType]
         
         # Filter nearby
@@ -296,7 +296,7 @@ class InformationManager:
         self.static_obstacles_nearby = sorted(self.static_obstacles_nearby, key=dist)
         
         # Walkers
-        _v_filter_dist = self._agent.config.obstacles.nearby_walkers_max_distance # in case of a different distance for walkers.
+        _v_filter_dist = self._agent.config.obstacles.nearby_walkers_max_distance  # in case of a different distance for walkers.
         self.walkers_nearby: list[carla.Walker] = []
         for w in self.walkers:
             if dist(w) < _v_filter_dist:
@@ -319,25 +319,25 @@ class InformationManager:
         
         # TODO: Extend distances with carla lights
         self.gathered_information = InformationManager.Information(
-            current_waypoint= current_waypoint,
-            current_speed= self.live_info.current_speed,
-            current_states= self.state_counter,
+            current_waypoint=current_waypoint,
+            current_speed=self.live_info.current_speed,
+            current_states=self.state_counter,
             
             relevant_traffic_light=self.relevant_traffic_light,
             relevant_traffic_light_distance=self.relevant_traffic_light_distance,
             
-            vehicles= self.vehicles,
-            walkers = self.walkers,
-            static_obstacles = self.static_obstacles,
-            obstacles = self.obstacles,
+            vehicles=self.vehicles,
+            walkers=self.walkers,
+            static_obstacles=self.static_obstacles,
+            obstacles=self.obstacles,
             
-            walkers_nearby= self.walkers_nearby,
-            vehicles_nearby= self.vehicles_nearby,
-            static_obstacles_nearby= self.static_obstacles_nearby,
-            obstacles_nearby= self.obstacles_nearby,
-            traffic_lights_nearby= self.traffic_lights_nearby,
+            walkers_nearby=self.walkers_nearby,
+            vehicles_nearby=self.vehicles_nearby,
+            static_obstacles_nearby=self.static_obstacles_nearby,
+            obstacles_nearby=self.obstacles_nearby,
+            traffic_lights_nearby=self.traffic_lights_nearby,
             
-            distances = self.distances,
+            distances=self.distances,
         )
         return self.gathered_information
 
@@ -372,7 +372,7 @@ class InformationManager:
 
     # ---- Global Information ----
     
-    OBSTACLE_FILTER : str  = "static.prop.[cistmw]*"
+    OBSTACLE_FILTER : str = "static.prop.[cistmw]*"
     """
     fnmatch for obstacles that the agent will consider in its path.
     https://carla.readthedocs.io/en/latest/bp_library/#static
@@ -395,7 +395,7 @@ class InformationManager:
         return trigger_wp
 
     @staticmethod
-    def global_tick(frame: Optional[int]=None) -> None:
+    def global_tick(frame: Optional[int] = None) -> None:
         """
         Update global information that is constant for the current tick and not agent specific.
         

@@ -201,7 +201,7 @@ class RssUnstructuredSceneVisualizerMode(Enum):
 class RssUnstructuredSceneVisualizer(CustomSensorInterface):
     """Gives a top-view over the setting?"""
 
-    def __init__(self, parent_actor: carla.Actor, world, display_dimensions: tuple[int, int], gamma_correction: float=2.2):
+    def __init__(self, parent_actor: carla.Actor, world, display_dimensions: tuple[int, int], gamma_correction: float = 2.2):
         self._last_rendered_frame = -1
         self._surface = None
         self._current_rss_surface : Optional[Tuple[int, pygame.Surface]] = None
@@ -258,7 +258,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
             bp.set_attribute('image_size_x', str(self._dim[0]))
             bp.set_attribute('image_size_y', str(self._dim[1]))
             if bp.has_attribute('gamma'):
-                    bp.set_attribute('gamma', str(self._gamma))
+                bp.set_attribute('gamma', str(self._gamma))
 
             self._camera : carla.Sensor = assure_type(carla.Sensor, self._world.spawn_actor(
                                                         bp,
@@ -546,7 +546,7 @@ class RssBoundingBoxVisualizer:
     @staticmethod
     def draw_bounding_boxes(surface: pygame.Surface,
                             bounding_boxes,
-                            color: pygame.Color=pygame.Color('red')) -> None:  # noqa: B008
+                            color: pygame.Color = pygame.Color('red')) -> None:  # noqa: B008
         """
         Draws bounding boxes on pygame display.
         """
@@ -633,7 +633,7 @@ class RssBoundingBoxVisualizer:
 
         sensor_world_matrix = get_matrix(camera_transform)
         world_sensor_matrix = np.linalg.inv(sensor_world_matrix)
-        return np.dot(world_sensor_matrix, cords) # sensor coordinates
+        return np.dot(world_sensor_matrix, cords)  # sensor coordinates
 
 # ==============================================================================
 # -- RssDebugVisualizer ------------------------------------------------------------
@@ -650,7 +650,7 @@ class RssDebugVisualizationMode(Enum):
 
 class RssDebugVisualizer:
 
-    def __init__(self, player, world : carla.World, visualization_mode: Union[RssDebugVisualizationMode,str,int] = RssDebugVisualizationMode.Off):
+    def __init__(self, player, world : carla.World, visualization_mode: Union[RssDebugVisualizationMode, str, int] = RssDebugVisualizationMode.Off):
         self._world = world
         self._player = player
         if isinstance(visualization_mode, str):

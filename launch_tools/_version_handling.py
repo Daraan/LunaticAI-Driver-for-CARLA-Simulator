@@ -26,6 +26,7 @@ else:
         for python < 3.8.
         """
         dispatcher = singledispatch(func)
+
         def wrapper(*args: _P.args, **kw: _P.kwargs) -> _T:
             return dispatcher.dispatch(args[1].__class__)(*args, **kw)
         wrapper.register = dispatcher.register  # type: ignore[attr-defined]

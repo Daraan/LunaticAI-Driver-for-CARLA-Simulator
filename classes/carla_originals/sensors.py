@@ -46,11 +46,11 @@ class CollisionSensor(CustomSensorInterface):
         self.hud: "HUD" = hud
         world = self._parent.get_world()
         blueprint = world.get_blueprint_library().find('sensor.other.collision')
-        self.sensor = world.spawn_actor(blueprint, carla.Transform(), attach_to=self._parent) # type: ignore
+        self.sensor = world.spawn_actor(blueprint, carla.Transform(), attach_to=self._parent)  # type: ignore
         # We need to pass the lambda a weak reference to
         # self to avoid circular reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event)) # pyright: ignore[reportArgumentType]
+        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event))  # pyright: ignore[reportArgumentType]
 
     def get_collision_history(self):
         """Gets the history of collisions"""
@@ -94,11 +94,11 @@ class LaneInvasionSensor(CustomSensorInterface):
         self.hud = hud
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find('sensor.other.lane_invasion')
-        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent) # type: ignore
+        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)  # type: ignore
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda event: LaneInvasionSensor._on_invasion(weak_self, event)) # pyright: ignore[reportArgumentType]
+        self.sensor.listen(lambda event: LaneInvasionSensor._on_invasion(weak_self, event))  # pyright: ignore[reportArgumentType]
 
     @staticmethod
     def _on_invasion(weak_self : "weakref.ref[LaneInvasionSensor]" , event : carla.LaneInvasionEvent):
@@ -131,12 +131,12 @@ class GnssSensor(CustomSensorInterface):
         self.lon = 0.0
         world = self._parent.get_world()
         blueprint = world.get_blueprint_library().find('sensor.other.gnss')
-        self.sensor = world.spawn_actor(blueprint, carla.Transform(carla.Location(x=1.0, z=2.8)), # type: ignore
+        self.sensor = world.spawn_actor(blueprint, carla.Transform(carla.Location(x=1.0, z=2.8)),  # type: ignore
                                         attach_to=self._parent)
         # We need to pass the lambda a weak reference to
         # self to avoid circular reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda event: GnssSensor._on_gnss_event(weak_self, event)) # pyright: ignore[reportArgumentType]
+        self.sensor.listen(lambda event: GnssSensor._on_gnss_event(weak_self, event))  # pyright: ignore[reportArgumentType]
 
     @staticmethod
     def _on_gnss_event(weak_self : "weakref.ref[GnssSensor]", event : carla.GnssMeasurement):
@@ -166,7 +166,7 @@ class RadarSensor(CustomSensorInterface):
         #bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
 
-        self.velocity_range = 7.5 # m/s
+        self.velocity_range = 7.5  # m/s
         world = self._parent.get_world()
         self.debug = world.debug
         bp = world.get_blueprint_library().find('sensor.other.radar')
@@ -175,7 +175,7 @@ class RadarSensor(CustomSensorInterface):
         self.sensor = world.spawn_actor(  # type: ignore
             bp,
             carla.Transform(
-                carla.Location(x=bound_x + 0.05, z=bound_z+0.05),
+                carla.Location(x=bound_x + 0.05, z=bound_z + 0.05),
                 carla.Rotation(pitch=5)),
             attach_to=self._parent)
         # We need a weak reference to self to avoid circular reference.
@@ -209,12 +209,12 @@ class RadarSensor(CustomSensorInterface):
             def clamp(min_v, max_v, value):
                 return max(min_v, min(value, max_v))
 
-            norm_velocity = detect.velocity / self.velocity_range # range [-1, 1]
+            norm_velocity = detect.velocity / self.velocity_range  # range [-1, 1]
             r = int(clamp(0.0, 1.0, 1.0 - norm_velocity) * 255.0)
             g = int(clamp(0.0, 1.0, 1.0 - abs(norm_velocity)) * 255.0)
             b = int(abs(clamp(- 1.0, 0.0, - 1.0 - norm_velocity)) * 255.0)
             self.debug.draw_point(
-                radar_data.transform.location + fw_vec, # pyright: ignore[reportArgumentType]
+                radar_data.transform.location + fw_vec,  # pyright: ignore[reportArgumentType]
                 size=0.075,
                 life_time=0.06,
                 persistent_lines=False,
@@ -246,7 +246,7 @@ class IMUSensor(CustomSensorInterface):
         # reference.
         weak_self = weakref.ref(self)
         self.sensor.listen(
-            lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data)) # pyright: ignore[reportArgumentType]
+            lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data))  # pyright: ignore[reportArgumentType]
 
     @staticmethod
     def _IMU_callback(weak_self : "weakref.ref[IMUSensor]", sensor_data : carla.IMUMeasurement):

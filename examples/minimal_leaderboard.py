@@ -15,11 +15,11 @@ ego = GameFramework.request_new_actor("car", rolename="hero", random_location=Tr
 
 # Create a lunatic agent
 agent = LunaticChallenger("localhost", carla_port=2000)
-agent.setup(game_framework.launch_config) # Do not forget this step!
+agent.setup(game_framework.launch_config)  # Do not forget this step!
 try:
     while game_framework.continue_loop:
         with game_framework(agent):
-            agent.run_step(None, None) # NOTE: do not use a keyword arguments!
+            agent.run_step(None, None)  # NOTE: do not use a keyword arguments!
             agent.apply_control()
 except GameFramework.exceptions.UserInterruption:
     print("User interrupted. Exiting...")

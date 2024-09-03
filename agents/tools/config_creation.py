@@ -101,8 +101,9 @@ __all__ = [
 if sys.version_info < (3, 9):
     # fix for typing.get_type_hints when OmegaConf.structured is used with nested dataclasses
     __original_config_path = config_path
-    def config_path(path: Optional[str] =None):
+    def config_path(path: Optional[str] = None):
         decorator = __original_config_path(path)
+
         def wrapper(cls: type):
             globals()[cls.__name__] = cls  # add to globals
             return decorator(cls)
@@ -482,7 +483,7 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
     
     if READTHEDOCS and not TYPE_CHECKING:
         # simplify signature for online
-        check_config.__wrapped__.__annotations__ = check_config.__annotations__ = {"config": "NestedConfigDict", 'strictness': 'int', 'as_dict_config': 'bool', "return": "Self"} # pylint: disable=protected-access, line-too-long
+        check_config.__wrapped__.__annotations__ = check_config.__annotations__ = {"config": "NestedConfigDict", 'strictness': 'int', 'as_dict_config': 'bool', "return": "Self"}  # pylint: disable=protected-access, line-too-long
         
     @class_or_instance_method
     def to_dict_config(
@@ -635,7 +636,7 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
                             if _WARN_LIVE_INFO and not OmegaConf.is_missing(value, live_info_key):
                                 logging.warning("WARNING: live_info should only consist of missing values. "
                                                 "Setting %s to %s", live_info_key, value[live_info_key])
-                                setattr(live_info_dict, live_info_key, value[live_info_key]) # type: ignore[attr]
+                                setattr(live_info_dict, live_info_key, value[live_info_key])  # type: ignore[attr]
                     # Delegate False to a subfield
                     elif self.__dataclass_fields__[key].metadata.get("can_be_false", False) and value in (False, None, "None", True):
                         # redirect to .enabled subkey.
@@ -1200,7 +1201,7 @@ class LunaticAgentObstacleSettings(AutopilotObstacleSettings, BehaviorAgentObsta
     #NOTE: Currently only applied to traffic lights
     """
     
-    detection_angles: LunaticAgentObstacleDetectionAngles = field(default_factory=LunaticAgentObstacleDetectionAngles) # pyright: ignore[ reportIncompatibleVariableOverride]
+    detection_angles: LunaticAgentObstacleDetectionAngles = field(default_factory=LunaticAgentObstacleDetectionAngles)  # pyright: ignore[ reportIncompatibleVariableOverride]
     
     nearby_statics_max_distance: float = 150
     """For performance filters out statics that are further away than this distance in meters"""
@@ -1317,11 +1318,11 @@ class BasicAgentPlannerSettings(AgentConfig):
     
     # NOTE: two variables because originally used with two different names in different places
     #lateral_control_dict : PIDControllerDict = field(default_factory=partial(PIDControllerDict, **{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2}))
-    lateral_control_dict: PIDControllerDict = field(default_factory=lambda:PIDControllerDict(**{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2})) # pyright: ignore[reportAbstractUsage]
+    lateral_control_dict: PIDControllerDict = field(default_factory=lambda: PIDControllerDict(**{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2}))  # pyright: ignore[reportAbstractUsage]
     """values of the lateral PID controller"""
 
     # NOTE: two variables because originally used with two different names in different places
-    longitudinal_control_dict: PIDControllerDict = field(default_factory=lambda:PIDControllerDict(**{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0})) # pyright: ignore[reportAbstractUsage]
+    longitudinal_control_dict: PIDControllerDict = field(default_factory=lambda: PIDControllerDict(**{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0}))  # pyright: ignore[reportAbstractUsage]
     """values of the longitudinal PID controller"""
     
     offset: float = 0.0
@@ -1378,7 +1379,7 @@ class BehaviorAgentPlannerSettings(BasicAgentPlannerSettings):
 @config_path("agent/planner")
 @dataclass
 class LunaticAgentPlannerSettings(BehaviorAgentPlannerSettings):
-    dt: float = MISSING # 1.0 / 20.0 # Note: Set this from main script and do not assume it.
+    dt: float = MISSING  # 1.0 / 20.0 # Note: Set this from main script and do not assume it.
     """
     time differential in seconds
     
@@ -1427,7 +1428,7 @@ class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
     hand_brake_modify_chance: float = 0.0
     """Chance to choose the opposite of hand_break"""
     
-    do_random_steering: bool = False # TODO: Should be evasive steering
+    do_random_steering: bool = False  # TODO: Should be evasive steering
     """Whether to do random steering"""
     
     random_steering_range : Tuple[float, float] = (-0.25, 0.25)
@@ -1470,7 +1471,7 @@ class RssSettings(AgentConfig):
     always_accept_update: bool = False
     """Setting for the default rule to always accept RSS updates if they are valid"""
     
-    rss_max_speed: float = MISSING # NotImplemented
+    rss_max_speed: float = MISSING  # NotImplemented
     """For fast vehicles RSS currently is unreliable, disables rss updates when the vehicle is faster than this."""
     
     # ------
@@ -1548,7 +1549,7 @@ class RuleConfig(DictConfigLike if TYPE_CHECKING else object):
     instance: object = MISSING             # pyright: ignore[reportRedeclaration, reportAssignmentType]
     """The instance of the rule, can be accessed by :python:`ctx.current_rule.instance`"""
     
-    if TYPE_CHECKING: # Cannot import Rule but need a type for OmegaConf
+    if TYPE_CHECKING:  # Cannot import Rule but need a type for OmegaConf
         instance: Rule = MISSING
         """The instance of the rule, can be accessed by :python:`ctx.current_rule.instance`"""
 
@@ -1607,7 +1608,7 @@ class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
     
     phases : Optional[Union[str, Phase]] = MISSING
     #/, # phases must be positional; python3.8+ only
-    condition : Optional[str]=MISSING
+    condition : Optional[str] = MISSING
     action: Optional[str] = MISSING
     false_action: Optional[str] = MISSING
     actions : Optional[Dict[Any, str]] = MISSING
@@ -1627,7 +1628,7 @@ class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
         - You can access config rule also with :python:`ctx.current_rule`
     """
     if READTHEDOCS and not TYPE_CHECKING:
-        self_config: NestedConfigDict = MISSING # lets not introduce a new variable
+        self_config: NestedConfigDict = MISSING  # lets not introduce a new variable
     
     priority: RulePriority = MISSING
     cooldown_reset_value : Optional[int] = MISSING
@@ -1637,7 +1638,7 @@ class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
     if READTHEDOCS or TYPE_CHECKING:
         rules : "List[CreateRuleFromConfig]" = MISSING
     else:
-        rules: list = MISSING # List[CreateRuleFromConfig] # Cannot use this forward ref with omegaconf
+        rules: list = MISSING  # List[CreateRuleFromConfig] # Cannot use this forward ref with omegaconf
     
     execute_all_rules: bool = MISSING
     
@@ -1665,6 +1666,7 @@ class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
         for key in self.__class__.__annotations__:
             if getattr(self, key) == MISSING:
                 delattr(self, key)
+
 
 RuleCreatingParameters : TypeAlias = Union[CreateRuleFromConfig, CallFunctionFromConfig, DictConfig]
 """
@@ -1695,7 +1697,7 @@ def _from_config_default_rules():
                                 description="Drive slow towards while trying not to cross the line (experimental)."
                              ),
         CreateRuleFromConfig("PassYellowTrafficLightRule",
-                             self_config = {
+                             self_config={
                                  "try_to_pass" : True,
                                  "passing_speed" : II("max:${mul:${live_info.current_speed_limit},1.33},${speed.target_speed}")
                              },
@@ -1764,7 +1766,7 @@ class AutopilotBehavior(AgentConfig):
     The distance is in meters and will affect the minimum moving distance. It is computed from front to back of the vehicle objects.
     """
 
-    vehicle_percentage_speed_difference: float = 30 # in percent
+    vehicle_percentage_speed_difference: float = 30  # in percent
     """
     Sets the difference the vehicle's intended speed and its current speed limit.
     Speed limits can be exceeded by setting the percentage to a negative value.
@@ -1865,7 +1867,7 @@ class LunaticAgentSettings(AgentConfig):
     
     if READTHEDOCS or TYPE_CHECKING:
         # variant needs to be first.
-        rules : "list[RuleCreatingParameters]" = field(default_factory=_from_config_default_rules) # pyright: ignore[reportArgumentType]
+        rules : "list[RuleCreatingParameters]" = field(default_factory=_from_config_default_rules)  # pyright: ignore[reportArgumentType]
         
     # ---- Special Attributes for Context and Rule overwrites ----
     # These attributes are not usable by the agent

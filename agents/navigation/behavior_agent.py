@@ -17,7 +17,7 @@ from agents.navigation.behavior_types import CarlaOriginalBehavior, Cautious, Ag
 from agents.navigation.local_planner import RoadOption
 from agents.tools.misc import get_speed, positive
 
-behavior_types = vars(_behavior_types) # type: dict[str, CarlaOriginalBehavior] # type: ignore
+behavior_types = vars(_behavior_types)  # type: dict[str, CarlaOriginalBehavior] # type: ignore
 
 
 class BehaviorAgent(BasicAgent):
