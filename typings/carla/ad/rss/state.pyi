@@ -1,5 +1,7 @@
 
 from carla import ad
+
+from carla.libcarla import _CarlaEnum
 from . import *
 
 
@@ -215,7 +217,7 @@ class ProperResponse():
 
 
 class RssState():
-    def assign(self, arg1: RssState, other: RssState) -> RssState:
+    def assign(self, other: RssState) -> RssState:
         '''
 
         assign( (RssState)arg1, (RssState)other) -> RssState :
@@ -247,28 +249,18 @@ class RssState():
     def unstructuredSceneState(self) -> UnstructuredSceneRssState: ...
 
 
-class RssStateEvaluator(int,):
-    IntersectionEgoInFront = 8
-
-    IntersectionEgoPriorityOtherAbleToStop = 7
-
-    IntersectionOtherInFront = 9
-
-    IntersectionOtherPriorityEgoAbleToStop = 6
-
-    IntersectionOverlap = 10
-
-    LateralDistance = 5
-
-    LongitudinalDistanceOppositeDirection = 2
-
-    LongitudinalDistanceOppositeDirectionEgoCorrectLane = 1
-
-    LongitudinalDistanceSameDirectionEgoFront = 3
-
-    LongitudinalDistanceSameDirectionOtherInFront = 4
-
+class RssStateEvaluator(int, _CarlaEnum):
     None = 0  # type: ignore
+    LongitudinalDistanceOppositeDirectionEgoCorrectLane = 1
+    LongitudinalDistanceOppositeDirection = 2
+    LongitudinalDistanceSameDirectionEgoFront = 3
+    LongitudinalDistanceSameDirectionOtherInFront = 4
+    LateralDistance = 5
+    IntersectionOtherPriorityEgoAbleToStop = 6
+    IntersectionEgoPriorityOtherAbleToStop = 7
+    IntersectionEgoInFront = 8
+    IntersectionOtherInFront = 9
+    IntersectionOverlap = 10
 
 
 class RssStateInformation():
@@ -293,7 +285,7 @@ class RssStateInformation():
 
 
 class RssStateSnapshot():
-    def assign(self, arg1: RssStateSnapshot, other: RssStateSnapshot) -> RssStateSnapshot:
+    def assign(self, other: RssStateSnapshot) -> RssStateSnapshot:
         '''
 
         assign( (RssStateSnapshot)arg1, (RssStateSnapshot)other) -> RssStateSnapshot :

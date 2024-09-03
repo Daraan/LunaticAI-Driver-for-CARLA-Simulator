@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 import weakref
 
 from collections.abc import Mapping
@@ -20,9 +21,10 @@ import pygame
 import random
 from hydra.core.global_hydra import GlobalHydra
 from hydra.core.hydra_config import HydraConfig
+from hydra.core.utils import configure_log
 from omegaconf import DictConfig, OmegaConf, open_dict
 
-from agents.tools.config_creation import LaunchConfig, RssLogLevel, RssRoadBoundariesMode
+from agents.tools.config_creation import LaunchConfig, RssLogLevel, RssRoadBoundariesMode, config_store
 from classes import exceptions as _exceptions
 from classes.camera_manager import CameraManager
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
@@ -219,7 +221,6 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                                                 overrides=None)
         if structured and dict_config.get("strict_config", 3) >= 2:
             # Uses the correct dataclass schemas as values.
-            from agents.tools.config_creation import LaunchConfig, config_store
             if config_name == "launch_config":
                 if LaunchConfig._config_path:
                     # Load defined schema from the config Store
@@ -246,7 +247,6 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                 config.hydra.runtime.output_dir = config.hydra.run.dir
             hydra_conf.set_config(config)       # type: ignore
             os.makedirs(config.hydra.runtime.output_dir, exist_ok=True)
-            from hydra.core.utils import configure_log
             if logging:
                  # Assure that our logger works
                 configure_log(config.hydra.job_logging, logger.name) # type: ignore
@@ -262,7 +262,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         if GameFramework.hydra_initialized():
             return assure_type(LaunchConfig, hydra.compose(config_name=config_name))
         config_dir, config_name = os.path.split(config_name)
-        import inspect
+        # Try to get job name from file in the stack.
+        import inspect  # noqa
         frame = inspect.stack()[-1]
         module = inspect.getmodule(frame[0])
         name = module.__file__ if module and module.__file__ else "unknown"
@@ -289,7 +290,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.world_settings: carla.WorldSettings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
         
         # These are class variables
-        clock, display = self.init_pygame(args) # pylint: disable=unused-variable
+        GameFramework.clock, GameFramework.display = self.init_pygame(args)
         
         self.config = config
         self.agent = None
@@ -301,9 +302,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         self.traffic_manager : Optional[carla.TrafficManager] = self.init_traffic_manager()
         
         # Import here to avoid circular imports
-        from classes.rule import BlockingRule, Rule
+        from classes.rule import BlockingRule, Rule  # noqa: PLC0415,RUF100
         self.cooldown_framework = Rule.CooldownFramework() # used in context manager. # NOTE: Currently can be constant
-        
         BlockingRule._gameframework = weakref.proxy(self)
         
     @class_or_instance_method
@@ -745,7 +745,6 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 sys.exit(1)
         
         self._config = config
-        from agents.tools.config_creation import LaunchConfig  # circular import
         if not isinstance(args, (Mapping, DictConfig, LaunchConfig)): # TODO: should rather check for string like
             # Args is expected to be a string here
             # NOTE: This does NOT INCLUDE CLI OVERWRITES
@@ -991,7 +990,6 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             SystemExit: If the actor is not found within the time period.
         """
         assert self.actor_role_name
-        import time
         self.tick_server_world() # Tick the world?
         start = time.time()
         t = start

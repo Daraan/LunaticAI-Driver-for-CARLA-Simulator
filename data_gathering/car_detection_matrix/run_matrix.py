@@ -230,7 +230,7 @@ class DetectionMatrix:
         
         :meta private:
         """
-        from classes.keyboard_controls import RSSKeyboardControl
+        from classes.keyboard_controls import RSSKeyboardControl  # noqa: PLC0415 # lazy import
         logger.info(f"DetectionMatrix: signal {signum} received. Stopping.")
         self.stop()
         # Can only have one signal handler!
@@ -296,7 +296,6 @@ class AsyncDetectionMatrix(DetectionMatrix):
         if self.worker_thread.is_alive():
             self.worker_thread.join(timeout)
         else:
-            from agents.tools.logs import logger
             logger.info("DetectionMatrix.stop called multiple times.")
         self.matrix = None # prevent rendering # type: ignore[assignment]
     

@@ -5,6 +5,7 @@ In this module defines enums and constants that are used throughout the project.
 .. Comment "#: :meta hide-value:" hides the value in the documentation.
 """
 
+import operator
 import os
 from enum import Enum, Flag, IntEnum, auto
 from functools import lru_cache, reduce
@@ -507,7 +508,7 @@ class Phase(Flag):
         """
         elements = string.split("|") # Phase.NAME
         elements = [cls[e.split(".")[-1].strip()] for e in elements]
-        return reduce(lambda x, y: x | y, elements) # build union -> Phase
+        return reduce(operator.or_, elements) # build union -> Phase
 
 
 class Hazard(Flag):
@@ -825,5 +826,3 @@ class StreetOccupation(IntEnum):
     def __str__(self) -> str:
         s = super().__str__()
         return f"{s:^7}" # center the word
-    
-

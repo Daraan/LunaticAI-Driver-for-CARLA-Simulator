@@ -7,11 +7,11 @@ from . import *
 class RssCheck():
     
     @overload
-    def calculateProperResponse(self, arg1: RssCheck, worldModel: world.WorldModel, situationSnapshot: situation.SituationSnapshot, rssStateSnapshot: state.RssStateSnapshot, properResponse: state.ProperResponse) -> bool:
+    def calculateProperResponse(self, worldModel: world.WorldModel, situationSnapshot: situation.SituationSnapshot, rssStateSnapshot: state.RssStateSnapshot, properResponse: state.ProperResponse) -> bool:
         ...
     
     @overload
-    def calculateProperResponse(self, arg1: RssCheck, worldModel: world.WorldModel, properResponse: state.ProperResponse) -> bool:
+    def calculateProperResponse(self, worldModel: world.WorldModel, properResponse: state.ProperResponse) -> bool:
         '''
 
         calculateProperResponse( (RssCheck)arg1, (WorldModel)worldModel, (ProperResponse)properResponse) -> bool :

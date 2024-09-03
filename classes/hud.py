@@ -5,6 +5,7 @@ Based on original CARLA example by German Ros
 """
 
 import math
+import operator
 import os
 from datetime import timedelta
 from typing import TYPE_CHECKING, ClassVar, Iterable, List, Optional, Tuple, Union, cast
@@ -163,7 +164,7 @@ class HUD:
         if len(obstacles_distances) > 1:
             self._info_text += ['Nearby obstacles:']
 
-        for distance, vehicle in sorted(obstacles_distances, key=lambda dv: dv[0])[:20]: # display at most 20 actors
+        for distance, vehicle in sorted(obstacles_distances, key=operator.itemgetter(0))[:20]: # display at most 20 actors
             if distance > 200.0:
                 break
             vehicle_type = get_actor_display_name(vehicle, truncate=22)

@@ -18,7 +18,6 @@ line-length = 120
 typing-modules = ["launch_tools"]
 
 # See: https://docs.astral.sh/ruff/rules/#pydocstyle-d
-
 select = [
     "A",
     "B",
@@ -38,29 +37,36 @@ select = [
     "PERF",
     "G004",
     "PIE808", # unnecessary-range-start
+    "TCH004",
+    "FIX003",
+
+    "PLC",
+    "PLE",
+
+    "PGH005",
 ]
 
 ignore = [
-"UP037", # needs __future__.annotations
-"I001",
-"UP007",
-"W293",
-"E501",
-"UP036",
-"UP006",
-"PGH004",
-"UP006",
-"UP013",
-"UP014",
-"UP019",
-"UP035",
-"UP038",
-"UP015",
-#"W605",
-"RUF100",
+    "UP037", # needs __future__.annotations
+    "I001",
+    "UP007",
+    "W293",
+    "E501",
+    "UP036",
+    "UP006",
+    "PGH004",
+    "UP006",
+    "UP013",
+    "UP014",
+    "UP019",
+    "UP035",
+    "UP038",
+    "UP015",
+    #"W605",
+    "RUF100",
 
-# deprecated:
-"ANN101", "ANN102",
+    # deprecated:
+    "ANN101", "ANN102",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -72,20 +78,32 @@ ignore = [
     "PYI011",
     "PYI014", # Non-simple type, should use ... instead.
     "PYI021", # Docstrings should not be included in stubs; but no docstrings from C
+
+    # too many ...
+    "PLR0904",
+    "PLR0913",
 ]
 
 "agents/rules/*" = [
     "RUF012",
     "ANN201",
+
+    # do not report unused arguments
+    "ARG001",
+    "ARG002",
 ]
+"agents/rules/_debug_rules.py" = [
+    "PLC0415",
+] 
 "agents/tools/config_creation.py" = [
-    "SIM118", # OmegaConf in dict and in dict.keys() is different
+    "SIM118", # OmegaConf: key in dict and in dict.keys() is different
+    "TCH002", # need some type check variables as runtime
 ]
 "agents/tools/_config_tools.py" = [
-    "SIM118", # OmegaConf in dict and in dict.keys() is different
+    "SIM118", # OmegaConf key in dict and in dict.keys() is different
 ]
 "classes/hud.py" = [
-    "UP032", # Format instead of percent
+    "UP032", # Format instead of percent preferred
 ]
 "classes/experimental/**" = [
     "A",
@@ -101,7 +119,12 @@ ignore = [
 "agents/navigation/basic_agent.py" = ["B006", "ANN"]
 "agents/navigation/behavior_agent.py" = ["B006", "ANN"]
 "agents/navigation/constant_velocity_agent.py" = ["B006", "UP008", "ANN"]
-
+"examples/*" = [
+    "F841",
+]
+"AgentGameLoop.py" = [
+    "F841",
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -113,6 +136,7 @@ convention = "google"
 # Whether to suppress ANN* rules for any declaration that hasn't been typed at all.
 #ignore-fully-untyped = true
 
+# underscore _ variable
 suppress-dummy-args = true
 
 [tool.ruff.lint.flake8-bugbear]

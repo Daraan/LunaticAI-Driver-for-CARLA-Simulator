@@ -544,4 +544,3 @@ class ActionFunction(ConditionFunction[_P, _T]):
 
     def __call__(self, ctx: "Rule | Context", *args: _P.args, **kwargs: _P.kwargs) -> _T:
         return self.evaluation_function(ctx, *args, **kwargs)  # type: ignore[arg-type]
-

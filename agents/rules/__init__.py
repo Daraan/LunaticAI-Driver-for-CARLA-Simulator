@@ -27,12 +27,17 @@ from agents.rules.obstacles import *
 from agents.rules.obstacles import DriveSlowTowardsTrafficLight, PassYellowTrafficLightRule
 from agents.rules.stopped_long_trigger import StoppedTooLongTrigger
 from agents.tools.logs import logger
+from agents.tools.config_creation import LunaticAgentSettings
 from classes.constants import Phase
-from classes.rule import Rule
+from classes.rule import Rule, BlockingRule
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import CallFunctionFromConfig, CreateRuleFromConfig, RuleCreatingParameters
     from classes.worldmodel import GameFramework
+    
+if DEBUG_RULES:
+    from agents.rules._debug_rules import SimpleRule1, SimpleRule1B, debug_rules
+    
 
 def create_default_rules(gameframework: Optional["GameFramework"]=None, random_lane_change: bool = False) -> "Iterable[Rule]":
 
@@ -53,10 +58,8 @@ def create_default_rules(gameframework: Optional["GameFramework"]=None, random_l
     
     if DEBUG_RULES:
         default_rules.append(StoppedTooLongTrigger())
-        from agents.rules._debug_rules import SimpleRule1, SimpleRule1B, debug_rules
         default_rules.extend([SimpleRule1, SimpleRule1B])
         default_rules.extend(debug_rules)
-    from classes.rule import BlockingRule
     if not gameframework and any(isinstance(rule, BlockingRule) for rule in default_rules):
         logger.warning("A BlockingRule is in the default rules but no GameFramework instance is provided. Be sure to initialize a GameFramework later!")
         
@@ -131,7 +134,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
                     # TODO: should also get rid of ALL missing values
                     # Alternatively could escape all interpolations as strings and recreate the interpolations afterwards,
                     # however, need to assume that all interpolation like stings are meant as interpolations.
-                    from agents.tools.config_creation import LunaticAgentSettings
+                    
                     parent : LunaticAgentSettings = OmegaConf.structured(LunaticAgentSettings(rules=[]),
                                                                          flags={"allow_objects": True})
                     for key in parent.live_info.keys():  # noqa: SIM118,RUF100

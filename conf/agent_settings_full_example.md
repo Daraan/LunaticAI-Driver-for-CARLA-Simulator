@@ -99,7 +99,7 @@ speed:
   # Exceeding a speed limit can be done using negative percentages.
   vehicle_percentage_speed_difference: ???
   # Formula or value to calculate the target speed when approaching an intersection
-  intersection_target_speed: ${min:${.max_speed}, ${subtract:${.current_speed_limit},
+  intersection_target_speed: ${min:${.max_speed}, ${sub:${.current_speed_limit},
     ${.intersection_speed_decrease}}}
 
 

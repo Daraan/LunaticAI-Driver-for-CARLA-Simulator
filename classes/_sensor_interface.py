@@ -20,7 +20,7 @@ class CustomSensorInterface:
 
     def destroy(self) -> 'bool | None | Literal["Actor was probably destroyed by the CarlaDataProvider"]':
         """Stops and destroys the actor of the sensor"""
-        from launch_tools import CarlaDataProvider  # pylint: disable=import-outside-toplevel, avoid circular import
+        from launch_tools import CarlaDataProvider  # pylint: disable=import-outside-toplevel # noqa: PLC0415, avoid circular import
         if self.sensor is not None:
             self.stop()
             if CarlaDataProvider.actor_id_exists(self.sensor.id):

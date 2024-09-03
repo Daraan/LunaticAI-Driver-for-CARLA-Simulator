@@ -40,7 +40,7 @@ class VehicleSpawner(CarlaDataProvider):
         try:
             ego.spawn(spawn_points[0])
         except Exception as e:
-            print(e.__str__())
+            print(e)
         else:
             # CarlaDataProvider.register_actor(ego.actor, spawn_points[0].transform)
             self.vehicles.append(ego)

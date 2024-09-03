@@ -58,6 +58,7 @@ from agents.tools._config_tools import (
     MISSING as _MISSING,
 )
 from agents.tools.hints import CameraBlueprint
+from agents.tools.logs import logger
 from classes.constants import (
     AD_RSS_AVAILABLE,
     READTHEDOCS,
@@ -327,7 +328,6 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         Raises:
             Exception: If the overwrites cannot be merged into the agent settings.
         """
-        from agents.tools.logs import logger
 
         behavior: cls
         if settings is None:
@@ -854,7 +854,7 @@ class LunaticAgentSpeedSettings(AutopilotSpeedSettings, BehaviorAgentSpeedSettin
     """
     
     intersection_target_speed: float = SI(
-        "${min:${.max_speed}, ${subtract:${.current_speed_limit}, ${.intersection_speed_decrease}}}"
+        "${min:${.max_speed}, ${sub:${.current_speed_limit}, ${.intersection_speed_decrease}}}"
     )
     """Formula or value to calculate the target speed when approaching an intersection"""
 
@@ -1697,7 +1697,7 @@ def _from_config_default_rules():
         CreateRuleFromConfig("PassYellowTrafficLightRule",
                              self_config = {
                                  "try_to_pass" : True,
-                                 "passing_speed" : II("max:${multiply:${live_info.current_speed_limit},1.33},${speed.target_speed}")
+                                 "passing_speed" : II("max:${mul:${live_info.current_speed_limit},1.33},${speed.target_speed}")
                              },
                              description="Speed up to pass a yellow traffic light."
                              ),

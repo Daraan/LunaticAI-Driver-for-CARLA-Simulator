@@ -1,7 +1,7 @@
 import math
 import time
 from cmath import sqrt
-from typing import ClassVar, List
+from typing import ClassVar, List, cast
 
 import carla
 from carla import Vector3D
@@ -22,7 +22,7 @@ class VehicleBase:
     actor : carla.Vehicle
 
     def __init__(self, world: carla.World, make=""):
-        self.actor: carla.Vehicle = None
+        self.actor: carla.Vehicle = None  # type: ignore[assignment]
         self.world = world if isinstance(world, carla.World) else world.world  # if using classes.world.World
         self.control: carla.VehicleControl = carla.VehicleControl()
         blueprint_library = world.get_blueprint_library()
@@ -45,7 +45,8 @@ class VehicleBase:
         return False
 
     def spawn(self, transform):
-        self.actor: carla.Vehicle = self.world.spawn_actor(self.actorBlueprint, transform)
+        self.actor = cast(carla.Vehicle,
+                          self.world.spawn_actor(self.actorBlueprint, transform))
         CarlaDataProvider.register_actor(self.actor, transform)
         self.actor.apply_control(self.control)
 
@@ -101,7 +102,7 @@ class VehicleBase:
 
         return relative_x_rotated, relative_y_rotated
 
-    def distanceToCarAhead(self, vehicle_list: List[carla.Vehicle]):
+    def distanceToCarAhead(self, vehicle_list: List["VehicleBase"]):
         closestCar = None
         closestDistance = float('inf')  # Initialize with a very large value
 
@@ -125,7 +126,7 @@ class VehicleBase:
         else:
             return None
 
-    def distanceToCarBehind(self, vehicle_list: List[carla.Vehicle]):
+    def distanceToCarBehind(self, vehicle_list: List["VehicleBase"]):
         closestCar = None
         closestDistance = float('inf')  # Initialize with a very large value
 
@@ -202,4 +203,3 @@ class Vehicle(VehicleBase):
         if hasattr(self.actor, attr):
             return getattr(self.actor, attr)
         raise AttributeError(f"'Invalid attribute {attr}'{attr}'")
-

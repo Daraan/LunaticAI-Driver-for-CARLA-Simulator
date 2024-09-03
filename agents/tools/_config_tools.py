@@ -6,8 +6,12 @@ from __future__ import annotations
 
 import ast
 import inspect
+import io
 import logging
 import os
+from pathlib import Path
+import re
+import yaml
 
 # pyright: reportPrivateUsage=false, reportUnknownLambdaType=false, reportUnusedClass=false
 # pyright: reportPossiblyUnboundVariable=information,reportAttributeAccessIssue=warning
@@ -20,10 +24,10 @@ import carla
 import omegaconf.errors
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING, DictConfig, ListConfig, MissingMandatoryValue, OmegaConf, SCMode, open_dict
-from omegaconf._utils import is_structured_config
+from omegaconf._utils import is_structured_config, get_omega_conf_dumper  # noqa: PLC2701
 from typing_extensions import TypeAlias, TypeAliasType, TypeVar
 
-from classes.constants import AD_RSS_AVAILABLE, Phase, RssLogLevelStub, RssRoadBoundariesModeStub
+from classes.constants import AD_RSS_AVAILABLE, Phase, RssLogLevelStub, RssRoadBoundariesModeStub, READTHEDOCS
 from launch_tools import ast_parse
 
 if TYPE_CHECKING:
@@ -36,17 +40,6 @@ if TYPE_CHECKING:
     )
     from classes.rule import Rule
     from ruamel.yaml.comments import CommentedMap
-
-#from types import MappingProxyType
-#ALLOW_OBJECTS = cast(Dict[str, Literal[True]], MappingProxyType({"allow_objects" : True}))
-#"""
-#Alias for :python:`{"allow_objects" : True}`
-# NOTE: Problem: Flag is not copied to a new dictionary, it cannot be modified; or is shared
-# if this one is mutable
-#"""
-
-READTHEDOCS = os.environ.get("READTHEDOCS", False)
-"""Whether the code is currently running on readthedocs."""
 
 # ----------- Resolvers -------------
 
@@ -62,10 +55,11 @@ def look_ahead_time(speed: float, time_to_collision: float, plus: float=0) -> fl
 # need this check for readthedocs
 if not READTHEDOCS and os.environ.get("_OMEGACONF_RESOLVERS_REGISTERED", "0") == "0":
     import random
-    OmegaConf.register_new_resolver("sum", lambda x, y: x + y)       # type: ignore[arg-type]
-    OmegaConf.register_new_resolver("subtract", lambda x, y: x - y)  # type: ignore[arg-type]
-    OmegaConf.register_new_resolver("multiply", lambda x, y: x * y)  # type: ignore[arg-type]
-    OmegaConf.register_new_resolver("divide", lambda x, y: x / y)    # type: ignore[arg-type]
+    import operator
+    OmegaConf.register_new_resolver("add", operator.add)  # type: ignore[arg-type]
+    OmegaConf.register_new_resolver("sub", operator.sub)  # type: ignore[arg-type]
+    OmegaConf.register_new_resolver("mul", operator.mul)  # type: ignore[arg-type]
+    OmegaConf.register_new_resolver("divide", operator.truediv)    # type: ignore[arg-type]
     OmegaConf.register_new_resolver("min", lambda *els: min(els))
     OmegaConf.register_new_resolver("max", lambda *els: max(els))
     OmegaConf.register_new_resolver("randint", random.randint)
@@ -257,7 +251,6 @@ PATH_FIELD_NAME = "config_path"
 
 def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict], global_annotations : Dict[str, _NestedStrDict]):
     """Extracts comments from the source code"""
-    import re
     for main_body in parent.body:
         # Skip non-classes
         if not isinstance(main_body, ast.ClassDef):
@@ -353,12 +346,11 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     # Get documentations and store globally
     global class_annotations  # noqa: PLW0603
     if class_annotations is None:
-        with open(cls_file, "r") as f: # NOTE: This file only!
-            tree = ast_parse(f.read())
-            class_annotations = {}
-            extract_annotations(tree, docs=class_annotations, global_annotations=class_annotations)
+        tree = ast_parse(Path(cls_file).read_text())
+        class_annotations = {}
+        extract_annotations(tree, docs=class_annotations, global_annotations=class_annotations)
     
-    from ruamel.yaml import YAML
+    from ruamel.yaml import YAML  # optional # noqa: PLC0415
     yaml2 = YAML(typ='rt')
     #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
     data : CommentedMap = yaml2.load(string)
@@ -369,6 +361,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
     
     nested_data : list[CommentedMap] = []
+    
     # add comments to all other attributes
     def add_comments(container : "DictConfig | NestedConfigDict",
                      data: CommentedMap,
@@ -423,10 +416,8 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     add_comments(container, data, cls_doc)  # pyright: ignore[reportArgumentType]
     # data.yaml_add_eol_comment(comment_txt, key = key)
 
-    import re
     has_null_entry = re.findall(r"^\s*\w+: null$", string, re.MULTILINE)
 
-    import io
     stream = io.StringIO()
     yaml2.dump(data, stream)
     stream.seek(0)
@@ -464,8 +455,6 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
     Returns:
         The YAML string representation of the options.
     """
-    import yaml
-    from omegaconf._utils import get_omega_conf_dumper
     cfg : DictConfig = OmegaConf.structured(cls_or_self, flags={"allow_objects": True})
 
     if ((inspect.isclass(cls_or_self) and cls_or_self.__name__ == "LunaticAgentSettings")
@@ -487,7 +476,7 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve:bool=Fa
                 if detailed_rules:
                     # Circular import can only call this after agents.rules
                     try:
-                        from agents.rules import rule_from_config
+                        from agents.rules import rule_from_config  # noqa: PLC0415
                     except ImportError:
                         print("Could not import agents.rules.rule_from_config. Set detailed_rules=False to avoid this error. Call this function somewhere else.")
                         raise
@@ -580,8 +569,7 @@ def export_options(cls_or_self: Union[type[AgentConfig], AgentConfig],
         string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True, detailed_rules=detailed_rules,
                                     include_private=include_private)
         os.makedirs(os.path.split(path)[0], exist_ok=True)
-        with open(path, "w") as f:
-            f.write(string)
+        Path(path).write_text(string)
         return
     if not isinstance(options, DictConfig):
         # TODO: look how we can do this directly from dataclass

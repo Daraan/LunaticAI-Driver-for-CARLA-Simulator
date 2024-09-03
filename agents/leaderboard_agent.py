@@ -13,12 +13,14 @@ Attention:
 """
 import operator
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Sequence, Tuple, Union, cast
 
 import carla
 import pygame
 from hydra import compose, initialize_config_dir
 from hydra.core.utils import configure_log
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
 from typing_extensions import TypedDict
 
@@ -173,7 +175,6 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                     args.sync = None
                 
                 # Setup Hydra
-                from hydra.core.hydra_config import HydraConfig
                 if OmegaConf.is_missing(args.hydra.runtime, "output_dir"):
                     args.hydra.runtime.output_dir = args.hydra.run.dir
                 HydraConfig.instance().set_config(args)  # type: ignore[arg-type]
@@ -211,6 +212,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False) # Note: stores weakref to controller
         print("Initializing agent")
         LunaticAgent.__init__(self, config, self.world_model)
+        # super(AutonomousAgent, self).__init__(self, config, self.world_model)
         print("LunaticAgent initialized")
         
         from agents.rules.lane_changes.random_changes import RandomLaneChangeRule
@@ -313,8 +315,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                         pass
                     self._opendrive_data = data
                     print(frame, data[:5000])
-                    with open("opendrive.xml", "w") as f:
-                        f.write(data)
+                    Path("opendrive.xml").write_text(data)
                 else:
                     print("OpenDRIVE data unchanged")
             self.agent_engaged = True # remove this, if not used

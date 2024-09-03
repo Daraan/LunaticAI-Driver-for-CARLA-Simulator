@@ -34,12 +34,12 @@ agents.tools.hints module
    :no-inherited-members:
 
 
-.. _agents/tools/logging:
+.. _agents/tools/logs:
 
-agents.tools.logging module
----------------------------
+agents.tools.logs module
+------------------------
 
-.. automodule:: agents.tools.logging
+.. automodule:: agents.tools.logs
    :members:
    :undoc-members:
    :show-inheritance:

@@ -496,5 +496,3 @@ class SpawnActor(_IsCommand):
             `command (command)`: a Carla command.\n
         """
     # endregion
-
-

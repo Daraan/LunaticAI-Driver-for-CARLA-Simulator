@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 import math
 from operator import attrgetter
-from typing import List, NamedTuple, Optional, Set
+from typing import List, NamedTuple, Optional, Sequence, Set, TypeAlias
 
 import carla
 import numpy as np
@@ -19,8 +19,20 @@ class RoadLaneId(NamedTuple):
     
     def __str__(self) -> str:
         return f"{self.road_id}_{self.lane_id}"
+    
+RoadLaneIds: TypeAlias = Set[RoadLaneId]
+"""
+Iterable of :py:class:`RoadLaneId` for the current map collected by :py:func:`get_all_road_lane_ids`.
+"""
 
-def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
+JunctionWaypointList: TypeAlias = Sequence[tuple[carla.Waypoint, carla.Waypoint]]
+"""wps (list): List of one waypoint cluster of grouped highway junction waypoints.
+    Format: [(start_wp, "start"), (start_wp, "start"), ..]"""
+    
+_HighWayShape: TypeAlias = tuple[str, int, JunctionWaypointList, JunctionWaypointList]
+"""(highway_type: string, straight_lanes: int, entry_wps: ([wp,..], [wp,..]), exit_wps: ([wp,..], [wp,..]))"""
+
+def check_ego_on_highway(ego_vehicle_location: carla.Location, road_lane_ids: RoadLaneIds, world_map):
     """
     Check if the ego vehicle is on a highway based on its location. The function considers the ego vehicle to be on a highway if:
         - it's on a road that has at least six lanes
@@ -38,12 +50,14 @@ def check_ego_on_highway(ego_vehicle_location, road_lane_ids, world_map):
     """
     # get waypoints of ego and its left and right lanes
     waypoints: List[carla.Waypoint] = []
-    ego_waypoint = world_map.get_waypoint(ego_vehicle_location)
+    ego_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_vehicle_location)
     waypoints.append(ego_waypoint)
-    if ego_waypoint.get_left_lane() is not None:
-        waypoints.append(ego_waypoint.get_left_lane())
-    if ego_waypoint.get_right_lane() is not None:
-        waypoints.append(ego_waypoint.get_right_lane())
+    left_wp = ego_waypoint.get_left_lane()
+    if left_wp is not None:
+        waypoints.append(left_wp)
+    right_wp = ego_waypoint.get_right_lane()
+    if right_wp is not None:
+        waypoints.append(right_wp)
     
     # check for all waypoints if they are on a highway, in case they have different road_id's
     for wp in waypoints:
@@ -64,7 +78,7 @@ _all_lane_ids: 'list[Set[RoadLaneId]]' = []
 
 # @functools.lru_cache(maxsize=1) # Faster but not safe when changing the map without changing the map object/ or clearing the cache
 @cached(cache=LRUCache(maxsize=1), key=attrgetter("name"))
-def get_all_road_lane_ids(world_map : carla.Map):
+def get_all_road_lane_ids(world_map : carla.Map) -> RoadLaneIds:
     """
     Retrieve a set of unique road and lane identifiers in the format "roadId_laneId" from the given world map.
 
@@ -93,18 +107,6 @@ def get_all_road_lane_ids(world_map : carla.Map):
             raise ValueError("Lane ids do not match")
 
     return road_lane_ids
-
-def distance(p1, p2):
-    """Define a function to calculate the distance between two points (carla Location objects).
-
-    Args:
-        p1 (carla.Location): First location object.
-        p2 (carla.Location): Second location object.
-
-    Returns:
-        float: Distance between point 1 and 2.
-    """
-    return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2 + (p1.z - p2.z) ** 2)
 
 def create_city_matrix(ego_vehicle_location: carla.Location,
                        road_lane_ids: "set[RoadLaneId]",
@@ -322,7 +324,7 @@ def create_city_matrix(ego_vehicle_location: carla.Location,
     return matrix
 
 # NOTE: sub function of detect_surrounding_cars
-def check_road_change(ego_vehicle_location, road_lane_ids, front, world_map):
+def check_road_change(ego_vehicle_location: carla.Location, road_lane_ids: RoadLaneIds, front: bool, world_map: carla.Map):
     """
     Determine if the ego vehicle is about to change to a different road (in next/previous 60m).
 
@@ -387,10 +389,10 @@ def detect_surrounding_cars(
     ego_vehicle :  carla.Actor,
     matrix : dict[str | tuple[int, int], list[int]],
     road_lane_ids : set[RoadLaneId],
-    world,
-    radius,
-    on_highway,
-    highway_shape,
+    world: carla.World,
+    radius: float,
+    on_highway: bool,
+    highway_shape: _HighWayShape,
     ghost=False,
 ):
     """
@@ -442,7 +444,7 @@ def detect_surrounding_cars(
     surrounding_cars_on_highway_entryExit = []
     for actor in world.get_actors():
         if "vehicle" in actor.type_id and (actor.id != ego_vehicle.id or ghost):
-            distance_to_actor = distance(actor.get_location(), ego_location)
+            distance_to_actor = actor.get_location().distance(ego_location)
             if distance_to_actor <= radius:
                 surrounding_cars.append(actor)
 
@@ -487,20 +489,24 @@ def detect_surrounding_cars(
                 entry_city_road.append(entry_wp.previous(3)[0].road_id)
                 entry_road_ids.append(entry_wp.road_id)
             # TODO: Check if all cars on highway entry are captured: especially on road after entry on highway
-            if (entry_wp.next(3)[0] and entry_wp.next(3)[0].get_left_lane()
-                    and entry_wp.next(3)[0].road_id == entry_wp.next(3)[0].get_left_lane().road_id):
+            next_wp = entry_wp.next(3)[0]
+            next_wp_left = next_wp.get_left_lane()
+            if (next_wp and next_wp_left
+                    and next_wp.road_id == next_wp_left.road_id):
                 entry_highway_road = []
             else:
-                entry_highway_road = [entry_wp.next(3)[0].road_id for entry_wp in entry_wps[1]]
+                entry_highway_road = [next_wp.road_id for entry_wp in entry_wps[1]]
         else:
             entry_highway_road = []
         if exit_wps:
             for exit_wp in exit_wps[1]: # exit_wps[1] contains all end waypoints of exit
-                exit_city_road.append(exit_wp.next(3)[0].road_id)
+                exit_city_road.append(exit_wp.next(3)[0].road_id)  # TODO: previous or next?
                 exit_road_ids.append(exit_wp.road_id)
+            next_wp = exit_wp.next(3)[0]
             # TODO: Check if all cars on highway exit are captured: especially on road before exit on highway
-            if (exit_wp.next(3)[0] and exit_wp.next(3)[0].get_left_lane()
-                    and exit_wp.next(3)[0].road_id == exit_wp.next(3)[0].get_left_lane().road_id):
+            next_wp_left = next_wp.get_left_lane()
+            if (next_wp and next_wp_left
+                    and next_wp.road_id == next_wp_left.road_id):
                 exit_highway_road = []
             else:
                 exit_highway_road = [exit_wp.previous(3)[0].road_id for exit_wp in exit_wps[0]]
@@ -795,7 +801,7 @@ def calculate_position_in_matrix(
 
 ##### General #####
 
-def is_highway_junction(ego_vehicle, ego_wp, junction, road_lane_ids, direction_angle):
+def is_highway_junction(ego_vehicle: carla.Vehicle, ego_wp, junction: carla.Junction, road_lane_ids: RoadLaneIds, direction_angle):
     """This function checks if the junction is a highway junction.
     
     Args:
@@ -811,7 +817,7 @@ def is_highway_junction(ego_vehicle, ego_wp, junction, road_lane_ids, direction_
         bool: Boolean indicating if the considered junction is a highway junction.
     """
     lanes_all, junction_roads = get_all_lanes(
-        ego_vehicle, ego_wp, junction.get_waypoints(carla.LaneType().Driving), road_lane_ids, direction_angle
+        ego_vehicle, ego_wp, junction.get_waypoints(carla.LaneType.Driving), road_lane_ids, direction_angle
     )
 
     highway_junction = False
@@ -1305,7 +1311,12 @@ def detect_surrounding_cars_outside_junction(
     return key_value_pairs
 
 
-def getJunctionShape(ego_vehicle, ego_wp, wps, road_lane_ids, direction_angle, world_map):
+def getJunctionShape(ego_vehicle: carla.Vehicle,
+                     ego_wp: carla.Waypoint,
+                     wps: JunctionWaypointList,
+                     road_lane_ids: RoadLaneIds,
+                     direction_angle: float,
+                     world_map: carla.Map):
     """
     Determines the shape of the junction in the city matrix and returns relevant information.
 
@@ -1416,14 +1427,18 @@ def get_closest_starting_waypoint(junction_waypoints, ego_location):
     closest_start_wp = junction_waypoints[0][0]
     # get the closest start waypoint to ego
     for start_wp, _ in junction_waypoints:
-        if (distance(start_wp.transform.location, ego_location)
-            < distance(closest_start_wp.transform.location, ego_location)):
+        if (start_wp.transform.location.distance(ego_location)
+            < closest_start_wp.transform.location.distance(ego_location)):
             closest_start_wp = start_wp
 
     return closest_start_wp
 
 
-def get_all_lanes(ego_vehicle, ego_wp, junction_waypoints, road_lane_ids, direction_angle):
+def get_all_lanes(ego_vehicle: carla.Vehicle,
+                  ego_wp: carla.Waypoint,
+                  junction_waypoints: JunctionWaypointList,
+                  road_lane_ids: RoadLaneIds,
+                  direction_angle):
     """
     Get all lanes related to the junction and the corresponding directions from the ego vehicle's perspective.
 
@@ -1492,7 +1507,7 @@ def get_all_lanes(ego_vehicle, ego_wp, junction_waypoints, road_lane_ids, direct
             )
 
     # get for all directions the lane ids of the roads that go into the junction
-    lanes_all = {
+    lanes_all: dict[str, list[int]] = {
         "ego": [],
         "left": [],
         "straight": [],
@@ -1651,7 +1666,7 @@ def get_grid_corners(junction_shape):
     return [[y_1, x_1], [y_1, x_2], [y_2, x_1], [y_2, x_2]]
 
 # NOTE: sub function update_matrix
-def insert_in_matrix(matrix, car, ego_vehicle, col, row):
+def insert_in_matrix(matrix, car: carla.Actor, ego_vehicle: carla.Actor, col: int, row: int) -> None:
     if car.id == ego_vehicle.id:
         matrix[row][1][col] = 1
     else:
@@ -1676,7 +1691,7 @@ def insert_in_matrix(matrix, car, ego_vehicle, col, row):
             matrix[row][1][col] = 2
 
 
-def get_right_lane_wp(wps):
+def get_right_lane_wp(wps: JunctionWaypointList):
     """
     Iterates over grouped highway junction waypoints and returns the waypoint of the right (most out) lane.
 
@@ -1685,7 +1700,7 @@ def get_right_lane_wp(wps):
             Format: [(start_wp, "start"), (start_wp, "start"), ..]
 
     Returns:
-        carla.Waypoint: Waypoint with highest absolute lande_id -> right (most out) lane
+        carla.Waypoint: Waypoint with highest absolute lane_id -> right (most out) lane
     """
     right_lane_wp = wps[0][0]  # initialize = first wp of group
     for wp in wps:

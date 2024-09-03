@@ -287,7 +287,7 @@ class Context(CarlaDataProvider):
         raise ValueError(f"match must be 'exact', 'subset' or 'intersection', not {match}.")
 
     # Convenience function when using detect_vehicles
-    from agents.tools.lunatic_agent_tools import max_detection_distance
+    from agents.tools.lunatic_agent_tools import max_detection_distance  # noqa
 
     @property
     def live_info(self) -> "LiveInfo":

@@ -65,4 +65,3 @@ class RandomLaneChangeRule(Rule):
 
 if __name__ == "__main__" or DEBUG_RULES:
     RandomLaneChangeRule()
-

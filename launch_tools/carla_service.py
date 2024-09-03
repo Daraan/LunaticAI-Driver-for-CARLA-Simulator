@@ -13,7 +13,7 @@ from typing import Iterable, Union
 import carla
 
 from agents.tools.logs import logger
-from classes._sensor_interface import CustomSensorInterface
+from classes import CustomSensorInterface
 from launch_tools import CarlaDataProvider
 
 get_client = CarlaDataProvider.get_client

@@ -29,7 +29,7 @@ def import_carla():
     try:
         sys.path.append(glob.glob(path)[0])
         print("Appended to sys path:", sys.path[-1])
-        import carla  # pylint: disable=import-outside-toplevel, redefined-outer-name
+        import carla  # pylint: disable=import-outside-toplevel, redefined-outer-name # noqa: PLC0415
     except IndexError:
         print("ERROR: Cannot find", os.path.abspath(os.path.join("..","**", FILE_NAME)))
         return None

@@ -387,26 +387,30 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
         return line
 
     @staticmethod
-    def get_trajectory_sets(rss_state_snapshot, camera_transform, calibration):
+    def get_trajectory_sets(rss_state_snapshot: "ad.rss.state.RssStateSnapshot", camera_transform, calibration):
         """
         Creates 3D bounding boxes based on carla vehicle list and camera.
         """
-        trajectory_sets = []
-
-        # ego
-        trajectory_sets.append((RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
-            rss_state_snapshot.unstructuredSceneEgoInformation.brakeTrajectorySet), camera_transform, calibration), (255, 0, 0)))
-        trajectory_sets.append((RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
-            rss_state_snapshot.unstructuredSceneEgoInformation.continueForwardTrajectorySet), camera_transform, calibration), (0, 255, 0)))
+        trajectory_sets = [
+            # ego
+            (RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
+                rss_state_snapshot.unstructuredSceneEgoInformation.brakeTrajectorySet), camera_transform, calibration),
+             (255, 0, 0)),
+            (RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
+                rss_state_snapshot.unstructuredSceneEgoInformation.continueForwardTrajectorySet), camera_transform, calibration),
+             (0, 255, 0))
+            ]
 
         # others
         for state in rss_state_snapshot.individualResponses:
             if state.unstructuredSceneState.rssStateInformation.brakeTrajectorySet:
                 trajectory_sets.append((RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
-                    state.unstructuredSceneState.rssStateInformation.brakeTrajectorySet), camera_transform, calibration), (255, 0, 0)))
+                    state.unstructuredSceneState.rssStateInformation.brakeTrajectorySet), camera_transform, calibration),
+                                        (255, 0, 0)))
             if state.unstructuredSceneState.rssStateInformation.continueForwardTrajectorySet:
                 trajectory_sets.append((RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
-                    state.unstructuredSceneState.rssStateInformation.continueForwardTrajectorySet), camera_transform, calibration), (0, 255, 0)))
+                    state.unstructuredSceneState.rssStateInformation.continueForwardTrajectorySet), camera_transform, calibration),
+                                        (0, 255, 0)))
 
         return trajectory_sets
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, cast
 
 import carla
 from carla import TrafficLightState
@@ -55,7 +55,8 @@ def affected_by_traffic_light(self : "CanDetectNearbyTrafficLights",
         if self._world_model._args.debug:
             logger.warning("No traffic lights list provided, using all traffic lights in the scene. This should not happen."
                             "You possibly want to pass agent.traffic_lights_nearby or agent._lights_list instead.")
-        lights_list = CarlaDataProvider.get_all_actors().filter("*traffic_light*")
+        lights_list = cast("carla.ActorList[carla.TrafficLight]",
+                           CarlaDataProvider.get_all_actors().filter("*traffic_light*"))
     if len(lights_list) == 0:
         return TrafficLightDetectionResult(False, None)
 

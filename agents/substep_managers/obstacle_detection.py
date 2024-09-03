@@ -28,4 +28,3 @@ def collision_detection_manager(self : "LunaticAgent"):
         static_obstacle_detection_result = detect_obstacles_in_path(self, self.static_obstacles_nearby)
         
         return vehicle_detection_result, static_obstacle_detection_result
-    

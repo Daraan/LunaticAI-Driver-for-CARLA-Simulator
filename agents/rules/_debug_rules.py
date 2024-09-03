@@ -170,7 +170,7 @@ class Another(Rule):
     
     actions = {True: lambda self, ctx: (_check_type(self, Rule), _check_type(ctx, Context)),
             False: lambda ctx: _check_type(ctx, Context)}
-    
+
 
 a = Another()
 

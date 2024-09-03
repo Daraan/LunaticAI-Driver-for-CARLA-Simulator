@@ -37,7 +37,7 @@ else:
     # circular import when loading agents/navigation/local_planner.py, which we do not want to
     # modify. When debug_drawing is loaded this function will be replaced by the correct one.
     def draw_waypoints(*args, **kwargs) -> None:
-        from agents.tools.debug_drawing import draw_waypoints
+        from agents.tools.debug_drawing import draw_waypoints  # noqa: PLC0415
         return draw_waypoints(*args, **kwargs)
 
 def get_speed(vehicle, kmh=True, vel=None):
@@ -208,7 +208,7 @@ def positive(num):
 
         :param num: value to check
     """
-    return num if num > 0.0 else 0.0
+    return max(0.0, num)
 
 def lanes_have_same_direction(wp1: carla.Waypoint, wp2: carla.Waypoint) -> bool:
     """

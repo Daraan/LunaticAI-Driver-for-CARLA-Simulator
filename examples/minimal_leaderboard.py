@@ -25,4 +25,3 @@ except GameFramework.exceptions.UserInterruption:
     print("User interrupted. Exiting...")
 finally:
     game_framework.cleanup()
-    

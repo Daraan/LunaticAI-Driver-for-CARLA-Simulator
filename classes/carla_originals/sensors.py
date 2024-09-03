@@ -65,7 +65,7 @@ class CollisionSensor(CustomSensorInterface):
         self = weak_self()
         if not self:
             return
-        from classes.hud import get_actor_display_name  # lazy import to avoid circular import
+        from classes.hud import get_actor_display_name  # lazy import to avoid circular import  # noqa: PLC0415
         actor_type = get_actor_display_name(event.other_actor)
         self.hud.notification(f'Collision with {actor_type!r}')
         impulse = event.normal_impulse

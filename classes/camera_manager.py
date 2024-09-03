@@ -6,6 +6,7 @@ import carla
 import numpy as np
 import pygame
 from carla import ColorConverter as cc
+from carla import AttachmentType
 from typing_extensions import Self
 
 from agents.tools.hints import CameraBlueprint
@@ -93,7 +94,6 @@ class CameraManager(CustomSensorInterface):
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
         
-        from carla import AttachmentType
         # Maybe use args.camera.camera_blueprints
         self._camera_transforms = [
             (carla.Transform(carla.Location(x=-2.0 * bound_x, y=+0.0 * bound_y, z=2.0 * bound_z),
@@ -113,7 +113,7 @@ class CameraManager(CustomSensorInterface):
         self.transform_index = 1
         # TODO: These are remnants from the original code, for our purpose most sensors are not relevant
         # -> Move to globals or some config which should be used (also saves resources)
-        self.sensors = sensors if sensors else self.default_blueprints
+        self.sensors = sensors or self.default_blueprints
         bp_library = CarlaDataProvider._blueprint_library
         for i, item in enumerate(self.sensors):
             try:
@@ -275,5 +275,3 @@ def _spectator_to_actor(actor: carla.Actor) -> None:
 
     # Set the spectator's transform in the world
     CarlaDataProvider.get_world().get_spectator().set_transform(spectator_transform)
-
-

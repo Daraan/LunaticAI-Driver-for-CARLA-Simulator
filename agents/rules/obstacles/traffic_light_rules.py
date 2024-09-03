@@ -28,7 +28,7 @@ class PassYellowTrafficLightRule(Rule):
         try_to_pass : bool = False
         """If the agent should try to pass the yellow light."""
         
-        passing_speed : float = II("max:${multiply:${live_info.current_speed_limit},1.33},${speed.target_speed}")
+        passing_speed : float = II("max:${mul:${live_info.current_speed_limit},1.33},${speed.target_speed}")
         """The speed the agent should try to pass the yellow light."""
     
     @ConditionFunction

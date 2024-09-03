@@ -53,4 +53,3 @@ def csv_to_transformations(path: str | PathLike[str]) -> list[carla.Transform]:
         t = carla.Transform(loc, rot)
         transformations.append(t)
     return transformations
-

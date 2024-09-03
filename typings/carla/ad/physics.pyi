@@ -2,6 +2,8 @@
 from typing import Any
 from collections.abc import MutableSequence, Sequence, Container
 
+from carla.ad import _FloatLike
+
 
 class Acceleration():
     @property
@@ -1079,8 +1081,7 @@ class Dimension3DList():
         '''
         ...
 
-
-class Distance():
+class Distance(_FloatLike):
     @property
     def Valid(self) -> bool: ...
 
@@ -1152,7 +1153,7 @@ class Distance():
 
 
 class Distance2D():
-    def assign(self, arg1: Distance2D, other: Distance2D) -> Distance2D:
+    def assign(self, other: Distance2D) -> Distance2D:
         '''
 
         assign( (Distance2D)arg1, (Distance2D)other) -> Distance2D :

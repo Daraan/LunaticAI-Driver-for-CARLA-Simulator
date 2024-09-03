@@ -1,20 +1,19 @@
-from typing import TypeAlias, overload
+from typing import Iterable, TypeAlias, overload
 from carla import ad
+
+from carla.libcarla import _CarlaEnum
 from . import *
 
 
-class CompareRouteResult(int,):
+class CompareRouteResult(int, _CarlaEnum):
     Differ = 3
-
     Equal = 0
-
     Longer = 2
-
     Shorter = 1
 
 
-class ConnectingRoute():
-    def assign(self, arg1: ConnectingRoute, other: ConnectingRoute) -> ConnectingRoute:
+class ConnectingRoute:
+    def assign(self, other: ConnectingRoute) -> ConnectingRoute:
         '''
 
         assign( (ConnectingRoute)arg1, (ConnectingRoute)other) -> ConnectingRoute :
@@ -34,7 +33,7 @@ class ConnectingRoute():
     def type(self) -> ConnectingRouteType: ...
 
 
-class ConnectingRouteType(int,):
+class ConnectingRouteType(int, _CarlaEnum):
     Following = 1
 
     Invalid = 0
@@ -44,7 +43,7 @@ class ConnectingRouteType(int,):
     Opposing = 2
 
 
-class FilterDuplicatesMode(int,):
+class FilterDuplicatesMode(int, _CarlaEnum):
     Off = 0
 
     OnlyEqual = 1
@@ -54,14 +53,14 @@ class FilterDuplicatesMode(int,):
     SubRoutesPreferShorterOnes = 2
 
 
-class FindLaneChangeResult():
+class FindLaneChangeResult:
     @property
     def Valid(self) -> bool: ...
 
     @property
     def calcZoneLength(self) -> ad.physics.Distance: ...
 
-    def get_queryRoute(self, arg1: FindLaneChangeResult) -> FullRoute:
+    def get_queryRoute(self) -> FullRoute:
         '''
 
         get_queryRoute( (FindLaneChangeResult)arg1) -> FullRoute :
@@ -106,7 +105,7 @@ class FindWaypointResult():
     @property
     def Valid(self) -> FindWaypointResult: ...
 
-    def assign(self, arg1: FindWaypointResult, other: FindWaypointResult) -> FindWaypointResult:
+    def assign(self, other: FindWaypointResult) -> FindWaypointResult:
         '''
 
         assign( (FindWaypointResult)arg1, (FindWaypointResult)other) -> FindWaypointResult :
@@ -116,7 +115,7 @@ class FindWaypointResult():
         '''
         ...
 
-    def get_queryRoute(self, arg1: FindWaypointResult) -> FullRoute:
+    def get_queryRoute(self) -> FullRoute:
         '''
 
         get_queryRoute( (FindWaypointResult)arg1) -> FullRoute :
@@ -137,7 +136,7 @@ class FindWaypointResult():
 
 
 class FullRoute():
-    def assign(self, arg1: FullRoute, other: FullRoute) -> FullRoute:
+    def assign(self, other: FullRoute) -> FullRoute:
         '''
 
         assign( (FullRoute)arg1, (FullRoute)other) -> FullRoute :
@@ -170,7 +169,7 @@ class FullRoute():
 
 
 class FullRouteList():
-    def append(self, arg1: FullRouteList, arg2: FullRoute) -> None:
+    def append(self, arg2: FullRoute) -> None:
         '''
 
         append( (FullRouteList)arg1, (FullRoute)arg2) -> None :
@@ -180,7 +179,7 @@ class FullRouteList():
         '''
         ...
 
-    def count(self, arg1: FullRouteList, arg2: FullRoute) -> int:
+    def count(self, arg2: FullRoute) -> int:
         '''
 
         count( (FullRouteList)arg1, (FullRoute)arg2) -> int :
@@ -190,7 +189,7 @@ class FullRouteList():
         '''
         ...
 
-    def extend(self, arg1: FullRouteList, arg2: object) -> None:
+    def extend(self, arg2: Iterable[FullRoute]) -> None:
         '''
 
         extend( (FullRouteList)arg1, (object)arg2) -> None :
@@ -200,7 +199,7 @@ class FullRouteList():
         '''
         ...
 
-    def index(self, arg1: FullRouteList, arg2: FullRoute) -> int:
+    def index(self, arg2: FullRoute) -> int:
         '''
 
         index( (FullRouteList)arg1, (FullRoute)arg2) -> int :
@@ -210,7 +209,7 @@ class FullRouteList():
         '''
         ...
 
-    def insert(self, arg1: FullRouteList, arg2: int, arg3: FullRoute) -> None:
+    def insert(self, arg2: int, arg3: FullRoute) -> None:
         '''
 
         insert( (FullRouteList)arg1, (int)arg2, (FullRoute)arg3) -> None :
@@ -220,7 +219,7 @@ class FullRouteList():
         '''
         ...
 
-    def reverse(self, arg1: FullRouteList) -> None:
+    def reverse(self) -> None:
         '''
 
         reverse( (FullRouteList)arg1) -> None :
@@ -231,7 +230,7 @@ class FullRouteList():
         ...
 
 
-class LaneChangeDirection(int,):
+class LaneChangeDirection(int, _CarlaEnum):
     Invalid = 2
 
     LeftToRight = 0
@@ -264,7 +263,7 @@ class LaneInterval():
 
 
 class LaneSegment():
-    def assign(self, arg1: LaneSegment, other: LaneSegment) -> LaneSegment:
+    def assign(self, other: LaneSegment) -> LaneSegment:
         '''
 
         assign( (LaneSegment)arg1, (LaneSegment)other) -> LaneSegment :
@@ -294,7 +293,7 @@ class LaneSegment():
 
 
 class LaneSegmentList():
-    def append(self, arg1: LaneSegmentList, arg2: LaneSegment) -> None:
+    def append(self, arg2: LaneSegment) -> None:
         '''
 
         append( (LaneSegmentList)arg1, (LaneSegment)arg2) -> None :
@@ -304,7 +303,7 @@ class LaneSegmentList():
         '''
         ...
 
-    def count(self, arg1: LaneSegmentList, arg2: LaneSegment) -> int:
+    def count(self, arg2: LaneSegment) -> int:
         '''
 
         count( (LaneSegmentList)arg1, (LaneSegment)arg2) -> int :
@@ -314,7 +313,7 @@ class LaneSegmentList():
         '''
         ...
 
-    def extend(self, arg1: LaneSegmentList, arg2: object) -> None:
+    def extend(self, arg2: object) -> None:
         '''
 
         extend( (LaneSegmentList)arg1, (object)arg2) -> None :
@@ -324,7 +323,7 @@ class LaneSegmentList():
         '''
         ...
 
-    def index(self, arg1: LaneSegmentList, arg2: LaneSegment) -> int:
+    def index(self, arg2: LaneSegment) -> int:
         '''
 
         index( (LaneSegmentList)arg1, (LaneSegment)arg2) -> int :
@@ -334,7 +333,7 @@ class LaneSegmentList():
         '''
         ...
 
-    def insert(self, arg1: LaneSegmentList, arg2: int, arg3: LaneSegment) -> None:
+    def insert(self, arg2: int, arg3: LaneSegment) -> None:
         '''
 
         insert( (LaneSegmentList)arg1, (int)arg2, (LaneSegment)arg3) -> None :
@@ -344,7 +343,7 @@ class LaneSegmentList():
         '''
         ...
 
-    def reverse(self, arg1: LaneSegmentList) -> None:
+    def reverse(self) -> None:
         '''
 
         reverse( (LaneSegmentList)arg1) -> None :
@@ -356,7 +355,7 @@ class LaneSegmentList():
 
 
 class RoadSegment():
-    def assign(self, arg1: RoadSegment, other: RoadSegment) -> RoadSegment:
+    def assign(self, other: RoadSegment) -> RoadSegment:
         '''
 
         assign( (RoadSegment)arg1, (RoadSegment)other) -> RoadSegment :
@@ -377,7 +376,7 @@ class RoadSegment():
 
 
 class RoadSegmentList():
-    def append(self, arg1: RoadSegmentList, arg2: RoadSegment) -> None:
+    def append(self, arg2: RoadSegment) -> None:
         '''
 
         append( (RoadSegmentList)arg1, (RoadSegment)arg2) -> None :
@@ -387,7 +386,7 @@ class RoadSegmentList():
         '''
         ...
 
-    def count(self, arg1: RoadSegmentList, arg2: RoadSegment) -> int:
+    def count(self, arg2: RoadSegment) -> int:
         '''
 
         count( (RoadSegmentList)arg1, (RoadSegment)arg2) -> int :
@@ -397,7 +396,7 @@ class RoadSegmentList():
         '''
         ...
 
-    def extend(self, arg1: RoadSegmentList, arg2: object) -> None:
+    def extend(self, arg2: object) -> None:
         '''
 
         extend( (RoadSegmentList)arg1, (object)arg2) -> None :
@@ -407,7 +406,7 @@ class RoadSegmentList():
         '''
         ...
 
-    def index(self, arg1: RoadSegmentList, arg2: RoadSegment) -> int:
+    def index(self, arg2: RoadSegment) -> int:
         '''
 
         index( (RoadSegmentList)arg1, (RoadSegment)arg2) -> int :
@@ -417,7 +416,7 @@ class RoadSegmentList():
         '''
         ...
 
-    def insert(self, arg1: RoadSegmentList, arg2: int, arg3: RoadSegment) -> None:
+    def insert(self, arg2: int, arg3: RoadSegment) -> None:
         '''
 
         insert( (RoadSegmentList)arg1, (int)arg2, (RoadSegment)arg3) -> None :
@@ -427,7 +426,7 @@ class RoadSegmentList():
         '''
         ...
 
-    def reverse(self, arg1: RoadSegmentList) -> None:
+    def reverse(self) -> None:
         '''
 
         reverse( (RoadSegmentList)arg1) -> None :
@@ -471,12 +470,12 @@ class Route():
     def Valid(self) -> Unknown: ...
 
     @overload
-    def calculate(self, arg1: Route) -> None: ...
+    def calculate(self) -> None: ...
         
     @overload
-    def calculate(self, arg1: Route) -> bool: ...
+    def calculate(self) -> bool: ...
 
-    def calculate(self, arg1: Route) -> bool | None:
+    def calculate(self) -> bool | None:
         '''
 
         calculate( (Route)arg1) -> bool :
@@ -491,7 +490,7 @@ class Route():
         '''
         ...
 
-    def getBasicRoute(self, arg1: Route, routeIndex: object) -> object:
+    def getBasicRoute(self, routeIndex: object=0) -> object:
         '''
 
         getBasicRoute( (Route)arg1 [, (object)routeIndex=0]) -> object :
@@ -501,7 +500,7 @@ class Route():
         '''
         ...
 
-    def getRawRoute(self, arg1: Route, routeIndex: object) -> Route.RawRoute:
+    def getRawRoute(self, routeIndex: object=0) -> Route.RawRoute:
         '''
 
         getRawRoute( (Route)arg1 [, (object)routeIndex=0]) -> RawRoute :
@@ -511,7 +510,7 @@ class Route():
         '''
         ...
 
-    def getType(self, arg1: Route) -> Route.Type:
+    def getType(self) -> Route.Type:
         '''
 
         getType( (Route)arg1) -> Type :
@@ -539,7 +538,7 @@ class RouteIterator():
     @property
     def Valid(self) -> FullRoute: ...
 
-    def get_route(self, arg1: RouteIterator) -> FullRoute:
+    def get_route(self) -> FullRoute:
         '''
 
         get_route( (RouteIterator)arg1) -> FullRoute :
@@ -554,7 +553,7 @@ class RouteIterator():
 
 
 class RouteParaPoint():
-    def assign(self, arg1: RouteParaPoint, other: RouteParaPoint) -> RouteParaPoint:
+    def assign(self, other: RouteParaPoint) -> RouteParaPoint:
         '''
 
         assign( (RouteParaPoint)arg1, (RouteParaPoint)other) -> RouteParaPoint :
@@ -618,7 +617,7 @@ class ShortenRouteResult(int,):
 
 
 class vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_():
-    def append(self, arg1: vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_, arg2: RoutingParaPoint) -> None:
+    def append(self, arg2: RoutingParaPoint) -> None:
         '''
 
         append( (vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_)arg1, (RoutingParaPoint)arg2) -> None :
@@ -628,7 +627,7 @@ class vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint
         '''
         ...
 
-    def count(self, arg1: vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_, arg2: RoutingParaPoint) -> int:
+    def count(self, arg2: RoutingParaPoint) -> int:
         '''
 
         count( (vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_)arg1, (RoutingParaPoint)arg2) -> int :
@@ -638,7 +637,7 @@ class vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint
         '''
         ...
 
-    def extend(self, arg1: vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_, arg2: object) -> None:
+    def extend(self, arg2: object) -> None:
         '''
 
         extend( (vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_)arg1, (object)arg2) -> None :
@@ -648,7 +647,7 @@ class vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint
         '''
         ...
 
-    def index(self, arg1: vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_, arg2: RoutingParaPoint) -> int:
+    def index(self, arg2: RoutingParaPoint) -> int:
         '''
 
         index( (vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_)arg1, (RoutingParaPoint)arg2) -> int :
@@ -658,7 +657,7 @@ class vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint
         '''
         ...
 
-    def insert(self, arg1: vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_, arg2: int, arg3: RoutingParaPoint) -> None:
+    def insert(self, arg2: int, arg3: RoutingParaPoint) -> None:
         '''
 
         insert( (vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_)arg1, (int)arg2, (RoutingParaPoint)arg3) -> None :
@@ -668,7 +667,7 @@ class vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint
         '''
         ...
 
-    def reverse(self, arg1: vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_) -> None:
+    def reverse(self) -> None:
         '''
 
         reverse( (vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_)arg1) -> None :
@@ -678,7 +677,7 @@ class vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint
         '''
         ...
 
-    def sort(self, arg1: vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_) -> None:
+    def sort(self) -> None:
         '''
 
         sort( (vector_less_ad_scope_map_scope_route_scope_planning_scope_RoutingParaPoint_greater_)arg1) -> None :

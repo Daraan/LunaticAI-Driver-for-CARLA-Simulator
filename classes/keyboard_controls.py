@@ -1,3 +1,4 @@
+import sys
 import inspect
 import signal
 import weakref
@@ -274,7 +275,6 @@ class RSSKeyboardControl(KeyboardControl):
             print(f'\nReceived signal {signum}. Abort a 3rd time to terminate the program immediately')
             RSSKeyboardControl.signal_received = 2
             return
-        import sys
         sys.exit(1)
 
     def parse_events(self, control:"Optional[carla.VehicleControl]"=None):

@@ -3,7 +3,7 @@ from functools import partial, update_wrapper
 from typing import List, Optional
 
 import carla
-from omegaconf._impl import select_node
+from omegaconf._impl import select_node # noqa: PLC2701
 
 from classes.constants import READTHEDOCS, Phase
 from classes.rule import ConditionFunction, Context, Rule, always_execute
