@@ -2,11 +2,18 @@
 Submodule with commands that can be used with `carla.Client.apply_batch`
 and `carla.Client.apply_batch_sync`.
 """
+# needs change in API
+# pylint: disable=too-many-locals,too-many-public-methods,too-many-arguments,too-many-public-methods,too-few-public-methods,too-many-lines
+# Fixable low-priority
+# pylint: disable=line-too-long,R0801# needs change in API
+# pylint: disable=too-many-locals,too-many-public-methods,too-many-arguments,too-many-public-methods,too-few-public-methods,too-many-lines
+# Fixable low-priority
+# pylint: disable=line-too-long,R0801
 
-from typing import Protocol, overload, type_check_only
 
-from .libcarla import *  # noqa: F403
-from .libcarla import (
+from typing import Protocol, overload, type_check_only  # pylint: disable=no-name-in-module
+
+from libcarla import (
     AckermannControllerSettings,
     Actor,
     ActorBlueprint,
@@ -16,11 +23,6 @@ from .libcarla import (
     VehicleLightState,
     VehiclePhysicsControl,
 )
-from .libcarla.command import *  # type: ignore  # noqa
-
-@type_check_only
-class _IsCommand(Protocol):
-    """Indicates a command from the command namespace."""
 
 __all__ = [
     "ApplyAngularImpulse",
@@ -46,9 +48,17 @@ __all__ = [
     "SpawnActor",
 ]
 
-class ApplyAngularImpulse(_IsCommand):
-    """Command adaptation of `add_angular_impulse()` in `carla.Actor`. Applies an angular impulse to an actor.
+@type_check_only
+class _IsCommand(Protocol):
     """
+    Indicates a command from the command namespace.
+
+    Non commands are `FutureActor` or `Response`.
+    """
+
+class ApplyAngularImpulse(_IsCommand):
+    """Command adaptation of `add_angular_impulse()` in `carla.Actor`. Applies an angular impulse to an actor."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
@@ -59,7 +69,7 @@ class ApplyAngularImpulse(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, impulse: Vector3D):
+    def __init__(self, actor: Actor | int, impulse: Vector3D) -> None:
         """Applies an angular impulse to an actor.
 
         Args:
@@ -70,6 +80,7 @@ class ApplyAngularImpulse(_IsCommand):
 
 class ApplyForce(_IsCommand):
     """Command adaptation of `add_force()` in `carla.Actor`. Applies a force to an actor."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
@@ -80,7 +91,7 @@ class ApplyForce(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, force: Vector3D):
+    def __init__(self, actor: Actor | int, force: Vector3D) -> None:
         """Applies a force to an actor.
 
         Args:
@@ -91,6 +102,7 @@ class ApplyForce(_IsCommand):
 
 class ApplyImpulse(_IsCommand):
     """Command adaptation of `add_impulse()` in `carla.Actor`. Applies an impulse to an actor."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
@@ -101,7 +113,7 @@ class ApplyImpulse(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, impulse: Vector3D):
+    def __init__(self, actor: Actor | int, impulse: Vector3D) -> None:
         """Applies an impulse to an actor.
 
         Args:
@@ -111,8 +123,7 @@ class ApplyImpulse(_IsCommand):
     # endregion
 
 class ApplyTargetAngularVelocity(_IsCommand):
-    """Command adaptation of `set_target_angular_velocity()` in `carla.Actor`. Sets the actor's angular velocity vector.
-    """
+    """Command adaptation of `set_target_angular_velocity()` in `carla.Actor`. Sets the actor's angular velocity vector."""
 
     # region Instance Variables
     @property
@@ -124,7 +135,7 @@ class ApplyTargetAngularVelocity(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, angular_velocity: Vector3D):
+    def __init__(self, actor: Actor | int, angular_velocity: Vector3D) -> None:
         """Sets the actor's angular velocity vector.
 
         Args:
@@ -134,8 +145,8 @@ class ApplyTargetAngularVelocity(_IsCommand):
     # endregion
 
 class ApplyTargetVelocity(_IsCommand):
-    """Command adaptation of `set_target_velocity()` in `carla.Actor`. Sets the actor's target velocity vector.
-    """
+    """Command adaptation of `set_target_velocity()` in `carla.Actor`. Sets the actor's target velocity vector."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
@@ -146,7 +157,7 @@ class ApplyTargetVelocity(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, velocity: Vector3D):
+    def __init__(self, actor: Actor | int, velocity: Vector3D) -> None:
         """Sets the actor's target velocity vector.
 
         Args:
@@ -156,23 +167,21 @@ class ApplyTargetVelocity(_IsCommand):
     # endregion
 
 class ApplyTorque(_IsCommand):
-    """
-    Command adaptation of `add_torque()` in carla.Actor. Applies a torque to an actor.
-    """
-    
+    """Command adaptation of `add_torque()` in carla.Actor. Applies a torque to an actor."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
         """Actor affected by the command."""
-        
+
     @property
     def transform(self) -> Vector3D:
         """Torque applied to the actor over time (degrees)."""
-        
+
     # endregion
-            
+
     # region Methods
-    def __init__(self, actor: Actor | int, torque: Vector3D):
+    def __init__(self, actor: Actor | int, torque: Vector3D) -> None:
         """Sets a new transform to an actor.
 
         Args:
@@ -182,9 +191,7 @@ class ApplyTorque(_IsCommand):
     # endregion
 
 class ApplyTransform(_IsCommand):
-    """
-    Command adaptation of `set_transform()` in `carla.Actor`. Sets a new transform to an actor.
-    """
+    """Command adaptation of `set_transform()` in `carla.Actor`. Sets a new transform to an actor."""
 
     # region Instance Variables
     @property
@@ -196,7 +203,7 @@ class ApplyTransform(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, transform: Transform):
+    def __init__(self, actor: Actor | int, transform: Transform) -> None:
         """Sets a new transform to an actor.
 
         Args:
@@ -206,8 +213,8 @@ class ApplyTransform(_IsCommand):
     # endregion
 
 class ApplyVehicleAckermannControl(_IsCommand):
-    """Command adaptation of `apply_ackermann_control()` in `carla.Vehicle`. Applies a certain akermann control to a vehicle.
-    """
+    """Command adaptation of `apply_ackermann_control()` in `carla.Vehicle`. Applies a certain akermann control to a vehicle."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
@@ -218,7 +225,7 @@ class ApplyVehicleAckermannControl(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, control: AckermannControllerSettings):
+    def __init__(self, actor: Actor | int, control: AckermannControllerSettings) -> None:
         """Applies a certain akermann control to a vehicle.
 
         Args:
@@ -240,7 +247,7 @@ class ApplyVehicleControl(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, control: VehicleControl):
+    def __init__(self, actor: Actor | int, control: VehicleControl) -> None:
         """Applies a certain control to a vehicle.
 
         Args:
@@ -262,7 +269,7 @@ class ApplyVehiclePhysicsControl(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, control: VehicleControl):
+    def __init__(self, actor: Actor | int, control: VehicleControl) -> None:
         """Applies a new physics control to a vehicle, modifying its physical parameters.
 
         Args:
@@ -284,7 +291,7 @@ class ApplyWalkerControl(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, control: VehicleControl):
+    def __init__(self, actor: Actor | int, control: VehicleControl) -> None:
         """Applies a control to a walker.
 
         Args:
@@ -309,7 +316,7 @@ class ApplyWalkerState(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, transform: Transform, speed: float):
+    def __init__(self, actor: Actor | int, transform: Transform, speed: float) -> None:
         """Apply a state to the walker actor.
 
         Args:
@@ -329,20 +336,19 @@ class DestroyActor(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int):
+    def __init__(self, actor: Actor | int) -> None:
         """Command adaptation of `destroy()` in `carla.Actor` that tells the simulator to destroy this actor.
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
         """
     # endregion
-    
+
 class FutureActor:
     """A utility object used to reference an actor that will be created in the command in the previous step, it has no parameters or methods."""
 
 class Response:
-    """States the result of executing a command as either the ID of the actor to whom the command was applied to (when succeeded) or an error string (when failed). actor ID, depending on whether or not the command succeeded. The method `apply_batch_sync()` in c`arla.Client` returns a list of these to summarize the execution of a batch.
-    """
+    """States the result of executing a command as either the ID of the actor to whom the command was applied to (when succeeded) or an error string (when failed). actor ID, depending on whether or not the command succeeded. The method `apply_batch_sync()` in c`arla.Client` returns a list of these to summarize the execution of a batch."""
 
     # region Instance Variables
     @property
@@ -374,7 +380,7 @@ class SetAutopilot(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, enabled: bool, port=8000):
+    def __init__(self, actor: Actor | int, enabled: bool, port=8000) -> None:
         """Turns on/off the vehicle's autopilot mode.
 
         Args:
@@ -386,6 +392,7 @@ class SetAutopilot(_IsCommand):
 
 class SetEnableGravity(_IsCommand):
     """Command adaptation of `set_enable_gravity()` in `carla.Actor`. Enables or disables gravity on an actor."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
@@ -396,7 +403,7 @@ class SetEnableGravity(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, enabled: bool):
+    def __init__(self, actor: Actor | int, enabled: bool) -> None:
         """Enables or disables gravity on an actor.
 
         Args:
@@ -407,6 +414,7 @@ class SetEnableGravity(_IsCommand):
 
 class SetSimulatePhysics(_IsCommand):
     """Command adaptation of `set_simulate_physics()` in `carla.Actor`. Determines whether an actor will be affected by physics or not."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
@@ -417,7 +425,7 @@ class SetSimulatePhysics(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, enabled: bool):
+    def __init__(self, actor: Actor | int, enabled: bool) -> None:
         """Determines whether an actor will be affected by physics or not.
 
         Args:
@@ -428,6 +436,7 @@ class SetSimulatePhysics(_IsCommand):
 
 class SetVehicleLightState(_IsCommand):
     """Command adaptation of `set_light_state()` in `carla.Vehicle`. Sets the light state of a vehicle."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
@@ -438,7 +447,7 @@ class SetVehicleLightState(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, light_state: VehicleLightState):
+    def __init__(self, actor: Actor | int, light_state: VehicleLightState) -> None:
         """Sets the light state of a vehicle.
 
         Args:
@@ -448,8 +457,8 @@ class SetVehicleLightState(_IsCommand):
     # endregion
 
 class ShowDebugTelemetry(_IsCommand):
-    """Command adaptation of `show_debug_telemetry()` in `carla.Actor`. Displays vehicle control telemetry data.
-    """
+    """Command adaptation of `show_debug_telemetry()` in `carla.Actor`. Displays vehicle control telemetry data."""
+
     # region Instance Variables
     @property
     def actor_id(self) -> int:
@@ -460,7 +469,7 @@ class ShowDebugTelemetry(_IsCommand):
     # endregion
 
     # region Methods
-    def __init__(self, actor: Actor | int, enabled: bool):
+    def __init__(self, actor: Actor | int, enabled: bool) -> None:
         """Displays vehicle control telemetry data.
 
         Args:
@@ -483,11 +492,11 @@ class SpawnActor(_IsCommand):
 
     # region Methods
     @overload
-    def __init__(self): ...
+    def __init__(self) -> None: ...
     @overload
-    def __init__(self, blueprint: ActorBlueprint, transform: Transform): ...
+    def __init__(self, blueprint: ActorBlueprint, transform: Transform) -> None: ...
     @overload
-    def __init__(self, blueprint: ActorBlueprint, transform: Transform, parent: Actor | int): ...
+    def __init__(self, blueprint: ActorBlueprint, transform: Transform, parent: Actor | int) -> None: ...
 
     def then(self, command: _IsCommand) -> _IsCommand:
         """Links another command to be executed right after. It allows to ease very common flows such as spawning a set of vehicles by command and then using this method to set them to autopilot automatically.
