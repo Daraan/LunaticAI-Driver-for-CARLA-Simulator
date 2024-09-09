@@ -11,7 +11,7 @@
 
 import inspect
 import math
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple
 from typing import cast as assure_type
 
 import carla
@@ -19,7 +19,7 @@ import carla
 from agents.tools.logs import logger
 from classes._sensor_interface import CustomSensorInterface
 from classes.constants import AD_RSS_AVAILABLE, RssLogLevel, RssLogLevelAlias
-from classes.rss_visualization import (  # pylint: disable=relative-import
+from classes.rss_visualization import (
     RssDebugVisualizationMode,
     RssDebugVisualizer,
     RssUnstructuredSceneVisualizer,
@@ -33,6 +33,8 @@ if AD_RSS_AVAILABLE:
 
 if TYPE_CHECKING:
     assert ad  # remove Unbound type # type: ignore
+    from classes.rss_visualization import RssBoundingBoxVisualizer, RssStateVisualizer
+    
 
 # ==============================================================================
 # -- RssSensor -----------------------------------------------------------------
@@ -90,11 +92,11 @@ class RssSensor(CustomSensorInterface):
     def __init__(self,
                  parent_actor : carla.Vehicle,
                  unstructured_scene_visualizer: "RssUnstructuredSceneVisualizer",
-                 bounding_box_visualizer,
-                 state_visualizer,
+                 bounding_box_visualizer: "RssBoundingBoxVisualizer",
+                 state_visualizer: "RssStateVisualizer",
                  *,
-                 visualizer_mode=RssDebugVisualizationMode.Off,
-                 routing_targets=None,
+                 visualizer_mode: RssDebugVisualizationMode = RssDebugVisualizationMode.Off,
+                 routing_targets: Optional[Iterable[carla.Transform]] = None,
                  log_level: RssLogLevelAlias = RssLogLevel.off):
         world = CarlaDataProvider.get_world()
         assert world

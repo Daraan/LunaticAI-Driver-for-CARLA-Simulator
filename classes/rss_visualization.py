@@ -23,6 +23,15 @@ if AD_RSS_AVAILABLE:
     from carla import ad
     RssStateEvaluator = ad.rss.state.RssStateEvaluator
     EVALUATOR_NONE_STATE = RssStateEvaluator.names["None"]
+    _RSS_EVALUATOR_SAME_DIRECTION = {
+            RssStateEvaluator.LongitudinalDistanceSameDirectionOtherInFront,
+            RssStateEvaluator.LongitudinalDistanceSameDirectionEgoFront
+        }
+    _RSS_EVALUATOR_OPPOSITE_DIRECTION = {
+            RssStateEvaluator.LongitudinalDistanceOppositeDirectionEgoCorrectLane,
+            RssStateEvaluator.LongitudinalDistanceOppositeDirection
+    }
+
 if TYPE_CHECKING:
     assert ad  # remove Unbound type # type: ignore
     from classes.rss_sensor import RssStateInfo
@@ -83,16 +92,14 @@ class RssStateVisualizer:
             if state.actor_calculation_mode == ad.rss.map.RssMode.Structured:
                 # Unsafe longitudinalState
                 if not state.rss_state.longitudinalState.isSafe:
-                    if (state.rss_state.longitudinalState.rssStateInformation.evaluator is RssStateEvaluator.LongitudinalDistanceSameDirectionOtherInFront
-                        or state.rss_state.longitudinalState.rssStateInformation.evaluator is RssStateEvaluator.LongitudinalDistanceSameDirectionEgoFront
+                    if (state.rss_state.longitudinalState.rssStateInformation.evaluator in _RSS_EVALUATOR_SAME_DIRECTION
                     ):
                         pygame.draw.polygon(
                             state_surface, (
                                 255, 255, 255), ((xpos + 1, v_offset + 1 + 4), (xpos + 6, v_offset + 1 + 0), (xpos + 11, v_offset + 1 + 4),
                                                 (xpos + 7, v_offset + 1 + 4), (xpos + 7, v_offset + 1 + 12), (xpos + 5, v_offset + 1 + 12), (xpos + 5, v_offset + 1 + 4)))
                         xpos += 14
-                    elif (state.rss_state.longitudinalState.rssStateInformation.evaluator is RssStateEvaluator.LongitudinalDistanceOppositeDirectionEgoCorrectLane
-                            or state.rss_state.longitudinalState.rssStateInformation.evaluator is RssStateEvaluator.LongitudinalDistanceOppositeDirection
+                    elif (state.rss_state.longitudinalState.rssStateInformation.evaluator in _RSS_EVALUATOR_OPPOSITE_DIRECTION
                     ):
                         pygame.draw.polygon(
                             state_surface, (
@@ -207,8 +214,8 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
     def __init__(self, parent_actor: carla.Actor, world, display_dimensions: tuple[int, int], gamma_correction: float = 2.2):
         self._last_rendered_frame = -1
         self._surface = None
-        self._current_rss_surface : Optional[Tuple[int, pygame.Surface]] = None
-        self.current_camera_surface : Tuple[int, pygame.Surface] = (0, None)
+        self._current_rss_surface: Optional[Tuple[int, pygame.Surface]] = None
+        self.current_camera_surface: Tuple[int, pygame.Surface] = (0, None)
         self._world : carla.World = CarlaDataProvider.get_world()
         self._parent_actor = parent_actor
         self._display_dimensions = display_dimensions
@@ -675,7 +682,11 @@ class RssDebugVisualizer:
             self._visualization_mode = RssDebugVisualizationMode.All
         print(f"New Debug Visualizer Mode {self._visualization_mode}")
 
-    def tick(self, route, dangerous, individual_rss_states, ego_dynamics_on_route):
+    def tick(self,
+             route: Optional[ad.map.route.FullRoute],
+             dangerous: bool,
+             individual_rss_states: Iterable[RssStateInfo],
+             ego_dynamics_on_route: carla.RssEgoDynamicsOnRoute) -> None:
         if self._visualization_mode in {RssDebugVisualizationMode.RouteOnly,
                                         RssDebugVisualizationMode.VehicleStateAndRoute,
                                         RssDebugVisualizationMode.All}:
@@ -689,7 +700,7 @@ class RssDebugVisualizer:
         if self._visualization_mode == RssDebugVisualizationMode.All:
             self.visualize_ego_dynamics(ego_dynamics_on_route)
 
-    def visualize_route(self, dangerous, route):
+    def visualize_route(self, dangerous: bool, route: Optional[ad.map.route.FullRoute]):
         if not route:
             return
         right_lane_edges = {}
@@ -724,7 +735,7 @@ class RssDebugVisualizer:
             carla_point = carla.Location(x=float(point.x), y=-1. * float(point.y), z=float(point.z) + z_offset)
             self._world.debug.draw_point(carla_point, 0.1, color, 0.1, False)
 
-    def visualize_rss_results(self, state_snapshot):
+    def visualize_rss_results(self, state_snapshot: Iterable[RssStateInfo]):
         for state in state_snapshot:
             other_actor = state.get_actor(self._world)
             if not other_actor:
