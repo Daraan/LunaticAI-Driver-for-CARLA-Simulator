@@ -154,34 +154,6 @@ def get_matrix(transform : carla.Transform):
     s_r = np.sin(np.radians(rotation.roll))
     c_p = np.cos(np.radians(rotation.pitch))
     s_p = np.sin(np.radians(rotation.pitch))
-    matrix = np.matrix(np.identity(4))  # TODO: should be replaced (deprecated)
-    matrix[0, 3] = location.x
-    matrix[1, 3] = location.y
-    matrix[2, 3] = location.z
-    matrix[0, 0] = c_p * c_y
-    matrix[0, 1] = c_y * s_p * s_r - s_y * c_r
-    matrix[0, 2] = -c_y * s_p * c_r - s_y * s_r
-    matrix[1, 0] = s_y * c_p
-    matrix[1, 1] = s_y * s_p * s_r + c_y * c_r
-    matrix[1, 2] = -s_y * s_p * c_r + c_y * s_r
-    matrix[2, 0] = s_p
-    matrix[2, 1] = -c_p * s_r
-    matrix[2, 2] = c_p * c_r
-    return matrix
-
-def get_matrix_new(transform : carla.Transform):
-    """
-    Creates matrix from carla transform.
-    """
-
-    rotation = transform.rotation
-    location = transform.location
-    c_y = np.cos(np.radians(rotation.yaw))
-    s_y = np.sin(np.radians(rotation.yaw))
-    c_r = np.cos(np.radians(rotation.roll))
-    s_r = np.sin(np.radians(rotation.roll))
-    c_p = np.cos(np.radians(rotation.pitch))
-    s_p = np.sin(np.radians(rotation.pitch))
     matrix = np.identity(4)
     matrix[0, 3] = location.x
     matrix[1, 3] = location.y
@@ -447,12 +419,15 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
         """
         Returns trajectory set projected to camera view
         """
+        if world_cords.size == 0:
+            return []
         world_cords = np.transpose(world_cords)
         cords_x_y_z = RssUnstructuredSceneVisualizer._world_to_sensor(world_cords, camera_transform)[:3, :]
         cords_y_minus_z_x = np.concatenate([cords_x_y_z[1, :], -cords_x_y_z[2, :], cords_x_y_z[0, :]])
         ts = np.transpose(np.dot(calibration, cords_y_minus_z_x))
         camera_ts = np.concatenate([ts[:, 0] / ts[:, 2], ts[:, 1] / ts[:, 2], ts[:, 2]], axis=1)
-        return [(int(point[0, 0]), int(point[0, 1])) for point in camera_ts]  # line_to_draw
+        camera_ts = np.vstack([ts[:, 0] / ts[:, 2], ts[:, 1] / ts[:, 2], ts[:, 2]]).T
+        return [(int(point[0]), int(point[1])) for point in camera_ts]  # line_to_draw
 
     @staticmethod
     def _get_trajectory_set_points(trajectory_set):
@@ -538,7 +513,7 @@ class RssBoundingBoxVisualizer:
         self._last_camera_frame = current_camera_frame
 
     @staticmethod
-    def get_bounding_boxes(individual_rss_states, camera_transform, calibration, world):
+    def get_bounding_boxes(individual_rss_states, camera_transform, calibration, world: carla.World):
         """
         Creates 3D bounding boxes based on carla vehicle list and camera.
         """
@@ -555,7 +530,7 @@ class RssBoundingBoxVisualizer:
 
     @staticmethod
     def draw_bounding_boxes(surface: pygame.Surface,
-                            bounding_boxes,
+                            bounding_boxes: list[np.ndarray],
                             color: pygame.Color = pygame.Color('red')) -> None:  # noqa: B008
         """
         Draws bounding boxes on pygame display.
@@ -589,25 +564,25 @@ class RssBoundingBoxVisualizer:
         cords_x_y_z = RssBoundingBoxVisualizer._vehicle_to_sensor(bb_cords, vehicle, camera_transform)[:3, :]
         cords_y_minus_z_x = np.concatenate([cords_x_y_z[1, :], -cords_x_y_z[2, :], cords_x_y_z[0, :]])
         bbox = np.transpose(np.dot(calibration, cords_y_minus_z_x))
-        camera_bbox = np.concatenate([bbox[:, 0] / bbox[:, 2], bbox[:, 1] / bbox[:, 2], bbox[:, 2]], axis=1)
+        camera_bbox = np.vstack([bbox[:, 0] / bbox[:, 2], bbox[:, 1] / bbox[:, 2], bbox[:, 2]]).T
         return camera_bbox
 
     @staticmethod
-    def _create_bb_points(vehicle):
+    def _create_bb_points(vehicle: carla.Actor):
         """
         Returns 3D bounding box for a vehicle.
         """
 
-        cords = np.zeros((8, 4))
+        cords = np.empty((8, 4))
         extent = vehicle.bounding_box.extent
-        cords[0, :] = np.array([extent.x, extent.y, -extent.z, 1])
-        cords[1, :] = np.array([-extent.x, extent.y, -extent.z, 1])
-        cords[2, :] = np.array([-extent.x, -extent.y, -extent.z, 1])
-        cords[3, :] = np.array([extent.x, -extent.y, -extent.z, 1])
-        cords[4, :] = np.array([extent.x, extent.y, extent.z, 1])
-        cords[5, :] = np.array([-extent.x, extent.y, extent.z, 1])
-        cords[6, :] = np.array([-extent.x, -extent.y, extent.z, 1])
-        cords[7, :] = np.array([extent.x, -extent.y, extent.z, 1])
+        cords[0] = [extent.x, extent.y, -extent.z, 1.]
+        cords[1] = [-extent.x, extent.y, -extent.z, 1.]
+        cords[2] = [-extent.x, -extent.y, -extent.z, 1.]
+        cords[3] = [extent.x, -extent.y, -extent.z, 1.]
+        cords[4] = [extent.x, extent.y, extent.z, 1.]
+        cords[5] = [-extent.x, extent.y, extent.z, 1.]
+        cords[6] = [-extent.x, -extent.y, extent.z, 1.]
+        cords[7] = [extent.x, -extent.y, extent.z, 1.]
         return cords
 
     @staticmethod
@@ -620,9 +595,8 @@ class RssBoundingBoxVisualizer:
         # Sensor coordinates
         return RssBoundingBoxVisualizer._world_to_sensor(world_cord, camera_transform)
 
-
     @staticmethod
-    def _vehicle_to_world(cords, vehicle):
+    def _vehicle_to_world(cords, vehicle: carla.Actor):
         """
         Transforms coordinates of a vehicle bounding box to world.
         """
@@ -660,7 +634,7 @@ class RssDebugVisualizationMode(Enum):
 
 class RssDebugVisualizer:
 
-    def __init__(self, player, world : carla.World, visualization_mode: Union[RssDebugVisualizationMode, str, int] = RssDebugVisualizationMode.Off):
+    def __init__(self, player: carla.Vehicle, world : carla.World, visualization_mode: Union[RssDebugVisualizationMode, str, int] = RssDebugVisualizationMode.Off):
         self._world = world
         self._player = player
         if isinstance(visualization_mode, str):
