@@ -14,7 +14,7 @@ repos:
   hooks:
     # Run the linter.
     - id: ruff
-      args: [--select, "C4,W291,W391,E1,E22,E231,E24,E25,E261,E262,E27,E301,E304,E305,E306,E502", --fix, --preview, --ignore, "E116"]
+      args: [--select, "C4,W291,W391,E1,E22,E231,E24,E25,E261,E262,E27,E301,E304,E305,E306,E502", --fix, --fix-only, --preview, --ignore, "E116"]
     # Run the formatter.
     #- id: ruff-format
 # report from pyproject.toml

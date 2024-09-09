@@ -22,21 +22,33 @@ select = [
     "A",
     "B",
     "C4",
+
+    "D405",
+    "D416",
+
     "E",
     "F",
     "I",
+
+    "G004",
+
     "ISC001",
+
     "PGH004",
+
+    "PERF",
+
+    "PIE808", # unnecessary-range-start
+
+    "PLE1205",
+
     "RUF",
     "SIM201",
     "SIM202",
     "UP",
     "W",
     "YTT",
-    "PLE1205",
-    "PERF",
-    "G004",
-    "PIE808", # unnecessary-range-start
+    
     "TCH004",
     "FIX003",
 
