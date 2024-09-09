@@ -503,7 +503,7 @@ class Phase(Flag):
         """
         Utility method that turns a string like :code:`Phase.NAME | BEGIN | ...` into a Phase.
         
-        NOTE:
+        Note:
             Only supports the operator :code:`|`. :code:`NAME` must be a valid Phase name.
         """
         elements = string.split("|")  # Phase.NAME

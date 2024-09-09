@@ -38,8 +38,6 @@ from data_gathering.information_manager import InformationManager
 from launch_tools import class_or_instance_method
 
 if TYPE_CHECKING:
-    from types import ModuleType
-
     from hydra.conf import HydraConf
     from typing_extensions import Self
 
@@ -103,8 +101,9 @@ class AccessCarlaMixin:
         """
         Access to a cached version of the blueprint library
         
-        Attention:
-            The world must be setup before (:py:meth:`.set_world`) before this can be accessed.
+        Raises:
+            ValueError: If the blueprint library is not set, which happens when the world is not set.
+                The world must be setup before (:py:class:`CarlaDataProvider.set_world()<.CarlaDataProvider>`).
         """
         if CarlaDataProvider._blueprint_library is None:
             raise ValueError("Blueprint Library not set. Call CarlaDataProvider.set_world() first.")
@@ -657,7 +656,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                 pygame.quit()
     
     # Include access to our exceptions here
-    exceptions : "ModuleType" = _exceptions
+    exceptions = _exceptions
     """
     shortcut to :py:mod:`.exceptions` module containing custom exceptions.
     

@@ -84,7 +84,7 @@ def register_hydra_schema(obj: "type[Any]", name: Optional[str] = None):
     Uses Hydra's ConfigStore to register the schema of the current class in the
     :py:obj:`ConfigStore <config_store>`.
     
-    See also:
+    See Also:
         :py:func:`config_path`
     """
     if name is None:
@@ -101,7 +101,7 @@ def config_path(path: Optional[str] = None):
     """
     Decorator to register the schema of the current class with Hydra's ConfigStore.
     
-    Returns
+    Returns:
         (Callable[[type[AgentConfig]], type[AgentConfig]]) Wrapper function to register the schema.
     """
     

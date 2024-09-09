@@ -1315,14 +1315,14 @@ class BasicAgentPlannerSettings(AgentConfig):
     
     dt: float = 1.0 / 20.0
     """time differential in seconds"""
-    
+
     # NOTE: two variables because originally used with two different names in different places
     #lateral_control_dict : PIDControllerDict = field(default_factory=partial(PIDControllerDict, **{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2}))
-    lateral_control_dict: PIDControllerDict = field(default_factory=lambda: PIDControllerDict(**{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2}))  # pyright: ignore[reportAbstractUsage]
+    lateral_control_dict: PIDControllerDict = field(default_factory=lambda: PIDControllerDict(**{'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2}))
     """values of the lateral PID controller"""
 
     # NOTE: two variables because originally used with two different names in different places
-    longitudinal_control_dict: PIDControllerDict = field(default_factory=lambda: PIDControllerDict(**{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0}))  # pyright: ignore[reportAbstractUsage]
+    longitudinal_control_dict: PIDControllerDict = field(default_factory=lambda: PIDControllerDict(**{'K_P': 1.0, 'K_I': 0.05, 'K_D': 0}))
     """values of the longitudinal PID controller"""
     
     offset: float = 0.0

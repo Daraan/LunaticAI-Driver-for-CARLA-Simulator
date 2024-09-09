@@ -3,8 +3,6 @@ Aim of this module is to provide a less convoluted access to information,
 i.e. distill the information from the data and return high level information
 """
 
-# pyright: reportUnknownMemberType=warning
-# pyright: reportUnusedExpression=warning
 # pyright: reportPrivateUsage=none
 
 from __future__ import annotations
@@ -173,16 +171,15 @@ class InformationManager:
         self._agent._current_waypoint.lane_id # positive or negative   # noqa # pyright: ignore[reportPrivateUsage]
         # TODO: How detect if the heading is against this direction?
         # Need to also account for reverse state.
-        ...
-        # NotImplemented
+        # ... NotImplemented
     
     @_check_state(AgentState.OVERTAKING)
     def detect_overtaking_state(self):
         """
         :meta private:
         """
-        ...
-        #NotImplemented # Can probably not be done easily, and must be done from outside
+        #... NotImplemented
+        # # Can probably not be done easily, and must be done from outside
     
     def check_states(self):
         """

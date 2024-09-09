@@ -26,7 +26,8 @@ class UserInterruption(Exception):
     Allows the scenario runner and Leaderboard_ to exit gracefully, if
     handled appropriately, e.g. by directly returning.
 
-    Thrown by :py:meth:`LunaticAgent.parse_keyboard_input <agents.lunatic_agent.LunaticAgent.parse_keyboard_input>`.
+    Thrown by
+    :py:meth:`LunaticAgent.parse_keyboard_input <agents.lunatic_agent.LunaticAgent.parse_keyboard_input>`.
     
     Note:
         Is not a :py:class:`LunaticAgentException`.
@@ -41,7 +42,9 @@ class AgentDoneException(LunaticAgentException):
     """
     Raised when there is no more waypoint in the queue to follow and no rule set a new destination.
 
-    When the a :py:class:`GameFramework` instance is used as context manager will set :py:attr:`game_framework.continue_loop <classes.worldmodel.GameFramework.continue_loop>` to :python:`False`.
+    When the a :py:class:`.GameFramework` instance is used as context manager will set
+    :py:attr:`game_framework.continue_loop <classes.worldmodel.GameFramework.continue_loop>`
+    to :python:`False`.
     """
 
 
