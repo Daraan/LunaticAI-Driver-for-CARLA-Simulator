@@ -1,9 +1,16 @@
+"""
+Backend of the :py:class:`DataMatrix`.
+
+Original source and documentation can be found at https://github.com/CarlaInes/carla/
+"""
+
 from __future__ import annotations
 
 import collections
 import math
 from operator import attrgetter
-from typing import List, NamedTuple, Optional, Sequence, Set, TypeAlias
+from typing import List, NamedTuple, Optional, Sequence, Set, Tuple
+from typing_extensions import TypeAlias
 
 import carla
 import numpy as np
@@ -26,11 +33,11 @@ RoadLaneIds: TypeAlias = Set[RoadLaneId]
 Iterable of :py:class:`RoadLaneId` for the current map collected by :py:func:`get_all_road_lane_ids`.
 """
 
-JunctionWaypointList: TypeAlias = Sequence[tuple[carla.Waypoint, carla.Waypoint]]
+JunctionWaypointList: TypeAlias = Sequence[Tuple[carla.Waypoint, carla.Waypoint]]
 """wps (list): List of one waypoint cluster of grouped highway junction waypoints.
     Format: [(start_wp, "start"), (start_wp, "start"), ..]"""
     
-_HighWayShape: TypeAlias = tuple[str, int, JunctionWaypointList, JunctionWaypointList]
+_HighWayShape: TypeAlias = Tuple[str, int, JunctionWaypointList, JunctionWaypointList]
 """(highway_type: string, straight_lanes: int, entry_wps: ([wp,..], [wp,..]), exit_wps: ([wp,..], [wp,..]))"""
 
 def check_ego_on_highway(ego_vehicle_location: carla.Location, road_lane_ids: RoadLaneIds, world_map):
@@ -167,7 +174,7 @@ def create_city_matrix(ego_vehicle_location: carla.Location,
 
     # Initialize matrix and key_value_pairs
     matrix = None
-    key_value_pairs: Optional[list[tuple["str | tuple[int, int]", list[int]]]] = None
+    key_value_pairs: Optional[list[tuple[str | tuple[int, int], list[int]]]] = None
     other_direction = []
     ego_direction = []
     # Identify list of lanes of ego's direction and opposite direction
