@@ -1,13 +1,14 @@
-from __future__ import annotations
-
-import inspect
-
 # pyright: strict
 # pyright: reportIndexIssue=information, reportCallIssue=information
 # pyright: reportGeneralTypeIssues=warning
 # pyright: reportUnusedFunction=information, reportUnusedImport=information
 # pyright: reportUnnecessaryIsInstance=false, reportUnnecessaryComparison=false
 # pyright: reportPrivateUsage=none
+
+from __future__ import annotations
+
+import inspect
+
 import random
 from collections.abc import Mapping
 from dataclasses import is_dataclass
@@ -21,7 +22,6 @@ from typing import (
     ClassVar,
     Container,
     Dict,
-    FrozenSet,
     Hashable,
     Iterable,
     List,
@@ -50,7 +50,7 @@ from typing_extensions import (
 )
 
 from agents.tools.logs import logger
-from classes.constants import Hazard, HazardSeverity, Phase, RulePriority, RuleResult
+from classes.constants import READTHEDOCS, Hazard, HazardSeverity, Phase, RulePriority, RuleResult
 from classes.evaluation_function import ConditionFunction
 from classes.exceptions import DoNotEvaluateChildRules, UnblockRuleException
 from classes.worldmodel import GameFramework
@@ -59,7 +59,7 @@ from launch_tools import CarlaDataProvider, singledispatchmethod
 
 if TYPE_CHECKING:
     import carla
-    from classes.type_protocols import CallableAction, ConditionFunctionLike, ConditionFunctionLikeT
+    from classes.type_protocols import CallableAction, CallableActionT, ConditionFunctionLike, ConditionFunctionLikeT
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import ContextSettings, LiveInfo, RuleConfig
     # NOTE: gameframework.py adds GameFramework to this module's variables
@@ -68,7 +68,6 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 _P = ParamSpec("_P")
 _Rule = TypeVar("_Rule", bound="Rule")
-
 
 class Context(CarlaDataProvider):
     """
@@ -87,14 +86,14 @@ class Context(CarlaDataProvider):
     config : "ContextSettings"
     """A copy of the agents config. Overwritten by the condition's settings."""
     
-    evaluation_results : Dict[Phase, Hashable]  # ambiguous wording, which result? here evaluation result
+    evaluation_results : dict[Phase, Hashable]  # ambiguous wording, which result? here evaluation result
     """
     Stores the result from the :py:meth:`Rule.condition` of the last rule that was evaluated in a phase.
     
     .. deprecated:: in consideration
     """
         
-    action_results : Dict[Phase, Any]
+    action_results : dict[Phase, Any]
     """
     Stores the result from the :py:meth:`action` of the last rule that was applicable in a phase.
     
@@ -111,7 +110,7 @@ class Context(CarlaDataProvider):
     prior_result : Optional[Any]  # TODO: maybe rename
     """Result of the current phase."""
     
-    phase_results : Dict[Phase, Any]
+    phase_results : dict[Phase, Any]
     """
     Stores the results of the phases the agent has been in.
     By default the keys are set to :py:attr:`Context.PHASE_NOT_EXECUTED`.
@@ -137,7 +136,7 @@ class Context(CarlaDataProvider):
     If not empty at the end of the inner step an EmergencyStopException is raised.
     """
     
-    detected_hazards_info : Dict[Hazard, Union[HazardSeverity, Any]]
+    detected_hazards_info : dict[Hazard, Union[HazardSeverity, Any]]
     """
     Information about the detected hazards. :py:meth:`add_hazard` inserts the given :py:class:`.HazardSeverity` as value,
     however, note that the values are can be arbitrary if used otherwise.
@@ -600,7 +599,7 @@ class Rule(_GroupRule):
     description : str
     """Description of what this rule should do"""
     
-    phases : FrozenSet[Phase]
+    phases : frozenset[Phase]
     """
     The phase or phases in which the rule should be evaluated.
     For instantiation the phases attribute can be any :term:`Iterable` [:py:class:`.Phase`].
@@ -625,7 +624,7 @@ class Rule(_GroupRule):
             The readthedocs description is set in the __init__ function.
         """
     
-    actions : Dict[Any, CallableAction[Self, [], Any]]
+    actions : dict[Any, CallableAction[Self, [], Any]]
     """Dictionary that maps rule results to the action that should be executed."""
     
     action : Annotated[CallableAction[Self, [], Any], "attribute not available on instance -> merged into `actions`"]
@@ -636,10 +635,15 @@ class Rule(_GroupRule):
     false_action : Annotated[CallableAction[Self, [], Any], "attribute not available on instance -> merged into `actions`"]
     """Action that should be executed if the rule is False. May not be set if `actions` is set."""
     
+    if READTHEDOCS and not TYPE_CHECKING:
+        false_action : Annotated[CallableActionT, "attribute not available on instance -> merged into `actions`"]
+        action : Annotated[CallableActionT, "attribute not available on instance -> merged into `actions`"]
+        actions : dict[Any, CallableActionT]
+    
     #group : Optional[str]
     #"""Group name for rules that should share their cooldown."""
     
-    overwrite_settings : Dict[str, Any]
+    overwrite_settings : dict[str, Any]
     """
     Settings that should overwrite the agent's settings for this rule.
     
@@ -959,7 +963,7 @@ class Rule(_GroupRule):
         if self_config:
             self.self_config = cast("RuleConfig", OmegaConf.merge(default_self_config, self_config))
         else:
-            self.self_config = cast("RuleConfig", default_self_config)
+            self.self_config = default_self_config
         assert self.self_config._get_flag("allow_objects"), "self_config must allow objects to be used as values."  # pyright: ignore[reportPrivateUsage]
         
         self.overwrite_settings["self"] = self.self_config
@@ -984,7 +988,7 @@ class Rule(_GroupRule):
                     f"Class {cls.__name__} has overwritten property {attr} with {getattr(cls, attr)}."
                     " You may only overwrite the following attributes with properties: {cls._PROPERTY_MEMBERS}."
                     "Did you mean `start_cooldown` or `cooldown_reset_value` instead of `cooldown`?")
-        if not cls._auto_init_ or metarule:  # TODO: Check for multirule, should _auto_init_ be set to False?
+        if not cls._auto_init_ or metarule:
             return
         
         custom_init = cls.__dict__.get("__init__", False)
@@ -1141,7 +1145,6 @@ class Rule(_GroupRule):
         """
         return inspect.signature(cls.__init__).parameters.keys()
 
-    
     def execute_phase(self,
                       phase: Phase, *,
                       prior_results: Any = None,
@@ -1169,8 +1172,7 @@ class Rule(_GroupRule):
                                           update_controls=update_controls)
         except ReferenceError:
             logger.error("ReferenceError in Rule.execute_phase. Weakproxy deleted.")
-            
-
+    
     # -----------------------
     # Evaluation functions
     # -----------------------
@@ -1200,7 +1202,7 @@ class Rule(_GroupRule):
         :meta private:
         """
         self._ctx = proxy(ctx)      # use with care and access over function
-        return self.condition(ctx)
+        return self.condition(ctx)  # pyright: ignore[reportCallIssue]
     
     def evaluate_children(self, ctx: Context) -> "NoReturn":  # pylint: disable=unused-argument
         """
@@ -1254,7 +1256,7 @@ class Rule(_GroupRule):
                 if overwrite:
                     ctx.config.merge_with(overwrite)
                 
-                action_result = self.actions[result](ctx)  # todo allow priority, random chance
+                action_result = self.actions[result](ctx)  # todo allow priority, random chance  # pyright: ignore[reportCallIssue]
                 ctx.action_results[ctx.agent.current_phase] = action_result
                 return action_result
             return RuleResult.NOT_APPLICABLE  # No action was executed

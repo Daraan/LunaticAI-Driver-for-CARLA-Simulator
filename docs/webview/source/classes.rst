@@ -132,5 +132,6 @@ classes.worldmodel module
 
 .. automodule:: classes.worldmodel
    :members:
+   :inherited-members: get_client, get_map, get_world
    :undoc-members:
    :show-inheritance:

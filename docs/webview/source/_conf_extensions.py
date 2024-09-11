@@ -253,9 +253,11 @@ from _autodoc_type_aliases import autodoc_type_aliases
 _convert = {
     #'_ActionType[_Rule, _P, _T]' : autodoc_type_aliases["_ActionType"],
     #'_ActionTypeAlias' : autodoc_type_aliases["_ActionType"],
-    'CallableAction[_Rule, _P, _T]' : autodoc_type_aliases["CallableAction"],
-    'CallableAction[Self, [], Any]' : autodoc_type_aliases["CallableAction"],
-    'CallableAction' : autodoc_type_aliases["CallableAction"],
+    'CallableAction[_Rule, _P, _T]' : autodoc_type_aliases.get("CallableAction", "CallableActionT"),
+    'CallableAction[Self, [], Any]' : autodoc_type_aliases.get("CallableAction", "CallableActionT"),
+    'CallableAction[Self, []]' : autodoc_type_aliases.get("CallableAction", "CallableActionT"),
+    'CallableAction[Rule, []]' : autodoc_type_aliases.get("CallableAction", "CallableActionT"),
+    #'CallableAction' : autodoc_type_aliases.get("CallableAction", "CallableAction"),
     #'_CallableAction[_Rule, _P, _T]' : autodoc_type_aliases["_ActionType"],
     'CallableCondition[RuleT, _CP, _CH]' : autodoc_type_aliases["CallableCondition"],
     'CallableCondition' : autodoc_type_aliases["CallableCondition"],
@@ -276,8 +278,8 @@ _convert = {
 }
 
 
-_patterns = {k : re.compile(rf"\b{k}(?<!{v})\b") 
-             for k, v in _convert.items()}
+_patterns = {
+k : re.compile(rf"\b{re.escape(k)}(?<!{re.escape(v)})(\b|(?=\]|,|\)))") for k, v in _convert.items()}
 
 
 # autodoc-before-process-signature
@@ -290,14 +292,18 @@ def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_m
     try:
         # signature = sphinx.util.inspect.signature(obj, type_aliases=options.autodoc_type_aliases)
         signature: str | None | Signature = getattr(obj, "__signature__", None)
-        if not signature:
+        if not signature and not obj.__annotations__.items():
             return
         for replace_th, new_hint in _convert.items():
             for keyword, typehint in obj.__annotations__.items():
+                if keyword == "actions" and "CallableAction[Self, [], Any]" in str(typehint) or "CallableAction[Self, [], Any]" in str(signature):
+                    breakpoint()
                 if isinstance(typehint, str):
-                    obj.__annotations__[keyword] = typehint.replace(replace_th, new_hint)
+                    obj.__annotations__[keyword] = _patterns[replace_th].sub(new_hint, typehint)
+                if signature is None:
+                    continue
                 if isinstance(signature, str):
-                    signature = signature.replace(replace_th, new_hint)
+                    signature = _patterns[replace_th].sub(new_hint, signature)
                 elif keyword == "return":
                     if isinstance(signature.return_annotation, str):
                         signature.replace(return_annotation=

@@ -73,7 +73,7 @@ class _IndexableVector(_Vector[_T], Protocol):
 class _VectorSequence(_IndexableVector[_T], Protocol):
     """Adds `count` and `index` methods."""
 
-    def index(self, item: _T, /) -> int:
+    def count(self, item: _T, /) -> int:
         ...
 
 @type_check_only

@@ -195,7 +195,7 @@ def draw_transform(debug: carla.DebugHelper, trans: carla.Transform, col: carla.
         thickness=0.05, arrow_size=0.1, color=col, life_time=lt)
 
 
-def draw_junction(debug: carla.DebugHelper, junction : carla.Junction, l_time: float = 10):
+def draw_junction(debug: carla.DebugHelper, junction : carla.Junction, l_time: float = 2.):
     """Draws a junction bounding box and the initial and final waypoint of every lane."""
     # draw bounding box
     box = junction.bounding_box

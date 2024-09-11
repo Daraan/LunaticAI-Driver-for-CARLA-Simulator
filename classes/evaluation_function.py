@@ -136,7 +136,7 @@ class ConditionFunction(Generic[_CP, _CH]):
     """
     
     if READTHEDOCS and not TYPE_CHECKING:
-        actions: Dict[Hashable, AnyCallableAction] = {}
+        actions: dict[Hashable, CallableActionT] = {}  # noqa: F821
     
     _INVALID_NAMES: ClassVar[set[str]] = {'action', 'actions', 'false_action'}
     """Forbidden names for action functions."""
@@ -179,7 +179,6 @@ class ConditionFunction(Generic[_CP, _CH]):
     
     if READTHEDOCS and not TYPE_CHECKING:
         __new__.__annotations__["first_argument"] = Optional["str[name]" | AnyCallableCondition]  # noqa: F821
-        #evaluation_function : typing.Callable[typing.Concatenate[RuleT, "Context", _CP], _CH] | typing.Callable[typing.Concatenate["Context", _CP], _CH]
     
     def __init__(self,
                  evaluation_function: CallableCondition[RuleT, _CP, _CH],

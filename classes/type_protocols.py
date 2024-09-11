@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from classes.evaluation_function import ConditionFunction
     from classes.rule import Context, Rule
     from classes.worldmodel import WorldModel
+    from classes.keyboard_controls import KeyboardControl
 
 __all__ = [
     "RuleT",
@@ -65,7 +66,7 @@ _P = ParamSpec("_P", default=[])   # Free, e.g. for action function.
 _CP = ParamSpec("_CP", default=[])  # Generic of ConditionFunction
 
 RuleT = TypeVar("RuleT", bound="Rule", default="Rule")
-""":py:class:`typing.TypeVar`: A type variable for a :py:class:`.Rule` type."""
+"""A :py:class:`typing.TypeVar`: for a :py:class:`.Rule` type."""
 
 _A = TypeVar("_A", bound=carla.Actor, default=carla.Actor)
 
@@ -77,6 +78,9 @@ else:
 
 ActorList : TypeAlias = Union[_Generic_carlaActorList[_A], Sequence[_A]]
 """Type alias for a sequence of carla actors."""
+
+ControllerClassT = TypeVar("ControllerClassT", bound="KeyboardControl")
+"""A :py:class:`typing.TypeVar`: for a :py:class:`.KeyboardControl` type."""
 
 
 CallableCondition : TypeAlias = Union[
@@ -104,11 +108,11 @@ It can return an arbitrary value.
 
 
 CallableT = TypeVar("CallableT", bound=Callable[..., Any])
-""":py:class:`typing.TypeVar`: A type variable for a any callable."""
+"""A :py:class:`typing.TypeVar`: for a any callable."""
 
 AgentConfigT = TypeVar("AgentConfigT", bound="AgentConfig", default="AgentConfig",
                          infer_variance=True)
-""":py:class:`typing.TypeVar`: A type variable for a :py:class:`.AgentConfig` type."""
+"""A :py:class:`typing.TypeVar`: for a :py:class:`.AgentConfig` type."""
 
 ConditionFunctionLike = TypeAliasType("ConditionFunctionLike",
                                       Union[CallableCondition[RuleT, _CP, _CH],
@@ -208,7 +212,7 @@ LocalPlannerT = TypeVar("LocalPlannerT",
                          bound="LocalPlanner",
                          default="LocalPlanner",
                          infer_variance=True)  # is covariant, but avoid _co style for documentation
-""":py:class:`typing.TypeVar`: A type variable for a :py:class:`.LocalPlanner` type."""
+"""A :py:class:`typing.TypeVar`: for a :py:class:`.LocalPlanner` type."""
 
 class HasPlanner(Protocol[LocalPlannerT]):
     """

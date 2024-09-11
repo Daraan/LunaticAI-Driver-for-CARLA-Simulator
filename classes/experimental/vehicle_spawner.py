@@ -6,7 +6,7 @@ from classes.experimental.rule_interpreter import RuleInterpreter
 from classes.experimental.traffic_manager import TrafficManager
 from classes.experimental.vehicle import Vehicle
 from launch_tools import CarlaDataProvider
-from launch_tools.carla_service import initialize_carla
+from classes.worldmodel import GameFramework
 
 
 class VehicleSpawner(CarlaDataProvider):
@@ -22,7 +22,7 @@ class VehicleSpawner(CarlaDataProvider):
             return yaml.safe_load(file)
 
     def initialize_carla_service(self):
-        return initialize_carla(self.launch_config['map'], self.launch_config['host'], self.launch_config['port'])
+        return GameFramework.setup_client_map_and_world(self.launch_config['map'], self.launch_config['host'], self.launch_config['port'])
 
     def prepare_vehicles(self, world):
         driver_config_path = self.config['driver']['config']

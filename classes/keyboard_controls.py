@@ -95,13 +95,14 @@ class KeyboardControl:
                 cls.__doc__ = doc = "No docstring available"
         if doc == "No docstring available":
             return "No docstring available"
+
         return "======== Controls ===========\n" + doc + "\n============================\n"
 
     def parse_events(self, events=None) -> Union[Literal[True], Any]:
         """
         Parse the input events and return True if the loop should end.
         """
-        events = events if events is None else pygame.event.get()
+        events = events if events is not None else pygame.event.get()
         for event in events:  # pylint: disable=unused-variable
             self._check_help_event(event)
     
@@ -125,8 +126,8 @@ class PassiveKeyboardControl(KeyboardControl):
     Does not allow to control the vehicle. Only allows to
     quit the simulation.
 
-        ESC          : quit
-        H/?          : toggle help
+       | ESC          : quit
+       | H/?          : toggle help
     """
 
     def parse_events(self) -> "None | Literal[True]":
@@ -144,40 +145,40 @@ class RSSKeyboardControl(KeyboardControl):
     """
     Use ARROWS, WASD keys or mouse click and drag for control.
 
-        W            : throttle
-        S            : brake
-        AD           : steer
-        Q            : toggle reverse
-        Space        : hand-brake
-        P            : toggle autopilot (depends on setup)
+      | W            : throttle
+      | S            : brake
+      | AD           : steer
+      | Q            : toggle reverse
+      | Space        : hand-brake
+      | P            : toggle autopilot (depends on setup)
 
-        TAB          : change view
-        Backspace    : change vehicle (will unset externalActor; experimental)
+      | TAB          : change view
+      | Backspace    : change vehicle (will unset externalActor; experimental)
 
-        R            : toggle recording images to disk
+      | R            : toggle recording images to disk
 
-        F2           : toggle RSS visualization mode
-        F3           : increase log level
-        F4           : decrease log level
-        F5           : increase map log level
-        F6           : decrease map log level
-        B            : toggle RSS Road Boundaries Mode
-        G            : RSS check drop current route (experimental)
-        S            : toggle RSS (NotImplemented)
-        T            : toggle vehicle's telemetry visualization
-        O            : open/close vehicle's doors
-        N            : pause simulation (not in sync mode)
+      | F2           : toggle RSS visualization mode
+      | F3           : increase log level
+      | F4           : decrease log level
+      | F5           : increase map log level
+      | F6           : decrease map log level
+      | B            : toggle RSS Road Boundaries Mode
+      | G            : RSS check drop current route (experimental)
+      | S            : toggle RSS (NotImplemented)
+      | T            : toggle vehicle's telemetry visualization
+      | O            : open/close vehicle's doors
+      | N            : pause simulation (not in sync mode)
 
-        -- Experimental, recording --
-        
-        CTRL + R     : toggle recording of simulation (replacing any previous)
-        CTRL + P     : start replaying last recorded simulation (untested)
-        CTRL + +     : increments the start time of the replay by 1 second (+SHIFT = 10 seconds)
-        CTRL + -     : decrements the start time of the replay by 1 second (+SHIFT = 10 seconds)
+      | -- Experimental, recording --
+      |
+      | CTRL + R     : toggle recording of simulation (replacing any previous)
+      | CTRL + P     : start replaying last recorded simulation (untested)
+      | CTRL + +     : increments the start time of the replay by 1 second (+SHIFT = 10 seconds)
+      | CTRL + -     : decrements the start time of the replay by 1 second (+SHIFT = 10 seconds)
 
-        F1           : toggle HUD
-        H/?          : toggle help
-        ESC          : quit
+      | F1           : toggle HUD
+      | H/?          : toggle help
+      | ESC          : quit
     """
 
     MOUSE_STEERING_RANGE = 150
@@ -278,7 +279,7 @@ class RSSKeyboardControl(KeyboardControl):
             return
         sys.exit(1)
 
-    def parse_events(self, control: "Optional[carla.VehicleControl]" = None):
+    def parse_events(self, control: "Optional[carla.VehicleControl]" = None) -> "None | Literal[True]":
         if control:
             self._control = control  # Note this might be the rss updated controls
         if RSSKeyboardControl.signal_received:

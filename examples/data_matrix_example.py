@@ -8,14 +8,14 @@ import launch_tools
 from classes.experimental.traffic_manager import TrafficManager
 from classes.experimental.vehicle import Vehicle
 from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
-from launch_tools.carla_service import initialize_carla
+from classes.worldmodel import GameFramework
 
 vehicles = []
 
 
 def main():
     global client
-    client, world, world_map = initialize_carla("Town04", "127.0.0.1", 2000)
+    client, world, world_map = GameFramework.setup_client_map_and_world("Town04", "127.0.0.1", 2000)
 
     ego_bp, car_bp = launch_tools.prepare_blueprints()
 
@@ -52,7 +52,7 @@ def main():
     for i in m:
         print(i)
 
-    # driver1.spawn(carla_service.getWorld().get_map().get_spawn_points()[123])
+    # driver1.spawn(GameFramework.get_map().get_spawn_points()[123])
     # driver1.vehicle.focusCamera()
     # ego.setThrottle(8)
     # time.sleep(4)

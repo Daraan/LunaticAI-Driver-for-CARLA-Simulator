@@ -12,7 +12,7 @@ import time
 import weakref
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, ClassVar, List, NoReturn, Optional, Sequence, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, ClassVar, Iterable, List, NoReturn, Optional, Sequence, Union, overload
 from typing import cast as assure_type
 
 import carla
@@ -28,6 +28,7 @@ from omegaconf import DictConfig, OmegaConf, open_dict
 from agents.tools.config_creation import LaunchConfig, RssLogLevel, RssRoadBoundariesMode, config_store
 from classes import exceptions as _exceptions
 from classes.camera_manager import CameraManager
+from classes._sensor_interface import CustomSensorInterface
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 from classes.exceptions import AgentDoneException, ContinueLoopException
 from classes.hud import HUD, get_actor_display_name
@@ -44,14 +45,13 @@ if TYPE_CHECKING:
     from agents.lunatic_agent import LunaticAgent
     from agents.navigation.global_route_planner import GlobalRoutePlanner
     from agents.tools.config_creation import LunaticAgentSettings, RssRoadBoundariesModeAlias
-    from classes._sensor_interface import CustomSensorInterface
+    from classes.type_protocols import ControllerClassT
     from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
 
 from agents.tools.logs import logger
-from launch_tools import CarlaDataProvider, Literal, carla_service
+from launch_tools import CarlaDataProvider, Literal
 from launch_tools.blueprint_helpers import get_actor_blueprints
 
-_ControllerClass = TypeVar("_ControllerClass", bound=KeyboardControl)
 
 class AccessCarlaMixin:
     """
@@ -114,9 +114,23 @@ class AccessCarlaMixin:
 # ==============================================================================
 
 class GameFramework(AccessCarlaMixin, CarlaDataProvider):
+    """
+    A utility class to setup CARLA, pygame, Hydra_, the configuration and parts of the user interface
+    and the agent.
+    
+    A :py:class:`GameFramework` instance can be used to control the game loop  and work as a
+    handler for the :py:mod:`exceptions` of this project. Furthermore can it manage the cooldown
+    of the :py:class:`.Rule` classes.
+    
+    Note:
+        The GameFramework derives from the :py:class:`.CarlaDataProvider` which gives this class
+        more utility methods that currently are not included in this part of the documentation.
+    """
+    
     clock : ClassVar[pygame.time.Clock] = None
     display : ClassVar[pygame.Surface] = None
     controller: weakref.ProxyType[RSSKeyboardControl] | RSSKeyboardControl
+    """Parser for keyboard events"""
     
     traffic_manager : Optional[carla.TrafficManager] = None
     
@@ -337,11 +351,30 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     @staticmethod
     def init_carla(args: Optional[LaunchConfig] = None,
-                   timeout: float = 10.0,
+                   timeout: Optional[float] = None,
                    worker_threads: int = 0, *,
                    map_layers: carla.MapLayer = carla.MapLayer.All) -> carla.WorldSettings:
         """
         Initializes the :py:class:`carla.Client` and the connects it to the simulator.
+        
+        Parameters:
+            args: The configuration for the GameFramework.
+            timeout: The timeout for the :py:class:`carla.Client`. Default is 10.0.
+
+                .. deprecated:: _
+                    Use the :py:attr:`.LaunchConfig.timeout` attribute instead.
+            
+            worker_threads: See :py:class:`carla.Client`.
+            map_layers: The map layers to load. Default is :py:attr:`carla.MapLayer.All`.
+        
+        Returns:
+            The settings of the loaded world.
+            
+        Note:
+            This function has to be called before :py:attr:`client`, :py:attr:`world`
+            or :py:attr:`map` can be accessed.
+            Alternatively the client and :py:class:`CarlaDataProvider` need to be setup in a
+            different way beforehand.
         
         See Also:
             - :py:class:`carla.Client`
@@ -349,18 +382,84 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         """
         # Note: This sets up the CarlaDataProvider
         if args is None:
-            carla_service.initialize_carla(timeout=timeout,
+            timeout = timeout or 10.0
+            GameFramework.setup_client_map_and_world(timeout=timeout,
                                            worker_threads=worker_threads,
                                            map_layers=map_layers)
         else:
-            carla_service.initialize_carla(args.map,
-                                           args.host, args.port,
-                                           timeout=timeout,
-                                           worker_threads=worker_threads,
-                                           map_layers=map_layers,
-                                           sync=args.sync,
-                                           fps=args.fps)
+            GameFramework.setup_client_map_and_world(args.map,
+                            args.host, args.port,
+                            timeout=timeout or args.timeout,
+                            worker_threads=worker_threads,
+                            map_layers=map_layers,
+                            sync=args.sync,
+                            fps=args.fps)
         return CarlaDataProvider.get_world().get_settings()
+    
+    @staticmethod
+    def setup_client_map_and_world(
+            map_name: str = "Town04",
+            ip: str = "127.0.0.1",
+            port: int = 2000, *,
+            timeout: float = 10.0,
+            worker_threads: int = 0,
+            reload_world: bool = False,
+            reset_settings: bool = True,
+            map_layers: carla.MapLayer = carla.MapLayer.All,
+            sync: Union[bool, None] = True,
+            fps: int = 20
+        ) -> tuple[carla.Client, carla.World, carla.Map]:
+        """
+        Loads the :py:class:`carla.Client`, the :py:class:`carla.World`, and the :py:class:`carla.Map`.
+        
+        This is a subfunction of :py:meth:`.init_carla`
+        that can be used without a :py:class:`LaunchConfig`.
+        
+        See Also:
+            :py:meth:`.init_carla`
+            :py:meth:`carla.Client.set_timeout`
+            :py:meth:`carla.Client.reload_world`
+        """
+        client = CarlaDataProvider.get_client()
+        if client is None:
+            client = carla.Client(ip, port, worker_threads)
+            client.set_timeout(timeout)
+            CarlaDataProvider.set_client(client)
+
+        world = CarlaDataProvider.get_world()
+        if not world:
+            world = client.get_world()
+        _map = world.get_map()  # CarlaDataProvider map not yet set ->  set_world
+
+        if map_name and _map.name != "Carla/Maps/" + map_name:
+            world: carla.World = client.load_world(map_name, reset_settings, map_layers)
+        elif reload_world:
+            world = client.reload_world(reset_settings)
+            logger.info("Reloaded world - map_layers ignored.")
+        elif map_name is None:
+            logger.info("Provided map_name is None, skipped loading world. Assuming world is already loaded.")
+        else:
+            logger.info("skipped loading world '%s', already loaded - map_layers and reset_settings ignored.", _map.name)
+
+        world_settings = world.get_settings()
+        # Apply world settings
+        if sync is not None:
+            if sync:
+                logger.debug("Using synchronous mode.")
+                # apply synchronous mode if wanted
+                world_settings.synchronous_mode = True
+                world_settings.fixed_delta_seconds = 1 / fps  # 0.05
+                world.apply_settings(world_settings)
+            else:
+                logger.debug("Using asynchronous mode.")
+                world_settings.synchronous_mode = False
+            world.apply_settings(world_settings)
+        logger.info("World Settings:\n%s", world_settings)
+        
+        # Note: set_world loads multiple information. It has to be called after applying the world settings.
+        CarlaDataProvider.set_world(world)
+
+        return client, world, CarlaDataProvider.get_map()
     
     def init_traffic_manager(self, port: Optional[int] = None) -> carla.TrafficManager:
         """
@@ -442,7 +541,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     def make_controller(self,
                         world_model: "WorldModel",
-                        controller_class: "type[_ControllerClass]" = RSSKeyboardControl,
+                        controller_class: type[ControllerClassT] = RSSKeyboardControl,
                         **kwargs):
         """
         Creates a keyboard controller and attaches it to the world model.
@@ -549,10 +648,38 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     # -------- Tools --------
     
-    spawn_actor = staticmethod(carla_service.spawn_actor)
-    
-    destroy_actors = staticmethod(carla_service.destroy_actors)
-    
+    @staticmethod
+    def destroy_actors(actors: Iterable[carla.Actor | CustomSensorInterface]):
+        """
+        Destroys the given actors and customs sensors implemented in this package.
+        
+        Removes destroyed actors from the :py:class:`.CarlaDataProvider` actor pool.
+        """
+        batch: "list[carla.command.DestroyActor]" = []
+        for actor in actors:
+            if isinstance(actor, (carla.Sensor, CustomSensorInterface)):
+                actor.stop()
+            if isinstance(actor, carla.Actor):
+                if actor.is_alive:
+                    batch.append(carla.command.DestroyActor(actor))
+            else:
+                actor.destroy()
+
+        if batch and CarlaDataProvider._client:
+            try:
+                CarlaDataProvider._client.apply_batch(batch)
+            except RuntimeError as e:
+                if "time-out" in str(e):
+                    logger.warning("Timeout while destroying actors.")
+                else:
+                    raise
+            else:
+                for command in batch:
+                    if CarlaDataProvider.actor_id_exists(command.actor_id):
+                        del CarlaDataProvider._carla_actor_pool[command.actor_id]  # remove by batch and not by individual command
+        elif not CarlaDataProvider._client:
+            logger.error("No client available to destroy actors.")
+
     # -------- Context Manager --------
 
     def __call__(self, agent: "LunaticAgent"):
@@ -586,9 +713,9 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         frame = None
         if self._args.handle_ticks:  # i.e. no scenario runner doing it for us
             if CarlaDataProvider.is_sync_mode():
-                frame = self.world_model.world.tick()
+                frame = self.world_model.world.tick(self._args.timeout)
             else:
-                frame = self.world_model.world.wait_for_tick().frame
+                frame = self.world_model.world.wait_for_tick(self._args.timeout).frame
             CarlaDataProvider.on_carla_tick()
 
         if CarlaDataProvider.is_sync_mode():
@@ -980,7 +1107,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     player = actor
         return player
 
-    def _wait_for_external_actor(self, timeout=20, sleep=3) -> carla.Actor:
+    def _wait_for_external_actor(self, timeout: float = 20, sleep: float = 3) -> carla.Actor:
         """
         Does not resume the script until an external actor with the role name is found.
         
@@ -1032,7 +1159,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                     self.player = assure_type(carla.Vehicle, external_actor)
                 else:
                     self.player = assure_type(carla.Vehicle,
-                                    self._wait_for_external_actor(timeout=20))
+                                    self._wait_for_external_actor(timeout=self._args.timeout + 10))
             elif external_actor and self.player.id != external_actor.id:  # NOTE: even with same id different instances and hashes.
                 logger.warning("External actor found with role_name `%s` but different id. "
                                "Keeping the current actor (%s) and ignoring the external actor (%s)",
@@ -1159,8 +1286,9 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         """
         if self._args.handle_ticks:
             if self.sync:
-                return self.world.tick()
-            return self.world.wait_for_tick()
+                # if timeout is used it it might interfere with _wait_for_external_actor
+                return self.world.tick(self._args.timeout)
+            return self.world.wait_for_tick(self._args.timeout)
         return None
 
     #def tick(self, clock):

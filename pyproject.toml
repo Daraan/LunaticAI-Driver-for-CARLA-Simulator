@@ -98,6 +98,8 @@ ignore = [
     # too many ...
     "PLR0904",
     "PLR0913",
+
+    "A002",  # shadows builtin
 ]
 
 "agents/rules/*" = [

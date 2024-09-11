@@ -5,7 +5,7 @@ import typing as typing
 here = lambda s: "docs.webview.source._autodoc_type_aliases." + s
 
 autodoc_type_aliases = {
-    '_ActionsDictValues' : 'typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Any], typing.Callable[typing.Concatenate[Context, ...], typing.Any]]',
+    #'_ActionsDictValues' : 'typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Any], typing.Callable[typing.Concatenate[Context, ...], typing.Any]]',
     '_ActionsDictValues' : 'AnyCallableAction',
     
     '_ConditionType' : "typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Hashable], typing.Callable[typing.Concatenate[Context, ...], typing.Hashable]]",
@@ -13,15 +13,14 @@ autodoc_type_aliases = {
     
     '_CallableCondition' : "typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Hashable], typing.Callable[typing.Concatenate[Context, ...], typing.Hashable]]",
     
-    'CallableAction' : "typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Any], typing.Callable[typing.Concatenate[Context, ...], typing.Any]]",
-    'CallableAction' : "classes.type_protocols.CallableActionT",
+    #'CallableAction' : "typing.Union[typing.Callable[typing.Concatenate[Rule, Context, ...], typing.Any], typing.Callable[typing.Concatenate[Context, ...], typing.Any]]",
+    #'CallableAction' : "classes.type_protocols.CallableActionT",
+    'CallableAction' : "CallableActionT",
     'CallableCondition' : "classes.type_protocols.CallableConditionT",
     
     '_RegisterActionDecorator' : "Callable[[classes.type_protocols.CallableAction], classes.type_protocols.CallableAction]",
     
-    'CallableCondition[RuleT, _CP, _CH]' : "CallableConditionT",
-    
-    'CallableAction[Self, [], Any],' : "CallableActionT",
+    'ControllerClassT' : "classes.type_protocols.ControllerClassT",
     
     '_Rule' : "Rule",
     '_CP' : 'typing.ParamSpec',
@@ -46,7 +45,7 @@ autodoc_type_aliases = {
     #'Dict' : 'typing.Dict',
     #'Phase' : 'classes.constants.Phase',
     #'NoReturn' : 'typing.NoReturn',
-    #'FrozenSet' : 'typing.FrozenSet',
+    #'FrozenSet' : 'frozenset',
     #'Iterable' : 'typing.Iterable',
 }
 

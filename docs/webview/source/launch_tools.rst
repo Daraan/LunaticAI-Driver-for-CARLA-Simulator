@@ -32,17 +32,6 @@ launch\_tools.blueprint\_helpers module
    :show-inheritance:
 
 
-.. _launch_tools/carla_service:
-
-launch\_tools.carla\_service module
------------------------------------
-
-.. automodule:: launch_tools.carla_service
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
 .. _launch_tools/csv_tools:
 
 launch\_tools.csv\_tools module

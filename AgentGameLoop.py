@@ -27,7 +27,6 @@ from classes import exceptions
 from classes.constants import Phase
 from classes.keyboard_controls import RSSKeyboardControl  # Alternative: PassiveKeyboardControl
 from classes.worldmodel import GameFramework, WorldModel
-from launch_tools import CarlaDataProvider
 
 # ==============================================================================
 # Globals
@@ -83,7 +82,7 @@ def game_loop(args: LaunchConfig):
         ego_bp, car_bp = launch_tools.blueprint_helpers.get_contrasting_blueprints()
         
         # Spawn Others
-        CarlaDataProvider.request_new_batch_actors("vehicle.tesla.model3",
+        GameFramework.request_new_batch_actors("vehicle.tesla.model3",
                                                     AMOUNT_ACTORS,
                                                     spawn_points=[sp for i, sp in enumerate(spawn_points[:AMOUNT_ACTORS + 1])
                                                                      if i != EGO_SPAWN_IDX],
@@ -238,11 +237,6 @@ def game_loop(args: LaunchConfig):
         if game_framework is not None:
             # save world for usage after CDP cleanup
             game_framework.cleanup()    # includes/or is CarlaDataProvider.cleanup()
-        else:
-            CarlaDataProvider.cleanup()  # NOTE: unsets world, map, client, destroys actors
-        agent = None
-        world_model = None
-        game_framework = None
 
         pygame.quit()
 

@@ -83,7 +83,7 @@ def exclude_cdp():
     if exclude_cdp in subcontent:
         return
     # Do not write double online
-    if not ":exclude-members:" in subcontent:
+    if ":exclude-members:" not in subcontent:
         subcontent = re.sub(".. automodule:: classes.rule\n", ".. automodule:: classes.rule\n   :exclude-members: " + exclude_cdp + "\n", subcontent)
     else:
         subcontent = re.sub(r':exclude-members:"', ':exclude-members: ' + exclude_cdp + ", ", subcontent)
@@ -131,10 +131,11 @@ def patch_rule():
         return
     
     if ":exclude-members: \"" in subcontent:
+        # NOTE: Should start with ", "!
         subcontent = re.sub(r':exclude-members: "', ':special-members: __call__\n   :exclude-members: ", MultiRule, RandomRule, BlockingRule, ', subcontent, count=1)
     else:
         assert ":exclude-members:" not in subcontent, "Double execution of patch_rule"
-        subcontent = re.sub(".. automodule:: classes.rule\n", 
+        subcontent = re.sub(".. automodule:: classes.rule\n",
                             ':special-members: __call__\n   :exclude-members: ", MultiRule, RandomRule, BlockingRule"', subcontent)
 
     
@@ -144,6 +145,26 @@ def patch_rule():
 
     _change_contents("classes.rst", content)
             
+
+def show_inheritance():
+    """ Insert show-inheritance directive with special members"""
+    files = {"classes.rst" : {"classes.worldmodel" : "get_client, get_map, get_world"}}
+    for file, updates in files.items():
+        content = _get_contents(file)
+        
+        for module, members in updates.items():
+            start = content.find(".. automodule:: "+module+"\n")
+            end = content.find("----", start)
+            subcontent = content[start:end]
+            
+            if ":inherited-members: " + members in subcontent:
+                continue
+            subcontent = re.sub(r":members:(\n   :inherited-members:)?", r"\n   ".join([":members:",
+                                                                    ":inherited-members: " + members,
+            ]), subcontent, count=1)
+            content = content[:start] + subcontent + content[end:]
+        
+        _change_contents(file, content)
         
 def remove_inheritance():
     """ Insert no-inherited-members directive to all modules"""
@@ -292,6 +313,8 @@ def remove_init():
             elif include_only == "all":
                 directive = ":special-members:"
                 include_only = "<blank>"
+            else:
+                assert directive  # this is then from last iteration
             start = content.find(".. automodule:: "+member+"\n")
             end = content.find("----", start)
             subcontent = content[start:end]
