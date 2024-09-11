@@ -4,6 +4,7 @@ __all__ = [
     'get_car_coords',
 ]
 
+
 def get_car_coords(matrix) -> tuple[int, int]:
     """
     Position of the ego vehicle in the matrix.

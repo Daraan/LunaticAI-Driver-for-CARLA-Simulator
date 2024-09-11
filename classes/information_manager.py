@@ -29,6 +29,7 @@ _P = ParamSpec("_P")
 DRIVING_SPEED_THRESHOLD = 0.05  # m/s >= check
 STOPPED_SPEED_THRESHOLD = 0.05  # m/s < check
 
+
 class InformationManager:
     """
     Tracks global information, e.g. all actors, traffic lights, etc. as well as
@@ -40,14 +41,14 @@ class InformationManager:
         shared across all instances, this information is constant for the current tick.
     """
     
-    _tick : ClassVar[int] = 0
+    _tick: ClassVar[int] = 0
     """Current tick to not double class :py:meth:`global_tick`"""
     
     # Instance Variables
-    relevant_traffic_light : Union[carla.TrafficLight, None] = None
+    relevant_traffic_light: Union[carla.TrafficLight, None] = None
     """Result of :py:meth:`.CarlaDataProvider.get_next_traffic_light`"""
     
-    relevant_traffic_light_distance : float = float('inf')
+    relevant_traffic_light_distance: float = float('inf')
     """
     Distance to the :py:attr:`relevant_traffic_light`
     Is float('inf') if :py:attr:`relevant_traffic_light` is None.
@@ -65,25 +66,25 @@ class InformationManager:
     Tracks different :py:class:`AgentState` and the amount of ticks the agent is in this state.
     """
     
-    _vehicle_speed : float  # m/s
+    _vehicle_speed: float  # m/s
     
-    gathered_information : "InformationManager.Information"
+    gathered_information: "InformationManager.Information"
     """:py:class:`.InformationManager.Information` gathered during :py:meth:`tick`"""
     
     # Class & Global Variables
-    vehicles : ClassVar["list[carla.Vehicle]"]
+    vehicles: ClassVar["list[carla.Vehicle]"]
     """List of all tracked vehicles"""
     
-    walkers : ClassVar["list[carla.Walker]"]
+    walkers: ClassVar["list[carla.Walker]"]
     """List of all tracked pedestrians"""
     
-    static_obstacles : ClassVar["list[carla.Actor]"]
+    static_obstacles: ClassVar["list[carla.Actor]"]
     """List of all tracked static obstacles"""
     
-    obstacles : ClassVar["list[carla.Actor]"]
+    obstacles: ClassVar["list[carla.Actor]"]
     """Union of :py:attr:`vehicles`, py:attr:`walkers` and py:attr:`static_obstacles`"""
     
-    lights_map : ClassVar["Dict[int, carla.Waypoint]"] = {}
+    lights_map: ClassVar["Dict[int, carla.Waypoint]"] = {}
     """Map of traffic lights to their trigger waypoints"""
     
     frame: ClassVar["int | None"] = None
@@ -117,7 +118,7 @@ class InformationManager:
         """
         Updates the state counter and the state checked dict when the function is called.
         """
-        def wrapper(func : Callable[Concatenate[Self, _P], _T]) ->  Callable[Concatenate[Self, _P], _T]:  # -> _Wrapped[Callable[Concatenate[Self, _P], Any], bool | Non...:
+        def wrapper(func: Callable[Concatenate[Self, _P], _T]) ->  Callable[Concatenate[Self, _P], _T]:  # -> _Wrapped[Callable[Concatenate[Self, _P], Any], bool | Non...:
             @wraps(func)
             def inner(self: Self, *args: _P.args, **kwargs: _P.kwargs):
                 result = func(self, *args, **kwargs)
@@ -270,7 +271,7 @@ class InformationManager:
         self.distances: Dict[carla.Actor, float] = {}
         
         @cached(cache=self.distances)
-        def dist(v : carla.Actor):
+        def dist(v: carla.Actor):
             if not v.is_alive:
                 logger.warning("Actor is not alive - this should not happen.")
                 return _v_filter_dist  # filter out
@@ -279,7 +280,7 @@ class InformationManager:
         # Filter nearby
         # Vehicles
         _v_filter_dist = self._agent.config.obstacles.nearby_vehicles_max_distance
-        self.vehicles_nearby : List[carla.Vehicle] = []
+        self.vehicles_nearby: List[carla.Vehicle] = []
         for v in self.vehicles:
             if v.id != self._vehicle.id and dist(v) < _v_filter_dist:
                 self.vehicles_nearby.append(v)
@@ -345,7 +346,7 @@ class InformationManager:
         
         current_waypoint: carla.Waypoint
         current_speed: float
-        current_states : Dict[AgentState, int]
+        current_states: Dict[AgentState, int]
         
         relevant_traffic_light: Optional[carla.TrafficLight]
         relevant_traffic_light_distance: float
@@ -354,7 +355,7 @@ class InformationManager:
         walkers: List[carla.Walker]
         static_obstacles: List[carla.Actor]
         """Filtered obstacles by InformationManager.OBSTACLE_FILTER"""
-        obstacles : List[carla.Actor]
+        obstacles: List[carla.Actor]
         """Union of vehicles, walkers and static_obstacles"""
         
         walkers_nearby: List[carla.Walker]
@@ -362,14 +363,14 @@ class InformationManager:
         static_obstacles_nearby: List[carla.Actor]
         obstacles_nearby: List[carla.Actor]
         
-        traffic_lights_nearby : List[carla.TrafficLight]
+        traffic_lights_nearby: List[carla.TrafficLight]
         
         distances: Dict[carla.Actor, float]
         """Distances to all actors in :py:attr:`obstacles`"""
 
     # ---- Global Information ----
     
-    OBSTACLE_FILTER : str = "static.prop.[cistmw]*"
+    OBSTACLE_FILTER: str = "static.prop.[cistmw]*"
     """
     fnmatch for obstacles that the agent will consider in its path.
     https://carla.readthedocs.io/en/latest/bp_library/#static
@@ -380,7 +381,7 @@ class InformationManager:
         return CarlaDataProvider._traffic_light_map
     
     @staticmethod
-    def get_trafficlight_trigger_waypoint(traffic_light : "carla.TrafficLight") -> carla.Waypoint:
+    def get_trafficlight_trigger_waypoint(traffic_light: "carla.TrafficLight") -> carla.Waypoint:
         """
         Get the location where the traffic light is triggered.
         """

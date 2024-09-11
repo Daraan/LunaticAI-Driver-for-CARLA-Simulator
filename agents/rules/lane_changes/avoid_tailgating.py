@@ -1,15 +1,18 @@
 """Rule that avoids a tailgator by changing lanes."""
 
 from agents.rules.lane_changes.other_rules import rule_lane_change
-from agents.tools.hints import ObstacleDetectionResult
 from agents.tools.lunatic_agent_tools import detect_vehicles
 from agents.tools.misc import get_speed
 from classes.constants import Phase, RoadOption, RulePriority
 from classes.rule import ConditionFunction, Context, Rule
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from agents.tools.hints import ObstacleDetectionResult
+
 
 @ConditionFunction(truthy=True)
-def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context"):
+def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx: "Context"):
     """
     Vehicle wants to stay in lane, is not at a junction, and has a minimum speed
     and did not avoided tailgating in the last 200 steps
@@ -39,6 +42,7 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx : "Context"):
     if check_behind.obstacle_was_found and ctx.live_info.current_speed < get_speed(check_behind.obstacle):  # pyright: ignore[reportArgumentType]
         return check_behind
     return False
+
 
 class AvoidTailgatorRule(Rule):
     phase = Phase.DETECT_CARS | Phase.END

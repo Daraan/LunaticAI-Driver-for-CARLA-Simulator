@@ -4,7 +4,7 @@ This submodule provides necessary imports that are not available in all python v
 """
 import sys
 
-__all__ = ['singledispatchmethod', 'Literal', 'ast_parse']
+__all__ = ['Literal', 'ast_parse', 'singledispatchmethod']
 
 
 # singledispatchmethod
@@ -19,7 +19,7 @@ else:
     _T = TypeVar('_T')
     _P = ParamSpec('_P')
     _C = TypeVar("_C", bound=Callable[..., Any])
-    def singledispatchmethod(func : _C) -> _C:
+    def singledispatchmethod(func: _C) -> _C:
         """
         Works like :py:class:`functools.singledispatch`, but for methods.
         Backward compatible code of :py:class:`functools.singledispatchmethod`

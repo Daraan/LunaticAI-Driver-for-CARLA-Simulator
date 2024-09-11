@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     assert ad  # remove Unbound type # type: ignore
     from classes.rss_sensor import RssStateInfo
 
+
 class Color:
     black = (0, 0, 0)
     gray = (128, 128, 128)
@@ -49,9 +50,10 @@ class Color:
     carla_green = carla.Color(0, 255, 0)
     carla_blue = carla.Color(0, 0, 255)
 
+
 class RssStateVisualizer:
 
-    def __init__(self, display_dimensions: tuple[int, int], font : pygame.font.Font, world: carla.World):
+    def __init__(self, display_dimensions: tuple[int, int], font: pygame.font.Font, world: carla.World):  # noqa: ARG002
         self._surface = None
         self._display_dimensions = display_dimensions
         self._font = font
@@ -89,7 +91,7 @@ class RssStateVisualizer:
                 mode = "U"
             elif state.actor_calculation_mode == ad.rss.map.RssMode.NotRelevant:
                 mode = "-"
-            item = '%4s % 2dm %8s' % (mode, state.distance, object_name)
+            item = f'{mode:>4} {state.distance:>2.0f}m {object_name:>8}'
 
             surface = self._font.render(item, True, Color.white)
             state_surface.blit(surface, (5, v_offset))
@@ -166,12 +168,12 @@ class RssUnstructuredSceneVisualizerMode(Enum):
 class RssUnstructuredSceneVisualizer(CustomSensorInterface):
     """Provides a top-view over the setting?"""
 
-    def __init__(self, parent_actor: carla.Actor, world, display_dimensions: tuple[int, int], gamma_correction: float = 2.2):
+    def __init__(self, parent_actor: carla.Actor, world, display_dimensions: tuple[int, int], gamma_correction: float = 2.2):  # noqa: ARG002
         self._last_rendered_frame = -1
         self._surface = None
         self._current_rss_surface: Optional[Tuple[int, pygame.Surface]] = None
         self.current_camera_surface: Tuple[int, pygame.Surface] = (0, None)
-        self._world : carla.World = CarlaDataProvider.get_world()
+        self._world: carla.World = CarlaDataProvider.get_world()
         self._parent_actor = parent_actor
         self._display_dimensions = display_dimensions
         self._camera = None  # type: ignore[assignment]
@@ -225,7 +227,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
             if bp.has_attribute('gamma'):
                 bp.set_attribute('gamma', str(self._gamma))
 
-            self._camera : carla.Sensor = assure_type(carla.Sensor, self._world.spawn_actor(
+            self._camera: carla.Sensor = assure_type(carla.Sensor, self._world.spawn_actor(
                                                         bp,
                                                         carla.Transform(carla.Location(x=7.5, z=10), carla.Rotation(pitch=-90)),
                                                         attach_to=self._parent_actor))
@@ -236,7 +238,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
                 lambda image: self._parse_image(weak_self, image)  # type: ignore[arg-type]
                 )
 
-    def update_surface(self, cam_frame : Union[int, None], rss_frame: Union[int, None]):
+    def update_surface(self, cam_frame: Union[int, None], rss_frame: Union[int, None]):
         if self._mode == RssUnstructuredSceneVisualizerMode.disabled:
             return
         render = False
@@ -591,7 +593,6 @@ class RssBoundingBoxVisualizer:
         # World coordinates
         return np.dot(bb_world_matrix, np.transpose(cords))
 
-
     @staticmethod
     def _world_to_sensor(cords, camera_transform):
         """
@@ -617,14 +618,14 @@ class RssDebugVisualizationMode(Enum):
 
 class RssDebugVisualizer:
 
-    def __init__(self, player: carla.Vehicle, world : carla.World, visualization_mode: Union[RssDebugVisualizationMode, str, int] = RssDebugVisualizationMode.Off):
+    def __init__(self, player: carla.Vehicle, world: carla.World, visualization_mode: Union[RssDebugVisualizationMode, str, int] = RssDebugVisualizationMode.Off):
         self._world = world
         self._player = player
         if isinstance(visualization_mode, str):
             visualization_mode = RssDebugVisualizationMode[visualization_mode]
         elif isinstance(visualization_mode, int):
             visualization_mode = RssDebugVisualizationMode(visualization_mode)
-        self._visualization_mode : RssDebugVisualizationMode = visualization_mode
+        self._visualization_mode: RssDebugVisualizationMode = visualization_mode
 
     def toggleMode(self):
         if self._visualization_mode == RssDebugVisualizationMode.All:

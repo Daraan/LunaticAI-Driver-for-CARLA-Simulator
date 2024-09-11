@@ -10,7 +10,8 @@ if TYPE_CHECKING:
 # TODO: Despite a few constants very similar to vehicle to the collision_detection_manager,
 # might be fusable
 
-def pedestrian_detection_manager(self : "LunaticAgent") -> ObstacleDetectionResult:
+
+def pedestrian_detection_manager(self: "LunaticAgent") -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     with any pedestrian.

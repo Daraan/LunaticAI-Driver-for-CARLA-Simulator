@@ -10,7 +10,6 @@ and `carla.Client.apply_batch_sync`.
 # Fixable low-priority
 # pylint: disable=line-too-long,R0801
 
-
 from typing import Protocol, overload, type_check_only  # pylint: disable=no-name-in-module
 
 from libcarla import (
@@ -74,7 +73,7 @@ class ApplyAngularImpulse(_IsCommand):
 
         Args:
             `actor (Union[Actor,int])`: Actor or its ID to whom the command will be applied to.\n
-            `impulse (Vector3D)`: (degrees*s)\n
+            `impulse (Vector3D)`: (degrees*s)
         """
     # endregion
 

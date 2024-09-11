@@ -28,20 +28,26 @@ if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
     from classes.keyboard_controls import KeyboardControl
 
-__all__ = [
-    "RuleT",
-    "CallableCondition",
-    "CallableAction",
-    "CallableT",
+__all__ = [  # noqa: RUF022
     "AgentConfigT",
+    
+    "RuleT",
+    "CallableT",
+    # Callables
+    "CallableCondition",
+    "CallableConditionT",
+    "AnyCallableCondition",
+    
+    # ConditionFunction
     "ConditionFunctionLike",
+    "ConditionFunctionLikeT",
     "AnyConditionFunctionLike",
     "AnyConditionFunctionLikeT",
-    "AnyCallableCondition",
-    "CallableConditionT",
-    "AnyCallableAction",
+    
+    # Action
+    "CallableAction",
     "CallableActionT",
-    "ConditionFunctionLikeT",
+    "AnyCallableAction",
     
     # Protocols
     "HasBaseSettings",
@@ -76,14 +82,14 @@ if TYPE_CHECKING:
 else:
     _Generic_carlaActorList = TypeAliasType("_Generic_carlaActorList", carla.ActorList, type_params=(_A,))
 
-ActorList : TypeAlias = Union[_Generic_carlaActorList[_A], Sequence[_A]]
+ActorList: TypeAlias = Union[_Generic_carlaActorList[_A], Sequence[_A]]
 """Type alias for a sequence of carla actors."""
 
 ControllerClassT = TypeVar("ControllerClassT", bound="KeyboardControl")
 """A :py:class:`typing.TypeVar`: for a :py:class:`.KeyboardControl` type."""
 
 
-CallableCondition : TypeAlias = Union[
+CallableCondition: TypeAlias = Union[
                         Callable[Concatenate[RuleT, "Context", _CP], _CH],  # With Rule
                         Callable[Concatenate["Context", _CP], _CH]          # Only Context
                         ]
@@ -94,7 +100,7 @@ or only a :py:class:`.Context`, additional keyword arguments are allowed.
 It must return a :term:`hashable` value.
 """
 
-CallableAction : TypeAlias = Union[
+CallableAction: TypeAlias = Union[
                         Callable[Concatenate[RuleT, "Context", _P], _T],  # With Rule
                         Callable[Concatenate["Context", _P], _T]          # Only Context
                         ]
@@ -147,7 +153,7 @@ if TYPE_CHECKING or sys.version_info >= (3, 11):
     AnyCallableCondition: TypeAlias = CallableCondition[RuleT, ..., Hashable]
     """Non generic variant of :py:obj:`CallableCondition`, can use used as :py:class:`typing.TypeAlias`."""
 
-    AnyCallableAction : TypeAlias = CallableAction[RuleT, ..., Any]
+    AnyCallableAction: TypeAlias = CallableAction[RuleT, ..., Any]
     """Non generic variant of :py:obj:`CallableAction`, can use used as :py:class:`typing.TypeAlias`."""
     
     ConditionFunctionLikeT = TypeVar("ConditionFunctionLikeT", bound=ConditionFunctionLike["Rule", ..., Hashable])
@@ -199,6 +205,7 @@ CallableActionT = TypeVar("CallableActionT", bound=AnyCallableAction)
 class HasBaseSettings(Protocol[AgentConfigT]):
     BASE_SETTINGS: type[AgentConfigT]
     
+
 class HasConfig(Protocol[AgentConfigT]):
     @property  # Note: Must be read-only, can be normal attribute when implemented
     def config(self) -> AgentConfigT:
@@ -213,6 +220,7 @@ LocalPlannerT = TypeVar("LocalPlannerT",
                          default="LocalPlanner",
                          infer_variance=True)  # is covariant, but avoid _co style for documentation
 """A :py:class:`typing.TypeVar`: for a :py:class:`.LocalPlanner` type."""
+
 
 class HasPlanner(Protocol[LocalPlannerT]):
     """
@@ -234,13 +242,16 @@ class HasPlanner(Protocol[LocalPlannerT]):
         """
         ...
 
+
 class HasPlannerWithConfig(HasPlanner["DynamicLocalPlanner"], HasConfig[AgentConfigT], Protocol):
     """
     Uses a :py:class:`.DynamicLocalPlanner` that works with a :py:class:`.AgentConfig`
     """
     
+
 class HasContext(Protocol):
     ctx: "Context"
+
 
 class Has_WorldModel(Protocol):
     _world_model: "WorldModel"
@@ -248,27 +259,32 @@ class Has_WorldModel(Protocol):
     :meta public:
     """
     
+
 class HasStates(Protocol):
     current_states: dict["AgentState", int]
     
+
 class Has_Vehicle(Protocol):
     _vehicle: carla.Vehicle
     """
     :meta public:
     """
     
+
 class UseableWithDynamicPlanner(HasPlannerWithConfig, Has_Vehicle, HasContext, Protocol):
     """Can be used with :py:class:`.DynamicLocalPlanner`."""
+
 
 class CanDetectObstacles(Has_Vehicle, HasPlanner,
                          HasConfig["BehaviorAgentSettings | LunaticAgentSettings"],
                          Protocol):
     """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles`."""
     
+
 class CanDetectNearbyObstacles(CanDetectObstacles, Protocol):
     """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`."""
     
-    all_obstacles_nearby : list[carla.Actor]
+    all_obstacles_nearby: list[carla.Actor]
     """Actors that are considered to be near the actor."""
 
     def max_detection_distance(self, lane: Literal["same_lane", "other_lane"]) -> float:
@@ -285,13 +301,14 @@ class CanDetectNearbyObstacles(CanDetectObstacles, Protocol):
         """
         ...
 
+
 class CanDetectNearbyTrafficLights(CanDetectObstacles, HasStates, Has_WorldModel, Protocol):
     """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`."""
     
-    traffic_lights_nearby : list[carla.TrafficLight]
+    traffic_lights_nearby: list[carla.TrafficLight]
     """Actors that are considered to be near the actor."""
     
-    _last_traffic_light : Optional[carla.TrafficLight]
+    _last_traffic_light: Optional[carla.TrafficLight]
     """
     Last traffic light that was detected. At a red traffic light it can be checked if this is still
     red.
@@ -302,7 +319,7 @@ class CanDetectNearbyTrafficLights(CanDetectObstacles, HasStates, Has_WorldModel
     :meta public:
     """
     
-    _current_waypoint : carla.Waypoint
+    _current_waypoint: carla.Waypoint
     """
     :meta public:
     """

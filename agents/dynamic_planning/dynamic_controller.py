@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 STEERING_UPDATE_SPEED = 0.1
 
+
 class DynamicVehiclePIDController(VehiclePIDController):
     """
     VehiclePIDController is the combination of two PID controllers
@@ -199,7 +200,7 @@ class DynamicPIDLateralController(PIDLateralController):
         self._vehicle = agent._vehicle
         self._e_buffer = deque(maxlen=10)
 
-    def _pid_control(self, waypoint : carla.Waypoint, vehicle_transform : carla.Transform):
+    def _pid_control(self, waypoint: carla.Waypoint, vehicle_transform: carla.Transform):
         """
         Estimate the steering angle of the vehicle based on the PID equations
 

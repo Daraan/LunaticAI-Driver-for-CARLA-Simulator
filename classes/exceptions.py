@@ -7,18 +7,19 @@ import carla
 from classes.constants import Hazard, RuleResult
 
 __all__ = [
-    "UserInterruption",
-    "LunaticAgentException",
     "AgentDoneException",
     "ContinueLoopException",
-    "SkipInnerLoopException",
-    "EmergencyStopException",
-    "UpdatedPathException",
-    "NoFurtherRulesException",
     "DoNotEvaluateChildRules",
+    "EmergencyStopException",
+    "LunaticAgentException",
+    "NoFurtherRulesException",
+    "SkipInnerLoopException",
     "UnblockRuleException",
+    "UpdatedPathException",
+    "UserInterruption",
     "_RuleResultException"
 ]
+
 
 class UserInterruption(Exception):
     """
@@ -33,10 +34,12 @@ class UserInterruption(Exception):
         Is not a :py:class:`LunaticAgentException`.
     """
 
+
 class LunaticAgentException(Exception):
     """
     Base class for all custom exceptions that influence the Workflow of the :py:class:`.LunaticAgent`.
     """
+
 
 class AgentDoneException(LunaticAgentException):
     """
@@ -66,9 +69,9 @@ class SkipInnerLoopException(LunaticAgentException):
     Can be raised in `LunaticAgent._inner_step`. A new control object must be provided.
     """
 
-    planned_control : carla.VehicleControl
+    planned_control: carla.VehicleControl
 
-    def __init__(self, planned_control : carla.VehicleControl, *args: object) -> None:
+    def __init__(self, planned_control: carla.VehicleControl, *args: object) -> None:
         if not isinstance(planned_control, carla.VehicleControl):
             raise TypeError("Must provide a carla.VehicleControl instance to raise a SkipInnerLoopException")
         super().__init__(*args)
@@ -77,7 +80,7 @@ class SkipInnerLoopException(LunaticAgentException):
 
 class EmergencyStopException(LunaticAgentException):
 
-    hazards_detected : "set[Hazard]"
+    hazards_detected: "set[Hazard]"
 
     def __init__(self, hazards: "set[Hazard]", *args: object) -> None:
         super().__init__(*args)
@@ -91,6 +94,7 @@ class UpdatedPathException(LunaticAgentException):
     Rules that replan on Phase.DONE | END, should throw this exception at the end.
     """
 
+
 class _RuleResultException(LunaticAgentException):
     """
     Abstract class for exceptions that can be raised by rules
@@ -99,11 +103,12 @@ class _RuleResultException(LunaticAgentException):
     :meta public:
     """
     
-    result : Any = RuleResult.NO_RESULT
+    result: Any = RuleResult.NO_RESULT
     
-    def __init__(self, result: Any = RuleResult.NO_RESULT, *args : object):
+    def __init__(self, result: Any = RuleResult.NO_RESULT, *args: object):
         super().__init__(*args)
         self.result = result
+
 
 class NoFurtherRulesException(_RuleResultException):
     """
@@ -122,6 +127,7 @@ class DoNotEvaluateChildRules(_RuleResultException):
     Can also be raised by child rules to prevent the evaluation of further child rules.
     """
     
+
 class UnblockRuleException(_RuleResultException):
     """
     Can be raised in a :py:class:`BlockedRule` to end it.

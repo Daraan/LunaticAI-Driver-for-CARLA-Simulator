@@ -7,6 +7,7 @@ __all__ = [
     'rule_lane_change'
 ]
 
+
 def rule_lane_change(self: "Rule", ctx: "Context", order=("left", "right"), **kwargs):
     """
     Helper function to execute lane changes

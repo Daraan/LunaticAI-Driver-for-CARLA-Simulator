@@ -7,7 +7,7 @@
 
 # Autodoc command:
 # sphinx-apidoc -H "Modules and Packages" -d 3 -f -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools  classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools* docs/* conf/ *car_detection_matrix/[im]* _* *lane_explorer*
-# sphinx-build -M html docs/webview/source/ docs/webview/build/ -v -E 
+# sphinx-build -M html docs/webview/source/ docs/webview/build/ -v -E
 
 # -- Path setup --------------------------------------------------------------
 
@@ -16,16 +16,15 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+from pathlib import Path
 import sys
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
-    from typing import Literal
     import sphinx
     import sphinx.application
     import sphinx.environment
     import sphinx.addnodes
-    import docutils.nodes
 
 
 PROJECT_ROOT = '../../../'
@@ -43,17 +42,24 @@ RTD_ONLINE = os.environ["READTHEDOCS"] != "local"
 
 print("Are we local or on readthedocs (True)?", os.environ["READTHEDOCS"])
 
+# ruff: noqa: E402
 # must be done after adjusting the sys.path
 from docs.webview.source import _conf_extensions
-from docs.webview.source._conf_extensions import (InjectClassRole, FileResolver, autodoc_skip_member, before_type_hint_cleaner, missing_reference_handle, 
-                                                  source_read_listener, include_read_listener, 
-                                                  REMOTE_URL, type_hint_cleaner,)
+from docs.webview.source._conf_extensions import (
+    InjectClassRole,
+    FileResolver,
+    before_type_hint_cleaner,
+    missing_reference_handle,  # noqa: F401
+    source_read_listener, include_read_listener,
+    REMOTE_URL, type_hint_cleaner,
+)
+from docs.webview.source._autodoc_type_aliases import autodoc_type_aliases
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'LunaticAI'
-copyright = ""
+copyright = ""  # noqa: A001
 author = ""
 
 
@@ -118,8 +124,10 @@ extensions = ["myst_parser",
 VERSION = os.environ.get("READTHEDOCS_VERSION", "latest")
 
 if VERSION in ("latest", "main"):
-    extensions.append('sphinx.ext.viewcode')
-    extensions.append('sphinx.ext.githubpages')
+    extensions.extend([
+        'sphinx.ext.viewcode',
+        'sphinx.ext.githubpages',
+    ])
     # https://sphinxemojicodes.readthedocs.io/en/stable/
     # https://sphinxemojicodes.readthedocs.io/#supported-codes
 if VERSION == "latest" and not RTD_ONLINE:
@@ -169,20 +177,20 @@ autodoc_default_options = {
     'inherited-members': True,
 }
 """
-The supported options are 'members', 'member-order', 'undoc-members', 'private-members', 
-'special-members', 'inherited-members', 'show-inheritance', 'ignore-module-all', 
+The supported options are 'members', 'member-order', 'undoc-members', 'private-members',
+'special-members', 'inherited-members', 'show-inheritance', 'ignore-module-all',
 'imported-members', 'exclude-members', 'class-doc-from' and 'no-value'.
 """
 
 autodoc_member_order = 'groupwise' # type: Literal["alphabetical", "bysource", "groupwise"]
 autodoc_class_signature = "mixed" # "separated" or "mixed"
 
-autodoc_mock_imports = ["leaderboard", "pygame", "shapely", 
-                                   "py_trees", "pandas", "numpy", "matplotlib", 
+autodoc_mock_imports = ["leaderboard", "pygame", "shapely",
+                                   "py_trees", "pandas", "numpy", "matplotlib",
                                    "pylab", "networkx", "graphviz", "cachetools", "six", "scenario_runner", "srunner",
                                    "hydra", "carla"]
 
-from docs.webview.source._autodoc_type_aliases import autodoc_type_aliases
+
 autodoc_type_aliases = autodoc_type_aliases
 
 autodoc_typehints="both"
@@ -207,7 +215,7 @@ If True, the default argument values of functions will be not evaluated on gener
 # https://pypi.org/project/sphinx-autodoc-typehints/
 
 
-typehints_defaults = "comma" # type: Literal["comma", "braces", "braces-after"] | None
+typehints_defaults: Literal["comma", "braces", "braces-after"] | None = "comma"
 always_use_bars_union = True # | instead of Union
 always_document_param_types = False # default False
 typehints_fully_qualified = False # Use full names for types
@@ -215,15 +223,15 @@ typehints_fully_qualified = False # Use full names for types
 """
 typehints_formatter = None
 
-If set to a function, this function will be called with annotation as first argument 
-and sphinx.config.Config argument second. The function is expected to return a string with 
+If set to a function, this function will be called with annotation as first argument
+and sphinx.config.Config argument second. The function is expected to return a string with
 reStructuredText code or None to fall back to the default formatter.
 """
 
 if "sphinx_autodoc_typehints" in extensions:
-    config_clone = None 
+    config_clone = None
     from sphinx.config import Config
-    from sphinx_autodoc_typehints import get_annotation_module, format_annotation # type: ignore
+    from sphinx_autodoc_typehints import get_annotation_module, format_annotation  #noqa: F401
 
     def typehints_formatter(annotation, config : Config):
         # Default see: https://github.com/tox-dev/sphinx-autodoc-typehints/blob/df669800eef5da7e952a24b84501846694b27101/src/sphinx_autodoc_typehints/__init__.py#L180
@@ -277,19 +285,18 @@ tippy_add_class = "has-tippy"
 hoverxref_auto_ref = True
 
 hoverxref_intersphinx = [
-    'https://omegaconf.readthedocs.io/en/latest/', 
+    'https://omegaconf.readthedocs.io/en/latest/',
     'https://carla.readthedocs.io/en/latest/',
     'https://typing-extensions.readthedocs.io/en/latest/',
     'https://docs.python.org/3',
 ]
 
-from collections import defaultdict
 
 def _tooltip_python():
     return "tooltip"
 
 def _hoverxred_python(): # call function, cannot pickle lambda
-    return 
+    return
 
 hoverxref_intersphinx_types = {
     # make specific links to use a particular tooltip type
@@ -329,11 +336,11 @@ hoverxref_role_types = {
 # -------------- MyST Parser --------------
 
 # see https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#syntax-attributes-inline
-# and 
+# and
 myst_enable_extensions = ["attrs_inline", "attrs_block", "colon_fence"]
 myst_heading_anchors = 4
 
-# Open all external links in a new tab 
+# Open all external links in a new tab
 myst_links_external_new_tab = True
 myst_all_links_external=False
 
@@ -389,7 +396,7 @@ typehints_document_rtype = False
 
 napoleon_type_aliases = {
     "VehicleControl": "carla.VehicleControl",
-    "RuleResult.NO_RESULT" : "Rule.NO_RESULT",  
+    "RuleResult.NO_RESULT" : "Rule.NO_RESULT",
 }
 """
 A mapping to translate type names to other names or references. Works only when napoleon_use_param = True. Defaults to None.
@@ -492,20 +499,24 @@ The optional bool is flag of nested_parse, indicates whether the Nested Parse fu
 # ---------------------------------------------
 
 
-def setup(app : "sphinx.application.Sphinx"):
+def setup(app: "sphinx.application.Sphinx"):
     #app.add_js_file("stripcss.js", priority=199) # should have higher priority
     # if imported might be too slow, want to execute it before tippy
     from textwrap import indent
     try:
         # local from root
-        with open("docs/webview/source/_static/stripcss.js", "r") as f:
-            app.add_js_file(None, body=indent(f.read(), " "*8, predicate=lambda x: not x.startswith("// disables")))
+        app.add_js_file(None,
+                        body=indent(Path('docs/webview/source/_static/stripcss.js').read_text(),
+                                              prefix=" " * 8,
+                                              predicate=lambda x: not x.startswith("// disables")))
     except FileNotFoundError:
-        with open("_static/stripcss.js", "r") as f:
-            app.add_js_file(None, body=indent(f.read(), " "*8, predicate=lambda x: not x.startswith("// disables")))
+        app.add_js_file(None,
+                        body=indent(Path('_static/stripcss.js').read_text(),
+                                    prefix=" " * 8,
+                                    predicate=lambda x: not x.startswith("// disables")))
     
 
-    #py_external = sphinx.domains.python.PyXRefRole(nodeclass="py-module", innernodeclass="py-module py-external")
+    # py_external = sphinx.domains.python.PyXRefRole(nodeclass="py-module", innernodeclass="py-module py-external")
     
     # ------------
     # Roles:
@@ -516,21 +527,16 @@ def setup(app : "sphinx.application.Sphinx"):
     # Events:
     # see https://www.sphinx-doc.org/en/master/extdev/event_callbacks.html
     # ------------
-    #app.connect("missing-reference", missing_reference_handle, priority=2000)
+    # app.connect("missing-reference", missing_reference_handle, priority=2000)
     app.connect("include-read", include_read_listener)
     app.connect("source-read", source_read_listener, priority=1000)
-    #app.connect("doctree-read", doctree_read_listener, priority=1000)
+    # app.connect("doctree-read", doctree_read_listener, priority=1000)
     
     # Manually skip members
-    #app.connect("autodoc-skip-member", autodoc_skip_member)
+    # app.connect("autodoc-skip-member", autodoc_skip_member)
     
     # Clean type-hints
     app.connect("autodoc-before-process-signature", before_type_hint_cleaner, priority=501)
     app.connect("autodoc-process-signature", type_hint_cleaner, priority=501)
     
     app.add_transform(FileResolver)
-
-
-
-
-

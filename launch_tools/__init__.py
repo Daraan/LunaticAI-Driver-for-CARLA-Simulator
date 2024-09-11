@@ -6,7 +6,7 @@ Also handles problematic import deriving from version conflicts
 # pyright: reportUnusedImport=information
 # pyright: reportMissingTypeStubs=none
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     "carla",
     "class_or_instance_method",
     "CarlaDataProvider",
@@ -67,6 +67,7 @@ instance_signature : Concatenate[_T, _P]
 class signature : Concatenate[type[_T], _P]
 """
 
+
 # pylint: disable=too-few-public-methods, invalid-name
 class class_or_instance_method(classmethod[_T, _Parameters, _R_co]
                                if TYPE_CHECKING else
@@ -81,10 +82,10 @@ class class_or_instance_method(classmethod[_T, _Parameters, _R_co]
     """
 
     def __get__(
-        self, instance : Optional[_T], type_: "type[_T] | None" = None
+        self, instance: Optional[_T], type_: "type[_T] | None" = None
     ) -> Callable[_Parameters, _R_co]:
         if instance is None:
-            return super().__get__ (instance, type_)      # type: ignore # type_ is not None
+            return super().__get__(instance, type_)      # type: ignore # type_ is not None
         return self.__func__.__get__(instance, type_)
 
 # --- Exclude from docs ---

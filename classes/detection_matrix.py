@@ -1,3 +1,4 @@
+import contextlib
 import threading
 import time
 import carla
@@ -30,7 +31,8 @@ if TYPE_CHECKING:
     from _data_gathering.car_detection_matrix.informationUtils import HighWayShape
     from matplotlib.axes import Axes as MplAxes
 
-def matrix_for_actor(ego_vehicle : carla.Actor,
+
+def matrix_for_actor(ego_vehicle: carla.Actor,
                      road_lane_ids: "set[RoadLaneId]",
                      radius: float = 100.0,
                      highway_shape: Optional["HighWayShape"] = None):
@@ -79,7 +81,7 @@ def matrix_for_actor(ego_vehicle : carla.Actor,
 class DetectionMatrix:
     """Create a matrix representing the lanes around the ego vehicle."""
 
-    matrix : Dict[int, List[int]]
+    matrix: Dict[int, List[int]]
     """
     A :py:class:`collections.OrderedDict`: An ordered dictionary representing the city matrix. The keys for existing lanes are the lane IDs in the format "road_id_lane_id".
     For non-existing lanes different placeholder exist, e.g.  left_outer_lane, left_inner_lane, No_4th_lane, No_opposing_direction
@@ -153,10 +155,10 @@ class DetectionMatrix:
         class RenderOptions(TypedDict, total=False, closed=True):
             """Signature for :py:meth:`.DetectionMatrix.render`."""
             imshow_settings: dict[str, Any]
-            vertical : bool
-            draw_values : bool
-            text_settings : dict[str, Any]
-            draw : bool
+            vertical: bool
+            draw_values: bool
+            text_settings: dict[str, Any]
+            draw: bool
 
     def render(self,
                display: pygame.Surface,
@@ -189,12 +191,12 @@ class DetectionMatrix:
 
         canvas: agg.FigureCanvasAgg = fig.canvas  # type: ignore[assignment]
         canvas.draw()
-        buffer_data : memoryview = canvas.buffer_rgba()
+        buffer_data: memoryview = canvas.buffer_rgba()
 
         size = canvas.get_width_height()
         surf = pygame.image.frombuffer(buffer_data, size, "RGBA")
 
-        display.blit(surf, (220, display.get_height() - surf.get_height() - 40 ))
+        display.blit(surf, (220, display.get_height() - surf.get_height() - 40))
         plt.close(fig)
 
     @property
@@ -217,10 +219,8 @@ class DetectionMatrix:
 
     def __del__(self):
         if self.running:
-            try:
+            with contextlib.suppress(Exception):
                 self.stop()
-            except Exception:  # noqa
-                pass
 
     def _signal_handler(self, signum: int, _):
         """
@@ -247,7 +247,7 @@ class DetectionMatrix:
 
 
 class AsyncDetectionMatrix(DetectionMatrix):
-    def __init__(self, ego_vehicle : carla.Actor, *, road_lane_ids=None, sleep_time=0.1):
+    def __init__(self, ego_vehicle: carla.Actor, *, road_lane_ids=None, sleep_time=0.1):
         """
         Asynchronous version of the :py:class:`DetectionMatrix`.
 
@@ -303,8 +303,6 @@ class AsyncDetectionMatrix(DetectionMatrix):
 
     def __del__(self):
         self.running = False
-        try:
+        with contextlib.suppress(Exception):
             self.worker_thread.join(3.0)
-        except Exception:  # noqa
-            pass
         self.matrix = None  # type: ignore[assignment]

@@ -1,6 +1,5 @@
 
 
-
 from typing import TYPE_CHECKING
 
 from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
@@ -10,7 +9,8 @@ if TYPE_CHECKING:
 
 # TODO: Unify distance and obstacle thresholds
 
-def collision_detection_manager(self : "LunaticAgent"):
+
+def collision_detection_manager(self: "LunaticAgent"):
     """
     This module is in charge of warning in case of a collision
     with vehicles or static obstacles.

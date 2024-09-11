@@ -65,15 +65,18 @@ def create_default_rules(gameframework: Optional["GameFramework"] = None, random
         
     return default_rules
 
-@overload
-def rule_from_config(cfg : "CreateRuleFromConfig") -> Rule:
-    ...
 
 @overload
-def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig") -> Union[Rule, Iterable[Rule]]:
+def rule_from_config(cfg: "CreateRuleFromConfig") -> Rule:
+    ...
+
+
+@overload
+def rule_from_config(cfg: "CallFunctionFromConfig | DictConfig") -> Union[Rule, Iterable[Rule]]:
     ...
     
-def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFromConfig") -> Union[Rule, Iterable[Rule]]:
+
+def rule_from_config(cfg: "CallFunctionFromConfig | DictConfig | CreateRuleFromConfig") -> Union[Rule, Iterable[Rule]]:
     """
     Instantiates Rules through Hydra's instantiate function.
     
@@ -113,7 +116,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
     
     # Throw out all keys that are not valid for the target, i.e. MISSING
     valid_keys = list({k for k in cfg if not OmegaConf.is_missing(cfg, k)})  # _target_ is kept for instantiate
-    clean_cfg : RuleCreatingParameters = OmegaConf.masked_copy(cfg, valid_keys)   # pyright: ignore[reportArgumentType]
+    clean_cfg: RuleCreatingParameters = OmegaConf.masked_copy(cfg, valid_keys)   # pyright: ignore[reportArgumentType]
     
     if "_args_" in clean_cfg and clean_cfg._args_ is None:
         logger.error("_args_ argument for %s should be a list, not None", cfg._target_)  # pyright: ignore[reportPrivateUsage]
@@ -135,7 +138,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
                     # Alternatively could escape all interpolations as strings and recreate the interpolations afterwards,
                     # however, need to assume that all interpolation like stings are meant as interpolations.
                     
-                    parent : LunaticAgentSettings = OmegaConf.structured(LunaticAgentSettings(rules=[]),
+                    parent: LunaticAgentSettings = OmegaConf.structured(LunaticAgentSettings(rules=[]),
                                                                          flags={"allow_objects": True})
                     for key in parent.live_info.keys():  # noqa: SIM118,RUF100
                         if key == "executed_direction":
@@ -155,7 +158,7 @@ def rule_from_config(cfg : "CallFunctionFromConfig | DictConfig | CreateRuleFrom
                 rule.self_config.merge_with(clean_cfg.self_config)  # Interpolations are resolved, adding them back as strings
             return rule
         else:
-            rule_or_rules : Union[Rule, Iterable[Rule]] = call(clean_cfg, _convert_="none")
+            rule_or_rules: Union[Rule, Iterable[Rule]] = call(clean_cfg, _convert_="none")
             return rule_or_rules
     except hydra.errors.InstantiationException:
         logger.error("Could not instantiate rule. The _target_ must exist in %s or you need to provide a global _target_.module.submodule... path ", __file__)

@@ -1,3 +1,4 @@
+# ruff: noqa: FURB101,FURB103
 import re
 import glob
 import os
@@ -30,22 +31,22 @@ def _get_subcontent(contents:str, pattern, end="----"):
     return start, end, contents[start:end]
 
 def port_install_md():
-    with open("../../Install.md", "r") as f:
+    with open("../../Install.md", "r") as f:  # noqa: FURB101
         contents = f.read()
+    find = re.search(r"^>\s*\[!(\w+)\](?:\s*>\s*([^\n]*))*", contents, flags=re.MULTILINE)
+    while find:
+        s = slice(*find.span())
+        subcontent = contents[s]
+        note = find[1].lower()
+        subcontent = re.sub(r">\s*(\[!(\w+)\]\s*)?", "", subcontent, flags=re.MULTILINE)
+        contents = contents[:s.start] + "```{" + note + "}\n"+ subcontent + "\n```" +contents[s.stop:]
         find = re.search(r"^>\s*\[!(\w+)\](?:\s*>\s*([^\n]*))*", contents, flags=re.MULTILINE)
-        while find:
-            s = slice(*find.span())
-            subcontent = contents[s]
-            note = find[1].lower()
-            subcontent = re.sub(r">\s*(\[!(\w+)\]\s*)?", "", subcontent, flags=re.MULTILINE)
-            contents = contents[:s.start] + "```{" + note + "}\n"+ subcontent + "\n```" +contents[s.stop:]
-            find = re.search(r"^>\s*\[!(\w+)\](?:\s*>\s*([^\n]*))*", contents, flags=re.MULTILINE)
+    
+    # [`LunaticChallenger`](/agents/leaderboard_agent.py#LunaticChallenger) -> :py:class:`LunaticChallenger`
+    contents = re.sub(r"\[`Lunatic(\w+)`\]\(\S+\)", r"{py:class}`.Lunatic\1`", contents)
+    contents = contents.replace("[AgentGameLoop.py](/AgentGameLoop.py)", "{py:mod}`AgentGameLoop.py <AgentGameLoop>`")
         
-        # [`LunaticChallenger`](/agents/leaderboard_agent.py#LunaticChallenger) -> :py:class:`LunaticChallenger`
-        contents = re.sub(r"\[`Lunatic(\w+)`\]\(\S+\)", r"{py:class}`.Lunatic\1`", contents)
-        contents = contents.replace("[AgentGameLoop.py](/AgentGameLoop.py)", "{py:mod}`AgentGameLoop.py <AgentGameLoop>`")
-        
-    with open("docs/Install.md", "w") as f:
+    with open("docs/Install.md", "w") as f:  # noqa: FURB103
         f.write(contents)
 
 
@@ -216,6 +217,7 @@ def _patch_agent(content:str):
     
 
 def patch_challenger():
+    """Add members to LunaticChallenger"""
     content = _get_contents("agents.rst")
     content = _patch_agent(content)
     start = content.find(".. automodule:: agents.leaderboard_agent\n")
@@ -230,7 +232,7 @@ def patch_challenger():
                                                                 string=subcontent,
                                                                 count=1)
         
-        shown = "'set_global_plan', 'destroy', 'run_step', 'sensors', 'setup', '__init__', 'BASE_SETTINGS'".replace("'", "")
+        shown = "'set_global_plan', 'destroy', 'run_step', 'sensors', 'setup', '__init__', 'BASE_SETTINGS'".replace("'", "")  # noqa
         excluded = "get_entry_point"
         subcontent = re.sub(r":members:", r"\n   ".join([":members:",#+shown,
                                                         #":no-index:"
@@ -361,7 +363,7 @@ def patch_config_creation():
         
 def remove_empty_modules():
     from textwrap import dedent
-    no_modules = ["agents", "agents.tools", "data_gathering", "data_gathering.car_detection_matrix", "agents.rules.obstacles"]
+    no_modules = ["agents", "agents.tools", "agents.rules.obstacles"]
     rgx = re.compile(dedent(
         r"""
         (Module contents
@@ -384,8 +386,8 @@ def remove_empty_modules():
         _change_contents(file+".rst", contents)
         
 def insert_file_references():
-    rst_files = filter(lambda file: file not in ("index.rst", "readme_link.rst"), 
-                       glob.glob("[!_]*.rst")) # NOTE: if prefixed with ./ need to be stripped
+    rst_files = filter(lambda file: file not in ("index.rst", "readme_link.rst"),
+                       glob.glob("[!_]*.rst"))  # NOTE: if prefixed with ./ need to be stripped  # noqa: PTH207
     re_packages = re.compile(r"(^[a-zA-Z._]+) package\n=+")
     
     re_modules = re.compile(r"(([a-zA-Z0-9\\_.]+) module\n)")
@@ -424,9 +426,9 @@ def insert_file_references():
 def _no_value_constants():
     return
     try:
-        import classes.constants, inspect, enum
+        import classes.constants, inspect, enum  # noqa
         all_classes = [getattr(classes.constants, key) for key, cls in vars(classes.constants).items() if not key.startswith("_") and inspect.isclass(cls)]
-        flags = [cls for cls in all_classes if issubclass(cls, (enum.Flag, enum.IntFlag, enum.Enum)) and cls.__module__ == classes.constants.__name__]
+        flags = [cls for cls in all_classes if issubclass(cls, (enum.Flag, enum.IntFlag, enum.Enum)) and cls.__module__ == classes.constants.__name__]  # noqa
     except AttributeError as e:
         # likely incompatible python version
         print(e)
@@ -449,7 +451,7 @@ def _no_value_constants():
         '''
         if "exclude-members" in subcontent:
             return
-        exclude = [cls.__name__ for cls in flags] 
+        exclude = [cls.__name__ for cls in flags]
         subcontent = re.sub(r":members:", r"\n   ".join([":members:",
                                                         ":exclude-members: " + ", ".join(exclude)]),
                                                 string=subcontent,
@@ -476,7 +478,7 @@ def _no_value_constants():
 
 def patch_all():
     """Executes all public functions of this module"""
-    if os.getcwd().endswith("docs/webview/source"):
+    if os.getcwd().endswith("docs/webview/source"):  # noqa: PTH109
         pass
     else:
         return
@@ -486,7 +488,7 @@ def patch_all():
                                   and callable(v[1])
                                   and v[1].__module__ == this_module
                                   and v[0] not in ("execute_all", "patch_all", _write_all_contents.__name__)
-                                  , 
+                                  ,
                         globals().items()))
     for foo in all_funcs.values():
         if foo == insert_file_references:

@@ -7,6 +7,7 @@ import carla
 
 __all__ = ['CustomSensorInterface']
 
+
 class CustomSensorInterface:
     """
     This is a mixin for classes like the :py:class:`.camera_manager.CameraManager` or the :py:class:`classes.rss_sensor.RssSensor`
@@ -16,7 +17,7 @@ class CustomSensorInterface:
         Not to be confused with :py:class:`srunner.autoagents.sensor_interface.SensorInterface`.
     """
 
-    sensor : carla.Sensor
+    sensor: carla.Sensor
 
     def destroy(self) -> 'bool | None | Literal["Actor was probably destroyed by the CarlaDataProvider"]':
         """Stops and destroys the actor of the sensor"""

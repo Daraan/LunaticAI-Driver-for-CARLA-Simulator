@@ -7,6 +7,7 @@ import sys
 
 # List files
 
+
 def list_py_files(directory):
     """
     Lists all .py files in the given directory and its subdirectories.
@@ -45,7 +46,6 @@ if idx is not None:
     file_path = py_files[idx]
 
 # run file
-
 
 
 module_name = os.path.basename(file_path).split(".")[0]

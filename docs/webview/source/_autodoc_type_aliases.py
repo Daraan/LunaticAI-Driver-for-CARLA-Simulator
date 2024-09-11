@@ -1,6 +1,4 @@
-from typing import *
-import typing as typing
-
+# ruff: noqa
 
 here = lambda s: "docs.webview.source._autodoc_type_aliases." + s
 
@@ -50,6 +48,8 @@ autodoc_type_aliases = {
 }
 
 #from inspect import ismodule
+# from typing import *
+
 
 #autodoc_type_aliases.update(map(lambda x: (x[0], "typing." + x[0]),
 #    filter(lambda x: not x[0].startswith("_") and len(x[0]) > 3 and not ismodule(x[1]), typing.__dict__.items())))

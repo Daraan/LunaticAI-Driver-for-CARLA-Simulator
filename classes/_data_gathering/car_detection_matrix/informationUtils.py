@@ -43,6 +43,7 @@ JunctionWaypointList: TypeAlias = Sequence[Tuple[carla.Waypoint, carla.Waypoint]
 HighWayShape: TypeAlias = Tuple[str, int, JunctionWaypointList, JunctionWaypointList]
 """(highway_type: string, straight_lanes: int, entry_wps: ([wp,..], [wp,..]), exit_wps: ([wp,..], [wp,..]))"""
 
+
 def check_ego_on_highway(ego_vehicle_location: carla.Location, road_lane_ids: RoadLaneIds, world_map):
     """
     Check if the ego vehicle is on a highway based on its location. The function considers the ego vehicle to be on a highway if:
@@ -88,9 +89,10 @@ def check_ego_on_highway(ego_vehicle_location: carla.Location, road_lane_ids: Ro
 _all_lane_ids: 'list[Set[RoadLaneId]]' = []
 """List of length 1 of RoadLaneId sets to check if the lane ids are consistent"""
 
+
 # @functools.lru_cache(maxsize=1) # Faster but not safe when changing the map without changing the map object/ or clearing the cache
 @cached(cache=LRUCache(maxsize=1), key=attrgetter("name"))
-def get_all_road_lane_ids(world_map : carla.Map) -> RoadLaneIds:
+def get_all_road_lane_ids(world_map: carla.Map) -> RoadLaneIds:
     """
     Retrieve a set of unique road and lane identifiers in the format "roadId_laneId" from the given world map.
 
@@ -100,7 +102,7 @@ def get_all_road_lane_ids(world_map : carla.Map) -> RoadLaneIds:
     Returns:
         set: A set containing unique road and lane identifiers in the format "roadId_laneId".
     """
-    road_lane_ids : Set[RoadLaneId] = set()
+    road_lane_ids: Set[RoadLaneId] = set()
 
     # iterate through all waypoints in the world map
     for waypoint in world_map.generate_waypoints(1.0):
@@ -119,6 +121,7 @@ def get_all_road_lane_ids(world_map : carla.Map) -> RoadLaneIds:
             raise ValueError("Lane ids do not match")
 
     return road_lane_ids
+
 
 def create_city_matrix(ego_vehicle_location: carla.Location,
                        road_lane_ids: "set[RoadLaneId]",
@@ -335,6 +338,7 @@ def create_city_matrix(ego_vehicle_location: carla.Location,
             matrix[ego_vehicle_road_id, ego_vehicle_lane_id][3] = 1
     return matrix
 
+
 # NOTE: sub function of detect_surrounding_cars
 def check_road_change(ego_vehicle_location: carla.Location, road_lane_ids: RoadLaneIds, front: bool, world_map: carla.Map):
     """
@@ -396,11 +400,12 @@ def check_road_change(ego_vehicle_location: carla.Location, road_lane_ids: RoadL
     else:
         return (None, None)
 
+
 def detect_surrounding_cars(
-    ego_location : carla.Location,
-    ego_vehicle :  carla.Actor,
-    matrix : dict[str | tuple[int, int], list[int]],
-    road_lane_ids : set[RoadLaneId],
+    ego_location: carla.Location,
+    ego_vehicle:  carla.Actor,
+    matrix: dict[str | tuple[int, int], list[int]],
+    road_lane_ids: set[RoadLaneId],
     world: carla.World,
     radius: float,
     on_highway: bool,
@@ -495,7 +500,7 @@ def detect_surrounding_cars(
         entry_city_road = []  # road before an entry in city
         exit_city_road = []  # road after an exit in city
         entry_highway_road: list[int]  # road after an entry on highway
-        exit_highway_road : list[int]  # road before an exit on highway
+        exit_highway_road: list[int]  # road before an exit on highway
         if entry_wps:
             for entry_wp in entry_wps[0]:  # entry_wps[0] contains all start waypoints of entry
                 entry_city_road.append(entry_wp.previous(3)[0].road_id)
@@ -592,11 +597,12 @@ def detect_surrounding_cars(
                         matrix[(ego_vehicle_road_id, other_car_lane_id)][
                             col
                         ] = 2
-                    except Exception:
-                        #logger.exception("Error in updating matrix")
+                    except Exception as e:
+                        logger.warning("Error in updating matrix: %s. Ignoring exception", e)
                         pass
 
     return matrix, surrounding_cars_on_highway_entryExit
+
 
 def check_car_in_front_or_behind(ego_location: carla.Location,
                                  other_location: carla.Location,
@@ -621,6 +627,7 @@ def check_car_in_front_or_behind(ego_location: carla.Location,
     # dot_product > 0 ==> in front, dot_product < 0 ==> behind
     # ignore z component
     return ego_to_other_vector.dot_2d(ego_forward_vector)
+
 
 def get_forward_vector_distance(ego_vehicle_location: carla.Location,
                                 other_car: carla.Actor,
@@ -679,7 +686,6 @@ def get_forward_vector_distance(ego_vehicle_location: carla.Location,
                 perpendicular_wp = right_lane_wp
                 break
 
-
     # calculate distance between ego and perpendicular waypoint (i.e. distance we go left/right in parallel to street)
     distance_opposite = ego_vehicle_location.distance(
         perpendicular_wp.transform.location
@@ -687,6 +693,7 @@ def get_forward_vector_distance(ego_vehicle_location: carla.Location,
 
     # return distance between perpendicular_wp and other car in right-angled triangle
     return math.sqrt(abs(distance_ego_other**2 - distance_opposite**2))
+
 
 def calculate_position_in_matrix(
         ego_location: carla.Location,
@@ -773,10 +780,7 @@ def calculate_position_in_matrix(
     #)  # Convert m/s to km/h
     
     # if ego is on highway use different speed factor --> we look further ahead/behind on highway
-    if ego_on_highway:
-        speed_factor = 2.0
-    else:
-        speed_factor = 1
+    speed_factor = 2.0 if ego_on_highway else 1.0
 
     col = None
 
@@ -812,7 +816,8 @@ def calculate_position_in_matrix(
 # help functions for junctions:
 #########################################
 
-##### General #####
+# #### General #####
+
 
 def is_highway_junction(ego_vehicle: carla.Vehicle, ego_wp, junction: carla.Junction, road_lane_ids: RoadLaneIds, direction_angle):
     """This function checks if the junction is a highway junction.
@@ -840,6 +845,7 @@ def is_highway_junction(ego_vehicle: carla.Vehicle, ego_wp, junction: carla.Junc
             break
     return highway_junction
 
+
 def get_distance_junction_start(wp):
     """Get distance from waypoint until the first junction wp behind.
 
@@ -854,6 +860,7 @@ def get_distance_junction_start(wp):
         x = x + 1
     return x
 
+
 def get_distance_junction_end(wp):
     """Get distance from waypoint until the first junction wp in front.
 
@@ -867,6 +874,7 @@ def get_distance_junction_end(wp):
     while wp.next(x)[0].is_junction:
         x = x + 1
     return x
+
 
 def is_junction_ahead(ego_waypoint, distance):
     """
@@ -1197,7 +1205,7 @@ def detect_surrounding_cars_outside_junction(
                 actor_waypoint_lane_id = actor_waypoint.lane_id
 
             # sort list of lane ID's
-            if (int(road[3]) < 0 and junction.id != 1368) or int(road[3]) > 0 and junction.id == 1368:
+            if (int(road[3]) < 0 and junction.id != 1368) or (int(road[3]) > 0 and junction.id == 1368):
                 lanes_all[road[1]].sort(reverse=True)
             else:
                 lanes_all[road[1]].sort()
@@ -1261,10 +1269,7 @@ def detect_surrounding_cars_outside_junction(
                     c = columns - 3
 
             # write "2" in identified cell
-            if actor.id == ego_vehicle.id:
-                cell_val = 1
-            else:
-                cell_val = 2
+            cell_val = 1 if actor.id == ego_vehicle.id else 2
             if road[1] == "ego":
                 for j in range(8):
                     # ego road
@@ -1495,7 +1500,7 @@ def get_all_lanes(ego_vehicle: carla.Vehicle,
         # get direction from ego perspective
         # catch special case of gas station junction objects
         if ((road_id_end_wp != road_id_ego and end_wp.next(10)[0].road_id != road_id_ego)
-            and ( not ((road_id_end_wp in [2, 3] and int(road_id_ego) in [467, 468, 477])
+            and (not ((road_id_end_wp in [2, 3] and int(road_id_ego) in [467, 468, 477])
                         or road_id_ego in [12, 13, 879, 880, 886])
                  or not ((road_id_end_wp in [12, 13] and int(road_id_ego) in [12, 13, 879, 880, 886])
                         or road_id_ego in [467, 468, 477]))):
@@ -1677,6 +1682,7 @@ def get_grid_corners(junction_shape):
             break
 
     return [[y_1, x_1], [y_1, x_2], [y_2, x_1], [y_2, x_2]]
+
 
 # NOTE: sub function update_matrix
 def insert_in_matrix(matrix, car: carla.Actor, ego_vehicle: carla.Actor, col: int, row: int) -> None:

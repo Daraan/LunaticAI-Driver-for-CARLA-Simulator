@@ -2,6 +2,7 @@ from _typeshed import Incomplete
 from typing import Any, ClassVar, overload
 
 from carla.libcarla import _CarlaEnum
+from carla.ad.rss.world import ObjectType
 
 ArtificialObject: ObjectType
 Bidirectional: LaneDrivingDirection

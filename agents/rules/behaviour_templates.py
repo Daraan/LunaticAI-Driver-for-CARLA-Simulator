@@ -17,11 +17,13 @@ DEBUG_RULES: bool = not READTHEDOCS and _use_debug_rules
 
 # ------ Rule Helpers ------
 
-def _if_config_checker(ctx : "Context", config_path : str, value) -> bool:
+
+def _if_config_checker(ctx: "Context", config_path: str, value) -> bool:
     """
     Check if a value in the config is set to a certain value.
     """
     return select_node(ctx.config, config_path, absolute_key=True) == value
+
 
 def if_config(config_path, value):
     """
@@ -41,7 +43,7 @@ def if_config(config_path, value):
 
 # ------ Speed Rules ------
 
-def set_default_intersection_speed(ctx : "Context"):
+def set_default_intersection_speed(ctx: "Context"):
     """
     Slow down the car when turning at a junction.
     """
@@ -51,6 +53,7 @@ def set_default_intersection_speed(ctx : "Context"):
             )
     # NOTE: could interpolate this in omega conf
     ctx.agent.config.speed.target_speed = target_speed
+
 
 class SlowDownAtIntersectionRule(Rule):
     """
@@ -65,7 +68,7 @@ class SlowDownAtIntersectionRule(Rule):
 
 # -----
 
-def set_default_speed(ctx : "Context"):
+def set_default_speed(ctx: "Context"):
     """
     Speed to apply when the car drives under normal circumstances,
     i.e. no junctions, no obstacles, etc. detected.
@@ -76,6 +79,7 @@ def set_default_speed(ctx : "Context"):
             ctx.config.live_info.current_speed_limit - ctx.config.speed.speed_lim_dist])
     # Set on Agent
     ctx.agent.config.speed.target_speed = target_speed
+
 
 class NormalSpeedRule(Rule):
     """
@@ -88,6 +92,7 @@ class NormalSpeedRule(Rule):
     description = "Set speed to normal speed"
 
 # ----------- Plan next waypoint -----------
+
 
 def random_spawnpoint_destination(ctx: "Context", waypoints: Optional[List[carla.Waypoint]] = None):
     """
@@ -102,12 +107,14 @@ def random_spawnpoint_destination(ctx: "Context", waypoints: Optional[List[carla
         loc = random.choice(waypoints).transform.location
     ctx.agent.set_destination(loc)
     
+
 @ConditionFunction
 def is_agent_done(ctx: Context) -> bool:
     """
     Agent has reached its destination.
     """
     return ctx.agent.done()
+
 
 class TargetRandomSpawnpointWhenDone(Rule):
     """
@@ -120,7 +127,8 @@ class TargetRandomSpawnpointWhenDone(Rule):
 
 # ---
 
-def set_next_waypoint_nearby(ctx : "Context"):
+
+def set_next_waypoint_nearby(ctx: "Context"):
     ctx.agent._world_model.hud.notification("Target reached", seconds=4.0)
     wp = ctx.agent._current_waypoint.next(150)[-1]
     next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
@@ -130,6 +138,7 @@ def set_next_waypoint_nearby(ctx : "Context"):
     destination = next_wp.transform.location
     ctx.agent.set_destination(destination)
     
+
 class SetNextWaypointNearby(Rule):
     "Sets random waypoint when done to a nearby point ahead"
     phases = Phase.DONE | Phase.BEGIN  # type: ignore[assignment]
@@ -138,7 +147,8 @@ class SetNextWaypointNearby(Rule):
 
 # ----------- RSS Rules -----------
 
-def accept_rss_updates(ctx : Context):
+
+def accept_rss_updates(ctx: Context):
     """
     Accept RSS updates from the RSS manager.
     """
@@ -150,6 +160,7 @@ def accept_rss_updates(ctx : Context):
 
 assert isinstance(if_config("rss.enabled", True), ConditionFunction)
 
+
 class AlwaysAcceptRSSUpdates(Rule):
     """
     Always accept RSS updates if rss is enabled in the config.
@@ -159,6 +170,7 @@ class AlwaysAcceptRSSUpdates(Rule):
     condition = if_config("rss.enabled", True)
     action = accept_rss_updates
     description = "Always accepts the updates calculated by the RSS System."
+
 
 class ConfigBasedRSSUpdates(Rule):
     """Always accept RSS updates if :any:`rss.always_accept_update <LunaticAgentSettings.rss>` is set to True in the config."""

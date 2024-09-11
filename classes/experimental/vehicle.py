@@ -19,7 +19,7 @@ def calculateDistance(location1, location2):
 
 class VehicleBase:
     instances: ClassVar[list] = []  # for easier destruction later
-    actor : carla.Vehicle
+    actor: carla.Vehicle
 
     def __init__(self, world: carla.World, make=""):
         self.actor: carla.Vehicle = None  # type: ignore[assignment]

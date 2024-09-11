@@ -13,8 +13,8 @@ from .sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor,
 
 __all__ = [
     'CollisionSensor',
-    'LaneInvasionSensor',
     'GnssSensor',
-    'RadarSensor',
-    'IMUSensor'
+    'IMUSensor',
+    'LaneInvasionSensor',
+    'RadarSensor'
 ]

@@ -15,10 +15,10 @@ from classes._sensor_interface import CustomSensorInterface
 
 __all__ = [
     'CollisionSensor',
-    'LaneInvasionSensor',
     'GnssSensor',
-    'RadarSensor',
-    'IMUSensor'
+    'IMUSensor',
+    'LaneInvasionSensor',
+    'RadarSensor'
 ]
 
 from typing import TYPE_CHECKING
@@ -39,7 +39,7 @@ class CollisionSensor(CustomSensorInterface):
         https://carla.readthedocs.io/en/latest/ref_sensors/#collision-detector
     """
 
-    def __init__(self, parent_actor : carla.Actor, hud : "HUD"):
+    def __init__(self, parent_actor: carla.Actor, hud: "HUD"):
         """Constructor method"""
         self.history: "list[tuple[int, float]]" = []
         self._parent = parent_actor
@@ -54,13 +54,13 @@ class CollisionSensor(CustomSensorInterface):
 
     def get_collision_history(self):
         """Gets the history of collisions"""
-        history : dict[int, float] = collections.defaultdict(float)
+        history: dict[int, float] = collections.defaultdict(float)
         for frame, intensity in self.history:
             history[frame] += intensity
         return history
 
     @staticmethod
-    def _on_collision(weak_self : "weakref.ref[CollisionSensor]" , event: carla.CollisionEvent):
+    def _on_collision(weak_self: "weakref.ref[CollisionSensor]", event: carla.CollisionEvent):
         """On collision method"""
         self = weak_self()
         if not self:
@@ -88,7 +88,7 @@ class LaneInvasionSensor(CustomSensorInterface):
         https://carla.readthedocs.io/en/latest/ref_sensors/#lane-invasion-detector
     """
 
-    def __init__(self, parent_actor : carla.Actor, hud : "HUD"):
+    def __init__(self, parent_actor: carla.Actor, hud: "HUD"):
         """Constructor method"""
         self._parent = parent_actor
         self.hud = hud
@@ -101,7 +101,7 @@ class LaneInvasionSensor(CustomSensorInterface):
         self.sensor.listen(lambda event: LaneInvasionSensor._on_invasion(weak_self, event))  # pyright: ignore[reportArgumentType]
 
     @staticmethod
-    def _on_invasion(weak_self : "weakref.ref[LaneInvasionSensor]" , event : carla.LaneInvasionEvent):
+    def _on_invasion(weak_self: "weakref.ref[LaneInvasionSensor]", event: carla.LaneInvasionEvent):
         """On invasion method"""
         self = weak_self()
         if not self:
@@ -124,7 +124,7 @@ class GnssSensor(CustomSensorInterface):
         https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
     """
 
-    def __init__(self, parent_actor : carla.Actor):
+    def __init__(self, parent_actor: carla.Actor):
         """Constructor method"""
         self._parent = parent_actor
         self.lat = 0.0
@@ -139,7 +139,7 @@ class GnssSensor(CustomSensorInterface):
         self.sensor.listen(lambda event: GnssSensor._on_gnss_event(weak_self, event))  # pyright: ignore[reportArgumentType]
 
     @staticmethod
-    def _on_gnss_event(weak_self : "weakref.ref[GnssSensor]", event : carla.GnssMeasurement):
+    def _on_gnss_event(weak_self: "weakref.ref[GnssSensor]", event: carla.GnssMeasurement):
         """GNSS method"""
         self = weak_self()
         if not self:
@@ -160,7 +160,7 @@ class RadarSensor(CustomSensorInterface):
         https://carla.readthedocs.io/en/latest/ref_sensors/#radar-sensor
     """
     
-    def __init__(self, parent_actor : carla.Actor):
+    def __init__(self, parent_actor: carla.Actor):
         self._parent = parent_actor
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         #bound_y = 0.5 + self._parent.bounding_box.extent.y
@@ -184,7 +184,7 @@ class RadarSensor(CustomSensorInterface):
             lambda radar_data: RadarSensor._Radar_callback(weak_self, radar_data))  # pyright: ignore[reportArgumentType]
 
     @staticmethod
-    def _Radar_callback(weak_self : "weakref.ref[RadarSensor]", radar_data : carla.RadarMeasurement):
+    def _Radar_callback(weak_self: "weakref.ref[RadarSensor]", radar_data: carla.RadarMeasurement):
         self = weak_self()
         if not self:
             return
@@ -233,7 +233,7 @@ class IMUSensor(CustomSensorInterface):
         https://carla.readthedocs.io/en/latest/ref_sensors/#imu-sensor
     """
     
-    def __init__(self, parent_actor : carla.Actor):
+    def __init__(self, parent_actor: carla.Actor):
         self._parent = parent_actor
         self.accelerometer = (0.0, 0.0, 0.0)
         self.gyroscope = (0.0, 0.0, 0.0)
@@ -249,7 +249,7 @@ class IMUSensor(CustomSensorInterface):
             lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data))  # pyright: ignore[reportArgumentType]
 
     @staticmethod
-    def _IMU_callback(weak_self : "weakref.ref[IMUSensor]", sensor_data : carla.IMUMeasurement):
+    def _IMU_callback(weak_self: "weakref.ref[IMUSensor]", sensor_data: carla.IMUMeasurement):
         self = weak_self()
         if not self:
             return

@@ -10,6 +10,7 @@ from classes.rule import Context, Rule, always_execute
 
 __all__ = ["RandomLaneChangeRule"]
 
+
 class RandomLaneChangeRule(Rule):
     phase = Phase.TAKE_NORMAL_STEP | Phase.BEGIN
     condition = always_execute  # TODO: Could implement check here, instead of relying on `lane_change`
@@ -27,10 +28,10 @@ class RandomLaneChangeRule(Rule):
     
     @dataclass  # <-- NOTE: DO NOT FORGET TO ADD, else the keys will be missing
     class self_config(RuleConfig):
-        random_lane_change_interval : int = 200
+        random_lane_change_interval: int = 200
         """Cooldown value for a lane change in the 'lane_change' group."""
         
-        random_right_lanechange_percentage : float = 0.1
+        random_right_lanechange_percentage: float = 0.1
         """
         Adjust probability that in each timestep the actor will perform a left/right lane change,
         dependent on lane change availability.
@@ -50,7 +51,7 @@ class RandomLaneChangeRule(Rule):
         p_left = self.self_config.random_left_lanechange_percentage
         p_right = self.self_config.random_right_lanechange_percentage
         p_stay = max(0, 1 - p_left - p_right)  # weight to stay in the same lane
-        direction : carla.LaneChange = carla.LaneChange(np.random.choice( (1, 0, 2), p=(p_left, p_stay, p_right)))
+        direction: carla.LaneChange = carla.LaneChange(np.random.choice((1, 0, 2), p=(p_left, p_stay, p_right)))
         print("Direction: ", direction)
         if direction == 0:
             self.reset_cooldown(self.self_config.random_lane_change_interval)

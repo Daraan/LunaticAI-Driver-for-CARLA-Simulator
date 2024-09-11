@@ -49,6 +49,7 @@ if TYPE_CHECKING:
             'change_waypoint': NotRequired[carla.Waypoint]
         })
 
+
 class GlobalRoutePlanner:
     """
     This class provides a very high level route plan.
@@ -308,7 +309,7 @@ class GlobalRoutePlanner:
         """
         waypoint = self._wmap.get_waypoint(location)
         edge = None  # type: None | tuple[int, int]
-        try:
+        try:  # noqa: SIM105  # no contextlib.suppress in python2
             edge = self._road_id_to_edge[waypoint.road_id][waypoint.section_id][waypoint.lane_id]
         except KeyError:
             pass
@@ -399,10 +400,9 @@ class GlobalRoutePlanner:
                     cross_list = []
                     for neighbor in self._graph.successors(current_node):
                         select_edge = self._graph.edges[current_node, neighbor]
-                        if select_edge['type'] == RoadOption.LANEFOLLOW:
-                            if neighbor != route[index + 1]:
-                                sv = select_edge['net_vector']
-                                cross_list.append(np.cross(cv, sv)[2])
+                        if select_edge['type'] == RoadOption.LANEFOLLOW and neighbor != route[index + 1]:
+                            sv = select_edge['net_vector']
+                            cross_list.append(np.cross(cv, sv)[2])
                     next_cross = np.cross(cv, nv)[2]
                     deviation = math.acos(np.clip(
                         np.dot(cv, nv) / (np.linalg.norm(cv) * np.linalg.norm(nv)), -1.0, 1.0))

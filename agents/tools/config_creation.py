@@ -82,20 +82,20 @@ if TYPE_CHECKING:
 
 __all__ = [
     "AgentConfig",
+    "AsDictConfig",
+    "AutopilotBehavior",
     "BasicAgentSettings",
     "BehaviorAgentSettings",
-    "LunaticAgentSettings",
-    "ContextSettings",
     "CallFunctionFromConfig",
-    "CreateRuleFromConfig",
-    "AutopilotBehavior",
-    "RuleConfig",
     "CameraConfig",
+    "ContextSettings",
+    "CreateRuleFromConfig",
     "LaunchConfig",
-    "config_store",
-    "AsDictConfig",
+    "LunaticAgentSettings",
     "RssLogLevel",
     "RssRoadBoundariesMode",
+    "RuleConfig",
+    "config_store",
 ]
 
 if sys.version_info < (3, 9):
@@ -595,7 +595,7 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         
         # Handle the overwrites
         try:
-            value : Union[NestedConfigDict, AgentConfig, DictConfig, str, bool, float, int, list[Any], ListConfig, None, Literal["None"]]  # noqa: PYI051 # literal and str
+            value: Union[NestedConfigDict, AgentConfig, DictConfig, str, bool, float, int, list[Any], ListConfig, None, Literal["None"]]  # noqa: PYI051 # literal and str
             annotations = get_type_hints(self.__class__)
             for key in self.overwrites.keys():
                 if key in annotations:  # This is "overwrites" -> to "self"
@@ -768,6 +768,7 @@ class LiveInfo(AgentConfig):
 # Speed
 # ---------------------
 
+
 @dataclass
 class BasicAgentSpeedSettings(AgentConfig):
     current_speed: float = II("live_info.current_speed")
@@ -781,6 +782,7 @@ class BasicAgentSpeedSettings(AgentConfig):
     
     follow_speed_limits: bool = False
     """If the agent should follow the speed limit. *NOTE:* SpeedLimit overwrites target_speed if True (local_planner.py)"""
+
 
 @dataclass
 class BehaviorAgentSpeedSettings(BasicAgentSpeedSettings):
@@ -922,6 +924,7 @@ class BasicAgentLaneChangeSettings(AgentConfig):
     same_lane_time: float = 0.0
     other_lane_time: float = 0.0
     lane_change_time: float = 2.0
+
 
 @dataclass
 class BehaviorAgentLaneChangeSettings(BasicAgentLaneChangeSettings):
@@ -1136,7 +1139,6 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
         Used by AvoidTailgatorRule, look further behind for tailgators
         """
 
-    
     speed_detection_downscale: SpeedLimitDetectionDownscale = field(default_factory=SpeedLimitDetectionDownscale)
     """
     When making lane changes determines the maximum distance to check for vehicles.
@@ -1150,6 +1152,7 @@ class BehaviorAgentObstacleSettings(BasicAgentObstacleSettings):
         or ignores slower vehicles in front of it in the other lane.
     """
     
+
 @dataclass
 class AutopilotObstacleSettings(AgentConfig):
     ignore_lights_percentage: float = 0.0
@@ -1167,6 +1170,7 @@ class AutopilotObstacleSettings(AgentConfig):
     Percentage of time to ignore pedestrians
     """
     
+
 @config_path("agent/obstacles/detection_angles")
 @dataclass
 class LunaticAgentObstacleDetectionAngles(BasicAgentObstacleDetectionAngles):
@@ -1185,7 +1189,7 @@ class LunaticAgentObstacleDetectionAngles(BasicAgentObstacleDetectionAngles):
     # Note: Unused and deprecated
     # --------------------------
     
-    when_turning : Tuple[float, float] = MISSING
+    when_turning: Tuple[float, float] = MISSING
     """Idea: When the agent is turning it might needs a wider angle to detect vehicles"""
     
 
@@ -1256,9 +1260,11 @@ class BasicAgentControllerSettings(AgentConfig):
     def max_steer(self):
         return self.max_steering
 
+
 @dataclass
 class BehaviorAgentControllerSettings(BasicAgentControllerSettings):
     pass
+
 
 @dataclass
 class AutopilotControllerSettings(AgentConfig):
@@ -1268,6 +1274,7 @@ class AutopilotControllerSettings(AgentConfig):
     Default is 0. Numbers high enough to cause the vehicle to drive through other lanes might break the controller.
     """
     
+
 @config_path("agent/controls")
 @dataclass
 class LunaticAgentControllerSettings(AutopilotControllerSettings,
@@ -1277,6 +1284,7 @@ class LunaticAgentControllerSettings(AutopilotControllerSettings,
 # ---------------------
 # PlannerSettings
 # ---------------------
+
 
 @dataclass
 class PIDControllerDict(AgentConfig):
@@ -1293,6 +1301,7 @@ class PIDControllerDict(AgentConfig):
     K_I: float = 0.05
     dt: float = 1.0 / 20.0
     """time differential in seconds"""
+
 
 @dataclass
 class BasicAgentPlannerSettings(AgentConfig):
@@ -1375,7 +1384,6 @@ class BehaviorAgentPlannerSettings(BasicAgentPlannerSettings):
     """
     
 
-
 @config_path("agent/planner")
 @dataclass
 class LunaticAgentPlannerSettings(BehaviorAgentPlannerSettings):
@@ -1431,12 +1439,13 @@ class LunaticAgentEmergencySettings(BehaviorAgentEmergencySettings):
     do_random_steering: bool = False  # TODO: Should be evasive steering
     """Whether to do random steering"""
     
-    random_steering_range : Tuple[float, float] = (-0.25, 0.25)
+    random_steering_range: Tuple[float, float] = (-0.25, 0.25)
     """Range of random steering that is applied"""
 
 # ---------------------
 # RSS
 # ---------------------
+
 
 @config_path("agent/rss")
 @dataclass
@@ -1451,10 +1460,10 @@ class RssSettings(AgentConfig):
     """
     
     if AD_RSS_AVAILABLE:
-        use_stay_on_road_feature : carla.RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On     # pyright: ignore[reportRedeclaration]
+        use_stay_on_road_feature: carla.RssRoadBoundariesMode = carla.RssRoadBoundariesMode.On     # pyright: ignore[reportRedeclaration]
         """Use the RssRoadBoundariesMode. NOTE: A call to :py:meth:`.rss_set_road_boundaries_mode` is necessary"""
         
-        log_level : carla.RssLogLevel = carla.RssLogLevel.err                                       # pyright: ignore[reportRedeclaration]
+        log_level: carla.RssLogLevel = carla.RssLogLevel.err                                       # pyright: ignore[reportRedeclaration]
         """Set the initial log level of the RSSSensor"""
     else:
         enabled = False
@@ -1542,6 +1551,7 @@ class DetectionMatrixSettings(AgentConfig):
 # Rules
 # ---------------------
 
+
 @dataclass
 class RuleConfig(DictConfigLike if TYPE_CHECKING else object):
     """Subconfig for rules; can have arbitrary keys"""
@@ -1556,7 +1566,7 @@ class RuleConfig(DictConfigLike if TYPE_CHECKING else object):
 
 @dataclass
 class CallFunctionFromConfig(DictConfigLike if TYPE_CHECKING else object):
-    _target_ : str
+    _target_: str
     """
     The name of the function to call for generating one or more rules
     hydra.utils.instantiate function.
@@ -1570,11 +1580,12 @@ class CallFunctionFromConfig(DictConfigLike if TYPE_CHECKING else object):
     
     """
     
-    _args_ : List[Any] = field(default_factory=list)
+    _args_: List[Any] = field(default_factory=list)
     """Positional arguments to pass to the Rule or Function"""
     
     random_lane_change: bool = False
     """For :py:func:`.create_default_rules`; Should the :py:class:`.RandomLaneChangeRule` be added"""
+
 
 @dataclass
 class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
@@ -1584,7 +1595,7 @@ class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
     :external-icon-parse:`:py:attr:\`omegaconf.MISSING\`` (alias for :python:`'???'`) attributes will not be passed to a :py:class:`.Rule`'s :py:meth:`~.classes.rule.Rule.__init__` method.
     """
     
-    _target_ : str
+    _target_: str
     """
     The name of the rule class to instantiate to be used with the
     hydra.utils.instantiate function.
@@ -1603,15 +1614,15 @@ class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
     
     """
     
-    _args_ : Optional[List[Any]] = MISSING
+    _args_: Optional[List[Any]] = MISSING
     """Positional arguments to pass to the Rule or Function"""
     
-    phases : Optional[Union[str, Phase]] = MISSING
+    phases: Optional[Union[str, Phase]] = MISSING
     #/, # phases must be positional; python3.8+ only
-    condition : Optional[str] = MISSING
+    condition: Optional[str] = MISSING
     action: Optional[str] = MISSING
     false_action: Optional[str] = MISSING
-    actions : Optional[Dict[Any, str]] = MISSING
+    actions: Optional[Dict[Any, str]] = MISSING
     description: str = MISSING
     overwrite_settings: Optional[Dict[str, Any]] = MISSING
     """These will be used to overwrite the settings of the agent."""
@@ -1631,29 +1642,29 @@ class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
         self_config: NestedConfigDict = MISSING  # lets not introduce a new variable
     
     priority: RulePriority = MISSING
-    cooldown_reset_value : Optional[int] = MISSING
-    group : Optional[str] = MISSING
+    cooldown_reset_value: Optional[int] = MISSING
+    group: Optional[str] = MISSING
     enabled: bool = MISSING
     
     if READTHEDOCS or TYPE_CHECKING:
-        rules : "List[CreateRuleFromConfig]" = MISSING
+        rules: "List[CreateRuleFromConfig]" = MISSING
     else:
         rules: list = MISSING  # List[CreateRuleFromConfig] # Cannot use this forward ref with omegaconf
     
     execute_all_rules: bool = MISSING
     
-    weights : Optional[Dict[str, float]] = MISSING
+    weights: Optional[Dict[str, float]] = MISSING
     repeat_if_not_applicable: bool = MISSING
     ignore_phase: bool = MISSING
     
-    MAX_TICKS : Optional[int] = MISSING
-    max_tick_callback : Optional[str] = MISSING
+    MAX_TICKS: Optional[int] = MISSING
+    max_tick_callback: Optional[str] = MISSING
     
     gameframework: None = MISSING  # pyright: ignore[reportRedeclaration]
     """Needed explicitly for :py:class:`BlockingRules` once. Depending on setup can be omitted"""
     
     if READTHEDOCS or TYPE_CHECKING:
-        gameframework : Optional[GameFramework] = MISSING
+        gameframework: Optional[GameFramework] = MISSING
     
     def __post_init__(self):
         if isinstance(self.phases, str):
@@ -1668,11 +1679,12 @@ class CreateRuleFromConfig(DictConfigLike if TYPE_CHECKING else object):
                 delattr(self, key)
 
 
-RuleCreatingParameters : TypeAlias = Union[CreateRuleFromConfig, CallFunctionFromConfig, DictConfig]
+RuleCreatingParameters: TypeAlias = Union[CreateRuleFromConfig, CallFunctionFromConfig, DictConfig]
 """
 Alias of types that are valid for :py:func:`hydra.instantiate`
 to create :py:class:`Rule | list[Rule] <Rule>`.
 """
+
 
 def _from_config_default_rules():
     """
@@ -1693,13 +1705,13 @@ def _from_config_default_rules():
         CallFunctionFromConfig("create_default_rules", random_lane_change=False),
         CreateRuleFromConfig("DriveSlowTowardsTrafficLight", gameframework=None,
                               # NOTE: Dot notation is NOT SUPPORTED you need to nest dictionaries
-                                overwrite_settings={"speed" : {"follow_speed_limits" : True}},
+                                overwrite_settings={"speed": {"follow_speed_limits": True}},
                                 description="Drive slow towards while trying not to cross the line (experimental)."
                              ),
         CreateRuleFromConfig("PassYellowTrafficLightRule",
                              self_config={
-                                 "try_to_pass" : True,
-                                 "passing_speed" : II("max:${mul:${live_info.current_speed_limit},1.33},${speed.target_speed}")
+                                 "try_to_pass": True,
+                                 "passing_speed": II("max:${mul:${live_info.current_speed_limit},1.33},${speed.target_speed}")
                              },
                              description="Speed up to pass a yellow traffic light."
                              ),
@@ -1714,6 +1726,7 @@ def _from_config_default_rules():
 # ---------------------
 # Final Settings
 # ---------------------
+
 
 @dataclass
 class AutopilotBehavior(AgentConfig):
@@ -1785,12 +1798,13 @@ class AutopilotBehavior(AgentConfig):
     update_vehicle_lights: bool = False
     """Sets if the Traffic Manager is responsible of updating the vehicle lights, or not."""
 
+
 @dataclass
 class BasicAgentSettings(AgentConfig):
     """
     Settings used by the :py:class:`BasicAgent` provided with CARLA.
     """
-    overwrites : Optional[OverwriteDictTypes] = field(default_factory=dict, repr=False)
+    overwrites: Optional[OverwriteDictTypes] = field(default_factory=dict, repr=False)
     live_info: LiveInfo = field(default_factory=LiveInfo, init=False)
     speed: BasicAgentSpeedSettings = field(default_factory=BasicAgentSpeedSettings, init=False)
     distance: BasicAgentDistanceSettings = field(default_factory=BasicAgentDistanceSettings, init=False)
@@ -1806,7 +1820,7 @@ class BehaviorAgentSettings(AgentConfig):
     """
     Settings used by the :py:class:`BehaviorAgent` provided with CARLA.
     """
-    overwrites : Optional[OverwriteDictTypes] = field(default_factory=dict, repr=False)
+    overwrites: Optional[OverwriteDictTypes] = field(default_factory=dict, repr=False)
     live_info: LiveInfo = field(default_factory=LiveInfo, init=False)
     speed: BehaviorAgentSpeedSettings = field(default_factory=BehaviorAgentSpeedSettings, init=False)
     distance: BehaviorAgentDistanceSettings = field(default_factory=BehaviorAgentDistanceSettings, init=False)
@@ -1827,7 +1841,7 @@ class LunaticAgentSettings(AgentConfig):
     Config schema definition for the :py:class:`.LunaticAgent` class
     """
     
-    overwrites : Optional[OverwriteDictTypes] = field(default_factory=dict, repr=False)
+    overwrites: Optional[OverwriteDictTypes] = field(default_factory=dict, repr=False)
     """Nested dictionaries used for the manual initialization of the config."""
     
     live_info: LiveInfo = field(default_factory=LiveInfo, init=False)
@@ -1867,7 +1881,7 @@ class LunaticAgentSettings(AgentConfig):
     
     if READTHEDOCS or TYPE_CHECKING:
         # variant needs to be first.
-        rules : "list[RuleCreatingParameters]" = field(default_factory=_from_config_default_rules)  # pyright: ignore[reportArgumentType]
+        rules: "list[RuleCreatingParameters]" = field(default_factory=_from_config_default_rules)  # pyright: ignore[reportArgumentType]
         
     # ---- Special Attributes for Context and Rule overwrites ----
     # These attributes are not usable by the agent
@@ -1885,6 +1899,7 @@ class LunaticAgentSettings(AgentConfig):
     
     :meta private:
     """
+
 
 @dataclass
 class ContextSettings(LunaticAgentSettings):
@@ -1956,7 +1971,7 @@ class CameraConfig(AgentConfig):
     """
 
     if TYPE_CHECKING:
-        camera_blueprints : List["CameraBlueprint"] = field(default_factory=lambda: [
+        camera_blueprints: List["CameraBlueprint"] = field(default_factory=lambda: [
             CameraBlueprint("sensor.camera.rgb", carla.ColorConverter.Raw, "RGB camera"),
             ])
     
@@ -2153,8 +2168,8 @@ class LaunchConfig(AgentConfig):
     
     restart_clean_sensors: Optional[bool] = None
     """
-    If None will remove all sensors from an externalActor, if :py:meth:`.WorldModel.restart` is
-    called outside from the initialization, i.e. a second time.
+    If None will remove all sensors from an externalActor if :py:meth:`.WorldModel.restart` is
+    called outside from the initialization, i.e. :py:meth:`~.WorldModel.restart` it is called a second time.
     Else will always/never remove the sensors when using :py:meth:`.WorldModel.restart`.
     """
     

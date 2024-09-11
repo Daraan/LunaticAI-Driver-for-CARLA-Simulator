@@ -37,9 +37,11 @@ class RoadOption(IntEnum):
     CHANGELANERIGHT = 6
     """Indicated by dark cyan"""
 
+
 class PlannedWaypoint(NamedTuple):
     waypoint: carla.Waypoint
     road_option: RoadOption
+
 
 class LocalPlanner:
     """

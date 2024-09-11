@@ -25,10 +25,10 @@ class PassYellowTrafficLightRule(Rule):
     
     @dataclass
     class self_config(RuleConfig):
-        try_to_pass : bool = False
+        try_to_pass: bool = False
         """If the agent should try to pass the yellow light."""
         
-        passing_speed : float = II("max:${mul:${live_info.current_speed_limit},1.33},${speed.target_speed}")
+        passing_speed: float = II("max:${mul:${live_info.current_speed_limit},1.33},${speed.target_speed}")
         """The speed the agent should try to pass the yellow light."""
     
     @ConditionFunction
@@ -38,7 +38,6 @@ class PassYellowTrafficLightRule(Rule):
         if not ctx.agent.current_traffic_light:
             return None
         return ctx.agent.current_traffic_light.state
-    
     
     @condition.register_action(carla.TrafficLightState.Yellow)
     def yellow_action(self, ctx: Context):
@@ -50,7 +49,6 @@ class PassYellowTrafficLightRule(Rule):
         else:
             ctx.add_hazard(Hazard.TRAFFIC_LIGHT_YELLOW)  # -> Emergency Rules
                       
-        
 
 class DriveSlowTowardsTrafficLight(BlockingRule):
     """
@@ -75,14 +73,14 @@ class DriveSlowTowardsTrafficLight(BlockingRule):
         return ctx.has_hazard(Hazard.TRAFFIC_LIGHT, "intersection") and not ctx.has_hazard(Hazard.OBSTACLE)
     
     # Important need to turn this of to have custom speed limits.
-    overwrite_settings = {"speed" : {"follow_speed_limits" : False}, }
+    overwrite_settings = {"speed": {"follow_speed_limits": False}, }
     
     @dataclass
     class self_config(RuleConfig):
-        max_brake : float = II("divide:${controls.max_brake},8")
+        max_brake: float = II("divide:${controls.max_brake},8")
         """Max break that should be applied when above the target speed."""
         
-        max_throttle : float = II("divide:${controls.max_throttle},4")
+        max_throttle: float = II("divide:${controls.max_throttle},4")
         """Max throttle that should be applied when below the target speed."""
     
     #@phase_callback(on_exit=Phase.CUSTOM_CYCLE | Phase.END, on_exit_exceptions=LunaticAgentException)

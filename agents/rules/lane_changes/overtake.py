@@ -16,6 +16,7 @@ from classes.rule import Rule
 if TYPE_CHECKING:
     from classes.rule import Context
     
+
 @ConditionFunction(truthy=True)
 def overtake_check(self: "SimpleOvertakeRule", ctx: "Context"):
     """
@@ -55,6 +56,7 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context"):
     if check_front.obstacle and ctx.live_info.current_speed > get_speed(check_front.obstacle):
         return check_front
     return False
+
 
 class SimpleOvertakeRule(Rule):
     group = "lane_change"

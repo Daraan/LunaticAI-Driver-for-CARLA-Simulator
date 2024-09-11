@@ -11,7 +11,7 @@ from launch_tools import CarlaDataProvider
 
 
 class TrafficManager:
-    tm : ClassVar[carla.TrafficManager] = None  # type: ignore[assignment]
+    tm: ClassVar[carla.TrafficManager] = None  # type: ignore[assignment]
 
     def __init__(self, actor: carla.Vehicle, *,
                  speed_limit_scale=AutopilotBehavior.vehicle_percentage_speed_difference,

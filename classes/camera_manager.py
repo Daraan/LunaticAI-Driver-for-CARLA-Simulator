@@ -19,13 +19,13 @@ if TYPE_CHECKING:
 
 # TODO integrate into camera.yaml
 CameraBlueprints = {
-    'Camera RGB' : CameraBlueprint('sensor.camera.rgb', cc.Raw, 'Camera RGB'),
-    'Camera Depth (Raw)' : CameraBlueprint('sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'),
-    'Camera Depth (Gray Scale)' : CameraBlueprint('sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'),
-    'Camera Depth (Logarithmic Gray Scale)' : CameraBlueprint('sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'),
-    'Camera Semantic Segmentation (Raw)' : CameraBlueprint('sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'),
-    'Camera Semantic Segmentation (CityScapes Palette)' : CameraBlueprint('sensor.camera.semantic_segmentation', cc.CityScapesPalette, 'Camera Semantic Segmentation (CityScapes Palette)'),
-    'Lidar (Ray-Cast)' : CameraBlueprint('sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)')
+    'Camera RGB': CameraBlueprint('sensor.camera.rgb', cc.Raw, 'Camera RGB'),
+    'Camera Depth (Raw)': CameraBlueprint('sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'),
+    'Camera Depth (Gray Scale)': CameraBlueprint('sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'),
+    'Camera Depth (Logarithmic Gray Scale)': CameraBlueprint('sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'),
+    'Camera Semantic Segmentation (Raw)': CameraBlueprint('sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'),
+    'Camera Semantic Segmentation (CityScapes Palette)': CameraBlueprint('sensor.camera.semantic_segmentation', cc.CityScapesPalette, 'Camera Semantic Segmentation (CityScapes Palette)'),
+    'Lidar (Ray-Cast)': CameraBlueprint('sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)')
 }
 """Camera blueprints used by the CARLA examples."""
 
@@ -40,8 +40,9 @@ CameraBlueprintsSimple: List[CameraBlueprint] = [CameraBlueprints['Camera RGB']]
 _follow_car_event = Event()
 """Use the :py:meth:`treading.Event.set` method to stop the thread."""
 
+
 # Solutions see: https://stackoverflow.com/questions/69107143/how-to-end-a-while-loop-in-another-thread
-def spectator_follow_actor(actor : carla.Actor):
+def spectator_follow_actor(actor: carla.Actor):
     """
     Continuously follow the ego vehicle with the spectator view.
     
@@ -70,7 +71,7 @@ class CameraManager(CustomSensorInterface):
 
     def __init__(self,
                  parent_actor: carla.Actor,
-                 hud : "HUD",
+                 hud: "HUD",
                  args: "LaunchConfig",
                  sensors: Optional[List[CameraBlueprint]] = CameraBlueprintsSimple,
                  ):
@@ -81,11 +82,11 @@ class CameraManager(CustomSensorInterface):
         and :py:attr:`index` to a valid value.
         """
         self.sensor = None  # Needs call to set_sensor
-        self.index : int = None  # Needs call to set_sensor
+        self.index: int = None  # Needs call to set_sensor
         
-        self._surface : Optional[pygame.Surface] = None  # set on _parse_image, # type: ignore
+        self._surface: Optional[pygame.Surface] = None  # set on _parse_image, # type: ignore
         self._parent = parent_actor
-        self._hud : "HUD" = hud
+        self._hud: "HUD" = hud
         self.current_frame = -1
         self.recording = False
         self._args = args
@@ -181,7 +182,7 @@ class CameraManager(CustomSensorInterface):
         self.index = None   # type: ignore
         self._surface = None  # type: ignore
 
-    def render(self, display : pygame.surface.Surface) -> None:
+    def render(self, display: pygame.surface.Surface) -> None:
         """Renders method the current camera image"""
         if self._surface is not None:
             display.blit(self._surface, (0, 0))
@@ -218,7 +219,7 @@ class CameraManager(CustomSensorInterface):
             image.save_to_disk(self.outpath % image.frame)
         self.current_frame = image.frame
      
-    _spectator_thread : Thread
+    _spectator_thread: Thread
     """Thread for the spectator to follow the ego vehicle."""
      
     @class_or_instance_method

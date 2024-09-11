@@ -14,8 +14,8 @@ from .traffic_light import detect_traffic_light
 __all__ = [
     "car_following_manager",
     "collision_detection_manager",
-    "detect_traffic_light",
-    "pedestrian_detection_manager",
-    "emergency_manager",
     "collision_manager",
+    "detect_traffic_light",
+    "emergency_manager",
+    "pedestrian_detection_manager",
 ]

@@ -1,3 +1,4 @@
+import code
 import sys
 
 import carla
@@ -59,10 +60,9 @@ def main():
     # ego.setBrake(2)
     if "-I" in sys.argv:
         # goes into interactive mode here
-        import code
-        v = globals().copy()
-        v.update(locals())
-        code.interact(local=v)
+        variables = globals().copy()
+        variables.update(locals())
+        code.interact(local=variables)
 
     input("press any key to end...")
 

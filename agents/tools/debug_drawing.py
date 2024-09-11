@@ -49,8 +49,6 @@ def roadoption_color(option: "RoadOption") -> carla.Color:
     return RoadOptionColor(option)
 
 
-
-
 def _draw_route_wp(world: carla.World, waypoints: "list[tuple[carla.Waypoint, RoadOption]]", vertical_shift=0.5, size=0.3, downsample=1, life_time=1.0) -> None:
     """
     Draw a list of waypoints at a certain height given in vertical_shift.
@@ -109,7 +107,7 @@ def draw_route(world: carla.World, waypoints: "list[tuple[carla.Transform | carl
         print("Drawing of type:", type(waypoints[0][0]), "not supported.")
 
 
-def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5, *, road_options: Optional["list[RoadOption]"] = None, **kwargs: Any) -> None:
+def draw_waypoints(world: carla.World, waypoints: "list[carla.Waypoint]", z=0.5, *, road_options: Optional["list[RoadOption]"] = None, **kwargs: Any) -> None:
     """
     Draw a list of waypoints at a certain height given in z.
 
@@ -138,7 +136,7 @@ def draw_waypoints(world : carla.World, waypoints: "list[carla.Waypoint]", z=0.5
         world.debug.draw_arrow(begin, end, color=color, **kwargs)  # type: ignore[arg-type]
 
 
-def debug_drawing(agent: "LunaticAgent", game_framework : "GameFramework", destination: Optional[carla.Location]) -> None:
+def debug_drawing(agent: "LunaticAgent", game_framework: "GameFramework", destination: Optional[carla.Location]) -> None:
     """
     
     Raises:
@@ -171,7 +169,7 @@ def debug_drawing(agent: "LunaticAgent", game_framework : "GameFramework", desti
         wps = traffic_light.get_stop_waypoints()
         for wp in wps:
             game_framework.debug.draw_point(wp.transform.location + carla.Location(z=2), life_time=0.6)
-            draw_waypoint_info( game_framework.debug, wp)
+            draw_waypoint_info(game_framework.debug, wp)
         trigger_loc = misc.get_trafficlight_trigger_location(traffic_light)
         trigger_wp = game_framework.get_map().get_waypoint(trigger_loc)
         game_framework.debug.draw_point(trigger_wp.transform.location + carla.Location(z=2), life_time=0.6, size=0.2, color=carla.Color(0, 0, 255))
@@ -179,13 +177,13 @@ def debug_drawing(agent: "LunaticAgent", game_framework : "GameFramework", desti
         affected_wps = traffic_light.get_affected_lane_waypoints()
 
         draw_route(world_model.world,
-                    waypoints=[ (wp, RoadOption.LANEFOLLOW) for wp in trigger_wp.next_until_lane_end(0.4) ],
+                    waypoints=[(wp, RoadOption.LANEFOLLOW) for wp in trigger_wp.next_until_lane_end(0.4)],
                     size=0.1)
         draw_route(world_model.world,
-                    waypoints=[ (wp, RoadOption.STRAIGHT) for wp in trigger_wp.next_until_lane_end(0.4) ],
+                    waypoints=[(wp, RoadOption.STRAIGHT) for wp in trigger_wp.next_until_lane_end(0.4)],
                     size=0.1)
         draw_route(world_model.world,
-                    waypoints=[ (wp, RoadOption.LEFT) for wp in affected_wps ],
+                    waypoints=[(wp, RoadOption.LEFT) for wp in affected_wps],
                     size=0.1)
 
 
@@ -195,7 +193,7 @@ def draw_transform(debug: carla.DebugHelper, trans: carla.Transform, col: carla.
         thickness=0.05, arrow_size=0.1, color=col, life_time=lt)
 
 
-def draw_junction(debug: carla.DebugHelper, junction : carla.Junction, l_time: float = 2.):
+def draw_junction(debug: carla.DebugHelper, junction: carla.Junction, l_time: float = 2.):
     """Draws a junction bounding box and the initial and final waypoint of every lane."""
     # draw bounding box
     box = junction.bounding_box
@@ -244,7 +242,7 @@ def draw_waypoint_union(debug: carla.DebugHelper, w0: carla.Waypoint, w1: carla.
     debug.draw_point(w1.transform.location + carla.Location(z=0.25), 0.1, color, lt, False)  # type: ignore[arg-type]
 
 
-def lane_explorer(debug : carla.DebugHelper, current_w: carla.Waypoint, draw_info=True, waypoint_separation=waypoint_separation, trail_life_time: float = 0.1):  # noqa: ANN201
+def lane_explorer(debug: carla.DebugHelper, current_w: carla.Waypoint, draw_info=True, waypoint_separation=waypoint_separation, trail_life_time: float = 0.1):  # noqa: ANN201
     """
     From CARLA lane_explorer.py example.
     """

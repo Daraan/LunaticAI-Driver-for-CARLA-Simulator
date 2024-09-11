@@ -28,41 +28,50 @@ def _check_type(instance, cls):
     assert isinstance(instance, cls)
     return instance
 
-def context_method(self, ctx : "Context") -> bool:
+
+def context_method(self, ctx: "Context") -> bool:
     assert isinstance(self, Rule)
     assert isinstance(ctx, Context)
     return True
 
-def context_function(ctx : "Context") -> bool:
+
+def context_function(ctx: "Context") -> bool:
     assert isinstance(ctx, Context)
     return True
 
+
 @ConditionFunction
-def eval_context_method(self: Rule, ctx : "Context") -> int:
+def eval_context_method(self: Rule, ctx: "Context") -> int:
     assert isinstance(self, Rule)
     assert isinstance(ctx, Context)
     return 2
 
+
 @ConditionFunction
-def eval_context_function(ctx : "Context") -> int:
+def eval_context_function(ctx: "Context") -> int:
     assert isinstance(ctx, Context)
     return 1
 
-def ctx_action(ctx : Context):
+
+def ctx_action(ctx: Context):
     _check_type(ctx, Context)
 
-def ctx_self_action(self, ctx : Context):
+
+def ctx_self_action(self, ctx: Context):
     _check_type(self, Rule)
     _check_type(ctx, Context)
 
-def ctx_action_kwargs(ctx : Context, arg1):
+
+def ctx_action_kwargs(ctx: Context, arg1):
     assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
     _check_type(ctx, Context)
 
-def ctx_self_action_kwargs(self, ctx : Context, arg1):
+
+def ctx_self_action_kwargs(self, ctx: Context, arg1):
     _check_type(self, Rule)
     assert arg1 == "arg1", f"Expected arg1 but got {arg1}"
     _check_type(ctx, Context)
+
 
 @Rule
 class SimpleRule1:
@@ -77,14 +86,16 @@ class SimpleRule(Rule):
     condition = context_method
     action = lambda self, ctx: ctx_self_action(self, ctx)  # noqa: E731
 
+
 class ReverseWhenCollide(Rule):
     phases = {Phase.COLLISION | Phase.END}    # type: ignore[assignment]
     condition = context_method
     
     @staticmethod
-    def action(ctx : Context):
+    def action(ctx: Context):
         _check_type(ctx, Context)
         ctx.control.reverse = True   # type: ignore[arg-type]
+
 
 @Rule
 class SimpleRule1B:
@@ -92,10 +103,12 @@ class SimpleRule1B:
     condition = eval_context_function.copy()  # TODO: can I copy this via a __set__
     condition.register_action(ctx_self_action_kwargs, arg1="arg1")
     
+
 class SimpleRule2B(Rule):
     phase = Phase.UPDATE_INFORMATION | Phase.BEGIN
     condition = eval_context_function.copy()  # TODO: can I copy this via a __set__
     condition.register_action(ctx_action_kwargs, use_self=False, arg1="arg1")
+
 
 class SimpleRuleB(Rule):
     phases = Phase.UPDATE_INFORMATION | Phase.BEGIN  # type: ignore[assignment]
@@ -107,7 +120,7 @@ class DebugRuleWithEval(Rule):
     phases = Phase.UPDATE_INFORMATION | Phase.BEGIN  # type: ignore[assignment]
     
     @ConditionFunction("AlwaysTrue")
-    def condition(self, ctx : "Context") -> int:
+    def condition(self, ctx: "Context") -> int:
         assert isinstance(ctx, Context)
         assert isinstance(self, DebugRuleWithEval)
         return 1
@@ -124,11 +137,12 @@ class DebugRuleWithEval(Rule):
     if TYPE_CHECKING:
         assert_type(true_action, Callable[[Self, Context], None])
     
+
 class DebugRuleWithEval2(Rule):
     phases = Phase.UPDATE_INFORMATION | Phase.BEGIN  # type: ignore[assignment]
     
     @ConditionFunction
-    def condition(self, ctx : "Context") -> int:
+    def condition(self, ctx: "Context") -> int:
         assert isinstance(ctx, Context)
         assert isinstance(self, DebugRuleWithEval)
         return 1
@@ -176,6 +190,7 @@ class Another(Rule):
 
 a = Another()
 
+
 class CustomInitRule(Rule):
     def __init__(self, phases: Optional[Phase] = None):
         # NOTE: The
@@ -189,6 +204,7 @@ class CustomInitRule(Rule):
 
     actions = {True: lambda self, ctx: (_check_type(self, Rule), _check_type(ctx, Context)),
             False: lambda ctx: _check_type(ctx, Context)}
+
 
 class RuleAttributes(Another):
     DEFAULT_COOLDOWN_RESET = 10
@@ -205,13 +221,14 @@ simple_ruleB = SimpleRuleB(Phase.UPDATE_INFORMATION | Phase.BEGIN)
 simple_rule2B = SimpleRule2B(Phase.UPDATE_INFORMATION | Phase.BEGIN)
 another_rule = Another()
 
+
 def _test_custom_init_Rule():
     """Suppress warning message when creating this case"""
     import io
     import re
     import sys
     from logging import StreamHandler
-    from contextlib import redirect_stderr
+    from contextlib import redirect_stderr, suppress
     from agents.tools.logs import logger
     alt_out = io.StringIO()
     # suppress expected message
@@ -228,10 +245,8 @@ def _test_custom_init_Rule():
     with redirect_stderr(alt_out):
         custom_rule = CustomInitRule()
     if org_stream is not None:
-        try:
+        with suppress(Exception):
             handler.stream = org_stream
-        except Exception:
-            pass
     
     alt_out.seek(0)
     content = alt_out.read()
@@ -249,6 +264,7 @@ def _test_custom_init_Rule():
 custom_rule = _test_custom_init_Rule()
 
 # Check Doc -> Descritpion
+
 
 class CheckDescription(Rule):
     """This is my description"""

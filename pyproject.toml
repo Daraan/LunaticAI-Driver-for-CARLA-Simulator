@@ -4,7 +4,7 @@ requires-python = ">=3.8"
 
 [tool.ruff]
 # Enable preview features.
-preview = false
+preview = true
 
 extend-exclude = [
     "typings/carla/ad/*",
@@ -49,6 +49,7 @@ select = [
     "PLE1205",
 
     "RUF",
+    "RUF021", # needs preview
     "SIM201",
     "SIM202",
     "UP",
@@ -78,6 +79,7 @@ ignore = [
     "I001",
     "UP007",
     "W293",
+    "E265", # Block comment should start with `# `
     "E501", # line to long
     "UP036",
     "UP006",
@@ -92,6 +94,11 @@ ignore = [
     #"W605",
     "RUF100",
     "PTH100", # os.path.abspath
+
+    # unstable
+    "RUF031", # Avoid parentheses for tuples in subscripts.
+
+    "SIM108", # Use ternary operator, sometimes too long lines
 
     # deprecated:
     "ANN101", "ANN102",
@@ -136,12 +143,16 @@ ignore = [
     "A",
     "ARG",
     "PTH",
+    "F841",
 ]
 "classes/_data_gathering/car_detection_matrix/informationUtils.py" = [
-    
+    "F841",
 ]
 "classes/hud.py" = [
     "UP032", # Format instead of percent preferred
+]
+"classes/rule.py" = [
+    "E116", # intended comments
 ]
 "conf/experimental_rule_interpreter_examples/*" =[
     "ARG",
@@ -166,6 +177,7 @@ ignore = [
 "examples/*" = [
     "F841",
     "PTH",
+    "PLC2701",
 ]
 "AgentGameLoop.py" = [
     "F841",

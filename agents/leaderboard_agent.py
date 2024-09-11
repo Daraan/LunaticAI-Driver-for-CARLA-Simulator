@@ -11,6 +11,7 @@ Attention:
     :py:class:`.LaunchConfig` directly will skip the Hydra_ setup and the global
     values will not be used.
 """
+import contextlib
 import operator
 import os
 from pathlib import Path
@@ -92,6 +93,7 @@ Needs extra tools to stick to the road.
 
 args: LaunchConfig
 """Global access to the launch config; set in :py:meth:`LunaticChallenger.setup`"""
+
 
 class LunaticChallenger(AutonomousAgent, LunaticAgent):
     """
@@ -179,7 +181,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 if OmegaConf.is_missing(args.hydra.runtime, "output_dir"):
                     args.hydra.runtime.output_dir = args.hydra.run.dir
                 HydraConfig.instance().set_config(args)  # type: ignore[arg-type]
-                os.makedirs(args.hydra.runtime.output_dir, exist_ok=True)
+                Path(args.hydra.runtime.output_dir).mkdir(parents=True, exist_ok=True)
                 # Assure that our logger works
                 configure_log(args.hydra.job_logging, logger.name)  # type: ignore[arg-type]
                 
@@ -212,11 +214,11 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         print("World Model setup")
         self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False)  # Note: stores weakref to controller
         print("Initializing agent")
-        LunaticAgent.__init__(self, config, self.world_model)
+        LunaticAgent.__init__(self=self, settings=config, world_model=self.world_model)
         # super(AutonomousAgent, self).__init__(self, config, self.world_model)
         print("LunaticAgent initialized")
         
-        from agents.rules.lane_changes.random_changes import RandomLaneChangeRule
+        from agents.rules.lane_changes.random_changes import RandomLaneChangeRule  # noqa: PLC0415
         for rules in self.rules.values():
             for rule in rules:
                 if isinstance(rule, RandomLaneChangeRule):
@@ -229,10 +231,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self.game_framework.agent = self  # TODO: Remove this circular reference
         self.agent_engaged = False
         # Print controller docs
-        try:
+        with contextlib.suppress(AttributeError):
             print(self.controller.get_docstring())
-        except Exception:
-            pass
         
     def sensors(self) -> "list[dict]":
         """
@@ -269,10 +269,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
             args.leaderboard.sensors[i].use = USE_OPEN_DRIVE_DATA
         
         # add sensors if they have the use flag in the config
-        try:
+        with contextlib.suppress(Exception):
             sensors.extend(filter(operator.itemgetter('use'), args.leaderboard.sensors))
-        except Exception:
-            pass
         logger.info("Using sensors: %s", sensors)
         return sensors
 
@@ -309,7 +307,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         try:
             if self._print_input_data(input_data) and "OpenDRIVE" in input_data:
                 frame, data_value = input_data["OpenDRIVE"]
-                data : str = data_value["opendrive"]
+                data: str = data_value["opendrive"]
                 if self._opendrive_data != data:
                     if self._opendrive_data is not None:
                         #breakpoint()
@@ -438,6 +436,6 @@ class _GPSDataDict(TypedDict if not READTHEDOCS or TYPE_CHECKING else object):
     
     :meta public:
     """
-    lat : float
-    lon : float
-    z : float
+    lat: float
+    lon: float
+    z: float

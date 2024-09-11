@@ -51,6 +51,7 @@ if TYPE_CHECKING:
 else:
     _ActionsDictValues = AnyCallableAction
 
+
 class ConditionFunction(Generic[_CP, _CH]):
     """
     Implements a decorator to wrap function to be used with :any:`Rule` classes.
@@ -178,7 +179,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         return super().__new__(cls)  # new instance
     
     if READTHEDOCS and not TYPE_CHECKING:
-        __new__.__annotations__["first_argument"] = Optional["str[name]" | AnyCallableCondition]  # noqa: F821
+        __new__.__annotations__["first_argument"] = Optional["str(name)" | AnyCallableCondition]  # noqa: F821, TCH010
     
     def __init__(self,
                  evaluation_function: CallableCondition[RuleT, _CP, _CH],
@@ -198,7 +199,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         Uses the generic type hints :py:obj:`_CP`, :py:obj:`_CH` of the class.
         """
         if READTHEDOCS and not TYPE_CHECKING:
-            self.evaluation_function : CallableConditionT
+            self.evaluation_function: CallableConditionT
         
         self.truthy: bool = truthy
         if name != "ConditionFunction":
@@ -289,7 +290,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         return "".join(func_lines).strip()  # as string
 
     @staticmethod
-    def _func_to_string(func : Callable[..., Any]) -> str:
+    def _func_to_string(func: Callable[..., Any]) -> str:
         if not hasattr(func, "__name__"):
             return str(func)
         if func.__name__ == "<lambda>":
@@ -461,7 +462,7 @@ class ConditionFunction(Generic[_CP, _CH]):
             """
             return self.name
     else:
-        __name__ : str
+        __name__: str
         
     def __str__(self):
         return self.name
@@ -477,7 +478,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         return s
 
     @classmethod
-    def AND(cls, func1 : "ConditionFunction[_CP,  _CH]", func2 : "ConditionFunction[_CP, _H]") -> "ConditionFunction[_CP, _CH | _H]":
+    def AND(cls, func1: "ConditionFunction[_CP,  _CH]", func2: "ConditionFunction[_CP, _H]") -> "ConditionFunction[_CP, _CH | _H]":
         """Combine two functions with :python:`and`, i.e. to return True if both return True."""
         # NOTE: arguments are, lost. For type hints need to make ConditionFunction generic
         def combined_func(ctx: "Context", *args: _CP.args, **kwargs: _CP.kwargs):
@@ -485,7 +486,7 @@ class ConditionFunction(Generic[_CP, _CH]):
         return cls(combined_func, name=f"{func1.name}_and_{func2.name}")  # type: ignore
 
     @classmethod
-    def OR(cls, func1 : "ConditionFunction[_CP,  _CH]", func2 : "ConditionFunction[_CP, _H]") -> "ConditionFunction[_CP, _CH | _H]":
+    def OR(cls, func1: "ConditionFunction[_CP,  _CH]", func2: "ConditionFunction[_CP, _H]") -> "ConditionFunction[_CP, _CH | _H]":
         """Combine two functions to return True if either returns True."""
         def combined_func(ctx: "Context", *args: _CP.args, **kwargs: _CP.kwargs):
             return func1(ctx, *args, **kwargs) or func2(ctx, *args, **kwargs)
@@ -518,7 +519,6 @@ class ConditionFunction(Generic[_CP, _CH]):
         return self.NOT(self)
 
 
-    
 class ActionFunction(ConditionFunction[_P, _T]):
     """
     A decorator that can be used with :any:`Rule.action`. It is nearly equivalent to :any:`ConditionFunction`,
@@ -534,7 +534,7 @@ class ActionFunction(ConditionFunction[_P, _T]):
         super().__init__(action_function, name, use_self=use_self)
 
     @classmethod
-    def NOT(cls, _ : Never) -> "NoReturn":  # type: ignore
+    def NOT(cls, _: Never) -> "NoReturn":  # type: ignore
         """
         Raises:
             NotImplementedError: NOT is not implemented for ActionFunction.

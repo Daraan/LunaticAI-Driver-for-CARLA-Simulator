@@ -51,7 +51,6 @@ if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
 
 
-
 # ==============================================================================
 # -- KeyboardControl -----------------------------------------------------------
 # ==============================================================================
@@ -64,11 +63,11 @@ class KeyboardControl:
         H/?          : toggle help
     """
     
-    _world_model : "WorldModel"
+    _world_model: "WorldModel"
     """Reference to the world model that controls the interface."""
     
     # COMMENT I think this only allows to end the script
-    def __init__(self, world : "WorldModel", help_notice=True):
+    def __init__(self, world: "WorldModel", help_notice=True):
         """
         Parameters:
             world : WorldModel
@@ -107,12 +106,11 @@ class KeyboardControl:
             self._check_help_event(event)
     
     @staticmethod
-    def _is_quit_shortcut(key : int):
+    def _is_quit_shortcut(key: int):
         """Shortcut for quitting"""
         return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
 
-    
-    def _check_help_event(self, event : pygame.event.Event):
+    def _check_help_event(self, event: pygame.event.Event):
         """Check if the event is a help event"""
         if not hasattr(event, 'unicode'):  # No KEYUP/DOWN event
             return None
@@ -120,6 +118,7 @@ class KeyboardControl:
             self._world_model.hud.help.toggle()
             return True
         return False
+
 
 class PassiveKeyboardControl(KeyboardControl):
     """
@@ -140,6 +139,7 @@ class PassiveKeyboardControl(KeyboardControl):
                 if self._check_help_event(event):
                     pass
         return None
+
 
 class RSSKeyboardControl(KeyboardControl):
     """
@@ -195,7 +195,7 @@ class RSSKeyboardControl(KeyboardControl):
 
     # TODO: should be a toggle between None, Autopilot, Agent
 
-    def __init__(self, world_model : "WorldModel", start_in_autopilot : bool, agent_controlled : bool = True, clock: pygame.time.Clock = None, config=None):
+    def __init__(self, world_model: "WorldModel", start_in_autopilot: bool, agent_controlled: bool = True, clock: pygame.time.Clock = None, config=None):
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
         super().__init__(world_model)
@@ -205,11 +205,11 @@ class RSSKeyboardControl(KeyboardControl):
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         world_model.controller = weakref.proxy(self)
-        self._control : carla.VehicleControl = None
+        self._control: carla.VehicleControl = None
         #self._control = carla.VehicleControl()
         self._lights = carla.VehicleLightState.NONE
         #self._restrictor = carla.RssRestrictor() # Moved to worldmodel
-        self._restrictor : carla.RssRestrictor = None
+        self._restrictor: carla.RssRestrictor = None
         self._vehicle_physics = world_model.player.get_physics_control()
         world_model.player.set_light_state(self._lights)
         self._steer_cache = 0.0
@@ -409,14 +409,13 @@ class RSSKeyboardControl(KeyboardControl):
                         self._world_model.recording_start -= 10
                     else:
                         self._world_model.recording_start -= 1
-                    self._world_model.hud.notification("Recording start time is %d" % (self._world_model.recording_start))
+                    self._world_model.hud.notification(f"Recording start time is {self._world_model.recording_start}")
                 elif event.key == K_EQUALS and (pygame.key.get_mods() & KMOD_CTRL):
                     if pygame.key.get_mods() & KMOD_SHIFT:
                         self._world_model.recording_start += 10
                     else:
                         self._world_model.recording_start += 1
-                    self._world_model.hud.notification("Recording start time is %d" % (self._world_model.recording_start))
-                
+                    self._world_model.hud.notification(f"Recording start time is {self._world_model.recording_start}")
                 
                 # Modify controls
                 if isinstance(self._control, carla.VehicleControl):
@@ -473,7 +472,6 @@ class RSSKeyboardControl(KeyboardControl):
             # Moved Code from Carla example to WorldModel
         return None
  
-
     def _parse_vehicle_keys(self, keys, milliseconds):
         """Handles manual vehicle controls via keyboard."""
         if keys[K_UP] or keys[K_w]:

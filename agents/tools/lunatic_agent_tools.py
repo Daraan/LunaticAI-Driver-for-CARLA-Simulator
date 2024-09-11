@@ -63,13 +63,14 @@ def result_to_context(key: str) -> Callable[[CallableT], CallableT]:
     """
     def decorator(func: CallableT) -> CallableT:
         @wraps(func)
-        def wrapper(self : "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
+        def wrapper(self: "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
             result = func(self, *args, **kwargs)
             setattr(self.ctx, key, result)
             return result
         return wrapper  # type: ignore[return-value]
         
     return decorator
+
 
 def must_clear_hazard(func: CallableT) -> CallableT:
     """
@@ -80,12 +81,13 @@ def must_clear_hazard(func: CallableT) -> CallableT:
         EmergencyStopException: If self.detected_hazards is not empty after the function call.
     """
     @wraps(func)
-    def wrapper(self : "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
+    def wrapper(self: "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
         result = func(self, *args, **kwargs)
         if self.detected_hazards:
             raise EmergencyStopException(self.detected_hazards)
         return result
     return wrapper  # type: ignore[return-value]
+
 
 def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], None] = None,
                       on_exit: Union[Phase, Callable[['LunaticAgent'], Any], None] = None,
@@ -124,7 +126,7 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
         warning and ignore the decorator.
     """
     # Validate exception -> Tuple
-    _on_exit_exceptions_ : Tuple["type[BaseException]", ...]
+    _on_exit_exceptions_: Tuple["type[BaseException]", ...]
     if on_exit_exceptions is True:
         _on_exit_exceptions_ = (LunaticAgentException,)
     elif isclass(on_exit_exceptions) and issubclass(on_exit_exceptions, BaseException):
@@ -140,7 +142,7 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
         prior_result_getter = attrgetter(prior_result_getter)  # raises Type Error if not string
 
     # Pay attention to prior_result which should not be prior_result
-    def decorator(func : _AgentFunction[_P, _T]):
+    def decorator(func: _AgentFunction[_P, _T]):
         if on_enter is None and on_exit is None:
             print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
                     f"decorator for function {func.__name__}. Ignoring decorator.")
@@ -191,6 +193,7 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
 # ------------------------------
 # Obstacle Detection
 # ------------------------------
+
 
 def max_detection_distance(self: HasConfig["BehaviorAgentSettings | LunaticAgentSettings"],
                            lane: Literal["same_lane", "other_lane", "overtaking", "tailgating"]) -> float:
@@ -244,17 +247,17 @@ def detect_obstacles_in_path(self: "CanDetectNearbyObstacles",
 
     # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
     if self.config.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
-        detection_result : ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
+        detection_result: ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
                                                         self.max_detection_distance("other_lane"),
                                                         up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
                                                         lane_offset=-1)
     elif self.config.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
-        detection_result : ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
+        detection_result: ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
                                                         self.max_detection_distance("other_lane"),
                                                         up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
                                                         lane_offset=1)
     else:
-        detection_result : ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
+        detection_result: ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
                                                         self.max_detection_distance("same_lane"),
                                                         up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],)
     return detection_result
@@ -457,7 +460,7 @@ detect_obstacles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th
 # Path Planning
 # ------------------------------
 
-def generate_lane_change_path(waypoint : carla.Waypoint,
+def generate_lane_change_path(waypoint: carla.Waypoint,
                               direction: Literal['left', 'right'] = 'left',
                               distance_same_lane: float = 10,
                               distance_other_lane: float = 25,
@@ -557,6 +560,7 @@ def generate_lane_change_path(waypoint : carla.Waypoint,
 
     return plan
     
+
 def create_agent_config(self: HasBaseSettings[AgentConfigT],
                         source: Union["type[AgentConfigT]", AgentConfigT, DictConfig, str, None] = None,
                         world_model: Optional["WorldModel"] = None,
@@ -588,7 +592,7 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
     elif isinstance(source, str):  # Assuming Path
         logger.debug("Creating config from yaml file")
         opt_dict = self.BASE_SETTINGS.from_yaml(source)
-    elif isinstance(source, AgentConfig) or isclass(source) and issubclass(source, AgentConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
+    elif isinstance(source, AgentConfig) or (isclass(source) and issubclass(source, AgentConfig)):  # pyright: ignore[reportUnnecessaryIsInstance]
         logger.debug("Config is a dataclass / AgentConfig")
         _cfg = source.to_dict_config()
         _cfg.merge_with(overwrite_options)  # Note uses DictConfig.update

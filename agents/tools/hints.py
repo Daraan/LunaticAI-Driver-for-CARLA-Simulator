@@ -43,10 +43,11 @@ else:
     TrafficLightDetectionResult = NamedTuple('TrafficLightDetectionResult', [('traffic_light_was_found', bool), ('traffic_light', Union[TrafficLight, None])])
 '''
 
+
 class TrafficLightDetectionResult(NamedTuple):
-    traffic_light_was_found : bool
+    traffic_light_was_found: bool
     """"""
-    traffic_light : Optional[carla.TrafficLight]
+    traffic_light: Optional[carla.TrafficLight]
     """The found traffic light. If no traffic light was found, the value is None."""
     
     def __bool__(self):
@@ -59,11 +60,11 @@ class TrafficLightDetectionResult(NamedTuple):
 
 # Use proper NamedTuples (Python 3.6+) and not the compatibility version from carla
 class ObstacleDetectionResult(NamedTuple):
-    obstacle_was_found : bool
+    obstacle_was_found: bool
     """"""
-    obstacle : Optional[carla.Actor]
+    obstacle: Optional[carla.Actor]
     """The found actor that represents the obstacle."""
-    distance : Union[float, Literal[-1]]
+    distance: Union[float, Literal[-1]]
     """The distance to the obstacle. If no obstacle was found, the distance is -1."""
     
     def __bool__(self) -> bool:
@@ -81,11 +82,11 @@ class CameraBlueprint(NamedTuple):
     """
     # TODO: Should be turned into a TypedDict instead of a NamedTuple to handle the setting of actual_blueprint better
 
-    blueprint_path : str
+    blueprint_path: str
     """Blueprint name for the actor"""
-    color_convert : carla.ColorConverter
+    color_convert: carla.ColorConverter
     """Color converter for the camera"""
-    name : str
+    name: str
     """Semantic name of the blueprint, e.g. RGB, Segmentation"""
-    actual_blueprint : Optional[carla.ActorBlueprint] = None
+    actual_blueprint: Optional[carla.ActorBlueprint] = None
     """The actual blueprint object; filled in later"""

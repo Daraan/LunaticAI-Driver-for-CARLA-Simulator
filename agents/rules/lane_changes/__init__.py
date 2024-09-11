@@ -10,7 +10,7 @@ from .random_changes import RandomLaneChangeRule
 
 __all__ = [
     "AvoidTailgatorRule",
-    "rule_lane_change",
-    "SimpleOvertakeRule",
     "RandomLaneChangeRule",
+    "SimpleOvertakeRule",
+    "rule_lane_change",
 ]

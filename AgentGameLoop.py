@@ -45,6 +45,7 @@ PRINT_RULES = False
 # -- Game Loop ---------------------------------------------------------
 # ==============================================================================
 
+
 def game_loop(args: LaunchConfig):
     r"""
     Main loop of the simulation.
@@ -57,9 +58,9 @@ def game_loop(args: LaunchConfig):
     and camera updates.
     """
     # Avoid name errors in final block
-    game_framework : GameFramework = None
-    world_model : WorldModel = None
-    agent : LunaticAgent = None
+    game_framework: GameFramework = None
+    world_model: WorldModel = None
+    agent: LunaticAgent = None
     ego: carla.Vehicle = None
 
     # -- Load Settings Agent --
@@ -70,7 +71,7 @@ def game_loop(args: LaunchConfig):
     # To not validate the config against LunaticAgentSettings use OmegaConf.create(args.agent)
     # to create a copy.
 
-    agent_config : AsDictConfig[LunaticAgentSettings] = LunaticAgentSettings.create(settings=args.agent)
+    agent_config: AsDictConfig[LunaticAgentSettings] = LunaticAgentSettings.create(settings=args.agent)
     
     try:
         logger.info("Creating Game Framework ...")
@@ -90,7 +91,7 @@ def game_loop(args: LaunchConfig):
                                                     tick=False)
         
         # Spawn Ego
-        start : carla.libcarla.Transform = spawn_points[EGO_SPAWN_IDX]
+        start: carla.libcarla.Transform = spawn_points[EGO_SPAWN_IDX]
         ego = game_framework.spawn_actor(ego_bp, start, must_spawn=True)  # type: ignore[assignment]
         
         logger.info("Creating agent and WorldModel ...")

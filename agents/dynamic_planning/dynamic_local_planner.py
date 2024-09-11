@@ -30,14 +30,14 @@ class DynamicLocalPlanner(LocalPlanner):
     When multiple paths are available (intersections) this local planner makes a random choice,
     unless a given global plan has already been specified.
     """
-    _waypoints_queue : "deque[Tuple[carla.Waypoint, RoadOption]]"
+    _waypoints_queue: "deque[Tuple[carla.Waypoint, RoadOption]]"
 
     @property
     def config(self):
         return self._agent.ctx.config
 
     def __init__(self,
-                 agent : "UseableWithDynamicPlanner",
+                 agent: "UseableWithDynamicPlanner",
                  opt_dict: None,
                  map_inst: carla.Map = None,  # type: ignore # keep for compatibility, inform user
                  world: carla.World = None    # type: ignore # keep for compatibility, inform user
@@ -77,20 +77,20 @@ class DynamicLocalPlanner(LocalPlanner):
         try:
             if map_inst:
                 if isinstance(map_inst, carla.Map):
-                    self._map : carla.Map = map_inst
+                    self._map: carla.Map = map_inst
                 else:
                     print("Warning: Ignoring the given map as it is not a 'carla.Map'")
-                    self._map : carla.Map = self._world.get_map()
+                    self._map: carla.Map = self._world.get_map()
             else:
-                self._map : carla.Map = self._world.get_map()
+                self._map: carla.Map = self._world.get_map()
         except AttributeError as e:
             print(e)
 
         # set in _init_controller
-        self._vehicle_controller : DynamicVehiclePIDController = None  # type: ignore[assignment]
-        self.target_waypoint : carla.Waypoint = None  # type: ignore[assignment]
+        self._vehicle_controller: DynamicVehiclePIDController = None  # type: ignore[assignment]
+        self.target_waypoint: carla.Waypoint = None  # type: ignore[assignment]
         """The next waypoint in the queue, as long as it is not empty."""
-        self.target_road_option : RoadOption = None  # type: ignore[assignment]
+        self.target_road_option: RoadOption = None  # type: ignore[assignment]
         """The next :py:class:`RoadOption` in the queue, as long as it is not empty."""
 
         self._waypoints_queue = deque(maxlen=10000)
@@ -203,6 +203,7 @@ class DynamicLocalPlanner(LocalPlanner):
 
 # def get_incoming_waypoint_and_direction(self, steps=3):
   
+
 class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
     
     def __init__(self, agent,
@@ -213,8 +214,7 @@ class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
         super().__init__(agent, opt_dict, map_inst, world)
         self._rss_sensor = rss_sensor
         
-        
-    def set_global_plan(self, current_plan : List[Tuple[carla.Waypoint, RoadOption]], stop_waypoint_creation=True, clean_queue=True):
+    def set_global_plan(self, current_plan: List[Tuple[carla.Waypoint, RoadOption]], stop_waypoint_creation=True, clean_queue=True):
         """
         Adds a new plan to the local planner. A plan must be a list of [carla.Waypoint, RoadOption] pairs
         The 'clean_queue` parameter erases the previous plan if True, otherwise, it adds it to the old one
@@ -232,7 +232,7 @@ class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
         # Remake the waypoints queue if the new plan has a higher length than the queue
         new_plan_length = len(current_plan) + len(self._waypoints_queue)
         if new_plan_length > self._waypoints_queue.maxlen:  # type: ignore # is bounded
-            new_waypoint_queue : deque[Tuple[carla.Waypoint, RoadOption]] = deque(maxlen=new_plan_length)
+            new_waypoint_queue: deque[Tuple[carla.Waypoint, RoadOption]] = deque(maxlen=new_plan_length)
             for wp in self._waypoints_queue:
                 new_waypoint_queue.append(wp)
             self._waypoints_queue = new_waypoint_queue

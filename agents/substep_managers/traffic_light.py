@@ -19,17 +19,19 @@ if TYPE_CHECKING:
     from classes.type_protocols import ActorList, CanDetectNearbyTrafficLights
 
 
-def _is_red_light(traffic_light : "carla.TrafficLight") -> bool:
+def _is_red_light(traffic_light: "carla.TrafficLight") -> bool:
     """Filter function to check if a traffic light is red."""
     return traffic_light.state == TrafficLightState.Red
 
-def _is_red_or_yellow(traffic_light : "carla.TrafficLight") -> bool:
+
+def _is_red_or_yellow(traffic_light: "carla.TrafficLight") -> bool:
     """Filter function to check if a traffic light is red or yellow."""
     return traffic_light.state in (TrafficLightState.Red, TrafficLightState.Yellow)
 
-def affected_by_traffic_light(self : "CanDetectNearbyTrafficLights",
-                              lights_list : Optional[ActorList[carla.TrafficLight]] = None,
-                              max_distance : Optional[float] = None) -> TrafficLightDetectionResult:
+
+def affected_by_traffic_light(self: "CanDetectNearbyTrafficLights",
+                              lights_list: Optional[ActorList[carla.TrafficLight]] = None,
+                              max_distance: Optional[float] = None) -> TrafficLightDetectionResult:
     """
     Method to check if there is a red light affecting the vehicle.
 
@@ -90,8 +92,9 @@ def affected_by_traffic_light(self : "CanDetectNearbyTrafficLights",
 
     return TrafficLightDetectionResult(False, None)
 
+
 def detect_traffic_light(self: CanDetectNearbyTrafficLights,
-                         traffic_lights : Optional[ActorList[carla.TrafficLight]] = None) -> TrafficLightDetectionResult:
+                         traffic_lights: Optional[ActorList[carla.TrafficLight]] = None) -> TrafficLightDetectionResult:
     """
     This method is in charge of behaviors for red lights.
     """
@@ -114,7 +117,7 @@ def detect_traffic_light(self: CanDetectNearbyTrafficLights,
 
     # TODO check if lights should be copied.
     # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
-    affected_traffic_light : TrafficLightDetectionResult = affected_by_traffic_light(self, traffic_lights,
+    affected_traffic_light: TrafficLightDetectionResult = affected_by_traffic_light(self, traffic_lights,
                                     max_distance=max_tlight_distance)
     
     if (affected_traffic_light.traffic_light_was_found

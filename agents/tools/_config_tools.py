@@ -43,6 +43,7 @@ if TYPE_CHECKING:
 
 # ----------- Resolvers -------------
 
+
 def look_ahead_time(speed: float, time_to_collision: float, plus: float = 0) -> float:
     """
     Convert the current speed in km /h and a time to collision in seconds to a distance in meters
@@ -79,6 +80,7 @@ config_store = ConfigStore.instance()
 POSTPOND_REGISTER = sys.version_info < (3, 10)
 postpond_register: dict[str, type[Any]] = {}
 
+
 def register_hydra_schema(obj: "type[Any]", name: Optional[str] = None):
     """
     Uses Hydra's ConfigStore to register the schema of the current class in the
@@ -93,7 +95,7 @@ def register_hydra_schema(obj: "type[Any]", name: Optional[str] = None):
     #    pass
     #else:
     #    postpond_register[name] = obj
-    config_store.store(name, OmegaConf.structured(obj, flags={"allow_objects" : True}),
+    config_store.store(name, OmegaConf.structured(obj, flags={"allow_objects": True}),
                         provider="agents.tools.config_creation", group=None, package=obj.__module__)
         
     
@@ -107,11 +109,8 @@ def config_path(path: Optional[str] = None):
     
     if not READTHEDOCS:
     
-        def _register(obj : "type[_AnAgentConfig]") -> "type[_AnAgentConfig]":  # pyright: ignore[reportRedeclaration]
-            if path is None:
-                name = obj._config_path  # type: ignore[attr-defined]
-            else:
-                name = path
+        def _register(obj: "type[_AnAgentConfig]") -> "type[_AnAgentConfig]":  # pyright: ignore[reportRedeclaration]
+            name = obj._config_path if path is None else path
             if name is None or name == "NOT_GIVEN":
                 raise ValueError(f"Path is not given for {obj.__name__}. Use @register('path/to/config.yaml') to set the path.")
             dots = name.count(".")
@@ -124,11 +123,12 @@ def config_path(path: Optional[str] = None):
             return obj
     else:
         # dummy, to avoid errors
-        def _register(obj : "type[_AnAgentConfig]") -> "type[_AnAgentConfig]":
+        def _register(obj: "type[_AnAgentConfig]") -> "type[_AnAgentConfig]":
             return obj
         
     return _register
     
+
 def load_config_schema(name: str) -> Any:
     return config_store.load(name).node
 
@@ -136,7 +136,8 @@ def load_config_schema(name: str) -> Any:
 # Helper methods
 # ---------------------
 
-def set_readonly_keys(conf : Union[DictConfig, ListConfig], keys : List[str]):
+
+def set_readonly_keys(conf: Union[DictConfig, ListConfig], keys: List[str]):
     """
     Sets nodes to readonly.
 
@@ -147,7 +148,8 @@ def set_readonly_keys(conf : Union[DictConfig, ListConfig], keys : List[str]):
     for key in keys:
         OmegaConf.set_readonly(conf._get_node(key), True)  # pyright: ignore[reportArgumentType]
 
-def set_readonly_interpolations(conf : Union[DictConfig, ListConfig]):
+
+def set_readonly_interpolations(conf: Union[DictConfig, ListConfig]):
     """
     Sets all interpolations to readonly.
 
@@ -218,7 +220,7 @@ if READTHEDOCS and not TYPE_CHECKING:
     :meta hide-value:
     """
 else:
-    NestedConfigDict : TypeAlias = Dict[str, "AgentConfig | DictConfig | Any | NestedConfigDict"]
+    NestedConfigDict: TypeAlias = Dict[str, "AgentConfig | DictConfig | Any | NestedConfigDict"]
 
 _NestedStrDict = Dict[str, "str | _NestedStrDict"]
 """Nested dict with str as leaves"""
@@ -228,8 +230,8 @@ if TYPE_CHECKING:
     # BaseContainer adds the methods, however is ABC with more methods
     from omegaconf.basecontainer import BaseContainer  # noqa: F401
     # More informative types when type checking; need primitive types at runtime
-    DictConfigAlias : TypeAlias = Union[DictConfig, NestedConfigDict]
-    OverwriteDictTypes : TypeAlias = Dict[str, Union[Dict[str, NestedConfigDict], "AgentConfig"]]
+    DictConfigAlias: TypeAlias = Union[DictConfig, NestedConfigDict]
+    OverwriteDictTypes: TypeAlias = Dict[str, Union[Dict[str, NestedConfigDict], "AgentConfig"]]
     
     class DictConfigLike(DictConfig):
         """
@@ -242,15 +244,16 @@ if TYPE_CHECKING:
         values = DictConfig.values
 else:
     # primitive type at runtime
-    DictConfigAlias : TypeAlias = Dict[str, Any]
-    OverwriteDictTypes : TypeAlias = Dict[str, Dict[str, Any]]
+    DictConfigAlias: TypeAlias = Dict[str, Any]
+    OverwriteDictTypes: TypeAlias = Dict[str, Dict[str, Any]]
     DictConfigLike = object
 
 # --------------- YAML Export -----------------
 
 PATH_FIELD_NAME = "config_path"
 
-def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict], global_annotations : Dict[str, _NestedStrDict]):
+
+def extract_annotations(parent: "ast.Module", docs: Dict[str, _NestedStrDict], global_annotations: Dict[str, _NestedStrDict]):
     """Extracts comments from the source code"""
     for main_body in parent.body:
         # Skip non-classes
@@ -268,7 +271,7 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
             except Exception:
                 logging.exception("Error in %s", main_body.name)
 
-        target : str
+        target: str
         for i, body in enumerate(main_body.body):
             if isinstance(body, ast.ClassDef):
                 # Nested classes, extract recursive
@@ -335,15 +338,13 @@ def extract_annotations(parent : "ast.Module", docs : Dict[str, _NestedStrDict],
             del doc
 
 
-class_annotations : Optional[Dict[str, _NestedStrDict]] = None
+class_annotations: Optional[Dict[str, _NestedStrDict]] = None
 """Nested documentation strings for classes; used for YAML comments."""
 
-def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], string: str, container: "DictConfig | NestedConfigDict",
+
+def get_commented_yaml(cls_or_self: Union[type[AgentConfig], AgentConfig], string: str, container: "DictConfig | NestedConfigDict",
                         *, include_private: bool = False) -> str:
-    if inspect.isclass(cls_or_self):
-        cls = cls_or_self
-    else:
-        cls = cls_or_self.__class__
+    cls = cls_or_self if inspect.isclass(cls_or_self) else cls_or_self.__class__
     cls_file = inspect.getfile(cls)
     # Get documentations and store globally
     global class_annotations  # noqa: PLW0603
@@ -355,17 +356,17 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     from ruamel.yaml import YAML  # optional # noqa: PLC0415
     yaml2 = YAML(typ='rt')
     #container = OmegaConf.to_container(options, resolve=False, enum_to_str=True, structured_config_mode=SCMode.DICT)
-    data : CommentedMap = yaml2.load(string)
+    data: CommentedMap = yaml2.load(string)
     
     cls_doc = class_annotations[cls.__name__]
 
     # First line
     data.yaml_set_start_comment(cls_doc.get("__doc__", cls.__name__))
     
-    nested_data : list[CommentedMap] = []
+    nested_data: list[CommentedMap] = []
     
     # add comments to all other attributes
-    def add_comments(container : "DictConfig | NestedConfigDict",
+    def add_comments(container: "DictConfig | NestedConfigDict",
                      data: CommentedMap,
                      lookup: Union[AgentConfig, _NestedStrDict],
                      indent: int = 0):
@@ -407,7 +408,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
                     logging.debug("KeyError for %s in %s when adding comments. "
                                   "This should be okay, report if descriptions are missing.", key, cls.__name__)
                 continue
-            if (":meta exclude:" in comment_txt) or not include_private and ":meta private:" in comment_txt:
+            if (":meta exclude:" in comment_txt) or (not include_private and ":meta private:" in comment_txt):
                 data.pop(key)
                 continue  # Skip private fields; TODO does not skip "_named" fields, is that a problem?
             comment_txt = comment_txt.replace("\n\n", "\n \n")
@@ -443,7 +444,7 @@ def get_commented_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], stri
     return string
 
 
-def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve: bool = False, yaml_commented: bool = True,
+def to_yaml(cls_or_self: Union[type[AgentConfig], AgentConfig], resolve: bool = False, yaml_commented: bool = True,
             detailed_rules: bool = False, *, include_private: bool = False) -> str:
     """
     Convert the options to a YAML string representation.
@@ -457,7 +458,7 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve: bool =
     Returns:
         The YAML string representation of the options.
     """
-    cfg : DictConfig = OmegaConf.structured(cls_or_self, flags={"allow_objects": True})
+    cfg: DictConfig = OmegaConf.structured(cls_or_self, flags={"allow_objects": True})
 
     if ((inspect.isclass(cls_or_self) and cls_or_self.__name__ == "LunaticAgentSettings")
         or (isinstance(cls_or_self, object) and cls_or_self.__class__.__name__ == "LunaticAgentSettings")):
@@ -468,8 +469,8 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve: bool =
         # Validate and remove missing keys for the yaml export
         if TYPE_CHECKING:
             assert isinstance(cfg, LunaticAgentSettings)
-        rules :  List[RuleCreatingParameters] = cfg.rules
-        masked_rules : list[DictConfig] = []
+        rules:  List[RuleCreatingParameters] = cfg.rules
+        masked_rules: list[DictConfig] = []
         for rule_cfg in rules:
             if "phases" in rule_cfg.keys():
                 if TYPE_CHECKING:
@@ -543,6 +544,7 @@ def to_yaml(cls_or_self : Union[type[AgentConfig], AgentConfig], resolve: bool =
     # Extend
     return get_commented_yaml(cls_or_self, string, container, include_private=include_private)  # type: ignore[arg-type]
 
+
 def export_options(cls_or_self: Union[type[AgentConfig], AgentConfig],
                     path: Union[str, "os.PathLike[str]"],
                     *,
@@ -563,14 +565,11 @@ def export_options(cls_or_self: Union[type[AgentConfig], AgentConfig],
     Returns:
         None
     """
-    if inspect.isclass(cls_or_self):
-        options = cls_or_self()  # type: ignore[call-arg]
-    else:
-        options = cls_or_self
+    options = cls_or_self() if inspect.isclass(cls_or_self) else cls_or_self   # type: ignore[call-arg]
     if with_comments:
         string = cls_or_self.to_yaml(resolve=resolve, yaml_commented=True, detailed_rules=detailed_rules,
                                     include_private=include_private)
-        os.makedirs(os.path.split(path)[0], exist_ok=True)
+        Path(os.path.split(path)[0]).mkdir(parents=True, exist_ok=True)
         Path(path).write_text(string)
         return
     if not isinstance(options, DictConfig):
@@ -581,7 +580,7 @@ def export_options(cls_or_self: Union[type[AgentConfig], AgentConfig],
             
 # --------------- Other Tools -----------------
 
-def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfigDict, "AgentConfig"]) -> None:
+def set_container_type(base: "type[AgentConfig]", container: Union[NestedConfigDict, "AgentConfig"]) -> None:
     """
     Sets the object_type for sub configs if the config has been initialized with
     a :py:class:`omegaconf.DictConfig` and not the respective AgentConfig subclass.
@@ -617,7 +616,7 @@ def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfig
                     if hasattr(typ, "create"):
                         setattr(container, key, typ.create(value, as_dictconfig=True))
                     else:
-                        setattr(container, key, OmegaConf.structured(typ(**value), flags={"allow_objects" : True}))
+                        setattr(container, key, OmegaConf.structured(typ(**value), flags={"allow_objects": True}))
                 # Below might rise type-errors if the schema is not correct
                 elif hasattr(typ, "uses_overwrite_interface") and typ.uses_overwrite_interface():  # type: ignore[attr-defined]
                     setattr(container, key, typ(overwrites=value))  # type: ignore[arg-type]
@@ -627,8 +626,7 @@ def set_container_type(base: "type[AgentConfig]", container : Union[NestedConfig
                 set_container_type(typ, value)  # type: ignore[arg-type]
                 
 
-        
-def _flatten_dict(source : NestedConfigDict, target : NestedConfigDict, resolve : bool = False) -> None:
+def _flatten_dict(source: NestedConfigDict, target: NestedConfigDict, resolve: bool = False) -> None:
     if isinstance(source, DictConfig):
         items = source.items_ex(resolve=resolve)
     else:
@@ -641,7 +639,8 @@ def _flatten_dict(source : NestedConfigDict, target : NestedConfigDict, resolve 
                 print(f"Warning: Key '{k}'={target[k]} already exists in target. Overwriting with {v}.")
             target[k] = v  # type: ignore[arg-type]
             
-def flatten_config(config : "type[AgentConfig] | AgentConfig", *, resolve: bool = True) -> Dict[str, Any]:
+
+def flatten_config(config: "type[AgentConfig] | AgentConfig", *, resolve: bool = True) -> Dict[str, Any]:
     """
     Returns the data as a flat hierarchy.
     
@@ -652,7 +651,7 @@ def flatten_config(config : "type[AgentConfig] | AgentConfig", *, resolve: bool 
         type is a normal dictionary.
     """
     try:
-        resolved = cast(NestedConfigDict, OmegaConf.to_container(OmegaConf.structured(config, flags={"allow_objects" : True}),
+        resolved = cast(NestedConfigDict, OmegaConf.to_container(OmegaConf.structured(config, flags={"allow_objects": True}),
                                                         resolve=resolve,
                                                         throw_on_missing=False,
                                                         structured_config_mode=SCMode.DICT))

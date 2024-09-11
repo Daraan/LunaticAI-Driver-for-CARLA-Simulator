@@ -33,6 +33,17 @@ classes.constants module
    :no-inherited-members:
 
 
+.. _classes/detection_matrix:
+
+classes.detection\_matrix module
+--------------------------------
+
+.. automodule:: classes.detection_matrix
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 .. _classes/evaluation_function:
 
 classes.evaluation\_function module
@@ -63,6 +74,17 @@ classes.hud module
 ------------------
 
 .. automodule:: classes.hud
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+.. _classes/information_manager:
+
+classes.information\_manager module
+-----------------------------------
+
+.. automodule:: classes.information_manager
    :members:
    :undoc-members:
    :show-inheritance:

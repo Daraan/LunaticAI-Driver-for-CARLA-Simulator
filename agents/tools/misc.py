@@ -16,15 +16,15 @@ import carla
 import numpy as np
 
 __all__ = [
+    'compute_distance',
+    'compute_magnitude_angle',
+    'distance_vehicle',
     'draw_waypoints',
     'get_speed',
     'get_trafficlight_trigger_location',
     'is_within_distance',
-    'compute_magnitude_angle',
-    'distance_vehicle',
-    'vector',
-    'compute_distance',
-    'positive'
+    'positive',
+    'vector'
 ]
 
 _EPS = np.finfo(float).eps
@@ -37,6 +37,7 @@ else:
     def draw_waypoints(*args, **kwargs) -> None:
         from agents.tools.debug_drawing import draw_waypoints  # noqa: PLC0415
         return draw_waypoints(*args, **kwargs)
+
 
 def get_speed(vehicle, kmh=True, vel=None):
     # type: (carla.Actor, bool, float | None) -> float
@@ -207,6 +208,7 @@ def positive(num):
         :param num: value to check
     """
     return max(0.0, num)
+
 
 def lanes_have_same_direction(wp1: carla.Waypoint, wp2: carla.Waypoint) -> bool:
     """

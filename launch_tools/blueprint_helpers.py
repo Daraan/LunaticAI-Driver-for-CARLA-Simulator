@@ -8,6 +8,7 @@ from launch_tools import CarlaDataProvider
 
 create_blueprint = CarlaDataProvider.create_blueprint
 
+
 def get_blueprint_library(world: Optional["carla.World"] = None) -> carla.BlueprintLibrary:
     """
     Get the blueprint library of the given world.
@@ -21,6 +22,7 @@ def get_blueprint_library(world: Optional["carla.World"] = None) -> carla.Bluepr
     if world is None:
         world = CarlaDataProvider.get_world()
     return world.get_blueprint_library()
+
 
 def get_contrasting_blueprints(ego_vehicle: str = "vehicle.lincoln.mkz_2020",
                                ego_color: str = "255,0,0") \
@@ -53,11 +55,13 @@ def get_contrasting_blueprints(ego_vehicle: str = "vehicle.lincoln.mkz_2020",
     ego_bp.set_attribute('role_name', 'hero')
     return ego_bp, car_blueprint
 
+
 @overload
 def get_actor_blueprints(pattern: str, generation: Literal['all']) -> carla.BlueprintLibrary: ...
 
 @overload
 def get_actor_blueprints(pattern: str, generation: Literal[1, 2]) -> List[carla.ActorBlueprint]: ...
+
 
 def get_actor_blueprints(pattern: str, generation: Literal[1, 2, 'all']) -> Union[List["carla.ActorBlueprint"], carla.BlueprintLibrary]:
     """

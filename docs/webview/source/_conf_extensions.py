@@ -1,8 +1,11 @@
-from inspect import Signature
+# ruff: noqa: ARG001, ARG002
+
+from functools import partial
 import re
-from typing import TYPE_CHECKING, Any, Iterable, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Iterable, Optional
 from typing_extensions import Literal
 
+import docutils
 import docutils.nodes
 import sphinx
 import sphinx.addnodes
@@ -11,9 +14,10 @@ import sphinx.environment
 from sphinx.transforms import post_transforms
 from sphinxnotes.comboroles import CompositeRole
 
+from _autodoc_type_aliases import autodoc_type_aliases
+
 if TYPE_CHECKING:
-    import docutils
-    
+    from inspect import Signature
 
 check_doctree = None
 IGNORE_INCLUDE_MD = True
@@ -30,8 +34,8 @@ REMOTE_URL = "https://github.com/Daraan/LunaticAI-Driver-for-CARLA-Simulator" # 
 class InjectClassRole(CompositeRole):
     """Insert css classes into an existing node without creating a new node"""
 
-    def __init__(self, roles: list[str]=[], nested_parse: bool=True, *, classes: list[str] ):
-        super().__init__(["raw-inject"] + roles, nested_parse)
+    def __init__(self, roles: list[str]=[], nested_parse: bool=True, *, classes: list[str] ):  # noqa: B006
+        super().__init__(["raw-inject", *roles], nested_parse)
         self.classes = classes
 
     def run(self):
@@ -43,9 +47,9 @@ class InjectClassRole(CompositeRole):
         return [inner], messages
 
 
-def missing_reference_handle(app : "sphinx.application.Sphinx", 
-                             env : "sphinx.environment.BuildEnvironment", 
-                             node : "sphinx.addnodes.pending_xref", 
+def missing_reference_handle(app : "sphinx.application.Sphinx",
+                             env : "sphinx.environment.BuildEnvironment",
+                             node : "sphinx.addnodes.pending_xref",
                              contnode : "docutils.nodes.Node") -> "docutils.nodes.Node | None":
     """
     Depending on the priority might not trigger
@@ -78,7 +82,7 @@ class FileResolver(post_transforms.ReferencesResolver):
     default_priority = 11 # before myst parser
     document : "docutils.nodes.document"
 
-    _py_node = []
+    _py_node: ClassVar[list[sphinx.addnodes.pending_xref]] = []
     """Store correct nodes here for comparison during debugging"""
 
     @staticmethod
@@ -88,7 +92,7 @@ class FileResolver(post_transforms.ReferencesResolver):
         return [node for node in FileResolver._py_node if node.attributes.get("refdoc", False) == document]
 
     @staticmethod
-    def fix_target_of_node(node : sphinx.addnodes.pending_xref):
+    def fix_target_of_node(node: sphinx.addnodes.pending_xref):
         """
         Assure that .py and .md links in markdown point to the correct target.
         """
@@ -114,7 +118,7 @@ class FileResolver(post_transforms.ReferencesResolver):
                 current_node = node
                 while current_node.children:
                     current_node = current_node.children[0]
-                    if isinstance(current_node, docutils.nodes.literal):
+                    if isinstance(current_node, docutils.nodes.literal):  # noqa: SIM102
                         if "xref" not in current_node["classes"]:
                             current_node["classes"].append("xref")   # type: ignore[attr-defined]
             
@@ -156,7 +160,7 @@ class FileResolver(post_transforms.ReferencesResolver):
                     node.attributes["refdomain"] = "py"
                     if match.group("fragment"):
                         #Should be
-                        #'<pending_xref py:class="True" py:module="True" refdoc="index" refdomain="py" refexplicit="True" refspecific="True" 
+                        #'<pending_xref py:class="True" py:module="True" refdoc="index" refdomain="py" refexplicit="True" refspecific="True"
                         #reftarget="Phase" reftype="class" refwarn="False"><literal classes="xref py py-class">XXX</literal></pending_xref>'
 
                         fragment = match.group("fragment").lstrip("#.")
@@ -170,7 +174,7 @@ class FileResolver(post_transforms.ReferencesResolver):
                         #node.attributes["reftargetid"] = "module-" + dotpath + file # link to module top
                         """
                         -> Should be
-                        '<pending_xref py:class="True" py:module="True" refdoc="index" refdomain="py" refexplicit="False" refspecific="True" 
+                        '<pending_xref py:class="True" py:module="True" refdoc="index" refdomain="py" refexplicit="False" refspecific="True"
                         reftarget="lunatic_agent" reftype="mod" refwarn="False"><literal classes="xref py py-mod">lunatic_agent</literal></pending_xref>'
                         """
                         node["reftarget"] = file
@@ -201,7 +205,7 @@ class FileResolver(post_transforms.ReferencesResolver):
                     print("Multiple ids", title.attributes["ids"])
                 title.attributes["ids"] = ["readme-" + title.attributes["ids"][0]]
         if check_doctree:
-            (relative_path, parent_docname, content) = check_doctree
+            (relative_path, parent_docname, content) = check_doctree  # noqa
             print(check_doctree)
 
             self.fix_node_targets(**kwargs)
@@ -226,29 +230,29 @@ def source_read_listener(app : "sphinx.application.Sphinx", docname : str, conte
             
             
 def autodoc_skip_member(app : "sphinx.application.Sphinx",
-                        what : Literal["module", "class", "exception", 
-                                       "function", "method", "attribute"], 
+                        what : Literal["module", "class", "exception",
+                                       "function", "method", "attribute"],
                         name : str, obj, skip: "bool | None", options) -> "bool | None":
     """
     options: autodoc options, like in agents.rst
     
-    Emitted when autodoc has to decide whether a member should be included in the documentation. 
+    Emitted when autodoc has to decide whether a member should be included in the documentation.
     The member is excluded if a handler returns True. It is included if the handler returns False.
 
-    If more than one enabled extension handles the autodoc-skip-member event, autodoc will use the 
-    first non-None value returned by a handler. Handlers should return None to fall back to the 
+    If more than one enabled extension handles the autodoc-skip-member event, autodoc will use the
+    first non-None value returned by a handler. Handlers should return None to fall back to the
     skipping behavior of autodoc and other enabled extensions.
     
     Args:
-        options : the options given to the directive: an object with attributes inherited_members, 
-                  undoc_members, show_inheritance and no-index that are true if the flag option of 
+        options : the options given to the directive: an object with attributes inherited_members,
+                  undoc_members, show_inheritance and no-index that are true if the flag option of
                   same name was given to the auto directive
     """
     return skip
 
 
 
-from _autodoc_type_aliases import autodoc_type_aliases
+
 
 _convert = {
     #'_ActionType[_Rule, _P, _T]' : autodoc_type_aliases["_ActionType"],
@@ -291,13 +295,13 @@ def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_m
     """
     try:
         # signature = sphinx.util.inspect.signature(obj, type_aliases=options.autodoc_type_aliases)
+        if isinstance(obj, partial):
+            obj = obj.func
         signature: str | None | Signature = getattr(obj, "__signature__", None)
         if not signature and not obj.__annotations__.items():
             return
         for replace_th, new_hint in _convert.items():
             for keyword, typehint in obj.__annotations__.items():
-                if keyword == "actions" and "CallableAction[Self, [], Any]" in str(typehint) or "CallableAction[Self, [], Any]" in str(signature):
-                    breakpoint()
                 if isinstance(typehint, str):
                     obj.__annotations__[keyword] = _patterns[replace_th].sub(new_hint, typehint)
                 if signature is None:
@@ -314,21 +318,21 @@ def before_type_hint_cleaner(app : sphinx.application.Sphinx, obj : Any, bound_m
                     continue
             
         if bound_method and hasattr(obj, "__func__"):
-            setattr(obj.__func__, "__signature__", signature)
+            obj.__func__.__signature__ = signature
         else:
-            setattr(obj, "__signature__", signature)
+            obj.__signature__ = signature
     except Exception as e:
-        print("Error in before_type_hint_cleaner", e)
+        print("Error in before_type_hint_cleaner", e, "for", obj)
 
 
 # autodoc-process-signature
-def type_hint_cleaner(app : sphinx.application.Sphinx, 
-                      what : Literal["module", "class", "exception", 
+def type_hint_cleaner(app : sphinx.application.Sphinx,
+                      what : Literal["module", "class", "exception",
                                        "function", "method", "attribute"],
-                      name : str, 
-                      obj : Any, 
-                      options : dict, 
-                      signature : Optional[str], 
+                      name : str,
+                      obj : Any,
+                      options : dict,
+                      signature : Optional[str],
                       return_annotation : Optional[str]):
     #if what in ("class", "attribute"):
     #    breakpoint()

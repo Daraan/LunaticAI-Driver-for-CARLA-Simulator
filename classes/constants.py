@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, ClassVar, Dict, Union
 import carla
 from typing_extensions import Self, TypeAlias
 
-AD_RSS_AVAILABLE : bool
+AD_RSS_AVAILABLE: bool
 """
 Indicator if the :py:mod:`carla.ad` module is available, i.e. if the current carla version was build
 with RSS support. As a rule of thumb: On Windows this will be always false.
@@ -47,6 +47,7 @@ Values:
 :meta hide-value:
 :meta private:
 """
+
 
 class AgentState(Flag):
     """
@@ -106,6 +107,7 @@ class RulePriority(IntEnum):
     NORMAL = 4
     HIGH = 8
     HIGHEST = 16
+
 
 class Phase(Flag):
     """
@@ -355,7 +357,6 @@ class Phase(Flag):
     :meta hide-value:
     """
     
-
     EXCEPTIONS = HAZARD | EMERGENCY | COLLISION | TURNING_AT_JUNCTION \
                      | CAR_DETECTED | DONE | TERMINATING
     """
@@ -363,7 +364,6 @@ class Phase(Flag):
     
     :meta hide-value:
     """
-    
     
     USER_CONTROLLED = APPLY_MANUAL_CONTROLS | EXECUTION | TERMINATING | CUSTOM_CYCLE
     """
@@ -380,7 +380,6 @@ class Phase(Flag):
     
     :meta hide-value:
     """
-    
     
     IN_LOOP = NORMAL_LOOP | EMERGENCY | COLLISION
     """
@@ -441,8 +440,7 @@ class Phase(Flag):
         raise ValueError(f"Phase {self} is not a valid phase")
         return Phase(self.value * 2)
     
-
-    def validate_next_phase(current_phase, next_phase : "Phase") -> None:  # type: ignore
+    def validate_next_phase(current_phase, next_phase: "Phase") -> None:  # type: ignore
         """
         :meta private:
         """
@@ -492,7 +490,7 @@ class Phase(Flag):
         """
         # TODO: Get this from EXCEPTIONS
         exceptions = [cls.TURNING_AT_JUNCTION, cls.HAZARD, cls.EMERGENCY, cls.COLLISION, cls.CAR_DETECTED, cls.DONE]
-        exception_phases : "list[Phase]" = []
+        exception_phases: "list[Phase]" = []
         for e in exceptions:  # improve with itertools
             exception_phases.append(e | cls.BEGIN)
             exception_phases.append(e | cls.END)
@@ -652,11 +650,12 @@ else:
 
 class __ItemAccessMeta(type):
     """Class that allows item access on the class."""
-    def __getitem__(cls, key : str) -> carla.Color:
+    def __getitem__(cls, key: str) -> carla.Color:
         return getattr(cls, key)
     
     def __call__(cls, option: "RoadOption") -> carla.Color:
         return getattr(cls, option.name)
+
 
 class RoadOptionColor(metaclass=__ItemAccessMeta):
     """
@@ -725,13 +724,13 @@ class _CarlaIntEnum(IntEnum):
     This abstract class adds this method.
     """
 
-    values : ClassVar[Dict[int, Self]]
-    names  : ClassVar[Dict[str, Self]]
+    values: ClassVar[Dict[int, Self]]
+    names: ClassVar[Dict[str, Self]]
 
     def __init_subclass__(cls):
         # TODO: as this is runtime create it correctly.
-        cls.values : dict[int, cls]  # noqa: B032
-        cls.names  : dict[str, cls]  # noqa: B032
+        cls.values: dict[int, cls]  # noqa: B032
+        cls.names: dict[str, cls]  # noqa: B032
 
 
 class RssLogLevelStub(_CarlaIntEnum):
@@ -785,6 +784,7 @@ else:
 
 #  ----------------- RuleResult -----------------
     
+
 class RuleResult(Enum):
     """Special :python:`objects` that indicate special return values a :py:class:`.Rule`"""
     
@@ -804,6 +804,7 @@ class RuleResult(Enum):
  
 # ----------------- DetectionMatrix -----------------
 
+
 class StreetType(str, Enum):
     """Used by the :py:class:`.DetectionMatrix` to interpret the street type."""
     
@@ -816,6 +817,7 @@ class StreetType(str, Enum):
     HIGHWAY_TRAFFIC_LIGHT = "Highway traffic light"
     HIGHWAY_WITH_ENTRY_AND_EXIT = "Highway with entry/exit"
     
+
 class StreetOccupation(IntEnum):
     """
     Enum to interpret the results of the :py:class:`DetectionMatrix`

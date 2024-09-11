@@ -19,6 +19,7 @@ DEFAULT_NAME = "__main__"
 TRACE = 5
 """Logging value below :py:obj:`logging.DEBUG`"""
 
+
 def log(text: str):
     """
     .. deprecated::
@@ -30,7 +31,8 @@ def log(text: str):
     if logging:
         print(datetime.datetime.now(), text)
 
-def _setup_logger(name : str = "__main__", level : int = logging.DEBUG):
+
+def _setup_logger(name: str = "__main__", level: int = logging.DEBUG):
     """Backup when Hydra_ is not available."""
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
@@ -50,6 +52,7 @@ def _setup_logger(name : str = "__main__", level : int = logging.DEBUG):
 
     logger.addHandler(handler)
     return logger
+
 
 def make_logger(name: Optional[str] = None, level: int = logging.DEBUG) -> logging.Logger:
     """

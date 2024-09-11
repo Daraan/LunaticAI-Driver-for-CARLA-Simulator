@@ -90,7 +90,7 @@ class RssStateInfo:
 class RssSensor(CustomSensorInterface):
 
     def __init__(self,
-                 parent_actor : carla.Vehicle,
+                 parent_actor: carla.Vehicle,
                  unstructured_scene_visualizer: "RssUnstructuredSceneVisualizer",
                  bounding_box_visualizer: "RssBoundingBoxVisualizer",
                  state_visualizer: "RssStateVisualizer",
@@ -161,7 +161,7 @@ class RssSensor(CustomSensorInterface):
             for target in routing_targets:
                 self.sensor.append_routing_target(target)
 
-    def _on_actor_constellation_request(self, actor_constellation_data : "carla.RssActorConstellationData"):
+    def _on_actor_constellation_request(self, actor_constellation_data: "carla.RssActorConstellationData"):
         # print("_on_actor_constellation_request: ", str(actor_constellation_data))
 
         actor_constellation_result = carla.RssActorConstellationResult()
@@ -426,7 +426,7 @@ class RssSensor(CustomSensorInterface):
              (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.end)) / self._max_steer_angle)    # pyright: ignore[reportArgumentType]
             for heading_range in self._allowed_heading_ranges]
 
-    def _on_rss_response(self, response : "carla.RssResponse"):
+    def _on_rss_response(self, response: "carla.RssResponse"):
         if not self or not response:
             return
         delta_time = 0.1

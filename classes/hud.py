@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 FONT_SIZE = 20
 
 
-def get_actor_display_name(actor : carla.Actor, truncate: int = 250):
+def get_actor_display_name(actor: carla.Actor, truncate: int = 250):
     """Method to get actor display name"""
     name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
     return (name[:truncate - 1] + '\u2026') if len(name) > truncate else name
@@ -33,11 +33,12 @@ def get_actor_display_name(actor : carla.Actor, truncate: int = 250):
 # -- HUD -----------------------------------------------------------------------
 # ==============================================================================
 
+
 class HUD:
     """Class for HUD text"""
-    default_font : ClassVar[str] = 'ubuntumono'
+    default_font: ClassVar[str] = 'ubuntumono'
 
-    def __init__(self, width: int, height: int, world : carla.World, help_text: Optional[str] = RSSKeyboardControl.__doc__):
+    def __init__(self, width: int, height: int, world: carla.World, help_text: Optional[str] = RSSKeyboardControl.__doc__):
         """Constructor method"""
         self.dim = (width, height)
         self._world = world
@@ -64,7 +65,7 @@ class HUD:
         self.allowed_steering_ranges: List[Tuple[float, float]] = []
         self.rss_state_visualizer = RssStateVisualizer(self.dim, self._font_mono, self._world)
 
-    def on_world_tick(self, timestamp : carla.WorldSnapshot):
+    def on_world_tick(self, timestamp: carla.WorldSnapshot):
         """Gets informations from the world at every tick"""
         self._server_clock.tick()
         self.server_fps = self._server_clock.get_fps()
@@ -72,7 +73,7 @@ class HUD:
         self.frame = timestamp.frame
         self.simulation_time = timestamp.timestamp.elapsed_seconds
 
-    def tick(self, world : "WorldModel", clock: pygame.time.Clock, obstacles: Optional[Iterable[carla.Actor]] = None):
+    def tick(self, world: "WorldModel", clock: pygame.time.Clock, obstacles: Optional[Iterable[carla.Actor]] = None):
         """
         HUD method for every tick
         
@@ -102,7 +103,7 @@ class HUD:
         # cached info would also prevent x from being destroyed in a different thread
         obstacles_distances: "list[tuple[float, carla.Actor]]" = [(x.get_location().distance(location), x) for x in obstacles if x.id != world.player.id and x.is_alive]
 
-        self._info_text : list[Union[
+        self._info_text: list[Union[
             str,
             tuple[str, bool],
             #Sequence[Union[str, float]],
@@ -118,7 +119,7 @@ class HUD:
             'Map:     {:>20s}'.format(self.map_name),  # from rss
             '',
             'Vehicle: {:>20s}'.format(get_actor_display_name(player, truncate=20)),
-            'Map:     {:>20s}'.format(world.map.name.split('/')[ -1]),
+            'Map:     {:>20s}'.format(world.map.name.split('/')[-1]),
             'Simulation time: {!s:>12s}'.format(timedelta(seconds=int(self.simulation_time))),
             '',
             'Speed:   {: 15.0f} km/h'.format(3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)),

@@ -11,6 +11,7 @@ from typing import Optional
 # maybe later: add some more flexible way to construct a parser.
 # i.e. combine certain subparsers, e.g. one for port& host another one for settings
 
+
 def subparser(func) -> argparse.ArgumentParser:
     """This decorator allows to join multiple subparsers in a flexible way."""
 
@@ -46,9 +47,11 @@ def client_settings(parser: argparse.ArgumentParser):
     parser.add_argument('-m', '--map', help='Map', default="Town04_Opt", type=str)
     parser.add_argument('--fps', help='Frames per second.', default=20, type=int)
 
+
 @subparser
 def interactive_mode(parser: argparse.ArgumentParser):
     parser.add_argument('-I', '--interactive', action='store_true', help='Interactive mode', default=False)
+
 
 @subparser
 def interactive_control_example(parser: argparse.ArgumentParser):
@@ -66,6 +69,7 @@ def interactive_control_example(parser: argparse.ArgumentParser):
         '--externalActor',
         action='store_true',
         help='attaches to externally created actor by role name')
+
 
 @subparser
 def automatic_control_example(argparser: argparse.ArgumentParser):
@@ -125,6 +129,7 @@ def automatic_control_example(argparser: argparse.ArgumentParser):
         '-ap', '--autopilot',
         action='store_true',
         help='enable autopilot')
+
 
 def main_parser():
     parser = argparse.ArgumentParser()

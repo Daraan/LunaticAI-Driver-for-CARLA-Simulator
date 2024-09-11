@@ -12,6 +12,7 @@ from agents.tools.misc import get_speed
 
 __epsilon = np.nextafter(0., 1.)  # to not divide by 0
 
+
 def car_following_manager(self: "HasPlannerWithConfig[BehaviorAgentSettings | LunaticAgentSettings]",
                           vehicle: carla.Vehicle,
                           distance: float,
