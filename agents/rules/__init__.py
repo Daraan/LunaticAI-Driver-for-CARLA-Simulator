@@ -67,14 +67,11 @@ def create_default_rules(gameframework: Optional["GameFramework"] = None, random
 
 
 @overload
-def rule_from_config(cfg: "CreateRuleFromConfig") -> Rule:
-    ...
-
+def rule_from_config(cfg: "CreateRuleFromConfig") -> Rule: ...
 
 @overload
-def rule_from_config(cfg: "CallFunctionFromConfig | DictConfig") -> Union[Rule, Iterable[Rule]]:
-    ...
-    
+def rule_from_config(cfg: "CallFunctionFromConfig | DictConfig") -> Union[Rule, Iterable[Rule]]: ...
+
 
 def rule_from_config(cfg: "CallFunctionFromConfig | DictConfig | CreateRuleFromConfig") -> Union[Rule, Iterable[Rule]]:
     """
@@ -164,7 +161,6 @@ def rule_from_config(cfg: "CallFunctionFromConfig | DictConfig | CreateRuleFromC
     except hydra.errors.InstantiationException:
         logger.error("Could not instantiate rule. The _target_ must exist in %s or you need to provide a global _target_.module.submodule... path ", __file__)
         raise
-
 
 # Add rules to extracted schema
 import agents.tools.config_creation as __config_creation  # noqa

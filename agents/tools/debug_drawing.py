@@ -242,7 +242,7 @@ def draw_waypoint_union(debug: carla.DebugHelper, w0: carla.Waypoint, w1: carla.
     debug.draw_point(w1.transform.location + carla.Location(z=0.25), 0.1, color, lt, False)  # type: ignore[arg-type]
 
 
-def lane_explorer(debug: carla.DebugHelper, current_w: carla.Waypoint, draw_info=True, waypoint_separation=waypoint_separation, trail_life_time: float = 0.1):  # noqa: ANN201
+def lane_explorer(debug: carla.DebugHelper, current_w: carla.Waypoint, draw_info=True, waypoint_separation=waypoint_separation, trail_life_time: float = 0.06):  # noqa: ANN201
     """
     From CARLA lane_explorer.py example.
     """

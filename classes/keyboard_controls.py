@@ -74,12 +74,16 @@ class KeyboardControl:
             help_notice : bool
                 Show a notice about the help keys.
         """
+        self.enabled = True
         self._world_model = world_model
         if world_model.hud.help.surface is None:
             world_model.hud.help.create_surface(self.get_docstring())
         if help_notice:
             world_model.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
         self.clock = clock
+
+    def enable(self, value: bool = True):
+        self.enabled = value
     
     @classmethod
     def get_docstring(cls):
@@ -187,6 +191,7 @@ class RSSKeyboardControl(KeyboardControl):
     Controls the size of steering area when using the mouse.
     """
     
+    # TODO: should move this to GameFramework
     signal_received: "bool | int" = False
     """
     Got a signal to stop the simulation. No more events will be parsed if True.
@@ -285,6 +290,8 @@ class RSSKeyboardControl(KeyboardControl):
         if RSSKeyboardControl.signal_received:
             print('\nAccepted signal. Stopping loop...')
             return True
+        if not self.enabled:
+            return None
         if isinstance(self._control, carla.VehicleControl):
             current_lights = self._lights
         for event in pygame.event.get():

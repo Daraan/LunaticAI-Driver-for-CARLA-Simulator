@@ -14,7 +14,6 @@ try:
     import carla
 except ImportError:
     from launch_tools import carla
-
 import pygame
 
 import launch_tools
@@ -265,7 +264,6 @@ def main(args: LaunchConfig):
         - `Override Grammar <https://hydra.cc/docs/advanced/override_grammar/basic/>`_
         - `Hydra Tab Completion <https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/>`_
     """
-
     logger.info('listening to server %s:%s', args.host, args.port)
         
     print(__doc__)
