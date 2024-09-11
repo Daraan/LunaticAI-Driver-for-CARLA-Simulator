@@ -1776,7 +1776,7 @@ class BlockingRule(Rule, metarule=True):
         return CarlaDataProvider.get_world()
 
     def _begin_tick(self, ctx: Context):
-        self._gameframework.clock.tick()  # self.args.fps)  # type: ignore[attr-defined]
+        self._gameframework.clock.tick()  # self.args.fps)  # type: ignore[attr-defined,union-type]
         frame = None
         if self._gameframework and self._gameframework._args.handle_ticks:  # i.e. no scenario runner doing it for us
             if CarlaDataProvider.is_sync_mode():

@@ -67,18 +67,19 @@ class KeyboardControl:
     """Reference to the world model that controls the interface."""
     
     # COMMENT I think this only allows to end the script
-    def __init__(self, world: "WorldModel", help_notice=True):
+    def __init__(self, world_model: "WorldModel", *, help_notice=True, clock: Optional[pygame.time.Clock] = None):
         """
         Parameters:
             world : WorldModel
             help_notice : bool
                 Show a notice about the help keys.
         """
-        self._world_model = world
-        if world.hud.help.surface is None:
-            world.hud.help.create_surface(self.get_docstring())
+        self._world_model = world_model
+        if world_model.hud.help.surface is None:
+            world_model.hud.help.create_surface(self.get_docstring())
         if help_notice:
-            world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
+            world_model.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
+        self.clock = clock
     
     @classmethod
     def get_docstring(cls):
@@ -195,21 +196,20 @@ class RSSKeyboardControl(KeyboardControl):
 
     # TODO: should be a toggle between None, Autopilot, Agent
 
-    def __init__(self, world_model: "WorldModel", start_in_autopilot: bool, agent_controlled: bool = True, clock: pygame.time.Clock = None, config=None):
+    def __init__(self, world_model: "WorldModel", start_in_autopilot: bool, agent_controlled: bool = True, *, clock: pygame.time.Clock, config=None):
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
-        super().__init__(world_model)
+        super().__init__(world_model=world_model)
         
         self._world_model = world_model
         self._config = config  # Note: currently unused
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         world_model.controller = weakref.proxy(self)
-        self._control: carla.VehicleControl = None
+        self._control: carla.VehicleControl = None  # type: ignore[assignment]
         #self._control = carla.VehicleControl()
         self._lights = carla.VehicleLightState.NONE
         #self._restrictor = carla.RssRestrictor() # Moved to worldmodel
-        self._restrictor: carla.RssRestrictor = None
         self._vehicle_physics = world_model.player.get_physics_control()
         world_model.player.set_light_state(self._lights)
         self._steer_cache = 0.0
@@ -295,7 +295,7 @@ class RSSKeyboardControl(KeyboardControl):
                     return True
                 
                 if event.key == K_BACKSPACE:
-                    self._world_model.external_actor = None
+                    self._world_model.external_actor = False  # delete and respawn
                     if self._autopilot_enabled:
                         self._world_model.player.set_autopilot(False)
                         self._world_model.restart()
@@ -463,10 +463,12 @@ class RSSKeyboardControl(KeyboardControl):
                     self._mouse_steering_center = None
         
         if not self._autopilot_enabled:
-            #prev_steer_cache = self._steer_cache # NOTE: Not used anymore
-            self._parse_vehicle_keys(pygame.key.get_pressed(), self._clock.get_time())
             if pygame.mouse.get_pressed()[0]:
                 self._parse_mouse(pygame.mouse.get_pos())
+            if not self._control:
+                self._control = carla.VehicleControl()
+            #prev_steer_cache = self._steer_cache # NOTE: Not used anymore
+            self._parse_vehicle_keys(pygame.key.get_pressed(), self._clock.get_time())
             self._control.reverse = self._control.gear < 0
             return None
             # Moved Code from Carla example to WorldModel

@@ -1,3 +1,4 @@
+from typing import Self
 from ... import ad
 from ...libcarla import _CarlaEnum
 from . import *
@@ -43,10 +44,20 @@ class HeadingRange():
         ...
 
     @property
-    def begin(self) -> ad.physics.Angle: ...
+    def begin(self) -> ad.physics.Angle:
+        ...
+
+    @begin.setter
+    def begin(self, value: ad.physics.Angle | float) -> None:
+        ...
 
     @property
-    def end(self) -> ad.physics.Angle: ...
+    def end(self) -> ad.physics.Angle:
+        ...
+
+    @end.setter
+    def end(self, value: ad.physics.Angle | float) -> None:
+        ...
 
 class HeadingRangeVector(ad._Vector[HeadingRange]):
     def append(self, arg1: HeadingRangeVector, arg2: HeadingRange) -> None:

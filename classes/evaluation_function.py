@@ -541,5 +541,5 @@ class ActionFunction(ConditionFunction[_P, _T]):
         """
         raise NotImplementedError("NOT is not implemented for ActionFunction")
 
-    def __call__(self, ctx: "Rule | Context", *args: _P.args, **kwargs: _P.kwargs) -> _T:
+    def __call__(self, ctx: "Rule | Context", *args: _P.args, **kwargs: _P.kwargs) -> _T:  # type: ignore
         return self.evaluation_function(ctx, *args, **kwargs)  # type: ignore[arg-type]

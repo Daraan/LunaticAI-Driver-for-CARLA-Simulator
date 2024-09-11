@@ -26,7 +26,7 @@ CameraBlueprints = {
     'Camera Depth (Logarithmic Gray Scale)': CameraBlueprint('sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'),
     'Camera Semantic Segmentation (Raw)': CameraBlueprint('sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'),
     'Camera Semantic Segmentation (CityScapes Palette)': CameraBlueprint('sensor.camera.semantic_segmentation', cc.CityScapesPalette, 'Camera Semantic Segmentation (CityScapes Palette)'),
-    'Lidar (Ray-Cast)': CameraBlueprint('sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)')
+    'Lidar (Ray-Cast)': CameraBlueprint('sensor.lidar.ray_cast', carla.ColorConverter.Raw, 'Lidar (Ray-Cast)')
 }
 """Camera blueprints used by the CARLA examples."""
 
@@ -148,10 +148,11 @@ class CameraManager(CustomSensorInterface):
     def toggle_camera(self) -> None:
         """Activate a camera"""
         self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
-        self.set_sensor(self.index, notify=False, force_respawn=True)
+        self.set_sensor(self.index if self.index is not None else 0, notify=False, force_respawn=True)
 
-    def set_sensor(self, index: int, notify=True, force_respawn=False) -> None:
+    def set_sensor(self, index: Optional[int], notify=True, force_respawn=False) -> None:
         """Set the sensor that should be used for the camera output"""
+        index = index or 0
         index = index % len(self.sensors)
         needs_respawn = True if self.index is None else (
                 force_respawn or (self.sensors[index][0] != self.sensors[self.index][0]))
@@ -175,7 +176,7 @@ class CameraManager(CustomSensorInterface):
 
     def next_sensor(self) -> None:
         """Get the next sensor"""
-        self.set_sensor(self.index + 1)
+        self.set_sensor(self.index + 1 if self.index is not None else None)
 
     def toggle_recording(self) -> None:
         """Toggle recording on or off"""
@@ -198,7 +199,8 @@ class CameraManager(CustomSensorInterface):
         self = weak_self()
         if not self:
             return
-        if self.sensors[self.index][0].startswith('sensor.lidar'):
+        index: int = self.index  # type: ignore[assignment]
+        if self.sensors[index][0].startswith('sensor.lidar'):
             points = np.frombuffer(image.raw_data, dtype=np.dtype('f4'))
             points = np.reshape(points, (int(points.shape[0] / 4), 4))
             lidar_data = np.array(points[:, :2])
@@ -212,7 +214,7 @@ class CameraManager(CustomSensorInterface):
             lidar_img[tuple(lidar_data.T)] = (255, 255, 255)
             self._surface = pygame.surfarray.make_surface(lidar_img)
         else:
-            image.convert(self.sensors[self.index][1])  # apply color converter
+            image.convert(self.sensors[index][1])  # apply color converter
             array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (image.height, image.width, 4))
             array = array[:, :, :3]

@@ -1,5 +1,6 @@
 # LunaticAI Driver for CARLA-Simulator
 
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Documentation Status](https://readthedocs.org/projects/lunaticai-driver-for-carla-simulator/badge/?version=latest)](https://lunaticai-driver-for-carla-simulator.readthedocs.io/?badge=latest)
 
 The full documentation is hosted online at [ReadTheDocs](https://lunaticai-driver-for-carla-simulator.readthedocs.io/). Click [here](https://lunaticai-driver-for-carla-simulator.readthedocs.io/latest/modules.html)

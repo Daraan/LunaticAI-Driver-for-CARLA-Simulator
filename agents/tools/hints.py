@@ -85,7 +85,10 @@ class CameraBlueprint(NamedTuple):
     blueprint_path: str
     """Blueprint name for the actor"""
     color_convert: carla.ColorConverter
-    """Color converter for the camera"""
+    """
+    Color converter for the camera.
+    If none is needed set to :py:attr:`carla.ColorConverter.Raw`
+    """
     name: str
     """Semantic name of the blueprint, e.g. RGB, Segmentation"""
     actual_blueprint: Optional[carla.ActorBlueprint] = None

@@ -2,6 +2,7 @@
 Interface classes between CARLA, the agent, and the user interface.
 """
 # pyright: reportOptionalMemberAccess=warning
+# pyright: reportPossiblyUnboundVariable=warning
 
 from __future__ import annotations
 
@@ -132,6 +133,10 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     clock: ClassVar[pygame.time.Clock] = None
     display: ClassVar[pygame.Surface] = None
+    """
+    The :py:mod:`pygame` surface to render on.
+    """
+
     controller: weakref.ProxyType[RSSKeyboardControl] | RSSKeyboardControl
     """Parser for keyboard events"""
     
@@ -257,7 +262,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                                                             flags={'allow_objects': True})
         else:
             config = assure_type("LaunchConfig", dict_config)
-        
+        assert config  # pyright: ignore[reportPossiblyUnboundVariable]
         if not hydra_initialized:
             hydra_conf: HydraConfig = GameFramework.get_hydra_config(raw=True)
             if OmegaConf.is_missing(config.hydra.runtime, "output_dir"):
@@ -554,7 +559,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             **kwargs: Additional arguments to pass to the controller.
         """
         controller = controller_class(world_model,
-                                        config=self.config,
+                                        #config=self.config,
                                         clock=self.clock,
                                         **kwargs)
         self.controller = weakref.proxy(controller)
@@ -1198,7 +1203,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 spawn_point.rotation.pitch = 0.0
                 if self.camera_manager is not None:  # None at first start; not None if player was already set before
                     self.destroy()
-                    self.player = assure_type(carla.Vehicle, self.world.try_spawn_actor(blueprint, spawn_point))
+                    self.player = assure_type(carla.Vehicle, self.world.try_spawn_actor(blueprint, spawn_point))  # pyright: ignore[reportPossiblyUnboundVariable]
                 self.modify_vehicle_physics(self.player)
             while self.player is None:
                 if not self.map.get_spawn_points():
@@ -1208,7 +1213,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 spawn_points = self.map.get_spawn_points()
                 spawn_point: carla.Transform = random.choice(spawn_points) if spawn_points else carla.Transform()  # type: ignore
                 self.player = assure_type(carla.Vehicle,
-                                          self.world.try_spawn_actor(blueprint, spawn_point))
+                                          self.world.try_spawn_actor(blueprint, spawn_point))  # pyright: ignore[reportPossiblyUnboundVariable]
                 # From Interactive:
                 # See: https://carla.readthedocs.io/en/latest/tuto_G_control_vehicle_physics/
                 self.show_vehicle_telemetry = False

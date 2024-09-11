@@ -42,9 +42,6 @@ class LaneSegmentType(int):
     Normal = 0
 
 class LateralRssAccelerationValues:
-    @property
-    def accelMax(self) -> ad.physics.Acceleration: ...
-
     def assign(self, arg1: LateralRssAccelerationValues, other: LateralRssAccelerationValues) -> LateralRssAccelerationValues:
         """
 
@@ -54,32 +51,43 @@ class LateralRssAccelerationValues:
                 ad::rss::world::LateralRssAccelerationValues {lvalue} assign(ad::rss::world::LateralRssAccelerationValues {lvalue},ad::rss::world::LateralRssAccelerationValues)
         """
         ...
+    
+    @property
+    def accelMax(self) -> ad.physics.Acceleration: ...
+
+    @accelMax.setter
+    def accelMax(self, value: ad.physics.Acceleration | float) -> None: ...
 
     @property
     def brakeMin(self) -> ad.physics.Acceleration: ...
 
-class LongitudinalRssAccelerationValues:
+    @brakeMin.setter
+    def brakeMin(self, value: ad.physics.Acceleration | float) -> None: ...
+
+class LongitudinalRssAccelerationValues(ad._Assignable):
     @property
     def accelMax(self) -> ad.physics.Acceleration: ...
 
-    def assign(self, arg1: LongitudinalRssAccelerationValues, other: LongitudinalRssAccelerationValues) -> LongitudinalRssAccelerationValues:
-        """
-
-        assign( (LongitudinalRssAccelerationValues)arg1, (LongitudinalRssAccelerationValues)other) -> LongitudinalRssAccelerationValues :
-
-            C++ signature :
-                ad::rss::world::LongitudinalRssAccelerationValues {lvalue} assign(ad::rss::world::LongitudinalRssAccelerationValues {lvalue},ad::rss::world::LongitudinalRssAccelerationValues)
-        """
-        ...
+    @accelMax.setter
+    def accelMax(self, value: ad.physics.Acceleration | float) -> None: ...
 
     @property
     def brakeMax(self) -> ad.physics.Acceleration: ...
 
+    @brakeMax.setter
+    def brakeMax(self, value: ad.physics.Acceleration | float) -> None: ...
+
     @property
     def brakeMin(self) -> ad.physics.Acceleration: ...
 
+    @brakeMin.setter
+    def brakeMin(self, value: ad.physics.Acceleration | float) -> None: ...
+
     @property
     def brakeMinCorrect(self) -> ad.physics.Acceleration: ...
+
+    @brakeMinCorrect.setter
+    def brakeMinCorrect(self, value: ad.physics.Acceleration | float) -> None: ...
 
 class Object:
     def assign(self, arg1: Object, other: Object) -> Object:
@@ -276,20 +284,38 @@ class RssDynamics(ad._Assignable):
     @property
     def alphaLat(self) -> LateralRssAccelerationValues: ...
 
+    @alphaLat.setter
+    def alphaLat(self, value: LateralRssAccelerationValues | float) -> None: ...
+
     @property
     def alphaLon(self) -> LongitudinalRssAccelerationValues: ...
+
+    @alphaLon.setter
+    def alphaLon(self, value: LongitudinalRssAccelerationValues | float) -> None: ...
 
     @property
     def lateralFluctuationMargin(self) -> ad.physics.Distance: ...
 
+    @lateralFluctuationMargin.setter
+    def lateralFluctuationMargin(self, value: ad.physics.Distance | float) -> None: ...
+
     @property
     def maxSpeedOnAcceleration(self) -> ad.physics.Speed: ...
+
+    @maxSpeedOnAcceleration.setter
+    def maxSpeedOnAcceleration(self, value: ad.physics.Speed | float) -> None: ...
 
     @property
     def responseTime(self) -> ad.physics.Duration: ...
 
+    @responseTime.setter
+    def responseTime(self, value: ad.physics.Duration | float) -> None: ...
+
     @property
     def unstructuredSettings(self) -> UnstructuredSettings: ...
+
+    @unstructuredSettings.setter
+    def unstructuredSettings(self, value: UnstructuredSettings) -> None: ...
 
 class Scene(ad._Assignable):
     @property
@@ -320,47 +346,92 @@ class UnstructuredSettings(ad._Assignable):
     @property
     def driveAwayMaxAngle(self) -> ad.physics.Angle: ...
 
+    @driveAwayMaxAngle.setter
+    def driveAwayMaxAngle(self, value: ad.physics.Angle | float) -> None: ...
+
     @property
     def pedestrianBackIntermediateHeadingChangeRatioSteps(self) -> int: ...
+
+    @pedestrianBackIntermediateHeadingChangeRatioSteps.setter
+    def pedestrianBackIntermediateHeadingChangeRatioSteps(self, value: int) -> None: ...
 
     @property
     def pedestrianBrakeIntermediateAccelerationSteps(self) -> int: ...
 
+    @pedestrianBrakeIntermediateAccelerationSteps.setter
+    def pedestrianBrakeIntermediateAccelerationSteps(self, value: int) -> None: ...
+
     @property
     def pedestrianContinueForwardIntermediateAccelerationSteps(self) -> int: ...
+
+    @pedestrianContinueForwardIntermediateAccelerationSteps.setter
+    def pedestrianContinueForwardIntermediateAccelerationSteps(self, value: int) -> None: ...
 
     @property
     def pedestrianContinueForwardIntermediateHeadingChangeRatioSteps(self) -> int: ...
 
+    @pedestrianContinueForwardIntermediateHeadingChangeRatioSteps.setter
+    def pedestrianContinueForwardIntermediateHeadingChangeRatioSteps(self, value: int) -> None: ...
+
     @property
     def pedestrianFrontIntermediateHeadingChangeRatioSteps(self) -> int: ...
+
+    @pedestrianFrontIntermediateHeadingChangeRatioSteps.setter
+    def pedestrianFrontIntermediateHeadingChangeRatioSteps(self, value: int) -> None: ...
 
     @property
     def pedestrianTurningRadius(self) -> ad.physics.Distance: ...
 
+    @pedestrianTurningRadius.setter
+    def pedestrianTurningRadius(self, value: float) -> None: ...
+
     @property
     def vehicleBackIntermediateYawRateChangeRatioSteps(self) -> int: ...
+
+    @vehicleBackIntermediateYawRateChangeRatioSteps.setter
+    def vehicleBackIntermediateYawRateChangeRatioSteps(self, value: int) -> None: ...
 
     @property
     def vehicleBrakeIntermediateAccelerationSteps(self) -> int: ...
 
+    @vehicleBrakeIntermediateAccelerationSteps.setter
+    def vehicleBrakeIntermediateAccelerationSteps(self, value: int) -> None: ...
+
     @property
     def vehicleContinueForwardIntermediateAccelerationSteps(self) -> int: ...
+
+    @vehicleContinueForwardIntermediateAccelerationSteps.setter
+    def vehicleContinueForwardIntermediateAccelerationSteps(self, value: int) -> None: ...
 
     @property
     def vehicleContinueForwardIntermediateYawRateChangeRatioSteps(self) -> int: ...
 
+    @vehicleContinueForwardIntermediateYawRateChangeRatioSteps.setter
+    def vehicleContinueForwardIntermediateYawRateChangeRatioSteps(self, value: int) -> None: ...
+
     @property
     def vehicleFrontIntermediateYawRateChangeRatioSteps(self) -> int: ...
+
+    @vehicleFrontIntermediateYawRateChangeRatioSteps.setter
+    def vehicleFrontIntermediateYawRateChangeRatioSteps(self, value: int) -> None: ...
 
     @property
     def vehicleMinRadius(self) -> ad.physics.Distance: ...
 
+    @vehicleMinRadius.setter
+    def vehicleMinRadius(self, value: float) -> None: ...
+
     @property
     def vehicleTrajectoryCalculationStep(self) -> ad.physics.Duration: ...
 
+    @vehicleTrajectoryCalculationStep.setter
+    def vehicleTrajectoryCalculationStep(self, value: float) -> None: ...
+
     @property
     def vehicleYawRateChange(self) -> ad.physics.AngularAcceleration: ...
+
+    @vehicleYawRateChange.setter
+    def vehicleYawRateChange(self, value: float) -> None: ...
 
 class Velocity(ad._Assignable):
 
