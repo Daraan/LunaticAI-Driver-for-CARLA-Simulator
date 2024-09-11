@@ -16,6 +16,8 @@ seed: 1
 map: Town04_Opt
 host: 127.0.0.1
 port: 2000
+# Timeout for the `carla.Client` connection.
+timeout: 10.0
 
 # Used to fix `carla.WorldSettings.fixed_delta_seconds`
 #  

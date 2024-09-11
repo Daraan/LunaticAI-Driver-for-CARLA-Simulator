@@ -2076,6 +2076,11 @@ class LaunchConfig(AgentConfig):
     host: str = "127.0.0.1"
     port: int = 2000
     
+    timeout: float = 10.0
+    """
+    Timeout for the :py:class:`carla.Client` connection.
+    """
+    
     fps: int = 20
     """
     Used to fix :py:attr:`carla.WorldSettings.fixed_delta_seconds`
