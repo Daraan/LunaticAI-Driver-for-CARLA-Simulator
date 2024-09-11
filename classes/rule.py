@@ -54,7 +54,7 @@ from classes.constants import READTHEDOCS, Hazard, HazardSeverity, Phase, RulePr
 from classes.evaluation_function import ConditionFunction
 from classes.exceptions import DoNotEvaluateChildRules, UnblockRuleException
 from classes.worldmodel import GameFramework
-from data_gathering.information_manager import InformationManager
+from classes.information_manager import InformationManager
 from launch_tools import CarlaDataProvider, singledispatchmethod
 
 if TYPE_CHECKING:

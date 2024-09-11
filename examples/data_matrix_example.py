@@ -7,7 +7,7 @@ import launch_tools
 #from classes.experimental.driver import Driver
 from classes.experimental.traffic_manager import TrafficManager
 from classes.experimental.vehicle import Vehicle
-from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
+from classes.detection_matrix import DetectionMatrix
 from classes.worldmodel import GameFramework
 
 vehicles = []

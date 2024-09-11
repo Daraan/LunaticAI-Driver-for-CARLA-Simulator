@@ -35,7 +35,7 @@ from classes.hud import HUD, get_actor_display_name
 from classes.keyboard_controls import KeyboardControl, RSSKeyboardControl
 from classes.rss_sensor import AD_RSS_AVAILABLE, RssSensor
 from classes.rss_visualization import RssBoundingBoxVisualizer, RssUnstructuredSceneVisualizer
-from data_gathering.information_manager import InformationManager
+from classes.information_manager import InformationManager
 from launch_tools import class_or_instance_method
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from agents.navigation.global_route_planner import GlobalRoutePlanner
     from agents.tools.config_creation import LunaticAgentSettings, RssRoadBoundariesModeAlias
     from classes.type_protocols import ControllerClassT
-    from data_gathering.car_detection_matrix.run_matrix import DetectionMatrix
+    from classes.detection_matrix import DetectionMatrix
 
 from agents.tools.logs import logger
 from launch_tools import CarlaDataProvider, Literal

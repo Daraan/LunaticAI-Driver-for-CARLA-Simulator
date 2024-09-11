@@ -50,8 +50,8 @@ from classes.exceptions import (
 )
 from classes.rule import BlockingRule, Context, Rule
 from classes.worldmodel import CarlaDataProvider, WorldModel
-from data_gathering.car_detection_matrix.run_matrix import AsyncDetectionMatrix, DetectionMatrix
-from data_gathering.information_manager import InformationManager
+from classes.detection_matrix import AsyncDetectionMatrix, DetectionMatrix
+from classes.information_manager import InformationManager
 
 if TYPE_CHECKING:
     from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult

@@ -12,7 +12,7 @@ from agents.tools.hints import TrafficLightDetectionResult
 from agents.tools.logs import logger
 from agents.tools.misc import is_within_distance
 from classes.constants import AgentState
-from data_gathering.information_manager import InformationManager
+from classes.information_manager import InformationManager
 from launch_tools import CarlaDataProvider
 
 if TYPE_CHECKING:

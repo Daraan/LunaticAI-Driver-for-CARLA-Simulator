@@ -7,5 +7,4 @@ Modules and Packages
    AgentGameLoop
    agents
    classes
-   data_gathering
    launch_tools

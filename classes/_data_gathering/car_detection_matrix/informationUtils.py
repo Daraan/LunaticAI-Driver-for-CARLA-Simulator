@@ -4,6 +4,9 @@ Backend of the :py:class:`DataMatrix`.
 Original source and documentation can be found at https://github.com/CarlaInes/carla/
 """
 
+# Ignore to keep compatibility easier.
+# ruff: noqa: ARG001
+
 from __future__ import annotations
 
 import collections
@@ -37,7 +40,7 @@ JunctionWaypointList: TypeAlias = Sequence[Tuple[carla.Waypoint, carla.Waypoint]
 """wps (list): List of one waypoint cluster of grouped highway junction waypoints.
     Format: [(start_wp, "start"), (start_wp, "start"), ..]"""
     
-_HighWayShape: TypeAlias = Tuple[str, int, JunctionWaypointList, JunctionWaypointList]
+HighWayShape: TypeAlias = Tuple[str, int, JunctionWaypointList, JunctionWaypointList]
 """(highway_type: string, straight_lanes: int, entry_wps: ([wp,..], [wp,..]), exit_wps: ([wp,..], [wp,..]))"""
 
 def check_ego_on_highway(ego_vehicle_location: carla.Location, road_lane_ids: RoadLaneIds, world_map):
@@ -401,8 +404,8 @@ def detect_surrounding_cars(
     world: carla.World,
     radius: float,
     on_highway: bool,
-    highway_shape: _HighWayShape,
-    ghost=False,
+    highway_shape: Optional[HighWayShape],
+    ghost: bool = False,
 ):
     """
     Detect surrounding cars and update the base matrix accordingly.

@@ -3,11 +3,17 @@ name = ""
 requires-python = ">=3.8"
 
 [tool.ruff]
-extend-exclude = ["typings/carla/ad/*",
-                  "scenario_runner/", 
-                  "docs/*",
-                  "data_gathering/car_detection_matrix/informationUtilsV2.py",
-                  "mypyout/*"]
+# Enable preview features.
+preview = false
+
+extend-exclude = [
+    "typings/carla/ad/*",
+    "scenario_runner/", 
+    #"docs/*",
+    "classes/_data_gathering/car_detection_matrix/informationUtilsV2.py",
+    "mypyout/*",
+    "typings/ad_parse2/*"
+]
 
 # Allow lines to be as long as 120.
 line-length = 120
@@ -55,9 +61,14 @@ select = [
     "PLC",
     "PLE",
 
+    # Pathlib
+    # Note that os functions may be preferable if performance is a concern, e.g., in hot loops.
+    "PTH123",
+
     "PGH005",
 
     "T10", # breakpoints
+    "TCH0", # TypeChecking
 
     # "PIE790", # unnecessary pass and ...
 ]
@@ -80,6 +91,7 @@ ignore = [
     "UP015",
     #"W605",
     "RUF100",
+    "PTH100", # os.path.abspath
 
     # deprecated:
     "ANN101", "ANN102",
@@ -120,25 +132,40 @@ ignore = [
 "agents/tools/_config_tools.py" = [
     "SIM118", # OmegaConf key in dict and in dict.keys() is different
 ]
+"classes/experimental/**" = [
+    "A",
+    "ARG",
+    "PTH",
+]
+"classes/_data_gathering/car_detection_matrix/informationUtils.py" = [
+    
+]
 "classes/hud.py" = [
     "UP032", # Format instead of percent preferred
 ]
-"classes/experimental/**" = [
-    "A",
+"conf/experimental_rule_interpreter_examples/*" =[
+    "ARG",
+]
+"**/docs/*" = [
+    "E",
+    "PLC",
+    "PTH123",
 ]
 "typings/carla/*" = [
     "A002"
 ]
 
 # Keep original examples simple; allow {} in def
-"agents/navigation/controller.py" = ["ANN"]
 "agents/tools/misc.py" = ["ANN"]
 "agents/tools/debug_drawing.py" = ["ANN"]
+"agents/navigation/controller.py" = ["ANN"]
 "agents/navigation/basic_agent.py" = ["B006", "ANN"]
 "agents/navigation/behavior_agent.py" = ["B006", "ANN"]
-"agents/navigation/constant_velocity_agent.py" = ["B006", "UP008", "ANN"]
+"agents/navigation/constant_velocity_agent.py" = ["B006", "UP008", "ANN", "ARG005"]
+
 "examples/*" = [
     "F841",
+    "PTH",
 ]
 "AgentGameLoop.py" = [
     "F841",
