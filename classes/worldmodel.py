@@ -131,7 +131,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         more utility methods that currently are not included in this part of the documentation.
     """
     
-    clock: ClassVar[pygame.time.Clock] = None
+    clock: ClassVar[None | pygame.time.Clock] = None
     display: ClassVar[pygame.Surface] = None
     """
     The :py:mod:`pygame` surface to render on.
@@ -348,7 +348,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             if getattr(launch_config, "pygame", True):
                 pygame.init()
                 pygame.font.init()
-            GameFramework.clock = pygame.time.Clock()
+            if recreate or GameFramework.clock is None:
+                GameFramework.clock = pygame.time.Clock()
             if getattr(launch_config, "pygame", True) and "READTHEDOCS" not in os.environ:
                 GameFramework.display = pygame.display.set_mode(
                     size=(launch_config.width, launch_config.height)
@@ -627,7 +628,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         Note:
             This is the preferred method to update the world and render the camera.
         """
-        self.world_model.tick(self.clock)  # NOTE: Ticks WorldMODEL not CARLA WORLD!  # pyright: ignore[reportOptionalMemberAccess]
+        self.world_model.tick(self.clock)  # NOTE: Ticks WorldMODEL not CARLA WORLD!  # pyright: ignore[reportOptionalMemberAccess, reportArgumentType]
         self.world_model.render(self.display, finalize=False)  # pyright: ignore[reportOptionalMemberAccess]
         self.controller.render(self.display)
         # These two types must be in sync:

@@ -2184,8 +2184,8 @@ class LaunchConfig(AgentConfig):
     Deactivates the pygame window and interface.
     
     Attention:
-        Experimental
-    
+        Setting this to False is experimental and might not work or crash the simulation.
+        
     :meta private:
     """
     

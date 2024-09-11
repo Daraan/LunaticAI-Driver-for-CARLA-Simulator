@@ -1716,7 +1716,7 @@ class BlockingRule(Rule, metarule=True):
         else:
             world_model = ctx.agent._world_model  # pyright: ignore[reportPrivateUsage]
             display = GameFramework.display
-            world_model.tick(GameFramework.clock)  # does not tick the world!
+            world_model.tick(GameFramework.clock)  # does not tick the world!  # pyright: ignore[reportArgumentType]
             world_model.render(display, finalize=False)
             try:
                 world_model.controller.render(display)  # type: ignore[attr-defined]  # noqa: SIM105

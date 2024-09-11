@@ -85,8 +85,8 @@ class CameraManager(CustomSensorInterface):
         :py:meth:`set_sensor` should be called after init to set :py:attr:`sensor`
         and :py:attr:`index` to a valid value.
         """
-        self.sensor = None  # Needs call to set_sensor
-        self.index: int = None  # Needs call to set_sensor
+        self.sensor: Optional[carla.Sensor] = None  # Needs call to set_sensor
+        self.index: Optional[int] = None  # Needs call to set_sensor
         
         self._surface: Optional[pygame.Surface] = None  # set on _parse_image, # type: ignore
         self._parent = parent_actor
