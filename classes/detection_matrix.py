@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import contextlib
 import threading
 import time
-import carla
 from agents.tools.logs import logger
 from classes._data_gathering.car_detection_matrix.informationUtils import (
     RoadLaneId,
@@ -13,21 +14,19 @@ from classes._data_gathering.car_detection_matrix.informationUtils import (
 
 from launch_tools import CarlaDataProvider
 
-#import matplotlib  # noqa: ICN001
-#matplotlib.use('Agg')
+import matplotlib  # noqa: ICN001
+matplotlib.use('Agg')
 import matplotlib.backends.backend_agg as agg
 import matplotlib.pyplot as plt
 import numpy as np
 import pygame
-
-
-# matplotlib.use('Agg')
 
 import signal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 from typing_extensions import TypedDict
 
 if TYPE_CHECKING:
+    import carla
     from _data_gathering.car_detection_matrix.informationUtils import HighWayShape
     from matplotlib.axes import Axes as MplAxes
 
@@ -79,7 +78,10 @@ def matrix_for_actor(ego_vehicle: carla.Actor,
 
 
 class DetectionMatrix:
-    """Create a matrix representing the lanes around the ego vehicle."""
+    """
+    Automatically create a matrix representing the lanes around the ego vehicle
+    on each :py:meth:`update` call.
+    """
 
     matrix: Dict[int, List[int]]
     """
@@ -167,11 +169,19 @@ class DetectionMatrix:
                draw_values: bool = True,
                text_settings: dict[str, Any] = {'color': 'orange'},  # noqa: B006
                *,
-               draw: bool = True):
+               draw: bool = True) -> None:
         """
-        Renders the matrix on the given surface.
-
-        :meta private:
+        Renders the matrix on the given **surface** using :py:mod:`matplotlib`.
+        
+        Parameters:
+            display: The surface to render the matrix on.
+            imshow_settings: The settings for :py:meth:`matplotlib.pyplot.imshow`.
+                Defaults to :python:`{'cmap': 'jet'}`.
+            vertical: If the lanes should be displayed vertically. Defaults to :python:`True`.
+            draw_values: If the entries should be displayed as text. Defaults to :python:`True`.
+            text_settings: The settings for :py:meth:`matplotlib.pyplot.text` when **draw_values**.
+                Defaults to :python:`{'color': 'orange'}`.
+            draw: If the matrix should be drawn. If :code:`False`, this function will do nothing.
         """
         if not draw:
             return
@@ -247,11 +257,20 @@ class DetectionMatrix:
 
 
 class AsyncDetectionMatrix(DetectionMatrix):
-    def __init__(self, ego_vehicle: carla.Actor, *, road_lane_ids=None, sleep_time=0.1):
-        """
-        Asynchronous version of the :py:class:`DetectionMatrix`.
+    """
+    Asynchronous version of the :py:class:`DetectionMatrix`.
 
-        Will calculate the matrix update in a separate thread.
+    Will calculate the matrix update in a separate thread.
+    """
+    
+    def __init__(self, ego_vehicle: carla.Actor, *,
+                 road_lane_ids: Optional[Set[RoadLaneId]] = None,
+                 sleep_time: float = 0.1):
+        """
+        Parameters:
+            ego_vehicle: The ego vehicle.
+            sleep_time: The time to sleep between updates. Defaults to 0.1 seconds
+            road_lane_ids: The road and lane IDs to consider. If not provided, all will be considered.
         """
         super().__init__(ego_vehicle, road_lane_ids)
         self._sync = False
@@ -271,7 +290,7 @@ class AsyncDetectionMatrix(DetectionMatrix):
                 with self.lock:
                     self.matrix = new_matrix
             except (RuntimeError, OSError) as e:
-                print(f"Error in matrix calculation: {e}")
+                print(f"Fatal Error in matrix calculation: {e}")
                 raise
             except Exception as e:
                 print(f"Error in matrix calculation: {e}")

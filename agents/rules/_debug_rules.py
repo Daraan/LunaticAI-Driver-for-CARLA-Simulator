@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional
 from typing_extensions import Callable, Self, assert_type
 
 from agents.rules.behaviour_templates import AlwaysAcceptRSSUpdates, ConfigBasedRSSUpdates
+from agents.rules.stopped_long_trigger import StoppedTooLongTrigger
 from classes.constants import Phase
 from classes.evaluation_function import ConditionFunction
 from classes.rule import Context, Rule, always_execute
@@ -232,7 +233,7 @@ def _test_custom_init_Rule():
     from agents.tools.logs import logger
     alt_out = io.StringIO()
     # suppress expected message
-    
+
     org_stream = None
     # redirect logger output
     # NOTE: might not be a stream handler in position 0!
@@ -244,6 +245,7 @@ def _test_custom_init_Rule():
             handler.stream = alt_out
     with redirect_stderr(alt_out):
         custom_rule = CustomInitRule()
+        StoppedTooLongTrigger()
     if org_stream is not None:
         with suppress(Exception):
             handler.stream = org_stream
@@ -251,19 +253,22 @@ def _test_custom_init_Rule():
     alt_out.seek(0)
     content = alt_out.read()
     if f"Warning 'condition' argument passed but class {CustomInitRule.__name__}" not in content:
-        print("ERROR: Expected warning message not found")
+        print("ERROR: Expected warning message not found")  # or was suppressed
     else:
         content = re.sub(fr"(WARNING:__main__:)?Warning 'condition' argument passed but class {CustomInitRule.__name__}.+?"
                             "This might lead to undesired results.\n", "", content)
-    if content:
+    content = re.sub(f"(WARNING:__main__:)?Rules list is empty. {StoppedTooLongTrigger.__name__} will always return NOT_APPLICABLE.\n", "", content)
+    
+    if content.strip():
         print(content, file=sys.stderr)
     assert custom_rule._custom
+    
     return custom_rule
 
 
 custom_rule = _test_custom_init_Rule()
 
-# Check Doc -> Descritpion
+# Check Doc -> Description
 
 
 class CheckDescription(Rule):

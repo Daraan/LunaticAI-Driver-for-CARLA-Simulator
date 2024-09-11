@@ -14,6 +14,12 @@ formatters:
       class: logging.FileHandler
       formatter: simple
       filename: ${hydra.runtime.output_dir}/${hydra.job.name}.log
+loggers :
+  __main__ : 
+    # NOTE: Set to WARNING on release
+    level: 'INFO'
+    handlers: []
+    propagate: True
 root:
   level: INFO
   handlers: 

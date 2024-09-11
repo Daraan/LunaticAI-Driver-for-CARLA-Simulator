@@ -1241,9 +1241,11 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         if self.imu_sensor:
             self.actors.append(self.imu_sensor)
         
+        logger.log(0, "Setting up camera manager")
         self.camera_manager = CameraManager(self.player, self.hud, self._args)
         self.camera_manager.transform_index = cam_pos_id
         self.camera_manager.set_sensor(cam_index, notify=False)
+        logger.log(0, "Camera Manager set up")
         
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(text=actor_type)

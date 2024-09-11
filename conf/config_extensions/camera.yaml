@@ -10,7 +10,7 @@ height: ${height}
 # Gamma correction of the camera. Takes the value from the `LaunchConfig`.
 gamma: ${gamma}
 # If True will update the engines spectator camera
-spectator: false
+spectator: true
 
 # Cameras and sensors attached to the ego vehicle
 # that can be viewed by the user in the pygame window.

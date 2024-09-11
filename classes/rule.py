@@ -1372,7 +1372,8 @@ class MultiRule(Rule, metarule=True):
             logger.warning("Warning: No rules passed to %s: %s. You can still add rules to the rules attribute later.", self.__class__.mro()[1].__name__, self.__class__.__name__)
             rules = []
         if len(rules) == 0:
-            logger.debug("Rules list is empty. %s will always return NOT_APPLICABLE.", self.__class__.__name__)
+            # NOTE: This will be logged twice, once more by
+            logger.warning("Rules list is empty. %s will always return NOT_APPLICABLE.", self.__class__.__name__)
         self.rules = rules
         self.execute_all_rules = execute_all_rules
         if sort_rules:

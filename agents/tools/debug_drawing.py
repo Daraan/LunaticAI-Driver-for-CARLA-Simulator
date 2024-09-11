@@ -156,7 +156,7 @@ def debug_drawing(agent: "LunaticAgent", game_framework: "GameFramework", destin
         loc = loc + carla.Vector3D(0, 0, 1.5)  # elevate to be not in road
             
     game_framework.debug.draw_point(loc, life_time=0.5)   # type: ignore[arg-type]
-    draw_waypoint_info(game_framework.debug, agent._current_waypoint, lt=10)
+    draw_waypoint_info(game_framework.debug, agent._current_waypoint)
     if agent._current_waypoint.is_junction:
         junction = agent._current_waypoint.get_junction()
         draw_junction(game_framework.debug, junction, 0.1)
@@ -193,7 +193,7 @@ def draw_transform(debug: carla.DebugHelper, trans: carla.Transform, col: carla.
         thickness=0.05, arrow_size=0.1, color=col, life_time=lt)
 
 
-def draw_junction(debug: carla.DebugHelper, junction: carla.Junction, l_time: float = 2.):
+def draw_junction(debug: carla.DebugHelper, junction: carla.Junction, l_time: float = 0.5):
     """Draws a junction bounding box and the initial and final waypoint of every lane."""
     # draw bounding box
     box = junction.bounding_box
@@ -227,11 +227,11 @@ def draw_junction(debug: carla.DebugHelper, junction: carla.Junction, l_time: fl
             pair_w[1].transform.location + carla.Location(z=0.75), 0.1, white, l_time, False)
 
 
-def draw_waypoint_info(debug: carla.DebugHelper, w: carla.Waypoint, lt: float = 5):
+def draw_waypoint_info(debug: carla.DebugHelper, w: carla.Waypoint, lt: float = 0.02):
     w_loc = w.transform.location
-    debug.draw_string(w_loc + carla.Location(z=0.5), "lane: " + str(w.lane_id), False, yellow, lt)
-    debug.draw_string(w_loc + carla.Location(z=1.0), "road: " + str(w.road_id), False, blue, lt)
-    debug.draw_string(w_loc + carla.Location(z=-.5), str(w.lane_change), False, red, lt)
+    debug.draw_string(w_loc + carla.Location(z=0.5), "lane: " + str(w.lane_id), False, yellow, lt, False)
+    debug.draw_string(w_loc + carla.Location(z=1.0), "road: " + str(w.road_id), False, blue, lt, False)
+    debug.draw_string(w_loc + carla.Location(z=-.5), str(w.lane_change), False, red, lt, False)
 
 
 def draw_waypoint_union(debug: carla.DebugHelper, w0: carla.Waypoint, w1: carla.Waypoint, color: carla.Color = red, lt: float = 5) -> None:

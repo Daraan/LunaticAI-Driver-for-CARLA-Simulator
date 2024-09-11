@@ -3,7 +3,7 @@ This package provides classes from the original CARLA PythonAPI/examples, includ
 with slight modifications.
 
 The sensor classes are wrappers for different :external_py_class:`carla.Sensor` types
-which used to provide data for the :py:class:`HUD` on the :external_py_mod:`pygame`
+which used to provide data for the :py:class:`.HUD` on the :external_py_mod:`pygame`
 interface.
 
 See Also:

@@ -29,7 +29,7 @@ export ROUTES=${SCENARIO_RUNNER_ROOT}/srunner/data/routes_training.xml
 export ROUTES=${SCENARIO_RUNNER_ROOT}/srunner/data/routes_validation.xml
 
 # Alternative Route for faster testing on Town 10
-export ROUTES=${SCENARIO_RUNNER_ROOT}/srunner/data/routes_town10.xml
+#export ROUTES=${SCENARIO_RUNNER_ROOT}/srunner/data/routes_town10.xml
 # Town 12 Devtest Route
 #export ROUTES=${LEADERBOARD_ROOT}/data/routes_devtest.xml
 
@@ -40,6 +40,17 @@ export CARLA_TIMEOUT=120
 
 echo "Using Routes: ${ROUTES} Subset: ${ROUTES_SUBSET}"
 echo "Arguments: ${*}"
+
+# Project variables
+
+export ENABLE_DETECTION_MATRIX=True
+export DATA_MATRIX_ASYNC=False
+
+# In large maps might block the system, if that happens set to False or retry
+export ENABLE_RSS=False
+
+export DATA_MATRIX_INTERVAL=30
+export CAMERA_SPECTATOR=False
 
 python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --routes=${ROUTES} \

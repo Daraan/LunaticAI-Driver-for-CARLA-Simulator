@@ -67,8 +67,8 @@ generation: 2
 #     enabled in the main script by the user to work.
 autopilot: false
 
-# If None will remove all sensors from an externalActor, if `WorldModel.restart` is
-# called outside from the initialization, i.e. a second time.
+# If None will remove all sensors from an externalActor if `WorldModel.restart` is
+# called outside from the initialization, i.e. `WorldModel.restart` it is called a second time.
 # Else will always/never remove the sensors when using `WorldModel.restart`.
 restart_clean_sensors: null
 # The settings of the agent
@@ -84,8 +84,8 @@ camera:
   height: ${height}
   # Gamma correction of the camera. Takes the value from the `LaunchConfig`.
   gamma: ${gamma}
-  # If True will update the engines spectator camera
-  spectator: false
+  # If True will update the Unreal Engine's spectator camera
+  spectator: true
 
   # Cameras and sensors attached to the ego vehicle
   # that can be viewed by the user in the pygame window.

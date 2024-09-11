@@ -303,9 +303,19 @@ class LunaticAgent(BehaviorAgent):
         # https://carla.readthedocs.io/en/latest/python_api/#carla.CollisionEvent
         # e.g. setting ignore_vehicles to False, if it was True before.
         # do an emergency stop (in certain situations)
-        self.execute_phase(Phase.COLLISION | Phase.BEGIN, prior_results=event)
+        try:
+            self.execute_phase(Phase.COLLISION | Phase.BEGIN, prior_results=event)
+        except AttributeError as e:
+            if "'NoneType' object has no attribute 'prior_result'" not in str(e):
+                raise e
+            # context not yet set up, very early collision
         result = self._collision_manager(event)
-        self.execute_phase(Phase.COLLISION | Phase.END, prior_results=result)
+        try:
+            self.execute_phase(Phase.COLLISION | Phase.END, prior_results=result)
+        except AttributeError as e:
+            if "'NoneType' object has no attribute 'prior_result'" not in str(e):
+                raise e
+            # context not yet set up, very early collision
         
     # --------------------- Adding rules ------------------------
 
@@ -359,9 +369,7 @@ class LunaticAgent(BehaviorAgent):
         logger.debug("Adding rules from config:\n%s", OmegaConf.to_yaml(rule_list))
         for rule in rule_list:
             self.add_rules(rule_from_config(rule))  # each call could produce one or more rules
-            
-            self.add_rules(rule_from_config(rule))  # each call could produce one or more rules
-
+    
     #  --------------------- Properties ------------------------
     
     @property

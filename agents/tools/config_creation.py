@@ -1951,8 +1951,8 @@ class CameraConfig(AgentConfig):
     gamma: float = II("gamma")
     """Gamma correction of the camera. Takes the value from the :py:class:`LaunchConfig`."""
     
-    spectator: bool = False
-    """If True will update the engines spectator camera"""
+    spectator: bool = True
+    """If True will update the Unreal Engine's spectator camera"""
     
     # NotImplemented
     

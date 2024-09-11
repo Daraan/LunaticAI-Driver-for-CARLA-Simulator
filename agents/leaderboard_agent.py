@@ -11,6 +11,7 @@ Attention:
     :py:class:`.LaunchConfig` directly will skip the Hydra_ setup and the global
     values will not be used.
 """
+from ast import literal_eval
 import contextlib
 import operator
 import os
@@ -66,17 +67,22 @@ DEBUG = False
 
 WORLD_MODEL_DESTROY_SENSORS = True
 
-ENABLE_RSS = AD_RSS_AVAILABLE and True
-"""If not :code:`None`, overwrites :py:attr:`LunaticAgentSettings.rss.enabled`"""
+ENABLE_RSS = AD_RSS_AVAILABLE and literal_eval(os.environ.get("ENABLE_RSS", "None"))
+"""If not :code:`None`, overwrites `.LunaticAgentSettings.rss.enabled`:py:attr:"""
 
-ENABLE_DATA_MATRIX = None
-"""If not :code:`None`, overwrites :py:attr:`LunaticAgentSettings.detection_matrix.enabled`"""
+ENABLE_DETECTION_MATRIX = literal_eval(os.environ.get("ENABLE_DETECTION_MATRIX", "None"))
+"""If not :code:`None`, overwrites `.LunaticAgentSettings.detection_matrix.enabled`:py:attr:"""
 
-DATA_MATRIX_ASYNC = False
-"""Run the DetectionMatrix update in a separate thread; overwrites :py:attr:`LunaticAgentSettings.detection_matrix.sync`."""
+DATA_MATRIX_ASYNC = literal_eval(os.environ.get("DATA_MATRIX_ASYNC", "None"))
+"""Run the DetectionMatrix update in a separate thread; overwrites `.LunaticAgentSettings.detection_matrix.sync`:py:attr:."""
 
-DATA_MATRIX_SYNC_INTERVAL = None
-"""When running synchronously how many ticks should be between two updates; overwrites :py:attr:`LunaticAgentSettings.detection_matrix.sync_interval`"""
+DATA_MATRIX_INTERVAL = literal_eval(os.environ.get("DATA_MATRIX_INTERVAL", "None"))
+"""
+When running synchronously how many ticks should be between two updates. Overwrites `.LunaticAgentSettings.detection_matrix.sync_interval`:py:attr:
+"""
+
+CAMERA_SPECTATOR = literal_eval(os.environ.get("CAMERA_SPECTATOR", "None"))
+"""Whether to use the camera spectator; overwrites `camera.spectator<.CameraConfig.spectator>`:py:attr:"""
 
 USE_OPEN_DRIVE_DATA = False
 
@@ -156,11 +162,13 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 initialize_config_dir(version_base=None,
                                         config_dir=os.path.abspath(config_dir),
                                         job_name="LeaderboardAgent")
-                if ENABLE_DATA_MATRIX is not None:
-                    overrides.append("agent.detection_matrix.enabled=" + str(ENABLE_DATA_MATRIX).lower())
+                if ENABLE_DETECTION_MATRIX is not None:
+                    overrides.append("agent.detection_matrix.enabled=" + str(ENABLE_DETECTION_MATRIX).lower())
                 overrides.append("agent.detection_matrix.sync=" + str(DATA_MATRIX_ASYNC).lower())
                 if ENABLE_RSS is not None:
                     overrides.append("agent.rss.enabled=" + str(ENABLE_RSS).lower())
+                if CAMERA_SPECTATOR is not None:
+                    overrides.append("camera.spectator=" + str(CAMERA_SPECTATOR).lower())
                 args = cast(LaunchConfig,
                             compose(config_name=config_name,
                                     return_hydra_config=True,
@@ -187,8 +195,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
                 
                 if DATA_MATRIX_ASYNC is not None:
                     args.agent.detection_matrix.sync = not DATA_MATRIX_ASYNC
-                if DATA_MATRIX_SYNC_INTERVAL is not None:
-                    args.agent.detection_matrix.sync_interval = DATA_MATRIX_SYNC_INTERVAL
+                if DATA_MATRIX_INTERVAL is not None:
+                    args.agent.detection_matrix.sync_interval = DATA_MATRIX_INTERVAL
                 logger.info(OmegaConf.to_yaml(args))
             else:
                 args = cast(LaunchConfig,
@@ -344,10 +352,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     # NOTE: to update the doc use
     #run_step.func.__doc__ += "\n" + LunaticAgent.run_step.__doc__
 
-    # TODO maybe move to misc / tools
     @staticmethod
     def _transform_to_waypoint(transform: "carla.Transform", project_to_road=True, lane_type=carla.LaneType.Driving) -> "carla.Waypoint":
-        return CarlaDataProvider.get_map().get_waypoint(transform.location, project_to_road=project_to_road, lane_type=lane_type)
+        # maybe move to misc / tools
+        return CarlaDataProvider.get_map().get_waypoint(transform.location, project_to_road=project_to_road, lane_type=lane_type)  # pyright: ignore[reportReturnType]
     
     def _local_planner_set_plan(self, plan):
         super(AutonomousAgent, self).set_global_plan(plan, stop_waypoint_creation=True, clean_queue=True)

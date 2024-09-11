@@ -141,13 +141,14 @@ def rule_from_config(cfg: "CallFunctionFromConfig | DictConfig | CreateRuleFromC
                     parent: LunaticAgentSettings = OmegaConf.structured(LunaticAgentSettings(rules=[]),
                                                                          flags={"allow_objects": True})
                     for key in parent.live_info.keys():  # noqa: SIM118,RUF100
-                        if key == "executed_direction":
+                        if key in ("executed_direction", "incoming_direction"):
                             parent.live_info[key] = "VOID"
-                        try:
-                            parent.live_info[key] = 0
-                        except Exception:
-                            logger.debug("Could not set %s to 0", key)
-                            continue
+                        else:
+                            try:
+                                parent.live_info[key] = 0
+                            except Exception:
+                                logger.debug("Could not set %s to 0", key)
+                                continue
                     clean_cfg.self_config._set_parent(parent)
                     clean_cfg._set_parent(parent)  # pyright: ignore[reportPrivateUsage]
                     parent["self"] = clean_cfg.self_config

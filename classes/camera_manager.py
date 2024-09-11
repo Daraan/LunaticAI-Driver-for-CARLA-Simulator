@@ -9,6 +9,7 @@ from carla import ColorConverter as cc
 from carla import AttachmentType
 from typing_extensions import Self
 
+from agents.tools import logger
 from agents.tools.hints import CameraBlueprint
 from classes._sensor_interface import CustomSensorInterface
 from launch_tools import CarlaDataProvider, class_or_instance_method
@@ -56,8 +57,11 @@ def spectator_follow_actor(actor: carla.Actor):
     See Also:
         - :py:meth:`CameraManager.follow_actor`
     """
-    while not _follow_car_event.is_set():
-        _spectator_to_actor(actor)
+    try:
+        while not _follow_car_event.is_set():
+            _spectator_to_actor(actor)
+    except Exception as e:
+        logger.error(f"Error in spectator_follow_actor: {e}")
 
 
 spectator_follow_actor.stop = lambda: _follow_car_event.set()  # type: ignore[attr-defined]
@@ -136,7 +140,8 @@ class CameraManager(CustomSensorInterface):
                 self.sensors[i] = item._replace(actual_blueprint=blp)  # update with actual blueprint added
             except AttributeError:
                 self.sensors[i] = CameraBlueprint(item[0], item[1], item[2], blp)
-                
+        
+        # Update spectator in UE editor.
         if args.camera.spectator:
             self.follow_actor(self._parent)
 
@@ -179,6 +184,7 @@ class CameraManager(CustomSensorInterface):
 
     def destroy(self) -> None:
         super().destroy()
+        _follow_car_event.set()
         self.index = None   # type: ignore
         self._surface = None  # type: ignore
 
@@ -236,11 +242,17 @@ class CameraManager(CustomSensorInterface):
         actor = actor or getattr(cls_or_self, "_parent", None)
         if actor is None:
             raise ValueError("No actor to follow")
-        cls_or_self._spectator_thread = Thread(target=updater, args=(actor, ))
+        logger.log(0, "Starting spectator thread")
+        cls_or_self._spectator_thread = Thread(target=updater, args=(actor, ), daemon=True)
+        cls_or_self._spectator_thread.start()
         
     @staticmethod
     def stop_following_actor() -> None:
         _follow_car_event.set()
+        
+    def stop(self) -> None:
+        self.stop_following_actor()
+        return super().stop()
         
 # ==============================================================================
 
