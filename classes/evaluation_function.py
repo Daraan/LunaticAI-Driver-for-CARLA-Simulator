@@ -327,9 +327,9 @@ class ConditionFunction(Generic[_CP, _CH]):
             preset_kwargs: The kwargs to be preset.
         """
         if action_function.__name__ in ConditionFunction._INVALID_NAMES:
-            raise ValueError("When using ConditionFunction.add_action, the action function's name "
-                             f"may not be in {ConditionFunction._INVALID_NAMES}, "
-                             f"got '{action_function.__name__}'.")
+            msg = ("When using ConditionFunction.add_action, the action function's name "
+                  f"may not be in {ConditionFunction._INVALID_NAMES}, got '{action_function.__name__}'.")
+            raise ValueError(msg)
         if key in self.actions:
             print("Warning: Overwriting already registered action", self.actions[key],
                   "with key", f"'{key}'", "in", self.name)

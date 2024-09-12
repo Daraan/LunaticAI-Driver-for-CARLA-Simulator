@@ -750,8 +750,11 @@ class LunaticAgent(BehaviorAgent):
                 return self.run_step(second_pass=int(second_pass) + 1)  # type: ignore
             except LunaticAgentException as lae:
                 if self.ctx.control is None:
-                    raise ValueError(f"A VehicleControl object must be set on the agent when {type(lae).__name__} is "
-                                     "raised during `._inner_step`") from lae
+                    msg = (
+                        f"A VehicleControl object must be set on the agent when {type(lae).__name__} is "
+                                     "raised during `._inner_step`"
+                    )
+                    raise ValueError(msg) from lae
                 planned_control = self.get_control()  # type: ignore[assignment]
             # assert ctx.control
             
@@ -779,7 +782,8 @@ class LunaticAgent(BehaviorAgent):
         except ContinueLoopException as e:
             logger.debug("ContinueLoopException skipping rest of loop.")
             if self.ctx.control is None:
-                raise ValueError(f"A VehicleControl object must be set on the agent when {type(e).__name__} is raised during `._inner_step`") from e
+                msg = f"A VehicleControl object must be set on the agent when {type(e).__name__} is raised during `._inner_step`"
+                raise ValueError(msg) from e
         
         planned_control = self.ctx.control  # type: carla.VehicleControl # type: ignore[assignment]
         planned_control.manual_gear_shift = False
@@ -1216,7 +1220,8 @@ class LunaticAgent(BehaviorAgent):
                 other_wpt = waypoint.get_left_lane()
                 lane_offset = -1
             else:
-                raise ValueError(f"Direction must be 'left' or 'right', was {direction}")
+                msg = f"Direction must be 'left' or 'right', was {direction}"
+                raise ValueError(msg)
             if (can_change  # other_wpt is not None
                 and lanes_have_same_direction(waypoint, other_wpt)  # type: ignore[arg-type]
                 and other_wpt.lane_type == carla.LaneType.Driving):  # type: ignore[attr-defined]

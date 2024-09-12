@@ -111,7 +111,8 @@ class Driver:
         for k, v in tm_config.items():
             setter = getattr(self.tm, k)
             if setter is None:
-                raise ValueError(f"{k} invalid function for carla.TrafficManager")
+                msg = f"{k} invalid function for carla.TrafficManager"
+                raise ValueError(msg)
             setter(self.actor, v)
 
         # manual way:

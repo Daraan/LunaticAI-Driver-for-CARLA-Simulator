@@ -112,13 +112,16 @@ def config_path(path: Optional[str] = None):
         def _register(obj: "type[_AnAgentConfig]") -> "type[_AnAgentConfig]":  # pyright: ignore[reportRedeclaration]
             name = obj._config_path if path is None else path
             if name is None or name == "NOT_GIVEN":
-                raise ValueError(f"Path is not given for {obj.__name__}. Use @register('path/to/config.yaml') to set the path.")
+                msg = f"Path is not given for {obj.__name__}. Use @register('path/to/config.yaml') to set the path."
+                raise ValueError(msg)
             dots = name.count(".")
             if dots > 0 and not (dots == 1 and name.endswith(".yaml")):
-                raise ValueError(f"Use '/' as separator and not dots. E.g. {name.replace('.', '/')} and not '{name}'")
+                msg = f"Use '/' as separator and not dots. E.g. {name.replace('.', '/')} and not '{name}'"
+                raise ValueError(msg)
             obj._config_path = name
             if not is_dataclass(obj) and not TYPE_CHECKING:  # type: ignore
-                raise ValueError(f"Only dataclasses can be registered. {obj.__name__} is not a dataclass.")
+                msg = f"Only dataclasses can be registered. {obj.__name__} is not a dataclass."
+                raise ValueError(msg)
             register_hydra_schema(obj, name)
             return obj
     else:
@@ -309,7 +312,8 @@ def extract_annotations(parent: "ast.Module", docs: Dict[str, _NestedStrDict], g
                         continue
                     except Exception:
                         pass
-                    raise NameError(f"{key} needs to be defined before {target} or globally") from e
+                    msg = f"{key} needs to be defined before {target} or globally"
+                    raise NameError(msg) from e
                 continue
             doc = inspect.cleandoc(doc)
             if target == "__doc__":
@@ -508,8 +512,11 @@ def to_yaml(cls_or_self: Union[type[AgentConfig], AgentConfig], resolve: bool = 
             # NOTE: For some reason "_args_" in rule does NOT WORK
             elif "_args_" in rule_cfg.keys() and OmegaConf.is_missing(rule_cfg, key="_args_"):
                 # check > CallFunctionFromConfig
-                raise ValueError(f"{rule_cfg} has no phase or (positional) `_args_` key. Did you forget to add a phase?"
-                                    "If the _target_ is a function, still prove an empty `_args_ = []` key.")
+                msg = (
+                    f"{rule_cfg} has no phase or (positional) `_args_` key. Did you forget to add a phase?"
+                    "If the _target_ is a function, still prove an empty `_args_ = []` key."
+                )
+                raise ValueError(msg)
             missing_keys = {k for k in rule_cfg.keys() if OmegaConf.is_missing(rule_cfg, k)}
             clean_rule = OmegaConf.masked_copy(rule_cfg, set(rule_cfg.keys()) - missing_keys)  # pyright: ignore[reportArgumentType]
             masked_rules.append(clean_rule)

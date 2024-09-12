@@ -437,7 +437,8 @@ class Phase(Flag):
             return Phase.NONE
         if Phase.END in self:  # Safeguard
             return Phase.BEGIN | Phase((self & ~Phase.END).value * 2)
-        raise ValueError(f"Phase {self} is not a valid phase")
+        msg = f"Phase {self} is not a valid phase"
+        raise ValueError(msg)
         return Phase(self.value * 2)
     
     def validate_next_phase(current_phase, next_phase: "Phase") -> None:  # type: ignore
@@ -474,7 +475,8 @@ class Phase(Flag):
         p = main_phases[1].next_phase()
         while p != main_phases[1] and not (p & cls.USER_CONTROLLED):
             if p & cls.USER_CONTROLLED:
-                raise ValueError(f"User controlled phase should not be in main phases {p}")
+                msg = f"User controlled phase should not be in main phases {p}"
+                raise ValueError(msg)
             main_phases.append(p)
             p = p.next_phase()
         return main_phases

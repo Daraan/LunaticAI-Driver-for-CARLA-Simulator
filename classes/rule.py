@@ -269,7 +269,8 @@ class Context(CarlaDataProvider):
         elif match == "intersection":
             self.detected_hazards = {h for h in self.detected_hazards if not hazard & h}
         else:
-            raise ValueError(f"match must be 'exact', 'subset' or 'intersection', not {match}.")
+            msg = f"match must be 'exact', 'subset' or 'intersection', not {match}."
+            raise ValueError(msg)
             
     def has_hazard(self, hazard: Hazard, match: Literal["exact", "subset", "intersection"] = "intersection") -> bool:
         """
@@ -283,7 +284,8 @@ class Context(CarlaDataProvider):
             return any(hazard in h for h in self.detected_hazards)
         if match == "intersection":
             return any(hazard & h for h in self.detected_hazards)
-        raise ValueError(f"match must be 'exact', 'subset' or 'intersection', not {match}.")
+        msg = f"match must be 'exact', 'subset' or 'intersection', not {match}."
+        raise ValueError(msg)
 
     # Convenience function when using detect_vehicles
     from agents.tools.lunatic_agent_tools import max_detection_distance  # noqa
@@ -539,7 +541,8 @@ class _GroupRule(_CountdownRule):
         if group in cls._group_instances:
             cls._group_instances[group]["cooldown"] = value
         else:
-            raise ValueError(f"Group {group} does not exist.")
+            msg = f"Group {group} does not exist."
+            raise ValueError(msg)
 
     __filter_not_ready_instances: Callable[["_CountdownRule"], bool] = lambda instance: instance.group is None and instance._cooldown > 0  # pylint: disable=line-too-long # type: ignore[attr-defined]
     """
@@ -836,14 +839,15 @@ class Rule(_GroupRule):
             phases = frozenset(phases) if isinstance(phases, Iterable) else frozenset([phases])
         for p in phases:
             if not isinstance(p, Phase):
-                raise TypeError(f"phase must be of type Phases, not {type(p)}")
+                msg = f"phase must be of type Phases, not {type(p)}"
+                raise TypeError(msg)
         self.phases = phases
         
         # Check Rule
         if condition is None and not hasattr(self, "condition"):
-            raise TypeError(
-                f"{self.__class__.__name__}.__init__() missing 1 required positional argument: 'condition'. "
-                "Alternatively the class must implement a `condition` function.")
+            msg = (f"{self.__class__.__name__}.__init__() missing 1 required positional argument: 'condition'. "
+                   "Alternatively the class must implement a `condition` function.")
+            raise TypeError(msg)
         
         if False and TYPE_CHECKING:
             # Idea have type hint here
@@ -902,14 +906,17 @@ class Rule(_GroupRule):
                     "- other actions are currently not supported.") from e
         if action is None and actions is None and not hasattr(self, "actions"):
             # NOTE: the k in params check below is essential for this to work correctly.
-            raise TypeError(
+            msg = (
                 f"{self.__class__.__name__}.__init__() arguments `action` and `actions` are both None. "
                 "Provide at least one argument alternatively the class must have an `actions` "
-                "attribute or an `action` function.")
+                "attribute or an `action` function."
+            )
+            raise TypeError(msg)
 
         if action is None:
             if not isinstance(actions, Mapping):
-                raise TypeError(f"actions must be a Mapping, not {type(actions)}")
+                msg = f"actions must be a Mapping, not {type(actions)}"
+                raise TypeError(msg)
 
             self.actions = actions
         elif isinstance(action, Mapping):
@@ -929,7 +936,8 @@ class Rule(_GroupRule):
         # Assure that method(self, ctx) like functions are accessible like them
         for key, func in self.actions.items():
             if not callable(func):
-                raise TypeError(f"Action for key {key} must be callable, not {type(func)}")
+                msg = f"Action for key {key} must be callable, not {type(func)}"
+                raise TypeError(msg)
             multiple_parameters = len(inspect.signature(func).parameters) >= 2
             if multiple_parameters and getattr(func, "use_self", True):
                 # NOTE: could use types.MethodType
@@ -937,7 +945,8 @@ class Rule(_GroupRule):
         
         # Check Description
         if not isinstance(description, str):
-            raise TypeError(f"description must be of type str, not {type(description)}")
+            msg = f"description must be of type str, not {type(description)}"
+            raise TypeError(msg)
         self.description = description
         super().__init__(group or self.group, cooldown_reset_value, enabled)  # or self.group for subclassing
         self.priority: float | int | RulePriority = priority  # used by agent.add_rule
@@ -983,10 +992,12 @@ class Rule(_GroupRule):
         
         for attr in cls._PROPERTY_MEMBERS:
             if hasattr(cls, attr) and not hasattr(getattr(cls, attr), "__get__"):
-                raise ValueError(
+                msg = (
                     f"Class {cls.__name__} has overwritten property {attr} with {getattr(cls, attr)}."
                     " You may only overwrite the following attributes with properties: {cls._PROPERTY_MEMBERS}."
-                    "Did you mean `start_cooldown` or `cooldown_reset_value` instead of `cooldown`?")
+                    "Did you mean `start_cooldown` or `cooldown_reset_value` instead of `cooldown`?"
+                )
+                raise ValueError(msg)
         if not cls._auto_init_ or metarule:
             return
         
@@ -1036,9 +1047,10 @@ class Rule(_GroupRule):
             # Actions provided by condition.actions, e.g. ConditionFunction.register_action
             if hasattr(cls.condition, "actions") and cls.condition.actions:  # type: ignore[attr-defined]
                 if hasattr(cls, "actions") and cls.actions:
-                    raise ValueError(f"Class {cls.__name__} already has an 'actions' attribute. "
-                                "It will be overwritten by the 'actions' attribute of the condition."
-                                " This is the case if ConditionFunction.register_action has been used.")
+                    _msg = (f"Class {cls.__name__} already has an 'actions' attribute. "
+                            "It will be overwritten by the 'actions' attribute of the condition."
+                            " This is the case if ConditionFunction.register_action has been used.")
+                    raise ValueError(_msg)
                 cls.actions = cls.condition.actions                     # type: ignore[attr-defined]
                 
         if not hasattr(cls, "description"):
@@ -1064,7 +1076,8 @@ class Rule(_GroupRule):
                 if phases is None:  # NOTE: Could be Phase.NONE
                     phases = cls_phases or cls_phase
             if phases is None:
-                raise ValueError(f"`phases` or `phase` must be provided for class {cls.__name__}")
+                msg = f"`phases` or `phase` must be provided for class {cls.__name__}"
+                raise ValueError(msg)
             # Removing condition to not overwrite it
             kwargs.update({k: v for k, v in cls.__dict__.items() if k in params and k not in do_not_overwrite})  # type: ignore
             try:

@@ -202,4 +202,5 @@ class Vehicle(VehicleBase):
         # Delegate attribute access to the CARLA Vehicle class
         if hasattr(self.actor, attr):
             return getattr(self.actor, attr)
-        raise AttributeError(f"'Invalid attribute {attr}'{attr}'")
+        msg = f"'Invalid attribute {attr}'{attr}'"
+        raise AttributeError(msg)
