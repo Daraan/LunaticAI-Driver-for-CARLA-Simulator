@@ -29,7 +29,7 @@ from hydra.core.utils import configure_log
 from omegaconf import DictConfig, OmegaConf, open_dict
 
 from agents.tools.config_creation import LaunchConfig, RssLogLevel, RssRoadBoundariesMode, config_store
-from classes import exceptions as _exceptions
+from classes import MockDummy, exceptions as _exceptions
 from classes.camera_manager import CameraManager
 from classes._sensor_interface import CustomSensorInterface
 from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
@@ -37,7 +37,7 @@ from classes.exceptions import AgentDoneException, ContinueLoopException
 from classes.hud import HUD, get_actor_display_name
 from classes.keyboard_controls import KeyboardControl, RSSKeyboardControl
 from classes.rss_sensor import AD_RSS_AVAILABLE, RssSensor
-from classes.rss_visualization import RssBoundingBoxVisualizer, RssUnstructuredSceneVisualizer
+from classes.rss_visualization import RssBoundingBoxVisualizer, RssStateVisualizer, RssUnstructuredSceneVisualizer
 from classes.information_manager import InformationManager
 from launch_tools import class_or_instance_method
 
@@ -132,9 +132,11 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     """
     
     clock: ClassVar[None | pygame.time.Clock] = None
-    display: ClassVar[pygame.Surface] = None
+    display: ClassVar[None | pygame.Surface | Literal[False]] = None
     """
     The :py:mod:`pygame` surface to render on.
+    
+    Is None before the initialization. :code:`False` if pygame is disabled.
     """
 
     controller: weakref.ProxyType[RSSKeyboardControl] | RSSKeyboardControl
@@ -190,6 +192,9 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             launch_config.agent.rss.log_level = RssLogLevel.off
         cls.init_carla(launch_config)
         cls.init_pygame(launch_config)
+        if launch_config.pygame is False:
+            cls.display = False
+            pygame.quit()
         return cls(launch_config)
 
     # Hydra Tools
@@ -312,6 +317,9 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         
         # These are class variables
         GameFramework.clock, GameFramework.display = self.init_pygame(args)
+        if args.pygame is False:
+            GameFramework.display = False
+            pygame.quit()
         
         self.config = config
         self.agent = None
@@ -329,7 +337,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         
     @class_or_instance_method
     def init_pygame(cls_or_self: "Self | type[Self]", launch_config: Optional[LaunchConfig] = None,
-                    recreate: bool = False) -> tuple[pygame.time.Clock, pygame.Surface]:
+                    recreate: bool = False) -> tuple[pygame.time.Clock, pygame.Surface | Literal[False] | None]:
         """
         Parameters:
             launch_config: Will use the :py:attr:`width<.LaunchConfig.width>` and
@@ -345,16 +353,22 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         if recreate or GameFramework.clock is None or GameFramework.display is None:
             if launch_config is None:
                 launch_config = getattr(cls_or_self, "_args", None)  # get from inst.
-            if getattr(launch_config, "pygame", True):
-                pygame.init()
+            # NOTE: launch_config could still be None, i.e. when called from a class.
+            if getattr(launch_config, "pygame", None):
+                pygame.init()  # NOTE: this is currently not guaranteed anymore.
                 pygame.font.init()
             if recreate or GameFramework.clock is None:
                 GameFramework.clock = pygame.time.Clock()
-            if getattr(launch_config, "pygame", True) and "READTHEDOCS" not in os.environ:
-                GameFramework.display = pygame.display.set_mode(
-                    size=(launch_config.width, launch_config.height)
-                         if launch_config else (1280, 720),
-                    flags=pygame.HWSURFACE | pygame.DOUBLEBUF)
+            if recreate or GameFramework.display is None:
+                if getattr(launch_config, "pygame", None) and "READTHEDOCS" not in os.environ:
+                    GameFramework.display = pygame.display.set_mode(
+                        size=(launch_config.width, launch_config.height)
+                            if launch_config else (1280, 720),
+                        flags=pygame.HWSURFACE | pygame.DOUBLEBUF)
+                elif getattr(launch_config, "pygame", None) is False:
+                    GameFramework.display = False
+                else:
+                    GameFramework.display = None  # Note sure if should initialize, try again next time.
         return GameFramework.clock, GameFramework.display
     
     @staticmethod
@@ -564,6 +578,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                                         clock=self.clock,
                                         **kwargs)
         self.controller = weakref.proxy(controller)
+        if self._args.pygame is False:
+            controller.enable(False)
         return controller  # NOTE: does not return the proxy object.
     
     @staticmethod
@@ -629,13 +645,14 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             This is the preferred method to update the world and render the camera.
         """
         self.world_model.tick(self.clock)  # NOTE: Ticks WorldMODEL not CARLA WORLD!  # pyright: ignore[reportOptionalMemberAccess, reportArgumentType]
-        self.world_model.render(self.display, finalize=False)  # pyright: ignore[reportOptionalMemberAccess]
-        self.controller.render(self.display)
-        # These two types must be in sync:
-        dm_render_conf: "DetectionMatrix.RenderOptions" = self._args.camera.hud.detection_matrix  # type: ignore[assignment]
-        if dm_render_conf and self.agent:
-            self.agent.render_detection_matrix(self.display, **dm_render_conf)
-        self.world_model.finalize_render(self.display)  # pyright: ignore[reportOptionalMemberAccess]
+        if self.display:
+            self.world_model.render(self.display, finalize=False)  # pyright: ignore[reportOptionalMemberAccess]
+            self.controller.render(self.display)
+            # These two types must be in sync:
+            dm_render_conf: "DetectionMatrix.RenderOptions" = self._args.camera.hud.detection_matrix  # type: ignore[assignment]
+            if dm_render_conf and self.agent:
+                self.agent.render_detection_matrix(self.display, **dm_render_conf)
+            self.world_model.finalize_render(self.display)  # pyright: ignore[reportOptionalMemberAccess]
         
     @staticmethod
     def skip_rest_of_loop(message="GameFramework.end_loop") -> NoReturn:
@@ -743,7 +760,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             else:
                 return  # skip render and likely terminate.
         self.render_everything()
-        pygame.display.flip()
+        if self._args.pygame:
+            pygame.display.flip()
 
     @class_or_instance_method
     def cleanup(cls_or_self: "type[Self] | Self",
@@ -891,8 +909,18 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             args.externalActor = not (player is not None or agent is not None)  # TEMP: Remove to force clean config.
         self._args: LaunchConfig = assure_type(LaunchConfig, args)
         
-        self.hud: HUD = HUD(self._args.width, self._args.height, self.world)
+        self.hud: HUD
         """The :py:class:`HUD` that is managed."""
+        
+        self.world_tick_id: Optional[int]
+        """The ID of the callback tick event for the :py:class:`HUD`."""
+        
+        if self._args.pygame:
+            self.hud = HUD(self._args.width, self._args.height, self.world)
+            self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
+        else:
+            self.hud = MockDummy.create_dummy(HUD)
+            self.world_tick_id = None
         
         self.sync: Optional[bool] = self._args.sync
         """Set from :py:attr:`.LaunchConfig.sync`"""
@@ -1022,7 +1050,6 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         self.restart()
         assert self.player is not None
         self._vehicle_physics = self.player.get_physics_control()
-        self.world_tick_id = self.world.on_tick(self.hud.on_world_tick)
         
         if CarlaDataProvider._traffic_light_map is None:
             logger.error("Traffic light map not set at this point")  # should not have happened
@@ -1251,21 +1278,33 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             self.actors.append(self.imu_sensor)
         
         logger.log(0, "Setting up camera manager")
-        self.camera_manager = CameraManager(self.player, self.hud, self._args)
-        self.camera_manager.transform_index = cam_pos_id
-        self.camera_manager.set_sensor(cam_index, notify=False)
-        logger.log(0, "Camera Manager set up")
-        
-        actor_type = get_actor_display_name(self.player)
-        self.hud.notification(text=actor_type)
-        
-        self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player,
-                                                                                self.world,
-                                                                                self.dim,
-                                                                                gamma_correction=self._gamma)  # TODO: use args instead of gamma
-        self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim,
-                                                                    self.world,
-                                                                    self.camera_manager.sensor)
+        if self._args.pygame:
+            assert isinstance(self.hud, HUD)
+            self.camera_manager = CameraManager(self.player, self.hud, self._args)
+            self.camera_manager.transform_index = cam_pos_id
+            self.camera_manager.set_sensor(cam_index, notify=False)
+            assert self.camera_manager.sensor
+            logger.log(0, "Camera Manager set up")
+            
+            actor_type = get_actor_display_name(self.player)
+            self.hud.notification(text=actor_type)
+            
+            self.rss_unstructured_scene_visualizer = RssUnstructuredSceneVisualizer(self.player,
+                                                                                    self.world,
+                                                                                    self.dim,
+                                                                                    gamma_correction=self._gamma)  # TODO: use args instead of gamma
+            self.rss_bounding_box_visualizer = RssBoundingBoxVisualizer(self.dim,
+                                                                        self.world,
+                                                                        self.camera_manager.sensor)
+            rss_state_visualizer = self.hud.rss_state_visualizer
+        else:
+            if self._args.camera.spectator:
+                # only use spectator
+                CameraManager.follow_actor(self.player)
+            self.camera_manager = MockDummy.create_dummy(CameraManager)  # NOTE: Does not end thread
+            self.rss_bounding_box_visualizer = MockDummy.create_dummy(RssBoundingBoxVisualizer)
+            self.rss_unstructured_scene_visualizer = MockDummy.create_dummy(RssUnstructuredSceneVisualizer)
+            rss_state_visualizer: "RssStateVisualizer" = MockDummy.create_dummy()
         if AD_RSS_AVAILABLE and self._config.rss and self._config.rss.enabled:
             log_level = self._config.rss.log_level
             # Assure correct log level type
@@ -1282,7 +1321,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             self.rss_sensor = RssSensor(self.player,
                                     self.rss_unstructured_scene_visualizer,
                                     self.rss_bounding_box_visualizer,
-                                    self.hud.rss_state_visualizer,
+                                    rss_state_visualizer,
                                     visualizer_mode=self._config.rss.debug_visualization_mode,
                                     log_level=log_level)
             self.rss_set_road_boundaries_mode(self._config.rss.use_stay_on_road_feature)

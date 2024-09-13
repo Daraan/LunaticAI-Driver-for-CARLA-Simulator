@@ -12,6 +12,12 @@ fps: 20
 # Random (GameFramework):
 seed: null
 
+# Deactivates the pygame window and interface.
+#  
+# Attention:
+#     Setting this to False is experimental and still initializes some parts of pygame.
+pygame: true
+
 # Camera:
 width: 1280
 height: 720

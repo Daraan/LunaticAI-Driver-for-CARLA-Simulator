@@ -221,7 +221,10 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self.world_model = WorldModel(config, args=self.args)
         self.game_framework.world_model = self.world_model
         print("World Model setup")
-        self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False)  # Note: stores weakref to controller
+        if self.args.pygame:
+            self.controller = self.game_framework.make_controller(self.world_model, RSSKeyboardControl, start_in_autopilot=False)  # Note: stores weakref to controller
+        else:
+            self.controller = MockDummy.create_dummy(RSSKeyboardControl)
         print("Initializing agent")
         LunaticAgent.__init__(self=self, settings=config, world_model=self.world_model)
         # super(AutonomousAgent, self).__init__(self, config, self.world_model)

@@ -1692,9 +1692,10 @@ class BlockingRule(Rule, metarule=True):
                          enabled=enabled)
         if gameframework:
             BlockingRule._gameframework = gameframework
-        if not GameFramework.clock or not GameFramework.display:
+        if not GameFramework.clock or GameFramework.display is None:
             # Not much we can do about it
             #logger.info("%s : GameFramework should be initialized before using this rule.", self.__class__.__name__)
+            # NOTE: This now does not GameFramework.display
             GameFramework.init_pygame()
         self.ticks_passed = 0
 
@@ -1731,17 +1732,19 @@ class BlockingRule(Rule, metarule=True):
             world_model = ctx.agent._world_model  # pyright: ignore[reportPrivateUsage]
             display = GameFramework.display
             world_model.tick(GameFramework.clock)  # does not tick the world!  # pyright: ignore[reportArgumentType]
-            world_model.render(display, finalize=False)
-            try:
-                world_model.controller.render(display)  # type: ignore[attr-defined]  # noqa: SIM105
-            except AttributeError:
-                pass
+            if display:
+                world_model.render(display, finalize=False)  # pyright: ignore[reportArgumentType]
+                try:
+                    world_model.controller.render(display)  # type: ignore[attr-defined]  # noqa: SIM105
+                except AttributeError:  # in case not available for controller class
+                    pass
             
-            dm_render_conf = world_model._args.camera.hud.detection_matrix  # pyright: ignore[reportPrivateUsage]
-            if dm_render_conf and ctx.agent:
-                ctx.agent.render_detection_matrix(display, **dm_render_conf)  # pyright: ignore[reportPrivateUsage]
-            world_model.finalize_render(display)
-        pygame.display.flip()
+                dm_render_conf = world_model._args.camera.hud.detection_matrix  # pyright: ignore[reportPrivateUsage]
+                if dm_render_conf and ctx.agent:
+                    ctx.agent.render_detection_matrix(display, **dm_render_conf)
+                world_model.finalize_render(display)  # pyright: ignore[reportArgumentType]
+        if GameFramework.display:
+            pygame.display.flip()
 
     @overload
     def loop_agent(self, ctx: Context, control: Optional[carla.VehicleControl] = None,

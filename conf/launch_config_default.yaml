@@ -133,3 +133,9 @@ camera:
       # Settings for the text of pyplot.text when drawing the numerical values
       text_settings:
         color: orange
+
+# Deactivates the pygame window and interface.
+#  
+# Attention:
+#     Setting this to False is experimental.
+pygame: true
