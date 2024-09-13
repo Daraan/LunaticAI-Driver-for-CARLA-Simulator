@@ -1452,7 +1452,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         
         # e.g. CustomSensorInterface
         other_actors = [actor for actor in self.actors
-                        if not isinstance(actor, carla.Actor)]
+                        if actor and not isinstance(actor, carla.Actor)]
         while other_actors:
             actor = other_actors.pop(0)
             if actor is not None:

@@ -33,11 +33,15 @@ select = [
     "D416",
 
     "E",
+    "EM102", # no f strings ine exception
     "F",
-    "I",
+    "FA102", # __future__.annotations needed
+    "FURB",
+    "FIX003",
 
     "G004",
 
+    "I",
     "ISC001",
 
     "PGH004",
@@ -46,37 +50,38 @@ select = [
 
     "PIE808", # unnecessary-range-start
 
-    "PLE1205",
-
-    "RUF",
-    "RUF021", # needs preview
-    "SIM201",
-    "SIM202",
-    "UP",
-    "W",
-    "YTT",
-    
-    "TCH004",
-    "FIX003",
-
     "PLC",
     "PLE",
+    "PLE1205",
+
+    "PGH005",
 
     # Pathlib
     # Note that os functions may be preferable if performance is a concern, e.g., in hot loops.
     "PTH123",
 
-    "PGH005",
+    "RUF",
+    "RUF021", # needs preview
+    "SIM201",
+    "SIM202",
+    
+    "TRY201", # raise with unnecessary parameter
 
     "T10", # breakpoints
+
+    "TCH004",
     "TCH0", # TypeChecking
 
+    "UP",
+
     # "PIE790", # unnecessary pass and ...
+    "W",
+    "YTT",
 ]
 
 ignore = [
     "UP037", # needs __future__.annotations
-    "I001",
+    "I001",  # sort import block, need to be careful in some files
     "UP007",
     "W293",
     "E265", # Block comment should start with `# `
@@ -161,6 +166,7 @@ ignore = [
     "E",
     "PLC",
     "PTH123",
+    "FA102",
 ]
 "typings/carla/*" = [
     "A002"

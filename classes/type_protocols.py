@@ -1,6 +1,10 @@
 """
 Helper library to define type protocols for classes and functions in the project.
 
+Note:
+    That some types in the documentation have been simplified, e.g. some generics have been
+    omitted.
+
 See Also:
     Useful references:
         - https://docs.python.org/3/library/typing.html

@@ -307,14 +307,14 @@ class LunaticAgent(BehaviorAgent):
             self.execute_phase(Phase.COLLISION | Phase.BEGIN, prior_results=event)
         except AttributeError as e:
             if "'NoneType' object has no attribute 'prior_result'" not in str(e):
-                raise e
+                raise
             # context not yet set up, very early collision
         result = self._collision_manager(event)
         try:
             self.execute_phase(Phase.COLLISION | Phase.END, prior_results=result)
         except AttributeError as e:
             if "'NoneType' object has no attribute 'prior_result'" not in str(e):
-                raise e
+                raise
             # context not yet set up, very early collision
         
     # --------------------- Adding rules ------------------------

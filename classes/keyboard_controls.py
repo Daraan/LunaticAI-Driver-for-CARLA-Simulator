@@ -106,9 +106,12 @@ class KeyboardControl:
         """
         Parse the input events and return True if the loop should end.
         """
+        if not self.enabled:
+            return None
         events = events if events is not None else pygame.event.get()
         for event in events:  # pylint: disable=unused-variable
             self._check_help_event(event)
+        return None
     
     @staticmethod
     def _is_quit_shortcut(key: int):
@@ -116,7 +119,7 @@ class KeyboardControl:
         return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
 
     def _check_help_event(self, event: pygame.event.Event):
-        """Check if the event is a help event"""
+        """Check if the event is a help event and displays it."""
         if not hasattr(event, 'unicode'):  # No KEYUP/DOWN event
             return None
         if event.unicode.lower() in ('h', '?'):  # type: ignore[attr-defined]
@@ -135,6 +138,8 @@ class PassiveKeyboardControl(KeyboardControl):
     """
 
     def parse_events(self) -> "None | Literal[True]":
+        if not self.enabled:
+            return None
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True

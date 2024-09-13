@@ -35,7 +35,12 @@ def get_actor_display_name(actor: carla.Actor, truncate: int = 250):
 
 
 class HUD:
-    """Class for HUD text"""
+    """
+    Class to display text and other information on the :py:mod:`pygame` screen.
+    
+    If :py:attr:`.LaunchConfig.pygame` is set to False the HUD is not available.
+    """
+    
     default_font: ClassVar[str] = 'ubuntumono'
 
     def __init__(self, width: int, height: int, world: carla.World, help_text: Optional[str] = RSSKeyboardControl.__doc__):
@@ -57,6 +62,7 @@ class HUD:
         self.simulation_time = 0
         self._show_info = True
         self._info_text = []
+        # TODO: can this be removed? what with the tick method?
         self._server_clock = pygame.time.Clock()
         # RSS
         self.original_vehicle_control: Optional[carla.VehicleControl] = None
@@ -66,7 +72,7 @@ class HUD:
         self.rss_state_visualizer = RssStateVisualizer(self.dim, self._font_mono, self._world)
 
     def on_world_tick(self, timestamp: carla.WorldSnapshot):
-        """Gets informations from the world at every tick"""
+        """Callback to get information from the world at every tick"""
         self._server_clock.tick()
         self.server_fps = self._server_clock.get_fps()
         # self.frame = timestamp.frame_count # NON- RSS Example
@@ -77,8 +83,10 @@ class HUD:
         """
         HUD method for every tick
         
-        If obstacles is passed these will be displayed in the HUD,
-        if not the closest vehicles will be displayed.
+        
+        Parameters:
+            obstacles: If **obstacles** is passed these actors will be displayed on the HUD,
+            if not the closest vehicles will be displayed.
         """
         self._notifications.tick(clock)
         if not self._show_info:
@@ -176,11 +184,11 @@ class HUD:
         self._show_info = not self._show_info
 
     def notification(self, text: str, seconds: float = 2.0):
-        """Notification text"""
+        """Display a notification"""
         self._notifications.set_text(text, seconds=seconds)
 
     def error(self, text: str):
-        """Error text"""
+        """Display an error notification"""
         self._notifications.set_text(f'Error: {text}', (255, 0, 0))
 
     def render(self, display: pygame.Surface):
@@ -271,7 +279,11 @@ class HUD:
 
 
 class FadingText:
-    """ Class for fading text """
+    """
+    Class for fading text
+    
+    :meta private:
+    """
 
     def __init__(self, font: pygame.font.Font, dim: "tuple[int, int]", pos: "tuple[int, int]"):
         """Constructor method"""
@@ -306,7 +318,11 @@ class FadingText:
 
 
 class HelpText:
-    """Helper class to handle text output using pygame"""
+    """
+    Helper class to handle text output using pygame
+    
+    :meta private:
+    """
 
     def __init__(self, font: pygame.font.Font, width: int, height: int, doc: Optional[Union[str, bool]] = None):
         """Constructor method"""

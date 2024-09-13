@@ -26,7 +26,7 @@ If you are familiar with the CARLA simulator, our agent builds up on the standar
 
 | branch | Supporting | notes |
 | -- | -- | -- |
-|`main` | CARLA 0.9.14+, Python 3.7+ with/without RSS build | **Trying to keep it stable** |
+|`main` | CARLA 0.9.14+, Python 3.7+ with/without RSS build | stable |
 |`dev/main` | CARLA 0.9.14, Python 3.7+ without RSS build.<br> CARLA 0.9.15 Python 3.10 with RSS build | potentially unstable |
 |`dev/daniel`| Supporting CARLA 0.9.15+, Python 3.10+ with RSS build | nightly |
 

@@ -131,7 +131,7 @@ def patch_rule():
     if ".. autoclass:: BlockingRule" in subcontent and f":exclude-members: {exclude}" in subcontent: # already applied
         return
     
-    if ":exclude-members: \"" in subcontent:
+    if ':exclude-members: "' in subcontent:
         # NOTE: Should start with ", "!
         subcontent = re.sub(r':exclude-members: "', ':special-members: __call__\n   :exclude-members: ", MultiRule, RandomRule, BlockingRule, ', subcontent, count=1)
     else:

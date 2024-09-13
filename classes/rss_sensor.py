@@ -102,7 +102,7 @@ class RssSensor(CustomSensorInterface):
         assert world
         self.unstructured_scene_visualizer = unstructured_scene_visualizer
         self.bounding_box_visualizer = bounding_box_visualizer
-        self._parent = parent_actor
+        self._parent: carla.Vehicle = parent_actor
         self.timestamp = None
         self.response_valid = False
         self.proper_response = None

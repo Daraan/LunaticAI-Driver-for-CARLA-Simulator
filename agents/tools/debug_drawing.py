@@ -227,7 +227,7 @@ def draw_junction(debug: carla.DebugHelper, junction: carla.Junction, l_time: fl
             pair_w[1].transform.location + carla.Location(z=0.75), 0.1, white, l_time, False)
 
 
-def draw_waypoint_info(debug: carla.DebugHelper, w: carla.Waypoint, lt: float = 0.02):
+def draw_waypoint_info(debug: carla.DebugHelper, w: carla.Waypoint, lt: float = -1):
     w_loc = w.transform.location
     debug.draw_string(w_loc + carla.Location(z=0.5), "lane: " + str(w.lane_id), False, yellow, lt, False)
     debug.draw_string(w_loc + carla.Location(z=1.0), "road: " + str(w.road_id), False, blue, lt, False)
@@ -268,8 +268,8 @@ def lane_explorer(debug: carla.DebugHelper, current_w: carla.Waypoint, draw_info
 
     # Render some nice information, notice that you can't see the strings if you are using an editor camera
     if draw_info:
-        draw_waypoint_info(debug, current_w, trail_life_time)
-    draw_waypoint_union(debug, current_w, next_w, cyan if current_w.is_junction else green, trail_life_time)
+        draw_waypoint_info(debug, current_w, -1)
+    draw_waypoint_union(debug, current_w, next_w, color=cyan if current_w.is_junction else green, lt=trail_life_time)
     draw_transform(debug, current_w.transform, white, trail_life_time)
 
     # print the remaining waypoints

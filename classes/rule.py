@@ -733,7 +733,7 @@ class Rule(_GroupRule):
             new_decorated_class = type(decorated_class.__name__, (cls, ), decorated_class.__dict__.copy(),
                                   _init_by_decorator=True, **kwargs)  # > calls init_subclass; copy() for correct type!
             if TYPE_CHECKING:
-                assert issubclass(new_decorated_class, cls) and issubclass(new_decorated_class, decorated_class)
+                assert issubclass(new_decorated_class, cls) and issubclass(new_decorated_class, decorated_class)  # noqa: PT018
             
             return super().__new__(new_decorated_class)
         
@@ -741,7 +741,8 @@ class Rule(_GroupRule):
         if isinstance(phases, str):
             try:
                 logger.warning("Using NewRule(metaclass=Rule) is deprecated. Use NewRule(Rule, metarule=True) instead.")
-                assert clsdict and isinstance(bases, tuple)
+                assert clsdict
+                assert isinstance(bases, tuple)
                 class_name = phases
                 new_rule_class = type(class_name, (cls, *bases), clsdict, metarule=True, **kwargs)
             except Exception:
