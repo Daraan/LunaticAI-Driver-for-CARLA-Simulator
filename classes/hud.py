@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, ClassVar, Iterable, List, Optional, Tuple, Uni
 import carla
 import pygame
 
+from classes import CanBeDummy
 from classes.keyboard_controls import RSSKeyboardControl
 from classes.rss_visualization import RssStateVisualizer
 
@@ -34,7 +35,7 @@ def get_actor_display_name(actor: carla.Actor, truncate: int = 250):
 # ==============================================================================
 
 
-class HUD:
+class HUD(CanBeDummy):
     """
     Class to display text and other information on the :py:mod:`pygame` screen.
     

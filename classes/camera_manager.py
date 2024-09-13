@@ -11,6 +11,7 @@ from typing_extensions import Self
 
 from agents.tools import logger
 from agents.tools.hints import CameraBlueprint
+from classes import MockDummy
 from classes._sensor_interface import CustomSensorInterface
 from launch_tools import CarlaDataProvider, class_or_instance_method
 
@@ -67,7 +68,7 @@ def spectator_follow_actor(actor: carla.Actor):
 spectator_follow_actor.stop = lambda: _follow_car_event.set()  # type: ignore[attr-defined]
 
 
-class CameraManager(CustomSensorInterface):
+class CameraManager(MockDummy.CanBeDummy, CustomSensorInterface):
     """ Class for camera management"""
 
     default_blueprints: ClassVar[List[CameraBlueprint]] = list(CameraBlueprints.values())

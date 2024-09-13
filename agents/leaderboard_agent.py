@@ -27,6 +27,7 @@ from omegaconf import OmegaConf
 from typing_extensions import TypedDict
 
 from agents.tools.debug_drawing import draw_route
+from classes import MockDummy
 from classes.exceptions import UserInterruption
 from launch_tools import CarlaDataProvider, GameTime, singledispatchmethod
 
@@ -240,7 +241,8 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
         self.agent_engaged = False
         # Print controller docs
         with contextlib.suppress(AttributeError):
-            print(self.controller.get_docstring())
+            if not isinstance(self.controller, MockDummy):
+                print(self.controller.get_docstring())
         
     def sensors(self) -> "list[dict]":
         """

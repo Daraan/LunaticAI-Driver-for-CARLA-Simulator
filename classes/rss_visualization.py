@@ -15,6 +15,7 @@ import carla
 import numpy as np
 import pygame
 
+from classes import CanBeDummy
 from classes._sensor_interface import CustomSensorInterface
 from classes.constants import AD_RSS_AVAILABLE
 from launch_tools import CarlaDataProvider
@@ -51,7 +52,7 @@ class Color:
     carla_blue = carla.Color(0, 0, 255)
 
 
-class RssStateVisualizer:
+class RssStateVisualizer(CanBeDummy):
 
     def __init__(self, display_dimensions: tuple[int, int], font: pygame.font.Font, world: carla.World):  # noqa: ARG002
         self._surface = None
@@ -162,7 +163,7 @@ class RssUnstructuredSceneVisualizerMode(Enum):
     fullscreen = 3
 
 
-class RssUnstructuredSceneVisualizer(CustomSensorInterface):
+class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
     """Provides a top-view over the setting?"""
 
     def __init__(self, parent_actor: carla.Actor, world, display_dimensions: tuple[int, int], gamma_correction: float = 2.2):  # noqa: ARG002
@@ -442,7 +443,7 @@ class RssUnstructuredSceneVisualizer(CustomSensorInterface):
 # ==============================================================================
 
 
-class RssBoundingBoxVisualizer:
+class RssBoundingBoxVisualizer(CanBeDummy):
 
     def __init__(self, display_dimensions, world, camera: carla.Sensor):
         self._last_camera_frame = 0

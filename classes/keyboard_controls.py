@@ -47,6 +47,8 @@ from pygame.locals import (
 )
 from typing_extensions import Literal
 
+from classes import CanBeDummy
+
 if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
 
@@ -151,7 +153,7 @@ class PassiveKeyboardControl(KeyboardControl):
         return None
 
 
-class RSSKeyboardControl(KeyboardControl):
+class RSSKeyboardControl(CanBeDummy, KeyboardControl):
     """
     Use ARROWS, WASD keys or mouse click and drag for control.
 

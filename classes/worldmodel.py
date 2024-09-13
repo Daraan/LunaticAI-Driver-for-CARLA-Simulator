@@ -952,7 +952,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         assert self.player is not None or self.external_actor  # Note: Former optional. Player set in restart
 
         self.collision_sensor: CollisionSensor = None   # type: ignore # set in restart
-        self.lane_invasion_sensor: LaneInvasionSensor = None  # type: ignore # set in restart
+        self.lane_invasion_sensor: Optional[LaneInvasionSensor] = None  # set in restart
         self.gnss_sensor: Optional[GnssSensor] = None
         self.imu_sensor: Optional[IMUSensor] = None     # from interactive
         self.radar_sensor: Optional[RadarSensor] = None  # from interactive
@@ -1235,12 +1235,15 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
 
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
-        self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
+        if not HUD.is_dummy(self.hud):
+            self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
+            self.actors.append(self.lane_invasion_sensor)
+        else:
+            self.lane_invasion_sensor = None
         self.gnss_sensor = None  # GnssSensor(self.player) # TODO: make it optional
         self.imu_sensor = None  # IMUSensor(self.player)
         self.actors.extend([
             self.collision_sensor,
-            self.lane_invasion_sensor,
         ])
         if self.gnss_sensor:
             self.actors.append(self.gnss_sensor)
@@ -1265,6 +1268,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                                                                     self.camera_manager.sensor)
         if AD_RSS_AVAILABLE and self._config.rss and self._config.rss.enabled:
             log_level = self._config.rss.log_level
+            # Assure correct log level type
             if not isinstance(log_level, carla.RssLogLevel):
                 try:
                     if isinstance(log_level, str):
@@ -1274,7 +1278,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 except Exception as e:
                     msg = f"Could not convert '{log_level}' to RssLogLevel must be in {list(carla.RssLogLevel.names.keys())}"
                     raise KeyError(msg) from e
-                logger.info("Carla Log level was not a RssLogLevel")
+                logger.debug("Carla Log level was not a RssLogLevel")
             self.rss_sensor = RssSensor(self.player,
                                     self.rss_unstructured_scene_visualizer,
                                     self.rss_bounding_box_visualizer,
