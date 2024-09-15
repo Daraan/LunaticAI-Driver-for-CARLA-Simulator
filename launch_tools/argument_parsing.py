@@ -6,28 +6,45 @@ Argument parsers for arguments used by CARLA examples.
 """
 import argparse
 from functools import wraps
-from typing import Optional
+from typing import Any, Callable, Optional, cast, Protocol
+from typing_extensions import Concatenate, ParamSpec
+
+_P = ParamSpec('_P')
+
 
 # maybe later: add some more flexible way to construct a parser.
 # i.e. combine certain subparsers, e.g. one for port& host another one for settings
 
+class _SubparserMixIn(Protocol[_P]):
+    
+    @staticmethod
+    def parse_args(*args: _P.args, **kwargs: _P.kwargs) -> argparse.Namespace: ...
+    
+    @staticmethod
+    def add(parser: "argparse.ArgumentParser", *args: _P.args, **kwargs: _P.kwargs) -> argparse.ArgumentParser: ...
+    
+    @staticmethod
+    def __call__(parser: Optional[argparse.ArgumentParser] = None, *args: _P.args, **kwargs: _P.kwargs) -> argparse.ArgumentParser: ...
+    
 
-def subparser(func) -> argparse.ArgumentParser:
+def subparser(func: Callable[Concatenate[argparse.ArgumentParser, _P], Any]) -> _SubparserMixIn[_P]:
     """This decorator allows to join multiple subparsers in a flexible way."""
 
     @wraps(func)
-    def wrapper(parser: Optional[argparse.ArgumentParser] = None, *args, **kwargs) -> argparse.ArgumentParser:
+    def _wrapper(parser: Optional[argparse.ArgumentParser] = None, *args: _P.args, **kwargs: _P.kwargs) -> argparse.ArgumentParser:
         if parser is None:  # create a parser if none is given
             parser = argparse.ArgumentParser()
         # else: TODO: are subparsers useful?
         func(parser, *args, **kwargs)
         return parser  # return the parser object again
 
+    wrapper = cast(_SubparserMixIn[_P], _wrapper)
+
     # allows to circumvent calling the function.
     # i.e. parser_function.parse_args() instead of parser_function().parse_args()
-    wrapper.parse_args = lambda: wrapper(parser=None).parse_args()  # type: ignore[attr-defined]
+    wrapper.parse_args = lambda *args, **kwargs: wrapper(None, *args, **kwargs).parse_args()
     # allows to adjust parsers by adding another parser or by adding a parser function
-    wrapper.add = lambda parser: wrapper(parser) if isinstance(parser, argparse.ArgumentParser) else wrapper(parser())  # type: ignore[attr-defined]
+    wrapper.add = lambda parser, *args, **kwargs: wrapper(parser, *args, **kwargs) if isinstance(parser, argparse.ArgumentParser) else wrapper(parser(), *args, **kwargs)
     return wrapper
 
 
@@ -104,7 +121,7 @@ def automatic_control_example(argparser: argparse.ArgumentParser):
         dest='loop',
         help='Sets a new random destination upon reaching the previous one (default: False)')
 
-    # TODO: separate into subparsers
+    # Could: separate into subparsers
     argparser.add_argument(
         "-a", "--agent", type=str,
         choices=["Behavior", "Basic", "Constant"],
@@ -131,9 +148,9 @@ def automatic_control_example(argparser: argparse.ArgumentParser):
         help='enable autopilot')
 
 
-def main_parser():
+def main_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    client_settings.add(parser)  # type: ignore[attr-defined]
-    automatic_control_example.add(parser)  # type: ignore[attr-defined]
-    interactive_control_example.add(parser)  # type: ignore[attr-defined]
+    client_settings.add(parser)
+    automatic_control_example.add(parser)
+    interactive_control_example.add(parser)
     return parser

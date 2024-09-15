@@ -180,7 +180,17 @@ class CameraManager(MockDummy.CanBeDummy, CustomSensorInterface):
         self.set_sensor(self.index + 1 if self.index is not None else None)
 
     def toggle_recording(self) -> None:
-        """Toggle recording on or off"""
+        """
+        Toggle recording on or off
+        
+        Note:
+            Currently requires :py:attr:`.LaunchConfig.pygame` to be set to :code:`True`.
+        
+        .. deprecated:
+            Superseded by WorldMode.toggle_recording
+        
+        :meta private:
+        """
         self.recording = not self.recording
         self._hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
 
@@ -221,6 +231,7 @@ class CameraManager(MockDummy.CanBeDummy, CustomSensorInterface):
             array = array[:, :, :3]
             array = array[:, :, ::-1]
             self._surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        # Deprecated: Recording is done on the WorldModel
         if self.recording and (
                 (image.frame % self._frame_interval) == 0
                 or self.current_frame + self._frame_interval < image.frame):

@@ -145,5 +145,3 @@ class MockDummy(CanBeDummy[Literal[True]] if TYPE_CHECKING else CanBeDummy, meta
         :python:`var: DuckType = MockDummy.create_dummy()` does also work.
         """
         return cls()  # type: ignore[return-type]
-
-

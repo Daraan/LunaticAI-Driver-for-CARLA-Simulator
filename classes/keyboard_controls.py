@@ -69,20 +69,23 @@ class KeyboardControl:
     """Reference to the world model that controls the interface."""
     
     # COMMENT I think this only allows to end the script
-    def __init__(self, world_model: "WorldModel", *, help_notice=True, clock: Optional[pygame.time.Clock] = None):
+    def __init__(self, world_model: "WorldModel", *, show_help_notice=True, clock: Optional[pygame.time.Clock] = None):
         """
         Parameters:
-            world : WorldModel
-            help_notice : bool
+            world_model : WorldModel
+            show_help_notice : bool
                 Show a notice about the help keys.
+            clock : To track the game time.
         """
         self.enabled = True
         self._world_model = world_model
+        # Controller should register itself on the World Model
+        world_model.controller = weakref.proxy(self)
         if world_model.hud.help.surface is None:
             world_model.hud.help.create_surface(self.get_docstring())
-        if help_notice:
+        if show_help_notice:
             world_model.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
-        self.clock = clock
+        self._clock = clock
 
     def enable(self, value: bool = True):
         self.enabled = value
@@ -198,7 +201,7 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
     Controls the size of steering area when using the mouse.
     """
     
-    # TODO: should move this to GameFramework
+    # TODO: should move this to GameFramework; remnant of original carla code
     signal_received: "bool | int" = False
     """
     Got a signal to stop the simulation. No more events will be parsed if True.
@@ -206,23 +209,48 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
     :meta private:
     """
 
-    # TODO: should be a toggle between None, Autopilot, Agent
-
-    def __init__(self, world_model: "WorldModel", start_in_autopilot: bool, agent_controlled: bool = True, *, clock: pygame.time.Clock, config=None):
+    def __init__(self,
+                 world_model: "WorldModel",
+                 *,
+                 clock: pygame.time.Clock,
+                 start_in_autopilot: bool = False,
+                 agent_controlled: bool = True,
+                 config=None):
+        """
+        Parameters:
+            world_model : WorldModel
+                The world model that controls the interface.
+            clock : pygame.time.Clock
+                The clock to get the time from.
+            start_in_autopilot : bool
+                If CARLA's autopilot is used; or some other system.
+                May not be True if agent_controlled is True.
+                Defaults to :code:`False`.
+            agent_controlled : bool
+                May not be True if start_in_autopilot is True.
+                Defaults to :python:`True`.
+            config : Any
+                Configuration data. Currently unused.
+        
+       Note:
+            Creating a controller registers :py:attr:`.WorldModel.controller` to this instance.
+        """
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
-        super().__init__(world_model=world_model)
-        
+        super().__init__(world_model=world_model, clock=clock)
+        if self._clock is None:
+            raise ValueError("Clock must be provided.")
+        elif TYPE_CHECKING:
+            self._clock = self._clock
+
         self._world_model = world_model
-        self._config = config  # Note: currently unused
+        self._config = config  # Note: currently unused, could use this to disable the controller
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
-        world_model.controller = weakref.proxy(self)
         self._control: carla.VehicleControl = None  # type: ignore[assignment]
         #self._control = carla.VehicleControl()
-        self._lights = carla.VehicleLightState.NONE
-        #self._restrictor = carla.RssRestrictor() # Moved to worldmodel
         self._vehicle_physics = world_model.player.get_physics_control()
+        self._lights = carla.VehicleLightState.NONE
         world_model.player.set_light_state(self._lights)
         self._steer_cache = 0.0
         self._mouse_steering_center = None
@@ -230,8 +258,6 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
         self._surface = pygame.Surface((self.MOUSE_STEERING_RANGE * 2, self.MOUSE_STEERING_RANGE * 2))
         self._surface.set_colorkey(pygame.Color('black'))
         self._surface.set_alpha(60)
-        assert clock is not None, "Clock must be provided."
-        self._clock = clock
 
         line_width = 2
         pygame.draw.polygon(self._surface,
@@ -257,10 +283,12 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
                                 (self.MOUSE_STEERING_RANGE, self.MOUSE_STEERING_RANGE * 2)
                             ], line_width)
 
-        world_model.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
-
     @property
-    def controlled_externally(self):
+    def controlled_externally(self) -> bool:
+        """
+        Returns True if the vehicle is controlled by some system, i.e not manually by the user.
+        
+        """
         return self._autopilot_enabled or self._agent_controlled
 
     def render(self, display: pygame.Surface) -> None:
@@ -301,6 +329,9 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
             return None
         if isinstance(self._control, carla.VehicleControl):
             current_lights = self._lights
+            can_modify_controls = True
+        else:
+            can_modify_controls = False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
@@ -432,7 +463,7 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
                     self._world_model.hud.notification(f"Recording start time is {self._world_model.recording_start}")
                 
                 # Modify controls
-                if isinstance(self._control, carla.VehicleControl):
+                if can_modify_controls:
                     if event.key == K_q:
                         self._control.gear = 1 if self._control.reverse else -1
                     elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
@@ -477,11 +508,12 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
                     self._mouse_steering_center = None
         
         if not self._autopilot_enabled:
+            # Prase mouse events
             if pygame.mouse.get_pressed()[0]:
                 self._parse_mouse(pygame.mouse.get_pos())
             if not self._control:
                 self._control = carla.VehicleControl()
-            #prev_steer_cache = self._steer_cache # NOTE: Not used anymore
+            #prev_steer_cache = self._steer_cache  # NOTE: Not used anymore
             self._parse_vehicle_keys(pygame.key.get_pressed(), self._clock.get_time())
             self._control.reverse = self._control.gear < 0
             return None

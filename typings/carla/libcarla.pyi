@@ -546,6 +546,19 @@ class ActorList(Generic[__Actor]):
     The list is automatically created and updated by the server and it can be returned using `carla.World`.
     """
 
+    # Heuristic
+    @overload
+    def filter(self, wildcard_pattern: Literal['*traffic_light*']) -> ActorList[TrafficLight]: ...
+    
+    @overload
+    def filter(self, wildcard_pattern: Literal['*vehicle*']) -> ActorList[Vehicle]: ...
+    
+    @overload
+    def filter(self, wildcard_pattern: Literal['*walker.pedestrian*']) -> ActorList[Walker]: ...
+    
+    @overload
+    def filter(self, wildcard_pattern: Literal['*sensor*']) -> ActorList[Sensor]: ...
+
     # region Methods
     def filter(self, wildcard_pattern: str) -> ActorList[__Actor]:
         """Filters a list of Actors matching wildcard_pattern against their variable `type_id` (which identifies the blueprint used to spawn them). Matching follows fnmatch standard.

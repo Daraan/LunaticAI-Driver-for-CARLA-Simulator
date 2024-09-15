@@ -21,6 +21,17 @@ Submodules
 ----------
 
 
+.. _classes/camera_manager:
+
+classes.camera\_manager module
+------------------------------
+
+.. automodule:: classes.camera_manager
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 .. _classes/constants:
 
 classes.constants module

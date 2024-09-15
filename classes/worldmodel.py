@@ -564,7 +564,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     def make_controller(self,
                         world_model: "WorldModel",
                         controller_class: type[ControllerClassT] = RSSKeyboardControl,
-                        **kwargs):
+                        **kwargs) -> ControllerClassT:
         """
         Creates a keyboard controller and attaches it to the world model.
         
@@ -622,7 +622,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         
         :meta private:
         """
-        self.controller = controller  # type: ignore ; maybe use proxy
+        self.controller = controller  # type: ignore # maybe use proxy here too
     
     def set_config(self, config: DictConfig) -> None:
         """
@@ -634,8 +634,22 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     # ----- UI Functions -----
     
-    def parse_rss_controller_events(self, final_controls: carla.VehicleControl):
-        return self.controller.parse_events(final_controls)
+    def parse_rss_controller_events(self, final_controls: Optional[carla.VehicleControl]):
+        """
+        Parses the keyboard events with the :py:attr:`controller`.
+        
+        Raises:
+            AttributeError: If neither :py:attr:`control` nor :py:attr:`world_model.controller<world_model>` are set.
+        """
+        try:
+            controller = (
+                self.controller if self.controller or not self.world_model else self.world_model.controller
+            )
+        except ReferenceError as e:
+            raise AttributeError("No controller set.") from e
+        if controller is None:
+            raise AttributeError("No controller set.")
+        return controller.parse_events(final_controls)
     
     def render_everything(self):
         """
@@ -832,17 +846,20 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
 
     controller: Optional[Union[RSSKeyboardControl, weakref.ProxyType[RSSKeyboardControl]]] = None
     """
-    Set when controller is created. Uses weakref.proxy as backreference.
+    Set when controller is created. Uses :py:func`weakref.proxy` as backreference.
     This is not a :py:mod:`weakref` object, when
     `with gameframework(agent) <GameFramework.__call__>`:py:meth: is used.
     """
     
     game_framework: Optional["weakref.CallableProxyType[GameFramework]"] = None
     """
-    Set when world created via GameFramework. Uses weakref.proxy as backreference
+    Set when the WorldModel is created via the :py:class:`GameFramework`.
+    Uses :py:func`weakref.proxy` as backreference.
     
     Attention:
-        Currently not used and not initialized.
+        Currently not used only only set when using:
+         - py:meth:`GameFramework.init_agent_and_interface`
+         - py:meth:`GameFramework.make_world_model`
     
     :meta private:
     """
@@ -1051,11 +1068,12 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         assert self.player is not None
         self._vehicle_physics = self.player.get_physics_control()
         
+        # Both of these cases should not happen; call_prepare map again.
         if CarlaDataProvider._traffic_light_map is None:
-            logger.error("Traffic light map not set at this point")  # should not have happened
+            logger.error("Traffic light map not set at this point on the ")
             CarlaDataProvider.set_world(self._world)
         elif not CarlaDataProvider._traffic_light_map:
-            logger.error("Traffic light map is empty")  # should not have happened
+            logger.warning("Traffic light map is empty. Are there no traffic lights in the map?. Checking again.")
             CarlaDataProvider.prepare_map()
 
     def rss_set_road_boundaries_mode(self,
@@ -1425,8 +1443,10 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         """
         Draws the HUD and saves the image if recording is enabled.
         
-        Assumes render(..., finalize=False) was called before,
-        use this function if you want to render something in between.
+        Attention:
+            Assumes that :py:meth:`render(..., finalize=False)<render>` was called before and
+            something should be rendered in between.
+            Use :py:meth:`finalize_render` as the very last step in the render process.
         """
         self.hud.render(display)
         if self.recording:
@@ -1438,15 +1458,17 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
 
     def render(self, display: pygame.Surface, finalize: bool = True):
         """
-        Render world
+        Render the world and draw it to the :py:class:`pygame.Surface`.
         
-        Recording should be done at the end of the render method,
-        however camera_manager.render is called first to render the camera.
         
-        Call with finalize=False to only render the camera.
+        Hint:
+            Recording of the fully rendered output should be done at the end of the render method,
+            however :py:meth:`.CameraManager.render` is called first to render the camera.
         
-        Afterwards applying other render features call `finalize_render`
-        to draw the HUD and save the image if recording is enabled.
+            Call with **finalize=False** to only render the camera but not the :py:class:`.HUD`.
+        
+            Afterwards applying other render features call :py:meth:`finalize_render`
+            to draw the HUD and save the image if recording is enabled.
         """
         self.camera_manager.render(display)
         self.rss_bounding_box_visualizer.render(display, self.camera_manager.current_frame)
