@@ -123,7 +123,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     and the agent.
     
     A :py:class:`GameFramework` instance can be used to control the game loop  and work as a
-    handler for the :py:mod:`exceptions` of this project. Furthermore can it manage the cooldown
+    handler for the :py:mod:`~classes.exceptions` of this project. Furthermore can it manage the cooldown
     of the :py:class:`.Rule` classes.
     
     Note:
@@ -634,7 +634,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     
     # ----- UI Functions -----
     
-    def parse_rss_controller_events(self, final_controls: Optional[carla.VehicleControl]):
+    def parse_controller_events(self, final_controls: Optional[carla.VehicleControl]):
         """
         Parses the keyboard events with the :py:attr:`controller`.
         
@@ -886,8 +886,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         elif carla_world is not None and self.world != carla_world:
             raise ValueError("CarlaDataProvider.get_world() and passed `carla_world` are not the same.")
         
-        self.world_settings = self.world.get_settings()
-        """Object containing some data about the simulation such as synchrony between client and server or rendering mode."""
+        self.world_settings: carla.WorldSettings = self.world.get_settings()
+        """Object containing data about the simulation such as synchrony or rendering mode."""
         
         if agent:
             agent._world_model = self  # backreference, if needed; the LunaticAgent sets this as well.
@@ -1459,7 +1459,8 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     def render(self, display: pygame.Surface, finalize: bool = True):
         """
         Render the world and draw it to the :py:class:`pygame.Surface`.
-        
+        This function is part of :py:meth:`.GameFramework.render_everything` **which is the
+        recommended way to handle the rendering process.**
         
         Hint:
             Recording of the fully rendered output should be done at the end of the render method,
@@ -1467,8 +1468,13 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         
             Call with **finalize=False** to only render the camera but not the :py:class:`.HUD`.
         
-            Afterwards applying other render features call :py:meth:`finalize_render`
+            Afterwards apply other render features and call :py:meth:`finalize_render`
             to draw the HUD and save the image if recording is enabled.
+            
+        Note:
+            This renders the :py:class:`.CameraManger` and the RSS bounding boxes.
+            If **finalize** is :python:`True`, it will also render the :py:class:`HUD` by calling
+            :py:meth:`finalize_render`.
         """
         self.camera_manager.render(display)
         self.rss_bounding_box_visualizer.render(display, self.camera_manager.current_frame)
@@ -1546,6 +1552,12 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
     def rss_check_control(self, vehicle_control: carla.VehicleControl) -> Union[carla.VehicleControl, None]:
         """
         Checks the vehicle control against the RSS restrictions and possibly proposes an alternative.
+        
+        This is called during :py:attr:`.Phase.RSS_EVALUATION`.
+        
+        Todo:
+            This should be an agent function, but currently the :py:class:`~classes.RssSensor` is
+            tied to this class and not the agent.
         """
         self.hud.original_vehicle_control = vehicle_control
         self.hud.restricted_vehicle_control = vehicle_control
@@ -1555,7 +1567,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
         if (self.rss_sensor.log_level <= carla.RssLogLevel.warn
             and self.rss_sensor.ego_dynamics_on_route
             and not self.rss_sensor.ego_dynamics_on_route.ego_center_within_route):
-            logger.warning("RSS: Not on route! " + str(self.rss_sensor.ego_dynamics_on_route)[:97] + "...")
+            logger.warning("RSS: Not on route! " + str(self.rss_sensor.ego_dynamics_on_route)[:47] + "...")
         # Is there a proper response?
         rss_proper_response = self.rss_sensor.proper_response if self.rss_sensor and self.rss_sensor.response_valid else None
         if rss_proper_response:

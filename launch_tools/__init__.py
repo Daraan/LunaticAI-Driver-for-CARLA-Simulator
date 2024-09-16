@@ -15,7 +15,7 @@ __all__ = [  # noqa: RUF022
     "prepare_blueprints",
     "blueprint_helpers",
 
-    "argument_parsing",
+    #"argument_parsing",
 
     # csv_tools
     "transform_to_pandas",
@@ -46,10 +46,8 @@ from typing_extensions import ParamSpec, TypeVar
 
 # should be first
 from ._import_carla_data_provider import CarlaDataProvider, GameTime  # isort:skip
-from . import (
-    argument_parsing,
-    blueprint_helpers,
-)
+from . import blueprint_helpers
+
 
 # These three need special handling depending on the python version
 from ._version_handling import Literal, ast_parse, singledispatchmethod

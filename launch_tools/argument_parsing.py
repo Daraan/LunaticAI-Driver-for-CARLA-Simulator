@@ -3,11 +3,13 @@ Argument parsers for arguments used by CARLA examples.
 
 .. deprecated:: _
     In favor of Hydra_.
+    
+:meta private:
 """
 import argparse
 from functools import wraps
-from typing import Any, Callable, Optional, cast, Protocol
-from typing_extensions import Concatenate, ParamSpec
+from typing import Any, Callable, Optional, cast
+from typing_extensions import Concatenate, ParamSpec, Protocol
 
 _P = ParamSpec('_P')
 

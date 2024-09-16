@@ -16,14 +16,19 @@ __all__ = [
     "carla_originals",
 ]
 
+import sys
+
 from classes.constants import READTHEDOCS
 from . import carla_originals
 from ._sensor_interface import CustomSensorInterface
 
 # Dummy object to easier disable pygame
-from typing import Any, Final, Protocol, overload, TYPE_CHECKING
+from typing import Any, overload, TYPE_CHECKING
+if sys.version_info < (3, 8):  # Python 3.7 Hack
+    import typing_extensions
+    typing_extensions.TypeIs = typing_extensions.TypeGuard
 
-from typing_extensions import Self, Literal, TypeVar, TypeIs, TypeGuard, final, Never
+from typing_extensions import Self, Literal, TypeVar, TypeIs, TypeGuard, final, Never, Final, Protocol
 
 _T = TypeVar("_T")
 _BoolT = TypeVar("_BoolT", bound=bool, default=bool)
@@ -97,6 +102,8 @@ class MockDummy(CanBeDummy[Literal[True]] if TYPE_CHECKING else CanBeDummy, meta
     This is a dummy class that does nothing.
 
     Can be used to create duck types dummy objects.
+    
+    :meta private:
     """
     
     CanBeDummy: Final = CanBeDummy

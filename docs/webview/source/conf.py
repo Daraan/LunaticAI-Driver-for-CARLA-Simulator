@@ -97,6 +97,8 @@ suppress_warnings = [
 extensions = ["myst_parser",
               'sphinxemoji.sphinxemoji',
               'sphinx.ext.autodoc',
+              # https://www.sphinx-doc.org/en/master/usage/extensions/todo.html
+              'sphinx.ext.todo',
               'sphinx.ext.napoleon',
               
               # https://pypi.org/project/sphinx-autodoc-typehints/
@@ -136,6 +138,11 @@ if VERSION == "latest" and not RTD_ONLINE:
     extensions.append("sphinx_tippy")
 elif VERSION == "latest" and RTD_ONLINE:
     extensions.append("hoverxref.extension")
+
+todo_include_todos = VERSION != "main"
+todo_emit_warnings = not RTD_ONLINE
+todo_link_only = False
+"""If this is True, todolist produce output without file path and line, The default is False."""
 
 print("Using extensions:", extensions)
 
