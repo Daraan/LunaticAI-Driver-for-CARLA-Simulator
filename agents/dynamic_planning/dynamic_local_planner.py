@@ -16,7 +16,7 @@ from agents.tools.misc import draw_waypoints, get_speed
 from classes.constants import RoadOption
 if TYPE_CHECKING:
     from classes.type_protocols import UseableWithDynamicPlanner
-    from classes.rss_sensor import RssSensor
+    from classes.sensors.rss_sensor import RssSensor
 
 
 class DynamicLocalPlanner(LocalPlanner):

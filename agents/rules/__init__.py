@@ -1,6 +1,7 @@
 """
-Note:
-    All rule should be imported into this module for hydra.instantiate to work
+Attention:
+    All rules should be imported into this module for :py:attr:`.LunaticAgentSettings.rules`
+    to work. As :python:`hydra.instantiate` needs the variables in this file or an absolute path.
 """
 # pylint: disable=unused-import
 # pyright: reportUnusedImport=false

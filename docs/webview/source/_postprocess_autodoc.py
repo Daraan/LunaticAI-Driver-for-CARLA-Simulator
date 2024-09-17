@@ -246,7 +246,7 @@ def patch_challenger():
         
 def add_imported_members():
     modules: dict[str, "list[str] | str | Literal['all'] | tuple[str, list[str]]"] = {"classes" : ["CustomSensorInterface"],
-                                                             "classes.carla_originals" : "all",
+                                                             "classes.sensors.carla_originals" : "all",
                                                              "agents.tools" : ("config_creation", ["MISSING, NestedConfigDict"]), # BUG somehow does not work
                                                              }
     for file, members in modules.items():
@@ -281,7 +281,7 @@ def add_imported_members():
         _change_contents(file+".rst", content)
         
 def remove_submodules():
-    packages = ["classes.carla_originals.rst"]
+    packages = ["classes.sensors.carla_originals.rst"]
     for package in packages:
         content = _get_contents(package)
         start = content.find("Submodules\n----------")
@@ -300,7 +300,7 @@ def remove_init():
                               "classes" : [("classes.evaluation_function", "__add__, __and__, __or__, __invert__" ),
                                            ("classes.type_protocols", None),
                                            ],
-                              "classes.carla_originals" : [("classes.carla_originals", None)],
+                              "classes.sensors.carla_originals" : [("classes.sensors.carla_originals", None)],
                               "agents.tools" : [("agents.tools.hints", "__bool__")],
               }
     for file, members in module.items():

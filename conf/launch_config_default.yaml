@@ -60,7 +60,7 @@ filter: vehicle.*
 # Generation for the ego blueprint. Kept for compatibility with carla examples.
 generation: 2
 
-# Whether or not to use the CARLAS's `carla.TrafficManager` to autopilot the agent
+# Whether or not to use the CARLA's `carla.TrafficManager` to autopilot the agent
 #  
 # Note:
 #     This disables the usage of the LunaticAgent, however needs to be

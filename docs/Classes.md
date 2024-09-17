@@ -15,7 +15,7 @@ It manages the game loop of the agent and takes care of:
   - {external_py_class}`carla.TrafficManager` for other actors
   - The [agent](/docs/Agents.md)
   - {py:class}`.WorldModel`
-  - [CARLAS's GlobalRoutePlanner](gh:https://github.com/carla-simulator/carla/blob/master/PythonAPI/carla/agents/navigation/global_route_planner.py)
+  - [CARLA's GlobalRoutePlanner](gh:https://github.com/carla-simulator/carla/blob/master/PythonAPI/carla/agents/navigation/global_route_planner.py)
   - [KeyboardController](#keyboardcontrols)
 - Cooldowns of rules
 - Load the [LaunchConfig](conf/ConfigFiles.md) via [Hydra's compose API](https://hydra.cc/docs/advanced/compose_api/){.external-icon}
@@ -41,7 +41,7 @@ It is a extension of the [{external:class}`carla.World`]{.external-icon} class a
   - rendering
 
     :::{note}
-    {py:meth}`.GameFramework.render_everything` extends the rendering of the {py:class}`.WorldModel` 
+    {py:meth}`.GameFramework.render_everything` extends the rendering of the {py:class}`.WorldModel`
     and is the preferred function to call for rendering.
     :::
 
@@ -53,7 +53,7 @@ It is a extension of the [{external:class}`carla.World`]{.external-icon} class a
 
 The {py:class}`.HUD` is a modification of the `HUD` classes used in the [manual_control_rss.py example of Carla](https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/rss/manual_control_rss.py){.external-icon}.
 
-It closely combines with the {py:class}`classes.camera_manager.CameraManager` to provide the visual human interface for the pygame window.
+It closely combines with the {py:class}`classes.ui.camera_manager.CameraManager` to provide the visual human interface for the pygame window.
 
 ## Rules
 
@@ -65,7 +65,7 @@ See the [Rule documentation](../docs/Rules) for details.
 
 ## KeyboardControls
 
-See [`RSSKeyboardControl` API](#classes.keyboard_controls.RSSKeyboardControl) for a more details.
+See [`RSSKeyboardControl` API](#classes.ui.keyboard_controls.RSSKeyboardControl) for a more details.
 
 ## Constants and Enums
 

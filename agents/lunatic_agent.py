@@ -12,7 +12,7 @@ from __future__ import annotations
 import contextlib
 import sys
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Sequence, Set, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterable, List, NoReturn, Optional, Set, Union
 from typing import cast as assure_type
 
 import carla  # pyright: ignore[reportMissingTypeStubs]
@@ -37,6 +37,7 @@ from agents.tools.logs import logger
 from agents.tools.lunatic_agent_tools import (
     detect_vehicles,
     must_clear_hazard,
+    # Left here as a reminder that this can be used as a wrapper
     phase_callback,  # type: ignore[unused-import] # noqa: F401
     result_to_context,
 )
@@ -1181,7 +1182,7 @@ class LunaticAgent(BehaviorAgent):
         
     # TODO: Use generate_lane_change_path to finetune
     def make_lane_change(self,
-                         order: Sequence[Literal["left", "right"]] = ["left", "right"],
+                         order: Iterable[Literal["left", "right"]] = ["left", "right"],
                          up_angle_th: int = 180,
                          low_angle_th: int = 0) -> "None | Literal[True]":
         """
@@ -1190,7 +1191,7 @@ class LunaticAgent(BehaviorAgent):
         Args:
             order : The order in
                 which the agent should try to change lanes. If a single string is given, the agent
-                will try to change to that lane.
+                will try to change to that lane. Default is :python:`["left", "right"]`.
             up_angle_th : The angle threshold for the upper limit of obstacle detection in the other lane.
                 Default is 180 degrees, meaning that the agent will detect obstacles ahead.
             low_angle_th : The angle threshold for the lower limit of obstacle detection in the other lane.
@@ -1206,7 +1207,7 @@ class LunaticAgent(BehaviorAgent):
 
         # There is a faster car behind us
         if isinstance(order, str):
-            order = [order]
+            order = [order]  # type: ignore
         
         for direction in order:
             if direction == "right":

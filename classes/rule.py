@@ -1,9 +1,7 @@
 # pyright: strict
-# pyright: reportIndexIssue=information, reportCallIssue=information
-# pyright: reportGeneralTypeIssues=warning
-# pyright: reportUnusedFunction=information, reportUnusedImport=information
+
 # pyright: reportUnnecessaryIsInstance=false, reportUnnecessaryComparison=false
-# pyright: reportPrivateUsage=none
+
 
 from __future__ import annotations
 
@@ -60,6 +58,7 @@ from launch_tools import CarlaDataProvider, singledispatchmethod
 if TYPE_CHECKING:
     import carla
     from classes.type_protocols import CallableAction, CallableActionT, ConditionFunctionLike, ConditionFunctionLikeT
+    from classes.detection_matrix import DetectionMatrix
     from agents.lunatic_agent import LunaticAgent
     from agents.tools.config_creation import ContextSettings, LiveInfo, RuleConfig
     # NOTE: gameframework.py adds GameFramework to this module's variables
@@ -960,7 +959,7 @@ class Rule(_GroupRule):
         if self_config and "self" in self.overwrite_settings and self.overwrite_settings["self"] != self_config:
             logger.debug("Warning: self_config and self.overwrite_settings['self'] must be the same object.")
         
-        default_self_config = cast("RuleConfig", getattr(self, "self_config", getattr(self, "SelfConfig", {})))
+        default_self_config: "RuleConfig" = cast("RuleConfig", getattr(self, "self_config", getattr(self, "SelfConfig", {})))
         if isclass(default_self_config):
             if not is_dataclass(default_self_config):
                 logger.warning(
@@ -1739,7 +1738,7 @@ class BlockingRule(Rule, metarule=True):
                 except AttributeError:  # in case not available for controller class
                     pass
             
-                dm_render_conf = world_model._args.camera.hud.detection_matrix  # pyright: ignore[reportPrivateUsage]
+                dm_render_conf: "DetectionMatrix.RenderOptions" = world_model._args.camera.hud.detection_matrix  # pyright: ignore[reportPrivateUsage, reportAssignmentType]
                 if dm_render_conf and ctx.agent:
                     ctx.agent.render_detection_matrix(display, **dm_render_conf)
                 world_model.finalize_render(display)  # pyright: ignore[reportArgumentType]
@@ -1795,7 +1794,7 @@ class BlockingRule(Rule, metarule=True):
     def _begin_tick(self, ctx: Context):
         self._gameframework.clock.tick()  # self.args.fps)  # type: ignore[attr-defined,union-type]
         frame = None
-        if self._gameframework and self._gameframework._args.handle_ticks:  # i.e. no scenario runner doing it for us
+        if self._gameframework and self._gameframework.launch_config.handle_ticks:  # i.e. no scenario runner doing it for us
             if CarlaDataProvider.is_sync_mode():
                 frame = self.get_world().tick()
             else:
@@ -1854,13 +1853,13 @@ class BlockingRule(Rule, metarule=True):
         # Update the agent's information
         if execute_phases and (execute_phases is True or Phase.UPDATE_INFORMATION | Phase.BEGIN in execute_phases):
             ctx.agent.execute_phase(Phase.UPDATE_INFORMATION | Phase.BEGIN, prior_results=self)
-        ctx.agent._update_information()
+        ctx.agent._update_information()  # pyright: ignore[reportPrivateUsage]
         if execute_phases and Phase.UPDATE_INFORMATION | Phase.END not in self.phases:
             ctx.agent.execute_phase(Phase.UPDATE_INFORMATION | Phase.END, prior_results=self)
         if self.ticks_passed > self.MAX_TICKS:
             logger.info("Rule %s has passed its max_ticks %s, calling max_tick_callback and unblocking it", self, self.MAX_TICKS)
             if self.max_tick_callback:
-                self.max_tick_callback(ctx)
+                self.max_tick_callback(ctx)  # pyright: ignore[reportCallIssue]
                 if self.ticks_passed > self.MAX_TICKS:
                     raise UnblockRuleException
                 # max_tick_callback can override the ticks passed
@@ -1878,7 +1877,7 @@ class BlockingRule(Rule, metarule=True):
         else:
             ignore_phase = True
             ignore_cooldown = True
-        if self in ctx.agent._active_blocking_rules:
+        if self in ctx.agent._active_blocking_rules:  # pyright: ignore[reportPrivateUsage]
             logger.warning("Rule %s is already blocking the agent, this is a recursive call. Not executing the rule.", self)
             return Rule.NOT_APPLICABLE
         try:

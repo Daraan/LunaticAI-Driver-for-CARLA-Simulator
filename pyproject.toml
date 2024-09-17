@@ -21,7 +21,7 @@ line-length = 120
 #max-doc-length = 88
 
 [tool.ruff.lint]
-typing-modules = ["launch_tools"]
+typing-modules = ["launch_tools"]  # allow launch_tools.Literal to solve version conflicts.
 
 # See: https://docs.astral.sh/ruff/rules/#pydocstyle-d
 select = [
@@ -125,6 +125,9 @@ ignore = [
 
     "A002",  # shadows builtin
 ]
+"typings/carla/ad/*" = [
+    "E999"  # SyntaxError because of "None" attribute; deprecated Rule.
+]
 
 "agents/rules/*" = [
     "RUF012",
@@ -153,10 +156,10 @@ ignore = [
 "classes/_data_gathering/car_detection_matrix/informationUtils.py" = [
     "F841",
 ]
-"classes/hud.py" = [
+"**/hud.py" = [
     "UP032", # Format instead of percent preferred
 ]
-"classes/rule.py" = [
+"**/rule.py" = [
     "E116", # intended comments
 ]
 "conf/experimental_rule_interpreter_examples/*" =[

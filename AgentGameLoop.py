@@ -24,7 +24,7 @@ from agents.tools.debug_drawing import debug_drawing
 from agents.tools.logs import logger
 from classes import exceptions
 from classes.constants import Phase
-from classes.keyboard_controls import RSSKeyboardControl  # Alternative: PassiveKeyboardControl
+from classes.ui.keyboard_controls import RSSKeyboardControl  # Alternative: PassiveKeyboardControl
 from classes.worldmodel import GameFramework, WorldModel
 
 # ==============================================================================
@@ -118,13 +118,16 @@ def game_loop(args: LaunchConfig):
         # Set initial destination
         wp_start = world_model.map.get_waypoint(start.location)
 
-        next_wps: "list[carla.Waypoint]" = wp_start.next(25)
+        next_wps: "list[carla.Waypoint]" = wp_start.next(50)
         last_wp = next_wps[-1]
         left_last_wp = last_wp.get_left_lane()
-        print(left_last_wp, world_model.map.get_waypoint(left_last_wp.transform.location))
-        
-        # destination = random.choice(all_spawn_points).location
-        destination = left_last_wp.transform.location
+        if left_last_wp is not None:
+            print(left_last_wp, world_model.map.get_waypoint(left_last_wp.transform.location))
+            
+            # destination = random.choice(all_spawn_points).location
+            destination = left_last_wp.transform.location
+        else:
+            destination = last_wp.transform.location
         
         agent.set_destination(last_wp.transform.location)
         
@@ -184,7 +187,7 @@ def game_loop(args: LaunchConfig):
                 # ------ End of Loop ------
                 
                 """Draw route information and junctions"""
-                if game_framework._args.debug:
+                if game_framework.launch_config.debug:
                     try:
                         debug_drawing(agent, game_framework, destination)
                     except Exception:

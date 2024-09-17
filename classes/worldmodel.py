@@ -1,8 +1,6 @@
 """
 Interface classes between CARLA, the agent, and the user interface.
 """
-# pyright: reportOptionalMemberAccess=warning
-# pyright: reportPossiblyUnboundVariable=warning
 
 from __future__ import annotations
 
@@ -30,14 +28,14 @@ from omegaconf import DictConfig, OmegaConf, open_dict
 
 from agents.tools.config_creation import LaunchConfig, RssLogLevel, RssRoadBoundariesMode, config_store
 from classes import MockDummy, exceptions as _exceptions
-from classes.camera_manager import CameraManager
-from classes._sensor_interface import CustomSensorInterface
-from classes.carla_originals.sensors import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
+from classes.ui.camera_manager import CameraManager
+from classes.sensors._sensor_interface import CustomSensorInterface
+from classes.sensors.carla_originals import CollisionSensor, GnssSensor, IMUSensor, LaneInvasionSensor, RadarSensor
 from classes.exceptions import AgentDoneException, ContinueLoopException
-from classes.hud import HUD, get_actor_display_name
-from classes.keyboard_controls import KeyboardControl, RSSKeyboardControl
-from classes.rss_sensor import AD_RSS_AVAILABLE, RssSensor
-from classes.rss_visualization import RssBoundingBoxVisualizer, RssStateVisualizer, RssUnstructuredSceneVisualizer
+from classes.ui.hud import HUD, get_actor_display_name
+from classes.ui.keyboard_controls import KeyboardControl, RSSKeyboardControl
+from classes.sensors.rss_sensor import AD_RSS_AVAILABLE, RssSensor
+from classes.sensors.rss_visualization import RssBoundingBoxVisualizer, RssStateVisualizer, RssUnstructuredSceneVisualizer
 from classes.information_manager import InformationManager
 from launch_tools import class_or_instance_method
 
@@ -147,7 +145,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     @property
     def launch_config(self) -> LaunchConfig:
         """:py:class:`.LaunchConfig` object that was used for the initialization (**args**)"""
-        return self._args
+        return self._launch_config
     
     @property
     def agent_config(self) -> LunaticAgentSettings:
@@ -155,7 +153,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         The configuration of the attached :py:attr:`agent`, if it exists otherwise the
         **agent** attribute of the stored :py:attr:`launch_config`.
         """
-        return self.agent.config if self.agent else self._args.agent
+        return self.agent.config if self.agent else self._launch_config.agent
     
     # ----- Init Functions -----
     
@@ -312,7 +310,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         if args.seed:
             random.seed(args.seed)
             nprandom.seed(args.seed)
-        self._args = args
+        self._launch_config = args
         self.world_settings: carla.WorldSettings = self.init_carla(args, timeout, worker_threads, map_layers=map_layers)
         
         # These are class variables
@@ -498,8 +496,8 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         if port is None:
             port = CarlaDataProvider.get_traffic_manager_port()
         traffic_manager = self.client.get_trafficmanager(port)
-        if self._args.handle_ticks:
-            if self._args.sync:
+        if self._launch_config.handle_ticks:
+            if self._launch_config.sync:
                 traffic_manager.set_synchronous_mode(True)
             traffic_manager.set_hybrid_physics_mode(True)  # Note default 50m
             traffic_manager.set_hybrid_physics_radius(50.0)  # TODO: make a LaunchConfig config variable
@@ -537,10 +535,10 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                     :py:attr:`.agent_class.BASE_SETTINGS <.LunaticAgent.BASE_SETTINGS>` are used.
             overwrites: Additional overwrites to the configuration.
         """
-        if ego is None and not self._args.externalActor:
+        if ego is None and not self._launch_config.externalActor:
             raise ValueError("`ego` must be passed if ``externalActor` is not set.")
         self.agent, self.world_model, self.global_planner \
-            = agent_class.create_world_and_agent(self._args,
+            = agent_class.create_world_and_agent(self._launch_config,
                                                vehicle=ego,
                                                sim_world=self.world,
                                                agent_config=config,
@@ -557,7 +555,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         """
         Creates a :py:class:`WorldModel` with a backreference to the GameFramework.
         """
-        self.world_model = WorldModel(config, self._args, player=player)
+        self.world_model = WorldModel(config, self._launch_config, player=player)
         self.world_model.game_framework = weakref.proxy(self)
         return self.world_model
     
@@ -578,7 +576,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
                                         clock=self.clock,
                                         **kwargs)
         self.controller = weakref.proxy(controller)
-        if self._args.pygame is False:
+        if self._launch_config.pygame is False:
             controller.enable(False)
         return controller  # NOTE: does not return the proxy object.
     
@@ -663,7 +661,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             self.world_model.render(self.display, finalize=False)  # pyright: ignore[reportOptionalMemberAccess]
             self.controller.render(self.display)
             # These two types must be in sync:
-            dm_render_conf: "DetectionMatrix.RenderOptions" = self._args.camera.hud.detection_matrix  # type: ignore[assignment]
+            dm_render_conf: "DetectionMatrix.RenderOptions" = self._launch_config.camera.hud.detection_matrix  # type: ignore[assignment]
             if dm_render_conf and self.agent:
                 self.agent.render_detection_matrix(self.display, **dm_render_conf)
             self.world_model.finalize_render(self.display)  # pyright: ignore[reportOptionalMemberAccess]
@@ -733,7 +731,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             self.controller = None                            # type: ignore[assignment]
         if not self.controller:
             logger.debug("Creating new controller.")
-            self.controller = self.make_controller(self.world_model, start_in_autopilot=self._args.autopilot)  # hard reference # type: ignore
+            self.controller = self.make_controller(self.world_model, start_in_autopilot=self._launch_config.autopilot)  # hard reference # type: ignore
             self.world_model.controller = self.controller  # hard instead of weak reference
         self.agent._validate_phases = False
         return self
@@ -746,13 +744,13 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
         if self.controller is None:
             raise ValueError("Controller not initialized.")
         
-        self.clock.tick()  # self.args.fps)
+        self.clock.tick()  # self.args.fps)  # pyright: ignore[reportOptionalMemberAccess]
         frame = None
-        if self._args.handle_ticks:  # i.e. no scenario runner doing it for us
+        if self._launch_config.handle_ticks:  # i.e. no scenario runner doing it for us
             if CarlaDataProvider.is_sync_mode():
-                frame = self.world_model.world.tick(self._args.timeout)
+                frame = self.world_model.world.tick(self._launch_config.timeout)
             else:
-                frame = self.world_model.world.wait_for_tick(self._args.timeout).frame
+                frame = self.world_model.world.wait_for_tick(self._launch_config.timeout).frame
             CarlaDataProvider.on_carla_tick()
 
         if CarlaDataProvider.is_sync_mode():
@@ -774,7 +772,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             else:
                 return  # skip render and likely terminate.
         self.render_everything()
-        if self._args.pygame:
+        if self._launch_config.pygame:
             pygame.display.flip()
 
     @class_or_instance_method
@@ -1549,14 +1547,14 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
                 # os.system(f'ffmpeg -an -sn -i "{dir_name_formatted}/%08d.bmp" -framerate 1 -vcodec mpeg4 -r 60 "{os.path.join(runtime_dir, dirname)}.avi"')  # noqa: E501
                 print(f"Recording saved in {Path(runtime_dir) / dirname}.avi")
     
-    def rss_check_control(self, vehicle_control: carla.VehicleControl) -> Union[carla.VehicleControl, None]:
+    def rss_check_control(self, vehicle_control: carla.VehicleControl) -> carla.VehicleControl | None:
         """
         Checks the vehicle control against the RSS restrictions and possibly proposes an alternative.
         
         This is called during :py:attr:`.Phase.RSS_EVALUATION`.
         
         Todo:
-            This should be an agent function, but currently the :py:class:`~classes.RssSensor` is
+            This should be an agent method, but currently the :py:class:`~.rss_sensor.RssSensor` is
             tied to this class and not the agent.
         """
         self.hud.original_vehicle_control = vehicle_control
@@ -1575,7 +1573,7 @@ class WorldModel(AccessCarlaMixin, CarlaDataProvider):
             proposed_vehicle_control = self._restrictor.restrict_vehicle_control(  # pyright: ignore[reportOptionalMemberAccess]
                             vehicle_control,
                             rss_proper_response,
-                            self.rss_sensor.ego_dynamics_on_route,
+                            self.rss_sensor.ego_dynamics_on_route,  # type: ignore[arg-type]
                             self._vehicle_physics)
             self.hud.restricted_vehicle_control = proposed_vehicle_control
             self.hud.allowed_steering_ranges = self.rss_sensor.get_steering_ranges()

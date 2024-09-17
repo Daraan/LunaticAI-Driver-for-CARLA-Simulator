@@ -2,6 +2,9 @@
 Helper Tools for :py:mod:`.config_tools`.
 """
 
+# pyright: reportPrivateUsage=false, reportUnknownLambdaType=false, reportUnusedClass=false
+# pyright: reportPossiblyUnboundVariable=information,reportAttributeAccessIssue=warning
+# pyright: reportUnknownVariableType=information, reportUnknownMemberType=information
 from __future__ import annotations
 
 import ast
@@ -13,10 +16,6 @@ from pathlib import Path
 import re
 import yaml
 
-# pyright: reportPrivateUsage=false, reportUnknownLambdaType=false, reportUnusedClass=false
-# pyright: reportPossiblyUnboundVariable=information,reportAttributeAccessIssue=warning
-# pyright: reportUnknownVariableType=information, reportUnknownMemberType=information
-import sys
 from dataclasses import is_dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast, get_type_hints
 
@@ -25,12 +24,14 @@ import omegaconf.errors
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING, DictConfig, ListConfig, MissingMandatoryValue, OmegaConf, SCMode, open_dict
 from omegaconf._utils import is_structured_config, get_omega_conf_dumper  # noqa: PLC2701
-from typing_extensions import TypeAlias, TypeAliasType, TypeVar
+from typing_extensions import Protocol, TypeAlias, TypeAliasType, TypeVar
 
 from classes.constants import AD_RSS_AVAILABLE, Phase, RssLogLevelStub, RssRoadBoundariesModeStub, READTHEDOCS
 from launch_tools import ast_parse
 
 if TYPE_CHECKING:
+    from typing import type_check_only
+    from classes.type_protocols import AgentConfigT
     from agents.tools.config_creation import (
         AgentConfig,
         CreateRuleFromConfig,
@@ -77,8 +78,8 @@ CONFIG_SCHEMA_NAME = "launch_config_schema.yaml"
 config_store = ConfigStore.instance()
 """Hydra_ 's ConfigStore instance to access config schemas."""
 
-POSTPOND_REGISTER = sys.version_info < (3, 10)
-postpond_register: dict[str, type[Any]] = {}
+# POSTPONE_REGISTER = sys.version_info < (3, 10)
+# postpone_register: dict[str, type[Any]] = {}
 
 
 def register_hydra_schema(obj: "type[Any]", name: Optional[str] = None):
@@ -101,7 +102,22 @@ def register_hydra_schema(obj: "type[Any]", name: Optional[str] = None):
     
 def config_path(path: Optional[str] = None):
     """
-    Decorator to register the schema of the current class with Hydra's ConfigStore.
+    Decorator to register the schema of the current class with Hydra's :py:obj:`ConfigStore<hydra>`..
+    Use the path relative to the `launch_config.yaml`, where the config is stored to use.
+
+    Create subclasses in the following way:
+    
+    .. code-block:: python
+    
+        @config_path("agent/speed")
+        @dataclass
+        class AgentSpeedSettings(AgentConfig):
+        
+    Attention:
+        - Use "/" as separator and not dots.
+        - This is used for the Hydra schema registration and repeated paths will overwrite each other.
+        - This value is inherited (if != :code:`NOT_GIVEN`), and the value of the parent is taken
+          as default. Do not type-hint this value it must be a ClassVar to not conflict with dataclasses.
     
     Returns:
         (Callable[[type[AgentConfig]], type[AgentConfig]]) Wrapper function to register the schema.
@@ -119,10 +135,10 @@ def config_path(path: Optional[str] = None):
                 msg = f"Use '/' as separator and not dots. E.g. {name.replace('.', '/')} and not '{name}'"
                 raise ValueError(msg)
             obj._config_path = name
-            if not is_dataclass(obj) and not TYPE_CHECKING:  # type: ignore
+            if not is_dataclass(obj):
                 msg = f"Only dataclasses can be registered. {obj.__name__} is not a dataclass."
                 raise ValueError(msg)
-            register_hydra_schema(obj, name)
+            register_hydra_schema(obj, name)  # type error will be fixed in pyright: 1.1.381+
             return obj
     else:
         # dummy, to avoid errors
@@ -233,8 +249,8 @@ if TYPE_CHECKING:
     # BaseContainer adds the methods, however is ABC with more methods
     from omegaconf.basecontainer import BaseContainer  # noqa: F401
     # More informative types when type checking; need primitive types at runtime
-    DictConfigAlias: TypeAlias = Union[DictConfig, NestedConfigDict]
-    OverwriteDictTypes: TypeAlias = Dict[str, Union[Dict[str, NestedConfigDict], "AgentConfig"]]
+    DictConfigAlias: TypeAlias = DictConfig | NestedConfigDict
+    OverwriteDictTypes: TypeAlias = dict[str, dict[str, NestedConfigDict] | "AgentConfig"]
     
     class DictConfigLike(DictConfig):
         """
@@ -670,3 +686,30 @@ def flatten_config(config: "type[AgentConfig] | AgentConfig", *, resolve: bool =
     options: Dict[str, Any] = {}
     _flatten_dict(resolved, options, resolve=resolve)
     return options
+
+
+if TYPE_CHECKING:
+
+    @type_check_only
+    class ConfigWithOverwrites(Protocol["AgentConfigT"], AgentConfig):  # pyright: ignore[reportGeneralTypeIssues]
+        """
+        :meta private:
+        """
+
+        def __new__(cls, overwrites: Optional["OverwriteDictTypes | NestedConfigDict | AgentConfigT"] = None, *args, **kwargs) -> "AgentConfigT":
+            """
+            :meta public:
+            """
+            ...
+
+    @type_check_only
+    class ConfigWithoutOverwrites(Protocol["AgentConfigT"], AgentConfig):  # pyright: ignore[reportGeneralTypeIssues]
+        """
+        :meta private:
+        """
+
+        def __new__(cls, *args, **kwargs)  -> type[AgentConfigT]:
+            """
+            :meta public:
+            """
+            ...

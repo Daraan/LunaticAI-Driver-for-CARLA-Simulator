@@ -9,7 +9,6 @@ Note:
 # pyright: reportAttributeAccessIssue=warning
 # pyright: reportCallIssue=warning
 # pyright: reportInvalidStringEscapeSequence=false
-# pyright: reportPrivateUsage=false
 # pyright: reportSelfClsParameterName=false
 # pyright: reportAbstractUsage=false
 from __future__ import annotations as _
@@ -19,7 +18,7 @@ import logging
 import os
 import sys
 from copy import deepcopy
-from dataclasses import dataclass, field, is_dataclass
+from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Type, Union, cast, get_type_hints
 
@@ -35,7 +34,7 @@ from omegaconf.errors import InterpolationKeyError
 from typing_extensions import Annotated, Literal, Never, Self, TypeAlias, overload
 
 # Type Annotations and Helpers
-from agents.tools._config_tools import (  # Type Alias & special objects
+from ._config_tools import (  # Type Alias & special objects
     MT,
     _NOTSET,
     _T,
@@ -72,13 +71,15 @@ from classes.constants import (
     RssRoadBoundariesModeAlias,
     RulePriority,
 )
-from classes.rss_visualization import RssDebugVisualizationMode
+from classes.sensors.rss_visualization import RssDebugVisualizationMode
 from launch_tools import class_or_instance_method
 
 if TYPE_CHECKING:
+    from typing_extensions import TypeGuard
     from agents.leaderboard_agent import LunaticChallenger
     from classes.rule import Rule
     from classes.worldmodel import GameFramework
+    from ._config_tools import ConfigWithOverwrites
 
 __all__ = [
     "AgentConfig",
@@ -95,6 +96,8 @@ __all__ = [
     "RssLogLevel",
     "RssRoadBoundariesMode",
     "RuleConfig",
+    
+    "config_path",
     "config_store",
 ]
 
@@ -161,7 +164,7 @@ else:
 
 class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
     """
-    Base interface for the agent settings.
+    Base interface and utility class for the agent settings.
     
     Handling the initialization from a nested dataclass and merges in the changes
     from the overwrites options.
@@ -169,9 +172,9 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
     
     _config_path: ClassVar[Optional[str]] = "NOT_GIVEN"
     """
-    The key, relative to the LaunchConfig, where the config is stored.
+    The key, relative to the LaunchConfig, where the config is stored to use Hydra's :py:obj:`ConfigStore<hydra>`.
 
-    Create subclasses like:
+    Create subclasses in the following way:
     
     .. code-block:: python
     
@@ -184,8 +187,9 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         - This is used for the Hydra schema registration and repeated paths will overwrite each other.
         - This value is inherited (if != :code:`NOT_GIVEN`), and the value of the parent is taken
           as default. Do not type-hint this value it must be a ClassVar to not conflict with dataclasses.
-        
-    :meta private:
+          
+    See Also:
+        :py:func:`.config_path`
     """
     
     overwrites: "Optional[NestedConfigDict]" = None
@@ -193,7 +197,7 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
     
     @classmethod
     def get_defaults(cls) -> "Self":
-        """Returns the global default options."""
+        """Returns an instance with the default options."""
         return cls()  # type: ignore[call-arg]
     
     @class_or_instance_method
@@ -215,9 +219,6 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
             with_comments : Whether to include comments in the exported YAML file. Defaults to False.
             detailed_rules : Whether to include detailed rules in the exported YAML file. Defaults to False.
             include_private : Whether to include private fields in the exported YAML file. Defaults to False.
-
-        Returns:
-            None
         """
         export_options(
             cls_or_self,
@@ -273,9 +274,9 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         """
         loaded = OmegaConf.load(path)
         if not merge:
-            return cast(cls, loaded)
+            return cast(Self, loaded)
         options = OmegaConf.merge(OmegaConf.structured(cls, flags={"allow_objects": True}), loaded)
-        return cast(cls, options)
+        return cast(Self, options)
     
     @classmethod
     def load_schema(cls, path: Optional[str] = None) -> AsDictConfig[Self]:
@@ -287,18 +288,16 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         
         See Also:
             Hydra_ ConfigStore
-            
-        :meta private:
         """
         path = path or cls._config_path
         if path is None:
             raise ValueError("No path to the schema provided and the class has not been created with `@config_path`.")
-        return cast(cls, config_store.load(path).node)
+        return cast(Self, config_store.load(path).node)
     
     @classmethod
     def create(
         cls,
-        settings: "Union[os.PathLike[str], str, DictConfig, NestedConfigDict | AgentConfig, None]" = None,
+        settings: "Union[os.PathLike[str], str, DictConfig, NestedConfigDict | OverwriteDictTypes | AgentConfig, None]" = None,
         overwrites: "Optional[NestedConfigDict]" = None,
         *,
         assure_copy: bool = True,
@@ -329,36 +328,41 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         Raises:
             Exception: If the overwrites cannot be merged into the agent settings.
         """
-
-        behavior: cls
+        #assert TYPE_CHECKING and (issubclass(cls, ConfigWithoutOverwrites) or issubclass(cls, ConfigWithOverwrites))
+        behavior: Self
         if settings is None:
             if not as_dictconfig:
-                behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
+                behavior = cls()
             else:
                 behavior = cls.load_schema()
-        if isinstance(settings, (str, os.PathLike)):
+        elif isinstance(settings, (str, os.PathLike)):
             # load yaml file
             logger.info("Using agent settings from file `%s`", settings)
             behavior = cls.from_yaml(settings)  # DictConfig  # type: ignore[attr-type]
         elif isinstance(settings, dict):
             logger.debug(
-                "Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a dict config. Interpolations not available."
+                "Using agent settings from dict with LunaticAgentSettings. Note settings are NOT a DictConfig. Interpolations not available."
             )
-            behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)  # type: ignore[attr-type]
+            if cls.uses_overwrite_interface(cls):
+                behavior = cls(overwrites=settings)
+            else:
+                behavior = cls(**settings)  # pyright: ignore[reportArgumentType] # because DictConfig parent
         elif is_dataclass(settings) or isinstance(settings, DictConfig):
             logger.debug("Using agent settings as is, as it is a dataclass or DictConfig.")
             # clean_settings = {k : v for k, v in settings.items() if not OmegaConf.is_missing(v)}
+            if not cls.uses_overwrite_interface() and is_dataclass(settings):
+                from dataclasses import asdict  # noqa: PLC0415
+                settings = cast(OverwriteDictTypes, asdict(settings))
             if assure_copy:
-                behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
+                behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)  # pyright: ignore[reportArgumentType,reportCallIssue]
             elif inspect.isclass(settings):
                 behavior = settings()
             else:
                 # instantiate class to check keys but use original type
-                cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(
-                    **settings
-                )  # convert to class to check keys
+                cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)  # pyright: ignore[reportCallIssue]
                 behavior = settings  # stays duck-typed DictConfig # type: ignore
         else:
+            # Handle unknown cases
             if as_dictconfig is None:
                 logger.warning(
                     "Type `%s` of launch argument type `agent_settings` not supported, trying to use it anyway. Expected are (str, dataclass, DictConfig)",
@@ -370,11 +374,12 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
                 behavior = cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
             else:
                 # instantiate to class to check keys but use original type
-                cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)
+                cls(overwrites=settings) if cls.uses_overwrite_interface(cls) else cls(**settings)
                 behavior = settings  # has Unknown type but keys are present # type: ignore
-        
+
+        # Handle overwrites
         if overwrites:
-            if isinstance(behavior, DictConfig):
+            if isinstance(behavior, DictConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
                 behavior = cls.cast(
                     OmegaConf.merge(behavior, OmegaConf.structured(overwrites, flags={"allow_objects": True}))
                 )
@@ -386,15 +391,16 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
                         "Overwrites could not be merged into the agent settings with `base_config.update(overwrites)`. Passing config_mode=True might help."
                     )
                     raise
-        if as_dictconfig and not isinstance(behavior, DictConfig):
+        # Turn to DictConfig
+        if as_dictconfig and not isinstance(behavior, DictConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
             try:
                 behavior = OmegaConf.structured(behavior, flags={"allow_objects": True})
             except Exception as e:
                 print(e)
                 # breakpoint()
                 raise
-        elif as_dictconfig is False and isinstance(behavior, DictConfig):
-            return cls(overwrites=settings) if cls.uses_overwrite_interface() else cls(**settings)  # pyright: ignore[reportCallIssue]
+        elif as_dictconfig is False and isinstance(behavior, DictConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
+            return cls(overwrites=behavior) if cls.uses_overwrite_interface() else cls(**behavior)  # pyright: ignore[reportCallIssue]
         elif as_dictconfig is None:
             logger.debug(
                 "A clear return type of %s.create_from_args has not set as config_mode is None. Returning as %s",
@@ -402,14 +408,14 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
                 type(behavior),
             )
 
-        if isinstance(behavior, DictConfig):
-            behavior._set_flag("allow_objects", True)
+        if isinstance(behavior, DictConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
+            behavior._set_flag("allow_objects", True)  # pyright: ignore[reportPrivateUsage]
             if dict_config_no_parent:
                 # Dict config interpolations always use the full path, interpolations might go from the root of the config.
                 # If there is launch_config.agent, with launch config as root, the interpolations will not work.
                 behavior.__dict__["_parent"] = None  # Remove parent from the config, i.e. make it a top-level config.
         
-        return cast(cls, behavior)
+        return cast(Self, behavior)
     
     @overload
     @classmethod
@@ -468,17 +474,19 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
                 return new_config0
             return cast(MT, config)
         if strictness == 1:
-            new_config = cls(**config)
+            if is_dataclass(config):
+                config = asdict(config)
+            new_config = cls(overwrites=config) if cls.uses_overwrite_interface() else cls(**config)  # pyright: ignore[reportCallIssue]
             if as_dict_config and not isinstance(config, DictConfig):
                 return cls.cast(OmegaConf.structured(new_config, flags={"allow_objects": True}))
             return new_config
-        # TODO: # Note: This does not assure missing keys:
+        # TODO: # NOTE: This does not assure missing keys:
         new_config = cls.create(config, as_dictconfig=True, assure_copy=False)
         if strictness == 2:
             if as_dict_config and not isinstance(new_config, DictConfig):
-                return cast(cls, OmegaConf.structured(new_config, flags={"allow_objects": True}))
+                return cast(Self, OmegaConf.structured(new_config, flags={"allow_objects": True}))
             return new_config
-        new_config: cls = OmegaConf.structured(new_config, flags={"allow_objects": True})  # include flag, yes no?
+        new_config: Self = OmegaConf.structured(new_config, flags={"allow_objects": True})  # include flag, yes no?
         return new_config
     
     if READTHEDOCS and not TYPE_CHECKING:
@@ -557,19 +565,29 @@ class AgentConfig(DictConfigLike if TYPE_CHECKING else object):
         except Exception as e:
             print("\n ERROR updating", self.__class__.__name__, "with >", options, "< Error:", e, "\n")
             raise
-        
+    
+    @overload
     @classmethod
-    def uses_overwrite_interface(cls) -> bool:
+    def uses_overwrite_interface(cls) -> bool: ...
+    
+    @overload
+    @classmethod
+    def uses_overwrite_interface(cls, cls_: type[Self]) -> "TypeGuard[type[ConfigWithOverwrites[Self]]]": ...
+    
+    @classmethod
+    def uses_overwrite_interface(cls, cls_: type[Self] | None = None) -> "TypeGuard[type[ConfigWithOverwrites[Self]]] | bool":
         """
         Whether or not the class is created by a single parameter "overwrites"
         or via keyword arguments for each field.
+        
+        .. the TypeGuard variant is not reliable in every case but rather depends on the __init__
         """
-        return "overwrites" in inspect.signature(cls.__init__).parameters
+        return "overwrites" in inspect.signature((cls_ or cls).__init__).parameters
     
     @classmethod
     def cast(cls, value: Any):
         """Type-hinting method to cast a value to this class."""
-        return cast(cls, value)
+        return cast(Self, value)
     
     def _clean_options(self):
         """
@@ -2159,7 +2177,7 @@ class LaunchConfig(AgentConfig):
     
     autopilot: bool = False
     r"""
-    Whether or not to use the CARLAS's :external-icon-parse:`:py:class:\`carla.TrafficManager\`` to autopilot the agent
+    Whether or not to use the CARLA's :external-icon-parse:`:py:class:\`carla.TrafficManager\`` to autopilot the agent
     
     Note:
         This disables the usage of the LunaticAgent, however needs to be

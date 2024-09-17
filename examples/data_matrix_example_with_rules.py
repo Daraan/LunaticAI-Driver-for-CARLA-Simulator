@@ -9,7 +9,7 @@ import carla
 from classes._data_gathering.car_detection_matrix.informationUtils import get_all_road_lane_ids
 from classes._data_gathering.car_detection_matrix.run_matrix import get_car_coords
 from classes.detection_matrix import AsyncDetectionMatrix, DetectionMatrix  # noqa: F401
-from classes.camera_manager import spectator_follow_actor
+from classes.ui import spectator_follow_actor
 from classes.experimental.vehicle_spawner import VehicleSpawner
 
 spawner = None

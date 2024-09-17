@@ -5,8 +5,8 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 
-# Autodoc command:
-# sphinx-apidoc -H "Modules and Packages" -d 3 -f -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools  classes/driver* classes/vehicle* classes/rss* classes/camera*  classes.HUD classes/rule_interpreter.py classes/traffic_manager.py  docs venv *lane_changes classes/HUD.py *keyboard_controls.py *misc.py *tools.py launch_tools* docs/* conf/ *car_detection_matrix/[im]* _* *lane_explorer*
+# Autodoc command (OUTDATED!):
+# sphinx-apidoc -H "Modules and Packages" -d 3 -f -o docs/webview/source/ ./  scenario_runner agents/navigation* agents/dynamic_planning  examples/ launch_tools  classes/driver* classes/vehicle* classes/rule_interpreter.py classes/traffic_manager.py  docs venv *lane_changes *misc.py *tools.py launch_tools* docs/* conf/ *car_detection_matrix/[im]* _* *lane_explorer*
 # sphinx-build -M html docs/webview/source/ docs/webview/build/ -v -E
 
 # -- Path setup --------------------------------------------------------------

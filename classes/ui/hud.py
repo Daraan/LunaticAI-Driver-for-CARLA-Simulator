@@ -14,8 +14,8 @@ import carla
 import pygame
 
 from classes import CanBeDummy
-from classes.keyboard_controls import RSSKeyboardControl
-from classes.rss_visualization import RssStateVisualizer
+from classes.ui.keyboard_controls import RSSKeyboardControl
+from classes.sensors.rss_visualization import RssStateVisualizer
 
 if TYPE_CHECKING:
     from pygame._common import ColorValue  # type: ignore
@@ -106,7 +106,7 @@ class HUD(CanBeDummy):
         collision = [colhist[x + self.frame - 200] for x in range(200)]
         max_col = max(1.0, max(collision))  # noqa: PLW3301
         collision = [x / max_col for x in collision]
-        obstacles = obstacles or world.world.get_actors().filter('vehicle.*')
+        obstacles = obstacles or world.world.get_actors().filter('*vehicle*')
         
         # TODO: could also get ready distances from InformationManager, needs access to agent instance
         # cached info would also prevent x from being destroyed in a different thread

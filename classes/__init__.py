@@ -12,15 +12,11 @@ ones provided in the examples from the CARLA PythonAPI.
 # ruff: noqa: ARG002,ARG003,ANN401
 
 __all__ = [
-    "CustomSensorInterface",
-    "carla_originals",
 ]
 
 import sys
 
 from classes.constants import READTHEDOCS
-from . import carla_originals
-from ._sensor_interface import CustomSensorInterface
 
 # Dummy object to easier disable pygame
 from typing import Any, overload, TYPE_CHECKING

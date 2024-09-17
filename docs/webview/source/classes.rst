@@ -15,21 +15,11 @@ Subpackages
 .. toctree::
    :maxdepth: 2
 
-   classes.carla_originals
+   classes.sensors
+   classes.ui
 
 Submodules
 ----------
-
-
-.. _classes/camera_manager:
-
-classes.camera\_manager module
-------------------------------
-
-.. automodule:: classes.camera_manager
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 
 .. _classes/constants:
@@ -79,34 +69,12 @@ classes.exceptions module
    :no-inherited-members:
 
 
-.. _classes/hud:
-
-classes.hud module
-------------------
-
-.. automodule:: classes.hud
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
 .. _classes/information_manager:
 
 classes.information\_manager module
 -----------------------------------
 
 .. automodule:: classes.information_manager
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-.. _classes/keyboard_controls:
-
-classes.keyboard\_controls module
----------------------------------
-
-.. automodule:: classes.keyboard_controls
    :members:
    :undoc-members:
    :show-inheritance:

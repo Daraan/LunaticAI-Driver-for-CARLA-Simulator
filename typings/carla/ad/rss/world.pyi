@@ -1,6 +1,8 @@
 from typing import ClassVar, overload
 from carla import ad
 
+from carla.libcarla import _CarlaEnum
+
 from . import *
 
 class LaneDrivingDirection(int):
@@ -215,7 +217,7 @@ class ObjectState:
     @property
     def yawRate(self) -> ad.physics.AngularVelocity: ...
 
-class ObjectType(int):
+class ObjectType(int, _CarlaEnum):
     ArtificialObject = 4
 
     EgoVehicle = 1

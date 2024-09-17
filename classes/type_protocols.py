@@ -23,14 +23,14 @@ import carla  # type: ignore
 from typing_extensions import Concatenate, Literal, ParamSpec, Protocol, TypeAlias, TypeAliasType, TypeVar
 
 if TYPE_CHECKING:
-    from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner  # noqa: F401
+    from agents.dynamic_planning.dynamic_local_planner import DynamicLocalPlanner  # noqa: F401 ; used for typing
     from agents.navigation.local_planner import LocalPlanner
     from agents.tools.config_creation import AgentConfig, BehaviorAgentSettings, LunaticAgentSettings  # noqa: F401
     from classes.constants import AgentState
     from classes.evaluation_function import ConditionFunction
     from classes.rule import Context, Rule
     from classes.worldmodel import WorldModel
-    from classes.keyboard_controls import KeyboardControl
+    from classes.ui.keyboard_controls import KeyboardControl
 
 __all__ = [  # noqa: RUF022
     "AgentConfigT",

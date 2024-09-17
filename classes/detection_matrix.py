@@ -104,7 +104,9 @@ class DetectionMatrix:
         }
 
     Attention:
-        Currently the keys are replaces by numbers.
+        - Currently the keys are replaces by numbers.
+        - In case of an unsupported layout or before the very first update
+          the matrix can be :code:`None`. Be aware of this when using :py:class:`AsyncDetectionMatrix`.
     """
 
     def __init__(self,
@@ -241,7 +243,7 @@ class DetectionMatrix:
 
         :meta private:
         """
-        from classes.keyboard_controls import RSSKeyboardControl  # noqa: PLC0415 # lazy import
+        from classes.ui.keyboard_controls import RSSKeyboardControl  # noqa: PLC0415 # lazy import
         logger.info(f"DetectionMatrix: signal {signum} received. Stopping.")
         self.stop()
         # Can only have one signal handler!

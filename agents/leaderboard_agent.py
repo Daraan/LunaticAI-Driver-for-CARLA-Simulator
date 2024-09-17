@@ -44,7 +44,7 @@ from agents.lunatic_agent import LunaticAgent
 from agents.tools.config_creation import LaunchConfig, LunaticAgentSettings
 from agents.tools.logs import logger
 from classes.constants import READTHEDOCS, Phase
-from classes.keyboard_controls import RSSKeyboardControl
+from classes.ui.keyboard_controls import RSSKeyboardControl
 from classes.worldmodel import AD_RSS_AVAILABLE, GameFramework, WorldModel
 
 if TYPE_CHECKING:
@@ -364,7 +364,7 @@ class LunaticChallenger(AutonomousAgent, LunaticAgent):
     
     def _local_planner_set_plan(self, plan):
         super(AutonomousAgent, self).set_global_plan(plan, stop_waypoint_creation=True, clean_queue=True)
-        if self.game_framework._args.debug:
+        if self.game_framework.launch_config.debug:
             draw_route(CarlaDataProvider.get_world(), plan, vertical_shift=0.5, size=0.15, downsample=1, life_time=1000.0)
     
     def set_global_plan(self, global_plan_gps: Sequence["tuple[_GPSDataDict, RoadOption]"], global_plan_world_coord: Sequence["tuple[carla.Transform, RoadOption]"]):

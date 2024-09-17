@@ -1,5 +1,5 @@
 import weakref
-from threading import Event, Thread
+from threading import Thread
 from typing import TYPE_CHECKING, ClassVar, List, Optional, cast
 
 import carla
@@ -7,20 +7,29 @@ import numpy as np
 import pygame
 from carla import ColorConverter as cc
 from carla import AttachmentType
-from typing_extensions import Self
+from typing_extensions import Self, Final
 
 from agents.tools import logger
 from agents.tools.hints import CameraBlueprint
 from classes import MockDummy
-from classes._sensor_interface import CustomSensorInterface
+from classes.sensors import CustomSensorInterface
+from classes.ui import spectator_follow_actor
 from launch_tools import CarlaDataProvider, class_or_instance_method
+
+from . import _follow_car_event
 
 if TYPE_CHECKING:
     from agents.tools.config_creation import LaunchConfig
-    from classes.hud import HUD
+    from classes.ui.hud import HUD
+    
+__all__ = [
+    'CameraBlueprints',
+    'CameraBlueprintsSimple',
+    'CameraManager',
+]
 
-# TODO integrate into camera.yaml
-CameraBlueprints = {
+
+CameraBlueprints: Final = {
     'Camera RGB': CameraBlueprint('sensor.camera.rgb', cc.Raw, 'Camera RGB'),
     'Camera Depth (Raw)': CameraBlueprint('sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'),
     'Camera Depth (Gray Scale)': CameraBlueprint('sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'),
@@ -29,7 +38,12 @@ CameraBlueprints = {
     'Camera Semantic Segmentation (CityScapes Palette)': CameraBlueprint('sensor.camera.semantic_segmentation', cc.CityScapesPalette, 'Camera Semantic Segmentation (CityScapes Palette)'),
     'Lidar (Ray-Cast)': CameraBlueprint('sensor.lidar.ray_cast', carla.ColorConverter.Raw, 'Lidar (Ray-Cast)')
 }
-"""Camera blueprints used by the CARLA examples."""
+"""
+Camera blueprints used by the CARLA examples.
+
+Todo:
+    Should be replaced by :py:class:`.CameraConfig.camera_blueprints`
+"""
 
 CameraBlueprintsSimple: List[CameraBlueprint] = [CameraBlueprints['Camera RGB']]
 """Just a single RGB camera. Default for :py:meth:`.CameraManager.sensors`"""
@@ -39,40 +53,19 @@ CameraBlueprintsSimple: List[CameraBlueprint] = [CameraBlueprints['Camera RGB']]
 # -- CameraManager -------------------------------------------------------------
 # ==============================================================================
 
-_follow_car_event = Event()
-"""Use the :py:meth:`treading.Event.set` method to stop the thread."""
-
-
-# Solutions see: https://stackoverflow.com/questions/69107143/how-to-end-a-while-loop-in-another-thread
-def spectator_follow_actor(actor: carla.Actor):
-    """
-    Continuously follow the ego vehicle with the spectator view.
-    
-    Attention:
-        - Needs to be run in a separate thread.
-        - Does not allow for thread.join() to stop the thread, before calling :py:meth:`stop`.
-        
-    Methods:
-        stop: Stop following the actor.
-        
-    See Also:
-        - :py:meth:`CameraManager.follow_actor`
-    """
-    try:
-        while not _follow_car_event.is_set():
-            _spectator_to_actor(actor)
-    except Exception as e:
-        logger.error(f"Error in spectator_follow_actor: {e}")
-
-
-spectator_follow_actor.stop = lambda: _follow_car_event.set()  # type: ignore[attr-defined]
-
 
 class CameraManager(MockDummy.CanBeDummy, CustomSensorInterface):
     """ Class for camera management"""
 
     default_blueprints: ClassVar[List[CameraBlueprint]] = list(CameraBlueprints.values())
-    """Cameras that should be attached to the ego vehicle by default."""
+    """
+    Cameras are attached to the ego vehicle by default if **sensors** is not set or an empty list.
+    
+    Attentions:
+        The default argument for **sensors** is a list with just a simple RGB camera.
+    
+    :meta private:
+    """
 
     def __init__(self,
                  parent_actor: carla.Actor,
@@ -85,6 +78,11 @@ class CameraManager(MockDummy.CanBeDummy, CustomSensorInterface):
         
         :py:meth:`set_sensor` should be called after init to set :py:attr:`sensor`
         and :py:attr:`index` to a valid value.
+        
+        Parameters:
+            parent_actor: The actor to which the camera is attached.
+            sensors: The sensors for the user interface to be used with the :py:class:`.HUD`.
+                Defaults to one RGB camera.
         """
         self.sensor: Optional[carla.Sensor] = None  # Needs call to set_sensor
         self.index: Optional[int] = None  # Needs call to set_sensor
@@ -118,9 +116,9 @@ class CameraManager(MockDummy.CanBeDummy, CustomSensorInterface):
         ]
 
         self.transform_index = 1
-        # TODO: These are remnants from the original code, for our purpose most sensors are not relevant
+        # NOTE: These are remnants from the original code, for our purpose most sensors are not relevant
         # -> Move to globals or some config which should be used (also saves resources)
-        self.sensors = sensors or self.default_blueprints
+        self.sensors = sensors if sensors is not None else self.default_blueprints.copy()
         bp_library = CarlaDataProvider._blueprint_library
         for i, item in enumerate(self.sensors):
             try:
@@ -269,37 +267,3 @@ class CameraManager(MockDummy.CanBeDummy, CustomSensorInterface):
         return super().stop()
         
 # ==============================================================================
-
-
-def _spectator_to_actor(actor: carla.Actor) -> None:
-    """
-    Set the spectator's view to follow the ego vehicle.
-
-    Parameters:
-        ego_vehicle (Vehicle): The ego vehicle that the spectator will follow.
-        world (World): The game world where the spectator view is set.
-
-    Description:
-        This function calculates the desired spectator transform by positioning the spectator
-        10 meters behind the ego vehicle and 5 meters above it. The spectator's view will follow
-        the ego vehicle from this transformed position.
-
-    Note:
-        To face the vehicle from behind, uncomment the line 'spectator_transform.rotation.yaw += 180'.
-
-    Returns:
-        None: The function does not return any value.
-    """
-    # Calculate the desired spectator transform
-    vehicle_transform = actor.get_transform()
-    spectator_transform = vehicle_transform
-    spectator_transform.location -= (
-        vehicle_transform.get_forward_vector() * 10
-    )  # Move 10 meters behind the vehicle
-    spectator_transform.location += (
-        vehicle_transform.get_up_vector() * 5
-    )  # Move 5 meters above the vehicle
-    # spectator_transform.rotation.yaw += 180 # Face the vehicle from behind
-
-    # Set the spectator's transform in the world
-    CarlaDataProvider.get_world().get_spectator().set_transform(spectator_transform)

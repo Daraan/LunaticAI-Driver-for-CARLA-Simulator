@@ -1,3 +1,7 @@
+"""
+This module is based on the RSS example shipped with CARLA.
+"""
+
 #
 # Copyright (c) 2020 Intel Corporation
 #
@@ -16,7 +20,7 @@ import numpy as np
 import pygame
 
 from classes import CanBeDummy
-from classes._sensor_interface import CustomSensorInterface
+from classes.sensors._sensor_interface import CustomSensorInterface
 from classes.constants import AD_RSS_AVAILABLE
 from launch_tools import CarlaDataProvider
 
@@ -35,7 +39,7 @@ if AD_RSS_AVAILABLE:
 
 if TYPE_CHECKING:
     assert ad  # remove Unbound type # type: ignore
-    from classes.rss_sensor import RssStateInfo
+    from classes.sensors.rss_sensor import RssStateInfo
 
 
 class Color:
@@ -121,14 +125,14 @@ class RssStateVisualizer(CanBeDummy):
                         
                 # Unsafe Laterals: Draw Left/Right arrows
                 # Right
-                if not state.rss_state.lateralStateRight.isSafe and state.rss_state.lateralStateRight.rssStateInformation.evaluator is not EVALUATOR_NONE_STATE:
+                if not state.rss_state.lateralStateRight.isSafe and state.rss_state.lateralStateRight.rssStateInformation.evaluator != EVALUATOR_NONE_STATE:
                     pygame.draw.polygon(
                         state_surface, (
                             255, 255, 255), ((xpos + 0, v_offset + 1 + 4), (xpos + 8, v_offset + 1 + 4), (xpos + 8, v_offset + 1 + 1),
                                              (xpos + 12, v_offset + 1 + 6), (xpos + 8, v_offset + 1 + 10), (xpos + 8, v_offset + 1 + 8), (xpos + 0, v_offset + 1 + 8)))
                     xpos += 14
                 # Left
-                if not state.rss_state.lateralStateLeft.isSafe and state.rss_state.lateralStateLeft.rssStateInformation.evaluator is not EVALUATOR_NONE_STATE:
+                if not state.rss_state.lateralStateLeft.isSafe and state.rss_state.lateralStateLeft.rssStateInformation.evaluator != EVALUATOR_NONE_STATE:
                     pygame.draw.polygon(
                         state_surface, (
                             255, 255, 255), ((xpos + 0, v_offset + 1 + 6), (xpos + 4, v_offset + 1 + 1), (xpos + 4, v_offset + 1 + 4),

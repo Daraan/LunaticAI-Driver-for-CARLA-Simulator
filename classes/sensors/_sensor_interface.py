@@ -10,7 +10,8 @@ __all__ = ['CustomSensorInterface']
 
 class CustomSensorInterface:
     """
-    This is a mixin for classes like the :py:class:`.camera_manager.CameraManager` or the :py:class:`classes.rss_sensor.RssSensor`
+    This is a mixin for classes like the :py:class:`.camera_manager.CameraManager`
+    or the :py:class:`classes.sensors.rss_sensor.RssSensor`
     that either wrap around a :external_py_class:`carla.Sensor` or should have a similar interface.
     
     Attention:

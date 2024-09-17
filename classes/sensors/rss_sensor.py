@@ -3,11 +3,11 @@
 # Based on CARLA example : https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/rss/rss_visualization.py
 
 
-# pyright: reportUnknownMemberType=none
-# pyright: reportUnknownArgumentType=information
-# pyright: reportUnknownParameterType=information
-# pyright: reportTypeCommentUsage=none
-# pyright: reportAttributeAccessIssue=information
+# pyrightX: reportUnknownMemberType=none
+# pyrightX: reportUnknownArgumentType=information
+# pyrightX: reportUnknownParameterType=information
+# pyrightX: reportTypeCommentUsage=none
+# pyrightX: reportAttributeAccessIssue=information
 
 import inspect
 import math
@@ -17,9 +17,9 @@ from typing import cast as assure_type
 import carla
 
 from agents.tools.logs import logger
-from classes._sensor_interface import CustomSensorInterface
+from classes.sensors import CustomSensorInterface
 from classes.constants import AD_RSS_AVAILABLE, RssLogLevel, RssLogLevelAlias
-from classes.rss_visualization import (
+from .rss_visualization import (
     RssDebugVisualizationMode,
     RssDebugVisualizer,
     RssUnstructuredSceneVisualizer,
@@ -33,7 +33,7 @@ if AD_RSS_AVAILABLE:
 
 if TYPE_CHECKING:
     assert ad  # remove Unbound type # type: ignore
-    from classes.rss_visualization import RssBoundingBoxVisualizer, RssStateVisualizer
+    from classes.sensors.rss_visualization import RssBoundingBoxVisualizer, RssStateVisualizer
     
 
 # ==============================================================================
@@ -111,7 +111,7 @@ class RssSensor(CustomSensorInterface):
         self.world_model = None
         self.individual_rss_states = []
         self._allowed_heading_ranges = []
-        self.ego_dynamics_on_route: carla.RssEgoDynamicsOnRoute = None
+        self.ego_dynamics_on_route: Optional[carla.RssEgoDynamicsOnRoute] = None  # set on response
         self.current_vehicle_parameters = self.get_default_parameters()
         self.route = None
         self.debug_visualizer = RssDebugVisualizer(parent_actor, world, visualizer_mode)

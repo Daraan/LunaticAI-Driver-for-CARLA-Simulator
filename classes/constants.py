@@ -237,7 +237,7 @@ class Phase(Flag):
     
     See Also:
         - :py:meth:`agents.lunatic_agent.LunaticAgent.parse_keyboard_input`
-        - :py:meth:`classes.keyboard_controls.RssKeyboardControls.parse_events`
+        - :py:meth:`classes.ui.keyboard_controls.RssKeyboardControls.parse_events`
     
     :meta hide-value:
     """
@@ -329,7 +329,7 @@ class Phase(Flag):
     Can be used to indicate that the phase change is currently handled by the user.
     
     Warning:
-        :any:`LunaticAgent.execute_phase` checks for exact match,
+        :py:meth:`.LunaticAgent.execute_phase` checks for exact match,
         i.e. a phase :python:`UPDATE_INFORMATION | BEGIN | END`
         will not be executed in the normal loop.
     
