@@ -11,8 +11,8 @@ ones provided in the examples from the CARLA PythonAPI.
 """
 # ruff: noqa: ARG002,ARG003,ANN401
 
-__all__ = [
-]
+#__all__ = [
+#]
 
 import sys
 

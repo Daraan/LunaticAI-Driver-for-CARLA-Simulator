@@ -1,3 +1,22 @@
+# --------- Linting ------------
+# Not relevant for stubs
+# pylint: disable=unused-argument,C0103,used-before-assignment
+#
+# needs change in API
+# pylint: disable=too-many-locals,too-many-public-methods,too-many-arguments,too-many-public-methods,too-few-public-methods,too-many-lines,redefined-builtin
+#
+# Fixable
+# pylint: disable=line-too-long
+# Needs __all__ to be defined
+# pylint: disable=useless-import-alias,unused-import
+#
+# False positives
+# Should only trigger for class name used in itself
+# pylint: disable=undefined-variable
+#
+# ruff: noqa: F401,F405,F403
+# -------------------------------
+
 from typing import Iterable, TypeAlias, overload
 
 import ad

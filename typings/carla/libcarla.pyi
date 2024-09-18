@@ -14,7 +14,7 @@
 # Should only trigger for class name used in itself
 # pylint: disable=undefined-variable
 #
-# ruff: noqa: F405,F403
+# ruff: noqa: F401,F403,F405
 # -------------------------------
 
 import sys

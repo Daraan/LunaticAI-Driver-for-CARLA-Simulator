@@ -2,6 +2,8 @@
 Interface classes between CARLA, the agent, and the user interface.
 """
 
+# pyright: reportUnknownMemberType=false
+
 from __future__ import annotations
 
 import contextlib
@@ -562,7 +564,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
     def make_controller(self,
                         world_model: "WorldModel",
                         controller_class: type[ControllerClassT] = RSSKeyboardControl,
-                        **kwargs) -> ControllerClassT:
+                        **kwargs: Any) -> ControllerClassT:
         """
         Creates a keyboard controller and attaches it to the world model.
         
@@ -667,7 +669,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             self.world_model.finalize_render(self.display)  # pyright: ignore[reportOptionalMemberAccess]
         
     @staticmethod
-    def skip_rest_of_loop(message="GameFramework.end_loop") -> NoReturn:
+    def skip_rest_of_loop(message: str = "GameFramework.end_loop") -> NoReturn:
         """
         Terminates the current iteration and exits the GameFramework by raising a :py:exc:`.ContinueLoopException`.
         
@@ -731,7 +733,7 @@ class GameFramework(AccessCarlaMixin, CarlaDataProvider):
             self.controller = None                            # type: ignore[assignment]
         if not self.controller:
             logger.debug("Creating new controller.")
-            self.controller = self.make_controller(self.world_model, start_in_autopilot=self._launch_config.autopilot)  # hard reference # type: ignore
+            self.controller = self.make_controller(self.world_model, start_in_autopilot=self._launch_config.autopilot)  # hard reference
             self.world_model.controller = self.controller  # hard instead of weak reference
         self.agent._validate_phases = False
         return self

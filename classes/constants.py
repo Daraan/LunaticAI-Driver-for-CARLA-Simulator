@@ -729,10 +729,10 @@ class _CarlaIntEnum(IntEnum):
     values: ClassVar[Dict[int, Self]]
     names: ClassVar[Dict[str, Self]]
 
-    def __init_subclass__(cls):
-        # TODO: as this is runtime create it correctly.
-        cls.values: dict[int, cls]  # noqa: B032
-        cls.names: dict[str, cls]  # noqa: B032
+    def __init_subclass__(cls, *args, **kwargs):
+        # TODO: as this is runtime create it correctly. Note: members are created after this function!
+        cls.values: dict[int, Self]  # noqa: B032
+        cls.names: dict[str, Self]  # noqa: B032
 
 
 class RssLogLevelStub(_CarlaIntEnum):

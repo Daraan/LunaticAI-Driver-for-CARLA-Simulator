@@ -10,9 +10,13 @@ and `carla.Client.apply_batch_sync`.
 # Fixable low-priority
 # pylint: disable=line-too-long,R0801
 
-from typing import Protocol, overload, type_check_only  # pylint: disable=no-name-in-module
+from typing import (  # pylint: disable=no-name-in-module
+    Protocol,
+    overload,
+    type_check_only,
+)
 
-from libcarla import (
+from .libcarla import (
     AckermannControllerSettings,
     Actor,
     ActorBlueprint,
@@ -95,7 +99,7 @@ class ApplyForce(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `force (Vector3D)`: (N)\n
+            `force (Vector3D)`: (N)
         """
     # endregion
 
@@ -117,7 +121,7 @@ class ApplyImpulse(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `impulse (Vector3D)`: (N*s)\n
+            `impulse (Vector3D)`: (N*s)
         """
     # endregion
 
@@ -139,7 +143,7 @@ class ApplyTargetAngularVelocity(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `angular_velocity (Vector3D)`: Angular velocity vector applied to the actor.\n
+            `angular_velocity (Vector3D)`: Angular velocity vector applied to the actor.
         """
     # endregion
 
@@ -161,7 +165,7 @@ class ApplyTargetVelocity(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `velocity (Vector3D)`: Velocity vector applied to the actor.\n
+            `velocity (Vector3D)`: Velocity vector applied to the actor.
         """
     # endregion
 
@@ -207,7 +211,7 @@ class ApplyTransform(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `transform (Transform)`\n
+            `transform (Transform)`
         """
     # endregion
 
@@ -229,7 +233,7 @@ class ApplyVehicleAckermannControl(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `control (AckermannControllerSettings)`: Vehicle ackermann control to be applied.\n
+            `control (AckermannControllerSettings)`: Vehicle ackermann control to be applied.
         """
     # endregion
 
@@ -251,7 +255,7 @@ class ApplyVehicleControl(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `control (VehicleControl)`: Vehicle control to be applied.\n
+            `control (VehicleControl)`: Vehicle control to be applied.
         """
     # endregion
 
@@ -273,7 +277,7 @@ class ApplyVehiclePhysicsControl(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `control (VehicleControl)`: Physics control to be applied.\n
+            `control (VehicleControl)`: Physics control to be applied.
         """
     # endregion
 
@@ -295,7 +299,7 @@ class ApplyWalkerControl(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `control (VehicleControl)`: Walker control to be applied.\n
+            `control (VehicleControl)`: Walker control to be applied.
         """
     # endregion
 
@@ -321,7 +325,7 @@ class ApplyWalkerState(_IsCommand):
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
             `transform (Transform)`: Transform to be applied.\n
-            `speed (float)`: Speed to be applied (m/s).\n
+            `speed (float)`: Speed to be applied (m/s).
         """
     # endregion
 
@@ -339,7 +343,7 @@ class DestroyActor(_IsCommand):
         """Command adaptation of `destroy()` in `carla.Actor` that tells the simulator to destroy this actor.
 
         Args:
-            `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
+            `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.
         """
     # endregion
 
@@ -385,7 +389,7 @@ class SetAutopilot(_IsCommand):
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
             `enabled (bool)`: _description_\n
-            `port (int, optional)`:  The Traffic Manager port where the vehicle is to be registered or unlisted. If None is passed, it will consider a TM at default port 8000. Defaults to 8000.\n
+            `port (int, optional)`:  The Traffic Manager port where the vehicle is to be registered or unlisted. If None is passed, it will consider a TM at default port 8000. Defaults to 8000.
         """
     # endregion
 
@@ -407,7 +411,7 @@ class SetEnableGravity(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or Actor ID to which the command will be applied to.\n
-            `enabled (bool)`: If gravity should be activated or not.\n
+            `enabled (bool)`: If gravity should be activated or not.
         """
     # endregion
 
@@ -429,7 +433,7 @@ class SetSimulatePhysics(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or Actor ID to which the command will be applied to.\n
-            `enabled (bool)`: If physics should be activated or not.\n
+            `enabled (bool)`: If physics should be activated or not.
         """
     # endregion
 
@@ -451,7 +455,7 @@ class SetVehicleLightState(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or its ID to whom the command will be applied to.\n
-            `light_state (VehicleLightState)`: Recaps the state of the lights of a vehicle, these can be used as a flags.\n
+            `light_state (VehicleLightState)`: Recaps the state of the lights of a vehicle, these can be used as a flags.
         """
     # endregion
 
@@ -473,7 +477,7 @@ class ShowDebugTelemetry(_IsCommand):
 
         Args:
             `actor (Actor | int)`: Actor or Actor ID to which the command will be applied to.\n
-            `enabled (bool)`: If debug should be activated or not.\n
+            `enabled (bool)`: If debug should be activated or not.
         """
     # endregion
 
@@ -501,6 +505,6 @@ class SpawnActor(_IsCommand):
         """Links another command to be executed right after. It allows to ease very common flows such as spawning a set of vehicles by command and then using this method to set them to autopilot automatically.
 
         Args:
-            `command (command)`: a Carla command.\n
+            `command (command)`: a Carla command.
         """
     # endregion

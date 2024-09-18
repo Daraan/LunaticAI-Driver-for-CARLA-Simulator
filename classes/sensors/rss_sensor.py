@@ -110,7 +110,7 @@ class RssSensor(CustomSensorInterface):
         self.situation_snapshot = None
         self.world_model = None
         self.individual_rss_states = []
-        self._allowed_heading_ranges = []
+        self._allowed_heading_ranges: Iterable[ad.rss.state.HeadingRange] = []
         self.ego_dynamics_on_route: Optional[carla.RssEgoDynamicsOnRoute] = None  # set on response
         self.current_vehicle_parameters = self.get_default_parameters()
         self.route = None
@@ -422,8 +422,8 @@ class RssSensor(CustomSensorInterface):
 
     def get_steering_ranges(self) -> List[Tuple[float, float]]:
         return [
-            ((float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.begin)) / self._max_steer_angle,  # pyright: ignore[reportArgumentType]
-             (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.end)) / self._max_steer_angle)    # pyright: ignore[reportArgumentType]
+            ((float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.begin)) / self._max_steer_angle,  # pyright: ignore[reportOptionalMemberAccess]
+             (float(self.ego_dynamics_on_route.ego_heading) - float(heading_range.end)) / self._max_steer_angle)    # pyright: ignore[reportOptionalMemberAccess]
             for heading_range in self._allowed_heading_ranges]
 
     def _on_rss_response(self, response: "carla.RssResponse"):
@@ -448,6 +448,7 @@ class RssSensor(CustomSensorInterface):
                 steering_range = ad.rss.state.HeadingRange()
                 steering_range.begin = - self._max_steer_angle + heading
                 steering_range.end = self._max_steer_angle + heading
+                # Updates heading_ranges -> bool if overlap exists
                 ad.rss.unstructured.getHeadingOverlap(steering_range, heading_ranges)
                 self._allowed_heading_ranges = heading_ranges
             else:
