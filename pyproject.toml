@@ -96,6 +96,7 @@ ignore = [
     "UP035",
     "UP038",
     "UP015",
+    "UP045",  # Use | None instead of Optional[...]
     #"W605",
     "RUF100",
     "PTH100", # os.path.abspath
@@ -175,7 +176,7 @@ ignore = [
 # Keep original examples simple; allow {} in def
 "agents/tools/misc.py" = ["ANN"]
 "agents/tools/debug_drawing.py" = ["ANN"]
-"agents/navigation/controller.py" = ["ANN"]
+"agents/navigation/controller.py" = ["ANN","RUF052"]
 "agents/navigation/basic_agent.py" = ["B006", "ANN"]
 "agents/navigation/behavior_agent.py" = ["B006", "ANN"]
 "agents/navigation/constant_velocity_agent.py" = ["B006", "UP008", "ANN", "ARG005"]

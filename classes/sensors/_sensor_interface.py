@@ -5,7 +5,7 @@ if TYPE_CHECKING:
 
 import carla
 
-__all__ = ['CustomSensorInterface']
+__all__ = ["CustomSensorInterface"]
 
 
 class CustomSensorInterface:
@@ -13,16 +13,21 @@ class CustomSensorInterface:
     This is a mixin for classes like the :py:class:`.camera_manager.CameraManager`
     or the :py:class:`classes.sensors.rss_sensor.RssSensor`
     that either wrap around a :external_py_class:`carla.Sensor` or should have a similar interface.
-    
+
     Attention:
         Not to be confused with :py:class:`srunner.autoagents.sensor_interface.SensorInterface`.
     """
 
     sensor: carla.Sensor
 
-    def destroy(self) -> 'bool | None | Literal["Actor was probably destroyed by the CarlaDataProvider"]':
+    def destroy(
+        self,
+    ) -> (
+        'bool | Literal["Actor was probably destroyed by the CarlaDataProvider"] | None'
+    ):
         """Stops and destroys the actor of the sensor"""
         from launch_tools import CarlaDataProvider  # pylint: disable=import-outside-toplevel # noqa: PLC0415, avoid circular import
+
         if self.sensor is not None:
             self.stop()
             if CarlaDataProvider.actor_id_exists(self.sensor.id):
@@ -35,7 +40,7 @@ class CustomSensorInterface:
             self.sensor = None  # type: ignore
             return destroyed
         return None
-        
+
     def stop(self) -> None:
         """
         Stop the :py:attr:`sensor` if its in listening mode.
@@ -52,7 +57,7 @@ class CustomSensorInterface:
     def __del__(self):
         """
         Calls :py:meth:`stop` and :py:meth:`destroy` when the object is deleted.
-        
+
         :meta public:
         """
         try:

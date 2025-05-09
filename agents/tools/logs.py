@@ -24,10 +24,10 @@ def log(text: str):
     """
     .. deprecated::
         use :py:obj:`logger` instead
-        
+
     :meta private:
     """
-    logging = (os.getenv('SHOW_LOGS') == "true") | False
+    logging = (os.getenv("SHOW_LOGS") == "true") | False
     if logging:
         print(datetime.datetime.now(), text)
 
@@ -38,11 +38,12 @@ def _setup_logger(name: str = "__main__", level: int = logging.DEBUG):
     logger.setLevel(logging.DEBUG)
 
     # NOTE: un-comment a line to adjust the format
-    form = (""
-    #+ "/////////////////////////\n"                          # When using multiple lines, e.g. for full path
-    + "[%(levelname)s][%(filename)s:%(lineno)d, %(funcName)s]: %(message)s"  # note blank space before filename for IDE support
-    #+ "\nin %(pathname)s %(lineno)d, %(funcName)s"
-    #+ "\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" # escaping so double the characters
+    form = (
+        ""
+        # + "/////////////////////////\n"                          # When using multiple lines, e.g. for full path
+        + "[%(levelname)s][%(filename)s:%(lineno)d, %(funcName)s]: %(message)s"  # note blank space before filename for IDE support
+        # + "\nin %(pathname)s %(lineno)d, %(funcName)s"
+        # + "\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" # escaping so double the characters
     )
 
     formatter = logging.Formatter(form)
@@ -62,11 +63,11 @@ def make_logger(name: Optional[str] = None, level: int = logging.DEBUG) -> loggi
     the **name** set.
     Otherwise it will create a logger that is formatted based on :code:`_setup_logger`
     from this file.
-    
+
     Parameters:
         name: The name of the logger. Defaults to "__main__".
         level: The log level for the logger. Defaults to :py:attr:`logging.DEBUG`.
-    
+
     Returns:
         The logger object.
     """
@@ -74,13 +75,14 @@ def make_logger(name: Optional[str] = None, level: int = logging.DEBUG) -> loggi
         name = DEFAULT_NAME
     if USE_HYDRA_IF_POSSIBLE:
         try:
-            import hydra          # type: ignore # noqa
+            import hydra  # type: ignore # noqa
+
             hydra_logging = True
         except ImportError:
             hydra_logging = False
     else:
         hydra_logging = False
-        
+
     if hydra_logging:
         return logging.getLogger(DEFAULT_NAME)
     return _setup_logger(name, level)

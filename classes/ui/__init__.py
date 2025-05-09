@@ -5,16 +5,13 @@ This includes cameras, keyboard inputs, and the HUD.
 Most features are only available from the :py:mod:`pygame` when using :py:attr:`.LaunchConfig.pygame`.
 """
 
-
 # Solutions see: https://stackoverflow.com/questions/69107143/how-to-end-a-while-loop-in-another-thread
 from threading import Event
 import carla
 from agents.tools import logger
 from launch_tools import CarlaDataProvider
 
-__all__ = [
-    'spectator_follow_actor'
-]
+__all__ = ["spectator_follow_actor"]
 
 _follow_car_event = Event()
 """Use the :py:meth:`treading.Event.set` method to stop the thread."""
@@ -66,12 +63,8 @@ def spectator_to_actor(actor: carla.Actor) -> None:
     # Calculate the desired spectator transform
     vehicle_transform = actor.get_transform()
     spectator_transform = vehicle_transform
-    spectator_transform.location -= (
-        vehicle_transform.get_forward_vector() * 10
-    )  # Move 10 meters behind the vehicle
-    spectator_transform.location += (
-        vehicle_transform.get_up_vector() * 5
-    )  # Move 5 meters above the vehicle
+    spectator_transform.location -= vehicle_transform.get_forward_vector() * 10  # Move 10 meters behind the vehicle
+    spectator_transform.location += vehicle_transform.get_up_vector() * 5  # Move 5 meters above the vehicle
     # spectator_transform.rotation.yaw += 180 # Face the vehicle from behind
 
     # Set the spectator's transform in the world

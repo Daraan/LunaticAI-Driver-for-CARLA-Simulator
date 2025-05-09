@@ -1,6 +1,7 @@
 """
 Executing this files allows to run all files in the examples folder.
 """
+
 import importlib.util
 import os
 import sys
@@ -21,7 +22,7 @@ def list_py_files(directory):
 
 
 if os.path.basename(os.getcwd()) == "examples":
-    os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))  # run from main folder
+    os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))  # run from main folder
     print("Changed to directory", os.getcwd(), "from", os.path.basename(os.getcwd()))
 py_files = sorted(list_py_files("examples"))
 sys.path.insert(0, "")  # for import __allow_imports_from_root to work

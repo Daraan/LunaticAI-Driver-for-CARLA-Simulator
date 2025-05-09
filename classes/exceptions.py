@@ -17,7 +17,7 @@ __all__ = [
     "UnblockRuleException",
     "UpdatedPathException",
     "UserInterruption",
-    "_RuleResultException"
+    "_RuleResultException",
 ]
 
 
@@ -29,7 +29,7 @@ class UserInterruption(Exception):
 
     Thrown by
     :py:meth:`LunaticAgent.parse_keyboard_input <agents.lunatic_agent.LunaticAgent.parse_keyboard_input>`.
-    
+
     Note:
         Is not a :py:class:`LunaticAgentException`.
     """
@@ -79,7 +79,6 @@ class SkipInnerLoopException(LunaticAgentException):
 
 
 class EmergencyStopException(LunaticAgentException):
-
     hazards_detected: "set[Hazard]"
 
     def __init__(self, hazards: "set[Hazard]", *args: object) -> None:
@@ -99,12 +98,12 @@ class _RuleResultException(LunaticAgentException):
     """
     Abstract class for exceptions that can be raised by rules
     **that still are able to return a result**.
-    
+
     :meta public:
     """
-    
+
     result: Any = RuleResult.NO_RESULT
-    
+
     def __init__(self, result: Any = RuleResult.NO_RESULT, *args: object):
         super().__init__(*args)
         self.result = result
@@ -113,12 +112,12 @@ class _RuleResultException(LunaticAgentException):
 class NoFurtherRulesException(_RuleResultException):
     """
     Raised when no further rules should be executed in this phase.
-    
+
     Caught by :py:meth:`.LunaticAgent.execute_phase`.
-    
+
     The agent will continue at the phase where the :py:class:`BlockedRule` was triggered.
     """
-    
+
 
 class DoNotEvaluateChildRules(_RuleResultException):
     """
@@ -126,14 +125,14 @@ class DoNotEvaluateChildRules(_RuleResultException):
 
     Can also be raised by child rules to prevent the evaluation of further child rules.
     """
-    
+
 
 class UnblockRuleException(_RuleResultException):
     """
     Can be raised in a :py:class:`BlockedRule` to end it.
-    
+
     The agent will continue at the phase where the :py:class:`BlockedRule` was triggered.
-    
+
     Note:
         Further rules that are in this phase can still be executed.
         Alternatively, consider raising a :py:class:`NoFurtherRulesException`.

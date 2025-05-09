@@ -5,7 +5,7 @@ import carla
 
 import launch_tools
 
-#from classes.experimental.driver import Driver
+# from classes.experimental.driver import Driver
 from classes.experimental.traffic_manager import TrafficManager
 from classes.experimental.vehicle import Vehicle
 from classes.detection_matrix import DetectionMatrix
@@ -40,9 +40,10 @@ def main():
         ap.init_passive_driver()
         ap.start_drive()
 
-    tm = TrafficManager(ego.actor,
-                         # config="json/driver1.json" # Not implemented yet
-                         )
+    tm = TrafficManager(
+        ego.actor,
+        # config="json/driver1.json" # Not implemented yet
+    )
     tm.init_lunatic_driver()
     # ego.setThrottle(1)
     # time.sleep(1)
@@ -67,7 +68,7 @@ def main():
     input("press any key to end...")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     finally:

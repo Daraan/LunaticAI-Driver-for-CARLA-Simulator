@@ -70,7 +70,6 @@ class ApplyAngularImpulse(_IsCommand):
     def impulse(self) -> Vector3D:
         """Angular impulse applied to the actor (degrees*s)."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, impulse: Vector3D) -> None:
         """Applies an angular impulse to an actor.
@@ -92,7 +91,6 @@ class ApplyForce(_IsCommand):
     def force(self) -> Vector3D:
         """Force applied to the actor over time (N)."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, force: Vector3D) -> None:
         """Applies a force to an actor.
@@ -114,7 +112,6 @@ class ApplyImpulse(_IsCommand):
     def impulse(self) -> Vector3D:
         """Impulse applied to the actor (N*s)."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, impulse: Vector3D) -> None:
         """Applies an impulse to an actor.
@@ -136,7 +133,6 @@ class ApplyTargetAngularVelocity(_IsCommand):
     def angular_velocity(self) -> Vector3D:
         """The 3D angular velocity that will be applied to the actor (deg/s)."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, angular_velocity: Vector3D) -> None:
         """Sets the actor's angular velocity vector.
@@ -158,7 +154,6 @@ class ApplyTargetVelocity(_IsCommand):
     def velocity(self) -> Vector3D:
         """The 3D velocity applied to the actor (m/s)."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, velocity: Vector3D) -> None:
         """Sets the actor's target velocity vector.
@@ -204,7 +199,6 @@ class ApplyTransform(_IsCommand):
     def transform(self) -> Transform:
         """Transformation to be applied."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, transform: Transform) -> None:
         """Sets a new transform to an actor.
@@ -226,7 +220,6 @@ class ApplyVehicleAckermannControl(_IsCommand):
     def control(self) -> AckermannControllerSettings:
         """Vehicle ackermann control to be applied."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, control: AckermannControllerSettings) -> None:
         """Applies a certain akermann control to a vehicle.
@@ -248,7 +241,6 @@ class ApplyVehicleControl(_IsCommand):
     def control(self) -> VehicleControl:
         """Vehicle control to be applied."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, control: VehicleControl) -> None:
         """Applies a certain control to a vehicle.
@@ -270,7 +262,6 @@ class ApplyVehiclePhysicsControl(_IsCommand):
     def control(self) -> VehiclePhysicsControl:
         """Physics control to be applied."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, control: VehicleControl) -> None:
         """Applies a new physics control to a vehicle, modifying its physical parameters.
@@ -292,7 +283,6 @@ class ApplyWalkerControl(_IsCommand):
     def control(self) -> VehiclePhysicsControl:
         """Walker control to be applied."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, control: VehicleControl) -> None:
         """Applies a control to a walker.
@@ -317,7 +307,6 @@ class ApplyWalkerState(_IsCommand):
     def speed(self) -> float:
         """Speed to be applied (m/s)."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, transform: Transform, speed: float) -> None:
         """Apply a state to the walker actor.
@@ -337,7 +326,6 @@ class DestroyActor(_IsCommand):
     def actor_id(self) -> int:
         """Actor affected by the command."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int) -> None:
         """Command adaptation of `destroy()` in `carla.Actor` that tells the simulator to destroy this actor.
@@ -361,7 +349,6 @@ class Response:
     def error(self) -> str:
         """A string stating the command has failed."""
     # endregion
-
     # region Methods
     def has_error(self) -> bool:
         """Returns `True` if the command execution fails, and `False` if it was successful."""
@@ -381,7 +368,6 @@ class SetAutopilot(_IsCommand):
     def port(self) -> int:
         """Port of the Traffic Manager where the vehicle is to be registered or unlisted."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, enabled: bool, port=8000) -> None:
         """Turns on/off the vehicle's autopilot mode.
@@ -404,7 +390,6 @@ class SetEnableGravity(_IsCommand):
     def enabled(self) -> bool:
         """If gravity should be activated or not."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, enabled: bool) -> None:
         """Enables or disables gravity on an actor.
@@ -426,7 +411,6 @@ class SetSimulatePhysics(_IsCommand):
     def enabled(self) -> bool:
         """If physics should be activated or not."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, enabled: bool) -> None:
         """Determines whether an actor will be affected by physics or not.
@@ -448,7 +432,6 @@ class SetVehicleLightState(_IsCommand):
     def light_state(self) -> VehicleLightState:
         """Recaps the state of the lights of a vehicle, these can be used as a flags."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, light_state: VehicleLightState) -> None:
         """Sets the light state of a vehicle.
@@ -470,7 +453,6 @@ class ShowDebugTelemetry(_IsCommand):
     def enabled(self) -> bool:
         """If debug should be activated or not."""
     # endregion
-
     # region Methods
     def __init__(self, actor: Actor | int, enabled: bool) -> None:
         """Displays vehicle control telemetry data.
@@ -492,7 +474,6 @@ class SpawnActor(_IsCommand):
     def parent_id(self) -> int:
         """Identificator of the parent actor."""
     # endregion
-
     # region Methods
     @overload
     def __init__(self) -> None: ...
@@ -500,7 +481,6 @@ class SpawnActor(_IsCommand):
     def __init__(self, blueprint: ActorBlueprint, transform: Transform) -> None: ...
     @overload
     def __init__(self, blueprint: ActorBlueprint, transform: Transform, parent: Actor | int) -> None: ...
-
     def then(self, command: _IsCommand) -> _IsCommand:
         """Links another command to be executed right after. It allows to ease very common flows such as spawning a set of vehicles by command and then using this method to set them to autopilot automatically.
 

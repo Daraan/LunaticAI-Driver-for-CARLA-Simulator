@@ -1,7 +1,7 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-""" This module contains the different parameters sets for each behavior. """
+"""This module contains the different parameters sets for each behavior."""
 
 
 class CarlaOriginalBehavior:
@@ -24,6 +24,7 @@ class Cautious(CarlaOriginalBehavior):
 
 class Normal(CarlaOriginalBehavior):
     """Class for Normal agent."""
+
     max_speed = 50
     speed_lim_dist = 3
     speed_decrease = 10
@@ -35,6 +36,7 @@ class Normal(CarlaOriginalBehavior):
 
 class Aggressive(CarlaOriginalBehavior):
     """Class for Aggressive agent."""
+
     max_speed = 70
     speed_lim_dist = 1
     speed_decrease = 8
@@ -46,8 +48,10 @@ class Aggressive(CarlaOriginalBehavior):
 
 # Experiments (not really successful)
 
+
 class Tailgating2(CarlaOriginalBehavior):
     """Class for Aggressive agent."""
+
     max_speed = 60
     speed_lim_dist = 1
     speed_decrease = 8

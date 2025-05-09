@@ -1,5 +1,3 @@
-
-
 from typing import TYPE_CHECKING
 
 from agents.tools.lunatic_agent_tools import detect_obstacles_in_path
@@ -26,5 +24,5 @@ def collision_detection_manager(self: "LunaticAgent"):
 
     vehicle_detection_result = detect_obstacles_in_path(self, self.vehicles_nearby)
     static_obstacle_detection_result = detect_obstacles_in_path(self, self.static_obstacles_nearby)
-    
+
     return vehicle_detection_result, static_obstacle_detection_result

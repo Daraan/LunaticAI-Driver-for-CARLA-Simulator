@@ -7,6 +7,7 @@ from classes.constants import Phase, RoadOption, RulePriority
 from classes.rule import ConditionFunction, Context, Rule
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from agents.tools.hints import ObstacleDetectionResult
 
@@ -26,16 +27,18 @@ def avoid_tailgator_check(self: "AvoidTailgatorRule", ctx: "Context"):
     waypoint = ctx.agent._current_waypoint
 
     # Cheap to get, do we plan to continue in the same lane? We are not at a junction and have some minimum speed
-    pre_conditions = (ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW
-            and not waypoint.is_junction and ctx.live_info.current_speed > 10  # TODO Hardcoded
-            )
+    pre_conditions = (
+        ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW
+        and not waypoint.is_junction
+        and ctx.live_info.current_speed > 10  # TODO Hardcoded
+    )
     if not pre_conditions:
         return False
     # Detect if there is a car behind
     vehicle_list = ctx.agent.vehicles_nearby
-    check_behind: ObstacleDetectionResult = detect_vehicles(ctx.agent, vehicle_list,
-                                   ctx.max_detection_distance("tailgating"),
-                                   up_angle_th=180, low_angle_th=160)
+    check_behind: ObstacleDetectionResult = detect_vehicles(
+        ctx.agent, vehicle_list, ctx.max_detection_distance("tailgating"), up_angle_th=180, low_angle_th=160
+    )
 
     # If there is a tailgator check if faster
     # TODO: or evaluation a bit faster
@@ -48,7 +51,7 @@ class AvoidTailgatorRule(Rule):
     phase = Phase.DETECT_CARS | Phase.END
     condition = avoid_tailgator_check.copy()
     condition.register_action(rule_lane_change, True, order=("right", "left"))
-    #action = make_lane_change # NOTE: when using register_action you can omit this.
+    # action = make_lane_change # NOTE: when using register_action you can omit this.
     cooldown_reset_value = 200
     group = "lane_change"
     priority = RulePriority.HIGH

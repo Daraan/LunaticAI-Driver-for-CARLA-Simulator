@@ -18,16 +18,18 @@ class VehicleSpawner(CarlaDataProvider):
 
     @staticmethod
     def read_config(file_path):
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             return yaml.safe_load(file)
 
     def initialize_carla_service(self):
-        return GameFramework.setup_client_map_and_world(self.launch_config['map'], self.launch_config['host'], self.launch_config['port'])
+        return GameFramework.setup_client_map_and_world(
+            self.launch_config["map"], self.launch_config["host"], self.launch_config["port"]
+        )
 
     def prepare_vehicles(self, world):
-        driver_config_path = self.config['driver']['config']
-        spawn_points_file = self.config['spawn_points']['file']
-        rule_interpreter_config = self.config['rule_interpreter']['config']
+        driver_config_path = self.config["driver"]["config"]
+        spawn_points_file = self.config["spawn_points"]["file"]
+        rule_interpreter_config = self.config["rule_interpreter"]["config"]
 
         ego_bp, car_bp = launch_tools.prepare_blueprints(world)
         driver = Driver(driver_config_path, traffic_manager=self.client)
@@ -52,16 +54,17 @@ class VehicleSpawner(CarlaDataProvider):
 
     def spawn_traffic(self, world, car_bp, spawn_points, driver, ego_vehicle):
         # NOTE: Duplicate in CarlaFunction
-        #client = CarlaDataProvider.get_client()
+        # client = CarlaDataProvider.get_client()
         for sp in spawn_points[1:5]:
             v = Vehicle(world, car_bp)
             v.spawn(sp)
             self.vehicles.append(v)
-            ap = TrafficManager(v.actor, speed_limit_scale=-driver.speed_range[1],
-                                min_front_distance=driver.distance_range[0])
+            ap = TrafficManager(
+                v.actor, speed_limit_scale=-driver.speed_range[1], min_front_distance=driver.distance_range[0]
+            )
             ap.init_lunatic_driver()
             ap.start_drive()
-            #CarlaDataProvider.register_actor(v.actor, sp.transform)
+            # CarlaDataProvider.register_actor(v.actor, sp.transform)
 
         for sp in spawn_points[5:]:
             v = Vehicle(world, car_bp)
@@ -70,11 +73,11 @@ class VehicleSpawner(CarlaDataProvider):
             ap = TrafficManager(v.actor, speed_limit_scale=60, min_front_distance=8)
             ap.init_passive_driver()
             ap.start_drive()
-            #CarlaDataProvider.register_actor(v.actor, sp.transform)
+            # CarlaDataProvider.register_actor(v.actor, sp.transform)
 
-        tm = TrafficManager(ego_vehicle,
-                            speed_limit_scale=-driver.speed_range[1],
-                            min_front_distance=driver.distance_range[0])
+        tm = TrafficManager(
+            ego_vehicle, speed_limit_scale=-driver.speed_range[1], min_front_distance=driver.distance_range[0]
+        )
         tm.init_lunatic_driver()
         tm.start_drive()
         return self.vehicles, tm

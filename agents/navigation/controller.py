@@ -3,7 +3,7 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-""" This module contains PID controllers to perform lateral and longitudinal control. """
+"""This module contains PID controllers to perform lateral and longitudinal control."""
 
 import math
 from collections import deque
@@ -21,8 +21,9 @@ class VehiclePIDController:
     low level control a vehicle from client side
     """
 
-    def __init__(self, vehicle, args_lateral, args_longitudinal, offset=0, max_throttle=0.75, max_brake=0.3,
-                 max_steering=0.8):
+    def __init__(
+        self, vehicle, args_lateral, args_longitudinal, offset=0, max_throttle=0.75, max_brake=0.3, max_steering=0.8
+    ):
         """
         Constructor method.
 
@@ -135,7 +136,7 @@ class PIDLongitudinalController:
         current_speed = get_speed(self._vehicle)
 
         if debug:
-            print(f'Current speed = {current_speed}')
+            print(f"Current speed = {current_speed}")
 
         return self._pid_control(target_speed, current_speed)
 
@@ -223,14 +224,11 @@ class PIDLateralController:
             # Displace the wp to the side
             w_tran = waypoint.transform
             r_vec = w_tran.get_right_vector()
-            w_loc = w_tran.location + carla.Location(x=self._offset * r_vec.x,
-                                                     y=self._offset * r_vec.y)
+            w_loc = w_tran.location + carla.Location(x=self._offset * r_vec.x, y=self._offset * r_vec.y)
         else:
             w_loc = waypoint.transform.location
 
-        w_vec = np.array([w_loc.x - ego_loc.x,
-                          w_loc.y - ego_loc.y,
-                          0.0])
+        w_vec = np.array([w_loc.x - ego_loc.x, w_loc.y - ego_loc.y, 0.0])
 
         wv_linalg = np.linalg.norm(w_vec) * np.linalg.norm(v_vec)
         if wv_linalg == 0:

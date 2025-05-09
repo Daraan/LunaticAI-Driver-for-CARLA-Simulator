@@ -34,25 +34,21 @@ if TYPE_CHECKING:
 
 __all__ = [  # noqa: RUF022
     "AgentConfigT",
-    
     "RuleT",
     "CallableT",
     # Callables
     "CallableCondition",
     "CallableConditionT",
     "AnyCallableCondition",
-    
     # ConditionFunction
     "ConditionFunctionLike",
     "ConditionFunctionLikeT",
     "AnyConditionFunctionLike",
     "AnyConditionFunctionLikeT",
-    
     # Action
     "CallableAction",
     "CallableActionT",
     "AnyCallableAction",
-    
     # Protocols
     "HasBaseSettings",
     "HasConfig",
@@ -63,7 +59,6 @@ __all__ = [  # noqa: RUF022
     "HasPlanner",
     "HasPlannerWithConfig",
     "UseableWithDynamicPlanner",
-    
     "CanDetectObstacles",
     "CanDetectNearbyObstacles",
     "CanDetectNearbyTrafficLights",
@@ -72,7 +67,7 @@ __all__ = [  # noqa: RUF022
 _T = TypeVar("_T", default=Any)
 _CH = TypeVar("_CH", bound=Hashable, default=Hashable)  # Generic of ConditionFunction
 
-_P = ParamSpec("_P", default=[])   # Free, e.g. for action function.
+_P = ParamSpec("_P", default=[])  # Free, e.g. for action function.
 _CP = ParamSpec("_CP", default=[])  # Generic of ConditionFunction
 
 RuleT = TypeVar("RuleT", bound="Rule", default="Rule")
@@ -94,9 +89,9 @@ ControllerClassT = TypeVar("ControllerClassT", bound="KeyboardControl")
 
 
 CallableCondition: TypeAlias = Union[
-                        Callable[Concatenate[RuleT, "Context", _CP], _CH],  # With Rule
-                        Callable[Concatenate["Context", _CP], _CH]          # Only Context
-                        ]
+    Callable[Concatenate[RuleT, "Context", _CP], _CH],  # With Rule
+    Callable[Concatenate["Context", _CP], _CH],  # Only Context
+]
 """
 A :term:`generic type` alias for a callable condition function to be used with a :py:class:`.ConditionFunction`.
 Its first arguments must accept a :py:class:`.Rule` and a :py:class:`.Context`,
@@ -105,9 +100,9 @@ It must return a :term:`hashable` value.
 """
 
 CallableAction: TypeAlias = Union[
-                        Callable[Concatenate[RuleT, "Context", _P], _T],  # With Rule
-                        Callable[Concatenate["Context", _P], _T]          # Only Context
-                        ]
+    Callable[Concatenate[RuleT, "Context", _P], _T],  # With Rule
+    Callable[Concatenate["Context", _P], _T],  # Only Context
+]
 """
 A :term:`generic type` alias for a callable action function to be used with a :py:class:`.Rule`
 or :py:meth:`.ConditionFunction.register_action`.
@@ -120,14 +115,14 @@ It can return an arbitrary value.
 CallableT = TypeVar("CallableT", bound=Callable[..., Any])
 """A :py:class:`typing.TypeVar`: for a any callable."""
 
-AgentConfigT = TypeVar("AgentConfigT", bound="AgentConfig", default="AgentConfig",
-                         infer_variance=True)
+AgentConfigT = TypeVar("AgentConfigT", bound="AgentConfig", default="AgentConfig", infer_variance=True)
 """A :py:class:`typing.TypeVar`: for a :py:class:`.AgentConfig` type."""
 
-ConditionFunctionLike = TypeAliasType("ConditionFunctionLike",
-                                      Union[CallableCondition[RuleT, _CP, _CH],
-                                            "ConditionFunction[_CP, _CH]"],
-                                      type_params=(RuleT, _CP, _CH))
+ConditionFunctionLike = TypeAliasType(
+    "ConditionFunctionLike",
+    Union[CallableCondition[RuleT, _CP, _CH], "ConditionFunction[_CP, _CH]"],
+    type_params=(RuleT, _CP, _CH),
+)
 """
 Callable that can be used for :py:attr:`.Rule.condition`.
 A callable that uses a :py:class:`Context` object as a single argument,
@@ -140,9 +135,11 @@ ConditionFunctionLikeT = ...  # Version limitation, fixing done below
 """:py:class:`.TypeVar` version of :py:obj:`ConditionFunctionLike`"""
 
 
-AnyConditionFunctionLike = TypeAliasType("AnyConditionFunctionLike",
-    Union[CallableCondition[RuleT, _CP, _CH],
-          "ConditionFunction[_CP, _CH]"], type_params=(RuleT, _CP, _CH))
+AnyConditionFunctionLike = TypeAliasType(
+    "AnyConditionFunctionLike",
+    Union[CallableCondition[RuleT, _CP, _CH], "ConditionFunction[_CP, _CH]"],
+    type_params=(RuleT, _CP, _CH),
+)
 """
 A :term:`generic type` alias for a callable condition function to be used with a :py:class:`.Rule`.
 Its first arguments must accept a :py:class:`.Rule` and a :py:class:`.Context`,
@@ -159,7 +156,7 @@ if TYPE_CHECKING or sys.version_info >= (3, 11):
 
     AnyCallableAction: TypeAlias = CallableAction[RuleT, ..., Any]
     """Non generic variant of :py:obj:`CallableAction`, can use used as :py:class:`typing.TypeAlias`."""
-    
+
     ConditionFunctionLikeT = TypeVar("ConditionFunctionLikeT", bound=ConditionFunctionLike["Rule", ..., Hashable])
     """:py:class:`.TypeVar` version of :py:obj:`ConditionFunctionLike`"""
 
@@ -170,33 +167,36 @@ elif sys.version_info[:2] <= (3, 10):
     # Create valid concatenate types
     __ConcatRC = Concatenate["Rule", "Context", __ellipsis_dummy]
     __ConcatC = Concatenate["Context", __ellipsis_dummy]
-    
+
     AnyCallableAction = CallableAction["Rule", __ellipsis_dummy, Any]
     AnyCallableCondition = CallableCondition["Rule", __ellipsis_dummy, Hashable]
-    
+
     __ConditionFunctionLikeBound = ConditionFunctionLike["Rule", __ellipsis_dummy, Hashable]
-    
+
     # Remove dummy parameter
-    __ConcatRC.__args__ = __ConcatRC.__args__[:-1] + (...,)
-    __ConcatC.__args__ = __ConcatC.__args__[:-1] + (...,)
-    __ConditionFunctionLikeBound.__args__ = tuple(a if a is not __ellipsis_dummy
-                                                  else ...
-                                                  for a in __ConditionFunctionLikeBound.__args__)
+    __ConcatRC.__args__ = (*__ConcatRC.__args__[:-1], ...)
+    __ConcatC.__args__ = (*__ConcatC.__args__[:-1], ...)
+    __ConditionFunctionLikeBound.__args__ = tuple(
+        a if a is not __ellipsis_dummy else ... for a in __ConditionFunctionLikeBound.__args__
+    )
     AnyCallableCondition.__args__[0].__args__ = (__ConcatRC, Hashable)
     AnyCallableCondition.__args__[1].__args__ = (__ConcatC, Hashable)
     AnyCallableAction.__args__[0].__args__ = (__ConcatRC, Any)
     AnyCallableAction.__args__[1].__args__ = (__ConcatC, Any)
-    AnyCallableCondition.__parameters__ = AnyCallableCondition.__args__[0].__parameters__ = \
-        AnyCallableCondition.__args__[1].__parameters__ = AnyCallableAction.__parameters__ = \
-        AnyCallableAction.__args__[0].__parameters__ = AnyCallableAction.__args__[1].__parameters__ = \
-        __ConditionFunctionLikeBound.__parameters__ = ()
-    
+    AnyCallableCondition.__parameters__ = AnyCallableCondition.__args__[
+        0
+    ].__parameters__ = AnyCallableCondition.__args__[1].__parameters__ = (
+        AnyCallableAction.__parameters__
+    ) = AnyCallableAction.__args__[0].__parameters__ = AnyCallableAction.__args__[1].__parameters__ = (
+        __ConditionFunctionLikeBound.__parameters__
+    ) = ()
+
     ConditionFunctionLikeT = TypeVar("ConditionFunctionLikeT", bound=__ConditionFunctionLikeBound)
 else:
     # Works for older typing_extensions versions, e.g. 4.10.0 and Python3.10
     AnyCallableCondition = CallableCondition["Rule", Concatenate[...], Hashable]
     AnyCallableAction = CallableAction["Rule", Concatenate[...], Any]
-    
+
 CallableConditionT = TypeVar("CallableConditionT", bound=AnyCallableCondition)
 """:py:class:`typing.TypeVar` variant of :py:obj:`AnyCallableCondition`."""
 
@@ -206,9 +206,10 @@ CallableActionT = TypeVar("CallableActionT", bound=AnyCallableAction)
 
 # ------------- Protocols -------------
 
+
 class HasBaseSettings(Protocol[AgentConfigT]):
     BASE_SETTINGS: type[AgentConfigT]
-    
+
 
 class HasConfig(Protocol[AgentConfigT]):
     @property  # Note: Must be read-only, can be normal attribute when implemented
@@ -219,10 +220,9 @@ class HasConfig(Protocol[AgentConfigT]):
         ...
 
 
-LocalPlannerT = TypeVar("LocalPlannerT",
-                         bound="LocalPlanner",
-                         default="LocalPlanner",
-                         infer_variance=True)  # is covariant, but avoid _co style for documentation
+LocalPlannerT = TypeVar(
+    "LocalPlannerT", bound="LocalPlanner", default="LocalPlanner", infer_variance=True
+)  # is covariant, but avoid _co style for documentation
 """A :py:class:`typing.TypeVar`: for a :py:class:`.LocalPlanner` type."""
 
 
@@ -230,16 +230,16 @@ class HasPlanner(Protocol[LocalPlannerT]):
     """
     Uses a Local planner to calculate controls
     """
-    
+
     @property
     def _local_planner(self) -> LocalPlannerT:
         """
         read-only attribute for a :py:class:`.LocalPlanner` object; can also be a normal attribute.
-        
+
         :meta public:
         """
         ...
-    
+
     def _calculate_control(self, debug: bool = False, *args, **kwargs) -> carla.VehicleControl:  # pyright: ignore
         """
         :meta public:
@@ -251,7 +251,7 @@ class HasPlannerWithConfig(HasPlanner["DynamicLocalPlanner"], HasConfig[AgentCon
     """
     Uses a :py:class:`.DynamicLocalPlanner` that works with a :py:class:`.AgentConfig`
     """
-    
+
 
 class HasContext(Protocol):
     ctx: "Context"
@@ -262,32 +262,30 @@ class Has_WorldModel(Protocol):
     """
     :meta public:
     """
-    
+
 
 class HasStates(Protocol):
     current_states: dict["AgentState", int]
-    
+
 
 class Has_Vehicle(Protocol):
     _vehicle: carla.Vehicle
     """
     :meta public:
     """
-    
+
 
 class UseableWithDynamicPlanner(HasPlannerWithConfig, Has_Vehicle, HasContext, Protocol):
     """Can be used with :py:class:`.DynamicLocalPlanner`."""
 
 
-class CanDetectObstacles(Has_Vehicle, HasPlanner,
-                         HasConfig["BehaviorAgentSettings | LunaticAgentSettings"],
-                         Protocol):
+class CanDetectObstacles(Has_Vehicle, HasPlanner, HasConfig["BehaviorAgentSettings | LunaticAgentSettings"], Protocol):
     """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles`."""
-    
+
 
 class CanDetectNearbyObstacles(CanDetectObstacles, Protocol):
     """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`."""
-    
+
     all_obstacles_nearby: list[carla.Actor]
     """Actors that are considered to be near the actor."""
 
@@ -308,21 +306,21 @@ class CanDetectNearbyObstacles(CanDetectObstacles, Protocol):
 
 class CanDetectNearbyTrafficLights(CanDetectObstacles, HasStates, Has_WorldModel, Protocol):
     """Can be used with :py:func:`lunatic_agent_tools.detect_obstacles_in_path`."""
-    
+
     traffic_lights_nearby: list[carla.TrafficLight]
     """Actors that are considered to be near the actor."""
-    
+
     _last_traffic_light: Optional[carla.TrafficLight]
     """
     Last traffic light that was detected. At a red traffic light it can be checked if this is still
     red.
-    
+
     Attention:
         Not necessarily the same as :py:attr:`.InformationManager.Information.relevant_traffic_light`.
-    
+
     :meta public:
     """
-    
+
     _current_waypoint: carla.Waypoint
     """
     :meta public:

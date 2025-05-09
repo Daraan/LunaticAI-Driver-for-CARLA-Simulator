@@ -14,6 +14,7 @@ from agents.dynamic_planning.dynamic_controller import DynamicVehiclePIDControll
 from agents.navigation.local_planner import LocalPlanner, PlannedWaypoint
 from agents.tools.misc import draw_waypoints, get_speed
 from classes.constants import RoadOption
+
 if TYPE_CHECKING:
     from classes.type_protocols import UseableWithDynamicPlanner
     from classes.sensors.rss_sensor import RssSensor
@@ -30,27 +31,29 @@ class DynamicLocalPlanner(LocalPlanner):
     When multiple paths are available (intersections) this local planner makes a random choice,
     unless a given global plan has already been specified.
     """
+
     _waypoints_queue: "deque[Tuple[carla.Waypoint, RoadOption]]"
 
     @property
     def config(self):
         return self._agent.ctx.config
 
-    def __init__(self,
-                 agent: "UseableWithDynamicPlanner",
-                 opt_dict: None,
-                 map_inst: carla.Map = None,  # type: ignore # keep for compatibility, inform user
-                 world: carla.World = None    # type: ignore # keep for compatibility, inform user
-                 ):
+    def __init__(
+        self,
+        agent: "UseableWithDynamicPlanner",
+        opt_dict: None,
+        map_inst: carla.Map = None,  # type: ignore # keep for compatibility, inform user
+        world: carla.World = None,  # type: ignore # keep for compatibility, inform user
+    ):
         """
         :param vehicle: actor to apply to local planner logic onto
         :param opt_dict:
-            
+
             Attention:
                 .. deprecated:: _
                     Do not use anymore. The agent's :py:attr:`config<.LunaticAgent.config>`
                     is used instead.
-             
+
             dictionary of arguments with different parameters:
             dt: time between simulation steps
             target_speed: desired cruise speed in Km/h
@@ -60,16 +63,16 @@ class DynamicLocalPlanner(LocalPlanner):
             max_throttle: maximum throttle applied to the vehicle
             max_steering: maximum steering applied to the vehicle
             offset: distance between the route waypoints and the center of the lane
-            
+
         :param map_inst: carla.Map instance to avoid the expensive call of getting it.
-        
+
         Raises:
             ValueError: If the 'opt_dict' parameter is passed.
         """
         if opt_dict:
             raise ValueError("The 'opt_dict' parameter is deprecated. Do not pass")
-        
-        #self._agent : LunaticAgent = weakref.proxy(agent)
+
+        # self._agent : LunaticAgent = weakref.proxy(agent)
         self._agent = agent
         self._vehicle = self._agent._vehicle
         assert self._vehicle, "The agent must have a vehicle to create a local planner"
@@ -104,7 +107,7 @@ class DynamicLocalPlanner(LocalPlanner):
     def next_target(self) -> Tuple[carla.Waypoint, RoadOption]:
         """
         The next waypoint and road option in the queue to use this step.
-        
+
         Raises:
             IndexError: If the queue is empty.
         """
@@ -128,8 +131,10 @@ class DynamicLocalPlanner(LocalPlanner):
         :return:
         """
         if self.config.speed.follow_speed_limits:
-            print("WARNING: The max speed is currently set to follow the speed limits. "
-                  "Use 'follow_speed_limits' to deactivate this")
+            print(
+                "WARNING: The max speed is currently set to follow the speed limits. "
+                "Use 'follow_speed_limits' to deactivate this"
+            )
         self.config.speed.target_speed = speed
 
     def follow_speed_limits(self, value=True):
@@ -165,11 +170,13 @@ class DynamicLocalPlanner(LocalPlanner):
         # Purge the queue of obsolete waypoints
         veh_location = self._vehicle.get_location()
         vehicle_speed = get_speed(self._vehicle) / 3.6
-        self._min_distance = self.config.planner.min_distance_next_waypoint + self.config.planner.next_waypoint_distance_ratio * vehicle_speed
+        self._min_distance = (
+            self.config.planner.min_distance_next_waypoint
+            + self.config.planner.next_waypoint_distance_ratio * vehicle_speed
+        )
 
         num_waypoint_removed = 0
         for waypoint, _ in self._waypoints_queue:
-
             if len(self._waypoints_queue) - num_waypoint_removed == 1:
                 min_distance = 1  # Don't remove the last waypoint until very close by
             else:
@@ -197,24 +204,31 @@ class DynamicLocalPlanner(LocalPlanner):
             control = self._vehicle_controller.run_step(self.target_waypoint)
 
         if debug:
-            draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], road_options=[self.target_road_option], z=1.0)
+            draw_waypoints(
+                self._vehicle.get_world(), [self.target_waypoint], road_options=[self.target_road_option], z=1.0
+            )
 
         return control
 
+
 # def get_incoming_waypoint_and_direction(self, steps=3):
-  
+
 
 class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
-    
-    def __init__(self, agent,
-                 opt_dict: None = None,
-                 map_inst: carla.Map = None,  # type: ignore # keep for compatibility, inform user
-                 world: carla.World = None,  # type: ignore # keep for compatibility, inform user
-                 rss_sensor: Optional[RssSensor] = None):
+    def __init__(
+        self,
+        agent,
+        opt_dict: None = None,
+        map_inst: carla.Map = None,  # type: ignore # keep for compatibility, inform user
+        world: carla.World = None,  # type: ignore # keep for compatibility, inform user
+        rss_sensor: Optional[RssSensor] = None,
+    ):
         super().__init__(agent, opt_dict, map_inst, world)
         self._rss_sensor = rss_sensor
-        
-    def set_global_plan(self, current_plan: List[Tuple[carla.Waypoint, RoadOption]], stop_waypoint_creation=True, clean_queue=True):
+
+    def set_global_plan(
+        self, current_plan: List[Tuple[carla.Waypoint, RoadOption]], stop_waypoint_creation=True, clean_queue=True
+    ):
         """
         Adds a new plan to the local planner. A plan must be a list of [carla.Waypoint, RoadOption] pairs
         The 'clean_queue` parameter erases the previous plan if True, otherwise, it adds it to the old one
@@ -239,7 +253,9 @@ class DynamicLocalPlannerWithRss(DynamicLocalPlanner):
 
         if self._rss_sensor:
             self._rss_sensor.sensor.reset_routing_targets()
-            assert len(self._rss_sensor.sensor.routing_targets) == 0, f"Routing targets not cleared. Remaining: {self._rss_sensor.sensor.routing_targets}"  # TODO: End remove.
+            assert len(self._rss_sensor.sensor.routing_targets) == 0, (
+                f"Routing targets not cleared. Remaining: {self._rss_sensor.sensor.routing_targets}"
+            )  # TODO: End remove.
         for elem in current_plan:
             self._waypoints_queue.append(elem)
             if self._rss_sensor:

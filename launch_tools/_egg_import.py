@@ -9,10 +9,9 @@ from pathlib import Path
 import sys
 
 CARLA_ROOT = os.environ.get("CARLA_ROOT")
-FILE_NAME = 'PythonAPI/carla/dist/carla-*{major}.{minor}-{syst}.egg'.format(
-            major=sys.version_info.major,
-            minor=sys.version_info.minor,
-            syst='win-amd64' if os.name == 'nt' else 'linux-x86_64')
+FILE_NAME = "PythonAPI/carla/dist/carla-*{major}.{minor}-{syst}.egg".format(
+    major=sys.version_info.major, minor=sys.version_info.minor, syst="win-amd64" if os.name == "nt" else "linux-x86_64"
+)
 
 
 def import_carla():
@@ -33,7 +32,9 @@ def import_carla():
         print("ERROR: Cannot find", (path / FILE_NAME).resolve())
         return None
     if len(eggs) > 1:
-        print("WARNING: Found multiple eggs, choosing last one by string. If you are using CARLA 0.10+ add the .egg file to your PYTHONPATH.")
+        print(
+            "WARNING: Found multiple eggs, choosing last one by string. If you are using CARLA 0.10+ add the .egg file to your PYTHONPATH."
+        )
         egg_path = max(eggs)
     else:
         egg_path = eggs[0]

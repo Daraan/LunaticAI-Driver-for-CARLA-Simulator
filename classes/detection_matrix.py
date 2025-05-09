@@ -9,13 +9,14 @@ from classes._data_gathering.car_detection_matrix.informationUtils import (
     check_ego_on_highway,
     create_city_matrix,
     detect_surrounding_cars,
-    get_all_road_lane_ids
+    get_all_road_lane_ids,
 )
 
 from launch_tools import CarlaDataProvider
 
 import matplotlib  # noqa: ICN001
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.backends.backend_agg as agg
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,35 +32,37 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes as MplAxes
 
 
-def matrix_for_actor(ego_vehicle: carla.Actor,
-                     road_lane_ids: "set[RoadLaneId]",
-                     radius: float = 100.0,
-                     highway_shape: Optional["HighWayShape"] = None):
+def matrix_for_actor(
+    ego_vehicle: carla.Actor,
+    road_lane_ids: "set[RoadLaneId]",
+    radius: float = 100.0,
+    highway_shape: Optional["HighWayShape"] = None,
+):
     """
     Calculates the detection matrix for the given actor.
-    
+
     Parameters:
         ego_vehicle: The ego vehicle
         highway_shape (tuple): Tuple containing highway_type, number of straight highway lanes, entry waypoint tuple and/ exit waypoint tuple.
             Format: (highway_type: string, straight_lanes: int, entry_wps: ([wp,..], [wp,..]), exit_wps: ([wp,..], [wp,..]))
-    
+
     Note:
         :py:class:`.CarlaDataProvider` needs to be set up before calling this function.
     """
     world = CarlaDataProvider.get_world()
     world_map = CarlaDataProvider.get_map()
     ego_location = ego_vehicle.get_location()
-    #ego_waypoint = world_map.get_waypoint(ego_location)
+    # ego_waypoint = world_map.get_waypoint(ego_location)
     ego_on_highway = check_ego_on_highway(ego_location, road_lane_ids, world_map)
 
-    #current_lanes = [rl_id[1] for rl_id in road_lane_ids if rl_id[0] == ego_waypoint.road_id]
+    # current_lanes = [rl_id[1] for rl_id in road_lane_ids if rl_id[0] == ego_waypoint.road_id]
 
     # Normal Road; TODO: Check if this is useful
-    #if ego_on_highway:
+    # if ego_on_highway:
     #    street_type = StreetType.ON_HIGHWAY
-    #else:
+    # else:
     #    street_type = StreetType.NON_HIGHWAY_STREET
-    
+
     # NOTE: in rare unsupported cases, the function will return None
     matrix = create_city_matrix(ego_location, road_lane_ids, world_map)
 
@@ -71,9 +74,9 @@ def matrix_for_actor(ego_vehicle: carla.Actor,
         return None
     # Removes the information about "left_outer_lane" by replacing it with numeric values.
     # TODO: Should possibly revert this to be more compatible with source and differentiate cases!
-    #new_matrix = dict(enumerate(matrix.values()))
-    #matrix = new_matrix
-    #return matrix
+    # new_matrix = dict(enumerate(matrix.values()))
+    # matrix = new_matrix
+    # return matrix
     return dict(enumerate(matrix.values()))
 
 
@@ -109,10 +112,12 @@ class DetectionMatrix:
           the matrix can be :code:`None`. Be aware of this when using :py:class:`AsyncDetectionMatrix`.
     """
 
-    def __init__(self,
-                 ego_vehicle: carla.Actor,
-                 road_lane_ids: Optional[Set[RoadLaneId]] = None,
-                 radius: float = 100.0,):
+    def __init__(
+        self,
+        ego_vehicle: carla.Actor,
+        road_lane_ids: Optional[Set[RoadLaneId]] = None,
+        radius: float = 100.0,
+    ):
         self._ego_vehicle = ego_vehicle
         self.running = True
         """If the matrix will perform updates."""
@@ -139,7 +144,7 @@ class DetectionMatrix:
     def getMatrix(self) -> Dict[int, List[int]]:
         return self.matrix
 
-    def to_list(self) -> "None | list[list[int]]":
+    def to_list(self) -> "list[list[int]] | None":
         """
         Returns the values of :py:attr:`matrix` as a list.
         """
@@ -147,7 +152,7 @@ class DetectionMatrix:
             return None
         return list(self.matrix.values())
 
-    def to_numpy(self) -> "None | np.ndarray[int, Any]":
+    def to_numpy(self) -> "np.ndarray[int, Any] | None":
         """
         Returns the values of :py:attr:`matrix` as a numpy array.
         """
@@ -156,25 +161,29 @@ class DetectionMatrix:
         return np.array(self.to_list())
 
     if TYPE_CHECKING:
+
         class RenderOptions(TypedDict, total=False, closed=True):
             """Signature for :py:meth:`.DetectionMatrix.render`."""
+
             imshow_settings: dict[str, Any]
             vertical: bool
             draw_values: bool
             text_settings: dict[str, Any]
             draw: bool
 
-    def render(self,
-               display: pygame.Surface,
-               imshow_settings: dict[str, Any] = {'cmap': 'jet'},  # noqa: B006
-               vertical: bool = True,
-               draw_values: bool = True,
-               text_settings: dict[str, Any] = {'color': 'orange'},  # noqa: B006
-               *,
-               draw: bool = True) -> None:
+    def render(
+        self,
+        display: pygame.Surface,
+        imshow_settings: dict[str, Any] = {"cmap": "jet"},  # noqa: B006
+        vertical: bool = True,
+        draw_values: bool = True,
+        text_settings: dict[str, Any] = {"color": "orange"},  # noqa: B006
+        *,
+        draw: bool = True,
+    ) -> None:
         """
         Renders the matrix on the given **surface** using :py:mod:`matplotlib`.
-        
+
         Parameters:
             display: The surface to render the matrix on.
             imshow_settings: The settings for :py:meth:`matplotlib.pyplot.imshow`.
@@ -197,8 +206,8 @@ class DetectionMatrix:
         ax.imshow(matrix, **imshow_settings)
         if draw_values:
             for (i, j), val in np.ndenumerate(matrix):
-                ax.text(j, i, val, ha='center', va='center', **text_settings)
-        ax.axis('off')
+                ax.text(j, i, val, ha="center", va="center", **text_settings)
+        ax.axis("off")
         fig.tight_layout(pad=0)
 
         canvas: agg.FigureCanvasAgg = fig.canvas  # type: ignore[assignment]
@@ -244,6 +253,7 @@ class DetectionMatrix:
         :meta private:
         """
         from classes.ui.keyboard_controls import RSSKeyboardControl  # noqa: PLC0415 # lazy import
+
         logger.info(f"DetectionMatrix: signal {signum} received. Stopping.")
         self.stop()
         # Can only have one signal handler!
@@ -264,10 +274,10 @@ class AsyncDetectionMatrix(DetectionMatrix):
 
     Will calculate the matrix update in a separate thread.
     """
-    
-    def __init__(self, ego_vehicle: carla.Actor, *,
-                 road_lane_ids: Optional[Set[RoadLaneId]] = None,
-                 sleep_time: float = 0.1):
+
+    def __init__(
+        self, ego_vehicle: carla.Actor, *, road_lane_ids: Optional[Set[RoadLaneId]] = None, sleep_time: float = 0.1
+    ):
         """
         Parameters:
             ego_vehicle: The ego vehicle.

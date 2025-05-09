@@ -10,7 +10,9 @@ if TYPE_CHECKING:
     from classes.constants import Hazard
 
 
-def emergency_manager(self: "LunaticAgent", *, reasons: "set[Hazard]", control: Optional["carla.VehicleControl"] = None, force=False) -> "carla.VehicleControl":
+def emergency_manager(
+    self: "LunaticAgent", *, reasons: "set[Hazard]", control: Optional["carla.VehicleControl"] = None, force=False
+) -> "carla.VehicleControl":
     """
     Modifies the control values to perform an emergency stop.
     The steering remains unchanged to avoid going out of the lane during turns.
@@ -31,12 +33,18 @@ def emergency_manager(self: "LunaticAgent", *, reasons: "set[Hazard]", control: 
 
     # TODO, future: Can be turned into a rule. Problem here and with rule it will trigger each step -> new random value
     # rule should return consistent result for a period of time
-    if self.config.emergency.ignore_percentage > 0.0 and self.config.emergency.ignore_percentage / 100 > random.random():
+    if (
+        self.config.emergency.ignore_percentage > 0.0
+        and self.config.emergency.ignore_percentage / 100 > random.random()
+    ):
         return control
-    
+
     control.throttle = 0.0
     # negate the chosen default setting
-    if self.config.emergency.hand_brake_modify_chance > 0.0 and self.config.emergency.hand_brake_modify_chance / 100 > random.random():
+    if (
+        self.config.emergency.hand_brake_modify_chance > 0.0
+        and self.config.emergency.hand_brake_modify_chance / 100 > random.random()
+    ):
         control.hand_brake = not self.config.emergency.hand_brake
     else:
         control.hand_brake = self.config.emergency.hand_brake

@@ -9,21 +9,22 @@ class RuleInterpreter:
     """
     This is a second way of implementing rules from files and not via the Rule interface.
     """
+
     def __init__(self, filename):
         self.filename = filename
         self.functions = self.load_functions(filename)
 
     def load_functions(self, filename):
-        file_extension = filename.split('.')[-1].lower()
-        if file_extension == 'json':
-            with open(filename, 'r') as file:
+        file_extension = filename.split(".")[-1].lower()
+        if file_extension == "json":
+            with open(filename, "r") as file:
                 return json.load(file)
-        elif file_extension in ['yaml', 'yml']:
-            with open(filename, 'r') as file:
+        elif file_extension in ["yaml", "yml"]:
+            with open(filename, "r") as file:
                 return yaml.safe_load(file)
-        elif file_extension == 'py':
+        elif file_extension == "py":
             return self.load_py_functions(filename)
-        elif file_extension == 'xml':
+        elif file_extension == "xml":
             return self.load_xml_functions(filename)
         else:
             raise ValueError("Unsupported file format. Please provide a JSON, YAML, Python, or XML file.")
@@ -40,12 +41,12 @@ class RuleInterpreter:
         tree = ET.parse(filepath)
         root = tree.getroot()
         functions = {}
-        for func in root.findall('function'):
-            name = func.get('name')
-            logic = func.find('logic').text
-            params = [param.text for param in func.find('parameters')]
-            opt_params = {opt_param.tag: opt_param.text for opt_param in func.find('optional_parameters')}
-            functions[name] = {'logic': logic, 'parameters': params, 'optional_parameters': opt_params}
+        for func in root.findall("function"):
+            name = func.get("name")
+            logic = func.find("logic").text
+            params = [param.text for param in func.find("parameters")]
+            opt_params = {opt_param.tag: opt_param.text for opt_param in func.find("optional_parameters")}
+            functions[name] = {"logic": logic, "parameters": params, "optional_parameters": opt_params}
         return functions
 
     def execute_all_functions(self, driver, matrix, i_car, j_car, tm):
@@ -53,8 +54,8 @@ class RuleInterpreter:
         try:
             for function_name, function_data in self.functions.items():
                 if isinstance(function_data, dict):
-                    logic = compile(function_data['logic'], '', 'exec')
-                    local_vars = {**locals().copy(), **function_data.get('optional_parameters', {})}
+                    logic = compile(function_data["logic"], "", "exec")
+                    local_vars = {**locals().copy(), **function_data.get("optional_parameters", {})}
                     exec(logic, globals(), local_vars)
                     func = local_vars.get(function_name)
                 else:

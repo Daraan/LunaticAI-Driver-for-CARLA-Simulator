@@ -48,6 +48,7 @@ from .__carla_rss import (
     RssRoadBoundariesMode as RssRoadBoundariesMode,
     RssSensor as RssSensor,
 )
+
 # -------------------------------
 from . import command
 
@@ -137,23 +138,21 @@ class AckermannControllerSettings:
     def accel_kd(self) -> float:
         """Derivative term of the acceleration PID controller."""
     # endregion
-
     # region Methods
-    def __init__(self,
-                 speed_kp: float = 0.15,
-                 speed_ki: float = 0.0,
-                 speed_kd: float = 0.25,
-                 accel_kp: float = 0.01,
-                 accel_ki: float = 0.0,
-                 accel_kd: float = 0.01) -> None:
+    def __init__(
+        self,
+        speed_kp: float = 0.15,
+        speed_ki: float = 0.0,
+        speed_kd: float = 0.25,
+        accel_kp: float = 0.01,
+        accel_ki: float = 0.0,
+        accel_kd: float = 0.01,
+    ) -> None:
         """Manages the settings of the Ackermann PID controller."""
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: AckermannControllerSettings, /) -> bool: ...
-
     def __ne__(self, other: AckermannControllerSettings, /) -> bool: ...
-
     def __str__(self) -> str: ...
     # endregion
 
@@ -213,7 +212,6 @@ class Actor:
     def bounding_box(self) -> BoundingBox:
         """Bounding box containing the geometry of the actor. Its location and rotation are relative to the actor it is attached to."""
     # endregion
-
     # region Methods
     def add_angular_impulse(self, angular_impulse: Vector3D):
         """Applies an angular impulse at the center of mass of the actor.
@@ -275,7 +273,6 @@ class Actor:
             `velocity (Vector3D - m/s)`:  Velocity vector in local space.
         """
     # endregion
-
     # region Getters
     def get_acceleration(self) -> Vector3D:
         """Returns the actor's 3D acceleration vector the client received during last tick.
@@ -333,7 +330,6 @@ class Actor:
             `World`
         """
     # endregion
-
     # region Setters
     def set_enable_gravity(self, enabled: bool):
         """Enables or disables gravity for the actor.
@@ -386,7 +382,6 @@ class Actor:
             `transform (Transform)`
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -414,7 +409,6 @@ class ActorAttribute:
     def type(self) -> ActorAttributeType:
         """The attribute's parameter type."""
     # endregion
-
     # region Methods
     def as_bool(self) -> bool:
         """Reads the attribute as boolean value."""
@@ -431,7 +425,6 @@ class ActorAttribute:
     def as_str(self) -> str:
         """Reads the attribute as string."""
     # endregion
-
     # region Dunder Methods
     def __bool__(self) -> bool: ...
     def __eq__(self, other: Union[bool, float, str, Color, ActorAttribute], /) -> bool: ...
@@ -471,7 +464,6 @@ class ActorBlueprint:
         E.g. `['0001', 'pedestrian', 'walker']`.
         """
     # endregion
-
     # region Methods
     def has_attribute(self, id: str) -> bool:
         """Returns `True` if the blueprint contains the attribute `id`.
@@ -505,7 +497,6 @@ class ActorBlueprint:
             `bool`
         """
     # endregion
-
     # region Getters
     def get_attribute(self, id: str) -> ActorAttribute:
         """Returns the actor's attribute with `id` as identifier if existing.
@@ -519,7 +510,6 @@ class ActorBlueprint:
             `ActorAttribute`
         """
     # endregion
-
     # region Setters
     def set_attribute(self, id: str, value: str) -> None:
         """If the `id` attribute is modifiable, changes its value to `value`.
@@ -529,7 +519,6 @@ class ActorBlueprint:
             `value (str)`: The new value for said attribute.
         """
     # endregion
-
     # region Dunder Methods
     def __iter__(self) -> Iterator[ActorAttribute]:
         """Iterate over the `carla.ActorAttribute` that this blueprint has."""
@@ -547,22 +536,18 @@ class ActorList(Generic[__Actor]):
     """
 
     # Heuristic to infer type without Generic
-    
+
     @overload
-    def filter(self, wildcard_pattern: Literal['traffic_light.*']) -> ActorList[TrafficLight]: ...
-    
+    def filter(self, wildcard_pattern: Literal["traffic_light.*"]) -> ActorList[TrafficLight]: ...
     @overload
-    def filter(self, wildcard_pattern: Literal['vehicle.*']) -> ActorList[Vehicle]: ...
-    
+    def filter(self, wildcard_pattern: Literal["vehicle.*"]) -> ActorList[Vehicle]: ...
     @overload
-    def filter(self, wildcard_pattern: Literal['walker.pedestrian.*', 'walker.*']) -> ActorList[Walker]: ...
-    
+    def filter(self, wildcard_pattern: Literal["walker.pedestrian.*", "walker.*"]) -> ActorList[Walker]: ...
     @overload
-    def filter(self, wildcard_pattern: Literal['sensor.*']) -> ActorList[Sensor]: ...
-    
+    def filter(self, wildcard_pattern: Literal["sensor.*"]) -> ActorList[Sensor]: ...
     @overload
     def filter(self, wildcard_pattern: str) -> ActorList[__Actor]: ...
-    
+
     # region Methods
     def filter(self, wildcard_pattern: str) -> ActorList[__Actor]:
         """Filters a list of Actors matching wildcard_pattern against their variable `type_id` (which identifies the blueprint used to spawn them). Matching follows fnmatch standard.
@@ -584,7 +569,6 @@ class ActorList(Generic[__Actor]):
             `Actor`
         """
     # endregion
-
     # region Dunder methods
     def __getitem__(self, pos: int) -> __Actor:
         """Returns the actor corresponding to pos position in the list."""
@@ -610,7 +594,6 @@ class ActorSnapshot:
     def id(self) -> int:
         """An identifier for the snapshot itself."""
     # endregion
-
     # region Getters
     def get_acceleration(self) -> Vector3D:
         """Returns the acceleration vector registered for an actor in that tick.
@@ -737,7 +720,6 @@ class BlueprintLibrary:
             `ActorBlueprint`
         """
     # endregion
-
     # region Dunder Methods
     def __getitem__(self, pos: int) -> ActorBlueprint:
         """Returns the blueprint stored in `pos` position inside the data structure containing them."""
@@ -775,7 +757,6 @@ class BoundingBox:
     def rotation(self) -> Rotation:
         """The orientation of the bounding box."""
     # endregion
-
     # region Methods
     def __init__(self, location: Location, extent: Vector3D) -> None:
         """Bounding boxes contain the geometry of an actor or an element in the scene. They can be used by `carla.DebugHelper` or a `carla.Client` to draw their shapes for debugging. Check out the snippet in `carla.DebugHelper.draw_box` where a snapshot of the world is used to draw bounding boxes for traffic lights.
@@ -797,7 +778,6 @@ class BoundingBox:
             `bool`
         """
     # endregion
-
     # region Getters
     def get_local_vertices(self) -> list[Location]:
         """Returns a list containing the locations of this object's vertices in local space."""
@@ -810,7 +790,6 @@ class BoundingBox:
                 object's local space to world space.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: BoundingBox, /) -> bool:
         """Returns true if both location and extent are equal for this and `other`."""
@@ -905,10 +884,12 @@ class Client:
             `list[command.Response]`
         """
 
-    def generate_opendrive_world(self,
-                                 opendrive: str,
-                                 parameters: OpendriveGenerationParameters = OpendriveGenerationParameters(2.0, 50.0, 1.0, 0.6, True, True),
-                                 reset_settings=True):
+    def generate_opendrive_world(
+        self,
+        opendrive: str,
+        parameters: OpendriveGenerationParameters = OpendriveGenerationParameters(2.0, 50.0, 1.0, 0.6, True, True),
+        reset_settings=True,
+    ):
         """Loads a new world with a basic 3D topology generated from the content of an OpenDRIVE file. This content is passed as a `string` parameter. It is similar to `client.load_world(map_name)` but allows for custom OpenDRIVE maps in server side. Cars can drive around the map, but there are no graphics besides the road and sidewalks.
 
         Args:
@@ -945,7 +926,7 @@ class Client:
         """
 
     def load_world_if_different(self, map_name: str, reset_settings=True, map_layers=MapLayer.All):
-        """"
+        """ "
         Creates a new world with default settings using `map_name` map only if it is a different map
         from the currently loaded map.
         Otherwise this function returns `None`. All actors in the current world will be destroyed.
@@ -963,7 +944,9 @@ class Client:
             None
         """
 
-    def replay_file(self, name: str, start: float, duration: float, follow_id: int, replay_sensors: bool = False) -> str:
+    def replay_file(
+        self, name: str, start: float, duration: float, follow_id: int, replay_sensors: bool = False
+    ) -> str:
         """Load a new world with default settings using `map_name` map. All actors present in the current world will be destroyed, but traffic manager instances will stay alive.
 
         Args:
@@ -1039,7 +1022,6 @@ class Client:
             `keep_actors (bool)`: `True` if you want autoremove all actors from the replayer, or `False` to keep them.
         """
     # endregion
-
     # region Getters
     def get_available_maps(self) -> list[str]:
         """Returns a list of strings containing the paths of the maps available on server. These paths are dynamic, they will be created during the simulation and so you will not find them when looking up in your files. One of the possible returns for this method would be:
@@ -1071,7 +1053,6 @@ class Client:
     def get_world(self) -> World:
         """Returns the world object currently active in the simulation. This world will be later used for example to load maps."""
     # endregion
-
     # region Setters
     def set_files_base_folder(self, path: str):
         """Specifies the base folder where the local cache for required files will be placed.
@@ -1137,26 +1118,22 @@ class Color:
         """Red color (0-255)."""
     @r.setter
     def r(self, value: int) -> None: ...
-
     @property
     def g(self) -> int:
         """Green color (0-255)."""
     @g.setter
     def g(self, value: int) -> None: ...
-
     @property
     def b(self) -> int:
         """Blue color (0-255)."""
     @b.setter
     def b(self, value: int) -> None: ...
-
     @property
     def a(self) -> int:
         """Alpha channel (0-255)."""
     @a.setter
     def a(self, value: int) -> None: ...
     # endregion
-
     # region Methods
     def __init__(self, r=0, g=0, b=0, a=255) -> None:
         """Initializes a color, black by default.
@@ -1168,7 +1145,6 @@ class Color:
             `a (int, optional)`: Alpha channel (0-255). Defaults to 255.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: Color, /) -> bool: ...
     def __ne__(self, other: Color, /) -> bool: ...
@@ -1215,7 +1191,6 @@ class DVSEvent:
     def pol(self) -> bool:
         """Polarity of the event. True for positive and False for negative."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -1242,7 +1217,6 @@ class DVSEventArray(SensorData):
     @property
     def raw_data(self) -> bytes: ...  # pylint: disable=missing-function-docstring
     # endregion
-
     # region Methods
     # TODO: Decide between vague correct list, or wrong tuple but exact return type.
     # def to_array(self) -> list[tuple[int, int, float, bool]]:
@@ -1264,10 +1238,8 @@ class DVSEventArray(SensorData):
     def to_image(self) -> Image:
         """Converts the image following this pattern: blue indicates positive events, red indicates negative events."""
     # endregion
-
     # region Dunder Methods
     def __getitem__(self, pos: int, /) -> DVSEvent: ...
-
     def __iter__(self) -> Iterator[DVSEvent]:
         """Iterate over the `carla.DVSEvent` retrieved as data."""
 
@@ -1284,7 +1256,16 @@ class DebugHelper:
     """
 
     # region Methods
-    def draw_arrow(self, begin: Vector3D, end: Vector3D, thickness=0.1, arrow_size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_arrow(
+        self,
+        begin: Vector3D,
+        end: Vector3D,
+        thickness=0.1,
+        arrow_size=0.1,
+        color: Color = Color(255, 0, 0),
+        life_time=-1.0,
+        persistent_lines=True,
+    ) -> None:
         """
         Draws an arrow from `begin` to `end` pointing in that direction.
 
@@ -1297,7 +1278,16 @@ class DebugHelper:
             life_time (float, optional): Shape's lifespan. By default it only lasts one frame. Set this to `0` for permanent shapes (seconds). Defaults to -1.0.
         """
 
-    def draw_hud_arrow(self, begin: Vector3D, end: Vector3D, thickness=0.1, arrow_size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_hud_arrow(
+        self,
+        begin: Vector3D,
+        end: Vector3D,
+        thickness=0.1,
+        arrow_size=0.1,
+        color: Color = Color(255, 0, 0),
+        life_time=-1.0,
+        persistent_lines=True,
+    ) -> None:
         """
         Draws an arrow on the HUD from `begin` to `end` which can only be seen server-side.
 
@@ -1310,7 +1300,15 @@ class DebugHelper:
             life_time (float, optional): Shape's lifespan. By default it only lasts one frame. Set this to `0` for permanent shapes (seconds). Defaults to -1.0.
         """
 
-    def draw_box(self, box: BoundingBox, rotation: Rotation, thickness=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_box(
+        self,
+        box: BoundingBox,
+        rotation: Rotation,
+        thickness=0.1,
+        color: Color = Color(255, 0, 0),
+        life_time=-1.0,
+        persistent_lines=True,
+    ) -> None:
         """Draws a box, usually to act for object colliders.
 
         Args:
@@ -1321,7 +1319,15 @@ class DebugHelper:
             life_time (float, optional): Shape's lifespan. By default it only lasts one frame. Set this to `0` for permanent shapes. Defaults to -1.0.
         """
 
-    def draw_hud_box(self, box: BoundingBox, rotation: Rotation, thickness=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_hud_box(
+        self,
+        box: BoundingBox,
+        rotation: Rotation,
+        thickness=0.1,
+        color: Color = Color(255, 0, 0),
+        life_time=-1.0,
+        persistent_lines=True,
+    ) -> None:
         """
         Draws a box on the HUD, usually to act for object colliders. The box can only be seen server-side.
 
@@ -1333,7 +1339,15 @@ class DebugHelper:
             life_time (float, optional): Shape's lifespan. By default it only lasts one frame. Set this to `0` for permanent shapes. Defaults to -1.0.
         """
 
-    def draw_line(self, begin: Vector3D, end: Vector3D, thickness=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_line(
+        self,
+        begin: Vector3D,
+        end: Vector3D,
+        thickness=0.1,
+        color: Color = Color(255, 0, 0),
+        life_time=-1.0,
+        persistent_lines=True,
+    ) -> None:
         """
         Draws a line in between `begin` and `end`.
 
@@ -1345,7 +1359,15 @@ class DebugHelper:
             life_time (float, optional): Shape's lifespan. By default it only lasts one frame. Set this to `0` for permanent shapes. Defaults to -1.0.
         """
 
-    def draw_hud_line(self, begin: Vector3D, end: Vector3D, thickness=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_hud_line(
+        self,
+        begin: Vector3D,
+        end: Vector3D,
+        thickness=0.1,
+        color: Color = Color(255, 0, 0),
+        life_time=-1.0,
+        persistent_lines=True,
+    ) -> None:
         """
         Draws a line on the HUD in between `begin` and `end`. The line can only be seen server-side.
 
@@ -1357,7 +1379,9 @@ class DebugHelper:
             life_time (float, optional): Shape's lifespan. By default it only lasts one frame. Set this to `0` for permanent shapes. Defaults to -1.0.
         """
 
-    def draw_point(self, location: Vector3D, size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_point(
+        self, location: Vector3D, size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True
+    ) -> None:
         """
         Draws a point location.
 
@@ -1368,7 +1392,9 @@ class DebugHelper:
             life_time (float, optional): Shape's lifespan. By default it only lasts one frame. Set this to 0 for permanent shapes (seconds). Defaults to -1.0.
         """
 
-    def draw_hud_point(self, location: Vector3D, size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_hud_point(
+        self, location: Vector3D, size=0.1, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True
+    ) -> None:
         """
         Draws a point on the HUD at `location`. The point can only be seen server-side.
 
@@ -1379,7 +1405,15 @@ class DebugHelper:
             life_time (float, optional): Shape's lifespan. By default it only lasts one frame. Set this to 0 for permanent shapes (seconds). Defaults to -1.0.
         """
 
-    def draw_string(self, location: Vector3D, text: str, draw_shadow=False, color: Color = Color(255, 0, 0), life_time=-1.0, persistent_lines=True) -> None:
+    def draw_string(
+        self,
+        location: Vector3D,
+        text: str,
+        draw_shadow=False,
+        color: Color = Color(255, 0, 0),
+        life_time=-1.0,
+        persistent_lines=True,
+    ) -> None:
         """Draws a string in a given location of the simulation which can only be seen server-side.
 
         Args:
@@ -1415,7 +1449,6 @@ class EnvironmentObject:
     def type(self) -> CityObjectLabel:
         """Semantic tag."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str:
         """Parses the EnvironmentObject to a string and shows them in command line."""
@@ -1441,9 +1474,8 @@ class FloatColor:
     def a(self) -> float:
         """Alpha channel."""
     # endregion
-
     # region Methods
-    def __init__(self, r=.0, g=.0, b=.0, a=1.0) -> None:
+    def __init__(self, r=0.0, g=0.0, b=0.0, a=1.0) -> None:
         """Initializes a color, black by default.
 
         Args:
@@ -1453,7 +1485,6 @@ class FloatColor:
             a (float, optional): Alpha channel. Defaults to 1.0.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: FloatColor, /) -> bool: ...
     def __ne__(self, other: FloatColor, /) -> bool: ...
@@ -1529,7 +1560,6 @@ class GearPhysicsControl:
     def up_ratio(self) -> float:
         """Quotient between current RPM and MaxRPM where the autonomous gear box should shift up."""
     # endregion
-
     # region Methods
     def __init__(self, ratio=1.0, down_ratio=0.5, up_ratio=0.65) -> None:
         """Class that provides access to vehicle transmission details by defining a gear and when to run on it. This will be later used by `carla.VehiclePhysicsControl` to help simulate physics.
@@ -1540,7 +1570,6 @@ class GearPhysicsControl:
             `up_ratio (float, optional)`: Quotient between current RPM and MaxRPM where the autonomous gear box should shift up. Defaults to 0.65.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: GearPhysicsControl, /) -> bool: ...
     def __ne__(self, other: GearPhysicsControl, /) -> bool: ...
@@ -1563,7 +1592,6 @@ class GeoLocation:
     def altitude(self) -> float:
         """Height regarding ground level (meters)."""
     # endregion
-
     # region Methods
     def __init__(self, latitude=0.0, longitude=0.0, altitude=0.0) -> None:
         """Class that contains geographical coordinates simulated data. The `carla.Map` can convert simulation locations by using the tag in the OpenDRIVE file.
@@ -1574,7 +1602,6 @@ class GeoLocation:
             `altitude (float, optional)`: Height regarding ground level (meters). Defaults to 0.0.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: GeoLocation, /) -> bool: ...
     def __ne__(self, other: GeoLocation, /) -> bool: ...
@@ -1597,7 +1624,6 @@ class GnssMeasurement(SensorData):
     def longitude(self) -> float:
         """West/East value of a point on the map (degrees)."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -1618,7 +1644,6 @@ class IMUMeasurement(SensorData):
     def gyroscope(self) -> Vector3D:
         """Angular velocity. (rad/s)"""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -1646,7 +1671,6 @@ class Image(SensorData):
     def raw_data(self) -> bytes:
         """Flattened array of pixel data, use reshape to create an image array."""
     # endregion
-
     # region Methods
     def convert(self, color_converter: ColorConverter):
         """Converts the image following the `color_converter` pattern.
@@ -1663,10 +1687,8 @@ class Image(SensorData):
             `color_converter (ColorConverter, optional)`: Default Raw will make no changes. Defaults to ColorConverter.Raw.
         """
     # endregion
-
     # region Dunder Methods
     def __getitem__(self, pos=int) -> Color: ...
-
     def __iter__(self) -> Iterator[Color]:
         """Iterate over the `carla.Color` that form the image."""
 
@@ -1687,7 +1709,6 @@ class Junction:
     def bounding_box(self) -> BoundingBox:
         """Bounding box encapsulating the junction lanes."""
     # endregion
-
     # region Getters
     def get_waypoints(self, lane_type: LaneType) -> list[tuple[Waypoint, Waypoint]]:
         """Returns a list of pairs of waypoints. Every tuple on the list contains first an initial and then a final waypoint within the intersection boundaries that describe the beginning and the end of said lane along the junction. Lanes follow their OpenDRIVE definitions so there may be many different tuples with the same starting waypoint due to possible deviations, as this are considered different lanes.
@@ -1808,7 +1829,6 @@ class Landmark:
     def transform(self) -> Transform:
         """The location and orientation of the landmark in the simulation."""
     # endregion
-
     # region Getters
     def get_lane_validities(self) -> list[tuple[int, int]]:
         """Returns which lanes the landmark is affecting to. As there may be specific lanes where the landmark is not effective, the return is a list of pairs containing ranges of the `lane_id` affected:
@@ -1868,7 +1888,7 @@ class LandmarkType(Enum):
     CityEnd = "311"
     Highway = "330"
     DeadEnd = "357"
-    RecomendedSpeed = "380"    # NOTE: Wrong Spelling, but is named like this internally!
+    RecomendedSpeed = "380"  # NOTE: Wrong Spelling, but is named like this internally!
     RecomendedSpeedEnd = "381"  # NOTE: Wrong Spelling, but is named like this internally!
     # endregion
 
@@ -1901,7 +1921,6 @@ class LaneInvasionEvent(SensorData):
     def crossed_lane_markings(self) -> list[LaneMarking]:
         """List of lane markings that have been crossed and detected by the sensor."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -2005,7 +2024,6 @@ class LidarDetection:
     def intensity(self) -> float:
         """Computed intensity for this point as a scalar value between [0.0 , 1.0]."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -2029,7 +2047,6 @@ class LidarMeasurement(SensorData):
     def raw_data(self) -> bytes:
         """Received list of 4D points. Each point consists of [x,y,z] coordinates plus the intensity computed for that point."""
     # endregion
-
     # region Methods
     def save_to_disk(self, path: str):
         """Saves the point cloud to disk as a `.ply` file describing data from 3D scanners. The files generated are ready to be used within `MeshLab`, an open source system for processing said files. Just take into account that axis may differ from Unreal Engine and so, need to be reallocated.
@@ -2038,7 +2055,6 @@ class LidarMeasurement(SensorData):
             path (str)
         """
     # endregion
-
     # region Getters
     def get_point_count(self, channel: int):
         """Retrieves the number of points sorted by channel that are generated by this measure. Sorting by channel allows to identify the original channel for every point.
@@ -2047,10 +2063,8 @@ class LidarMeasurement(SensorData):
             channel (int)
         """
     # endregion
-
     # region Dunder Methods
     def __getitem__(self, pos: int) -> LidarDetection: ...
-
     def __iter__(self) -> Iterator[LidarDetection]:
         """Iterate over the carla.LidarDetection retrieved as data."""
 
@@ -2091,7 +2105,6 @@ class Light:
     def light_state(self) -> LightState:
         """State of the light. Summarizes its attributes, group, and if it is on/off."""
     # endregion
-
     # region Methods
     def turn_off(self):
         """Switches off the light."""
@@ -2099,7 +2112,6 @@ class Light:
     def turn_on(self):
         """Switches on the light."""
     # endregion
-
     # region Setters
     def set_color(self, color: Color):
         """Changes the color of the light to color.
@@ -2177,7 +2189,6 @@ class LightManager:
             `lights (list[Light])`: List of lights to be switched on.
         """
     # endregion
-
     # region Getters
     def get_all_lights(self, light_group: LightGroup = LightGroup.NONE) -> list[Light]:
         """Returns a list containing the lights in a certain group. By default, the group is None.
@@ -2240,7 +2251,6 @@ class LightManager:
             `light_group (LightGroup)`: List of lights to be queried.
         """
     # endregion
-
     # region Setters
     def set_active(self, lights: list[Light], active: list[bool]):
         """Switches on/off the elements in lights.
@@ -2349,7 +2359,6 @@ class LightState:
     def active(self) -> bool:
         """Switch of a light. It is `True` when the light is on."""
     # endregion
-
     # region Methods
     def __init__(self, intensity=0.0, color=Color, group=LightGroup.NONE, active=False) -> None:
         """This class represents all the light variables except the identifier and the location, which are should to be static. Using this class allows to manage all the parametrization of the light in one call.
@@ -2371,27 +2380,22 @@ class Location(Vector3D):
         """Distance from origin to spot on X axis (meter)."""
     @x.setter
     def x(self, value: float) -> None: ...
-
     @property
     def y(self) -> float:
         """Distance from origin to spot on Y axis (meter)."""
     @y.setter
     def y(self, value: float) -> None: ...
-
     @property
     def z(self) -> float:
         """Distance from origin to spot on Z axis. (meter)"""
     @z.setter
     def z(self, value: float) -> None: ...
     # endregion
-
     # region Methods
     @overload
     def __init__(self, rhs: Vector3D) -> None: ...
-
     @overload
     def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> None: ...
-
     def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
         """Represents a spot in the world.
 
@@ -2411,7 +2415,6 @@ class Location(Vector3D):
             `float`: (meters)
         """
     # endregion
-
     # region Dunder Methods
     def __abs__(self) -> Location:
         """Returns a Location with the absolute value of the components x, y and z."""
@@ -2438,7 +2441,6 @@ class Map:
     def name(self) -> str:
         """The name of the map. It corresponds to the .umap from Unreal Engine that is loaded from a CARLA server, which then references to the .xodr road description."""
     # endregion
-
     # region Methods
     def __init__(self, name: str, xodr_content: str) -> None:
         """Constructor for this class. Though a map is automatically generated when initializing the world, using this method in no-rendering mode facilitates working with an .xodr without any CARLA server running.
@@ -2490,7 +2492,6 @@ class Map:
             `GeoLocation`
         """
     # endregion
-
     # region Getters
     def get_all_landmarks(self) -> list[Landmark]:
         """Returns all the landmarks in the map. Landmarks retrieved using this method have a `null` waypoint."""
@@ -2531,14 +2532,19 @@ class Map:
     # TODO: Correct overloads, decide if -> None should be disregarded
 
     @overload
-    def get_waypoint(self, location: Location, project_to_road: Literal[True] = True, lane_type: Literal[LaneType.Driving, LaneType.Any] = LaneType.Driving) -> Waypoint:
-        ...
-
+    def get_waypoint(
+        self,
+        location: Location,
+        project_to_road: Literal[True] = True,
+        lane_type: Literal[LaneType.Driving, LaneType.Any] = LaneType.Driving,
+    ) -> Waypoint: ...
     @overload
-    def get_waypoint(self, location: Location, project_to_road: bool | None = True, lane_type: LaneType = LaneType.Driving) -> Waypoint | None:
-        ...
-
-    def get_waypoint(self, location: Location, project_to_road: bool | None = True, lane_type: LaneType = LaneType.Driving) -> Waypoint | None:
+    def get_waypoint(
+        self, location: Location, project_to_road: bool | None = True, lane_type: LaneType = LaneType.Driving
+    ) -> Waypoint | None: ...
+    def get_waypoint(
+        self, location: Location, project_to_road: bool | None = True, lane_type: LaneType = LaneType.Driving
+    ) -> Waypoint | None:
         """Returns a waypoint that can be located in an exact location or translated to the center of the nearest lane. Said lane type can be defined using flags such as `LaneType.Driving & LaneType.Shoulder`.
 
         The method will return `None` if the waypoint is not found, which may happen only when trying to retrieve a waypoint for an exact location. That eases checking if a point is inside a certain road, as otherwise, it will return the corresponding waypoint.
@@ -2611,7 +2617,6 @@ class ObstacleDetectionEvent(SensorData):
     def distance(self) -> float:
         """Distance between actor and other (meters)."""
     # endregion
-
     # region Dunder methods
     def __str__(self) -> str: ...
     # endregion
@@ -2648,15 +2653,17 @@ class OpendriveGenerationParameters:
     def enable_pedestrian_navigation(self) -> bool:
         """If `True`, Pedestrian navigation will be enabled using Recast tool. For very large maps it is recommended to disable this option. Default is `True`."""
     # endregion
-
     # region Methods
-    def __init__(self, vertex_distance: float = 2.0,
-                 max_road_length: float = 50.0,
-                 wall_height: float = 1.0,
-                 additional_width: float = 0.6,
-                 smooth_junctions: bool = True,
-                 enable_mesh_visibility: bool = True,
-                 enable_pedestrian_navigation: bool = True) -> None:
+    def __init__(
+        self,
+        vertex_distance: float = 2.0,
+        max_road_length: float = 50.0,
+        wall_height: float = 1.0,
+        additional_width: float = 0.6,
+        smooth_junctions: bool = True,
+        enable_mesh_visibility: bool = True,
+        enable_pedestrian_navigation: bool = True,
+    ) -> None:
         """Constructor method"""
 
 class OpticalFlowImage(SensorData):
@@ -2679,15 +2686,12 @@ class OpticalFlowImage(SensorData):
     def raw_data(self) -> bytes:
         """Flattened array of pixel data, use reshape to create an image array."""
     # endregion
-
     # region Getters
     def get_color_coded_flow(self) -> Image:
         """Visualization helper. Converts the optical flow image to an RGB image."""
     # endregion
-
     # region Dunder Methods
     def __getitem__(self, pos: int) -> OpticalFlowPixel: ...
-
     def __iter__(self) -> Iterator[OpticalFlowPixel]:
         """Iterate over the `carla.OpticalFlowPixel `that form the image."""
 
@@ -2708,9 +2712,8 @@ class OpticalFlowPixel:
     def y(self) -> float:
         """Optical flow in the y component."""
     # endregion
-
     # region Methods
-    def __init__(self, x=.0, y=.0) -> None:
+    def __init__(self, x=0.0, y=0.0) -> None:
         """Initializes the Optical Flow Pixel. Zero by default.
 
         Args:
@@ -2718,7 +2721,6 @@ class OpticalFlowPixel:
             `y (float, optional)`: Optical flow in the y component. Defaults to .0.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: OpticalFlowPixel, /) -> bool: ...
     def __ne__(self, other: OpticalFlowPixel, /) -> bool: ...
@@ -2788,7 +2790,6 @@ class Osm2OdrSettings:
     def all_junctions_with_traffic_lights(self) -> bool:
         """When disabled, the converter will generate traffic light data from the OpenStreetMaps data only. When enabled, all junctions will generate traffic lights."""
     # endregion
-
     # region Setters
     def set_osm_way_types(self, way_types: list[str]):
         """Defines the OpenStreetMaps road types that will be imported to OpenDRIVE. By default the road types imported are:
@@ -2830,7 +2831,6 @@ class RadarDetection:
     def velocity(self) -> float:
         """The velocity of the detected object towards the sensor (m/s)."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -2846,15 +2846,12 @@ class RadarMeasurement(SensorData):
     def raw_data(self) -> bytes:
         """The complete information of the `carla.RadarDetection` the radar has registered."""
     # endregion
-
     # region Getters
     def get_detection_count(self) -> int:
         """Retrieves the number of entries generated, same as `__str__()`."""
     # endregion
-
     # region Dunder Methods
     def __getitem__(self, pos: int) -> RadarDetection: ...
-
     def __iter__(self) -> Iterator[RadarDetection]:
         """Iterate over the `carla.RadarDetection` retrieved as data."""
 
@@ -2891,9 +2888,8 @@ class Rotation:
     def roll(self, value: float) -> None:
         """Set the X-axis rotation angle (degrees)."""
     # endregion
-
     # region Methods
-    def __init__(self, pitch=.0, yaw=.0, roll=.0) -> None:
+    def __init__(self, pitch=0.0, yaw=0.0, roll=0.0) -> None:
         """+ Warning: The declaration order is different in CARLA (pitch,yaw,roll), and in the Unreal Engine Editor (roll,pitch,yaw). When working in a build from source, don't mix up the axes' rotations.
 
         Args:
@@ -2902,7 +2898,6 @@ class Rotation:
             `roll (float, optional)`: X-axis rotation angle (degrees). Defaults to .0.
         """
     # endregion
-
     # region Getters
     def get_forward_vector(self) -> Vector3D:
         """Computes the vector pointing forward according to the rotation of the object."""
@@ -2913,14 +2908,11 @@ class Rotation:
     def get_up_vector(self) -> Vector3D:
         """Computes the vector pointing upwards according to the rotation of the object."""
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: Rotation, /) -> bool:
         """Returns `True` if both rotations represent the same orientation for every axis."""
 
-    def __ne__(self, other: Rotation, /) -> bool:
-        ...
-
+    def __ne__(self, other: Rotation, /) -> bool: ...
     def __str__(self) -> str: ...
     # endregion
 
@@ -2941,7 +2933,6 @@ class SemanticLidarDetection:
     def object_tag(self) -> int:
         """`Semantic tag` of the component hit by the ray."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -2963,7 +2954,6 @@ class SemanticLidarMeasurement(SensorData):
     def raw_data(self) -> bytes:
         """Received list of raw detection points. Each point consists of [x,y,z] coordinates plus the cosine of the incident angle, the index of the hit actor, and its semantic tag."""
     # endregion
-
     # region Methods
     def save_to_disk(self, path: str):
         """Saves the point cloud to disk as a `.ply` file describing data from 3D scanners. The files generated are ready to be used within `MeshLab`, an open-source system for processing said files. Just take into account that axis may differ from Unreal Engine and so, need to be reallocated.
@@ -2972,7 +2962,6 @@ class SemanticLidarMeasurement(SensorData):
             `path (str)`
         """
     # endregion
-
     # region Getters
     def get_point_count(self, channel: int):
         """Retrieves the number of points sorted by channel that are generated by this measure. Sorting by channel allows to identify the original channel for every point.
@@ -2981,10 +2970,8 @@ class SemanticLidarMeasurement(SensorData):
             `channel (int)`
         """
     # endregion
-
     # region Dunder Methods
     def __getitem__(self, pos: int) -> SemanticLidarDetection: ...
-
     def __iter__(self) -> Iterator[SemanticLidarDetection]:
         """Iterate over the `carla.SemanticLidarDetection` retrieved as data."""
 
@@ -3064,7 +3051,6 @@ class Sensor(Actor):
             `gbuffer_id (GBufferTextureID)`: The ID of the Unreal Engine GBuffer texture.
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -3116,7 +3102,6 @@ class TextureColor:
     def height(self) -> int:
         """Y-coordinate size of the texture."""
     # endregion
-
     # region Methods
     def __init__(self, width: int, height: int) -> None:
         """Initializes a the texture with a `(width, height)` size.
@@ -3126,7 +3111,6 @@ class TextureColor:
             `height (int)`: Y-coordinate size of the texture.
         """
     # endregion
-
     # region Getters
     def get(self, x: int, y: int) -> Color:
         """Get the `(x,y)` pixel data."""
@@ -3155,7 +3139,6 @@ class TextureFloatColor:
     def height(self) -> int:
         """Y-coordinate size of the texture."""
     # endregion
-
     # region Getters
     def get(self, x: int, y: int) -> FloatColor:
         """Get the `(x,y)` pixel data."""
@@ -3192,11 +3175,9 @@ class Timestamp:
     def platform_timestamp(self) -> float:
         """Time register of the frame at which this measurement was taken given by the OS in seconds (seconds)."""
     # endregion
-
     # region Methods
     def __init__(self, frame: int, elapsed_seconds: float, delta_seconds: float, platform_timestamp: float) -> None: ...
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: Timestamp, /) -> bool: ...
     def __ne__(self, other: Timestamp, /) -> bool: ...
@@ -3214,7 +3195,6 @@ class TrafficLight(TrafficSign):
     def state(self) -> TrafficLightState:
         """Current state of the traffic light."""
     # endregion
-
     # region Methods
     def freeze(self, freeze: bool):
         """Stops all the traffic lights in the scene at their current state."""
@@ -3228,7 +3208,6 @@ class TrafficLight(TrafficSign):
         + Note: This method calls the simulator.
         """
     # endregion
-
     # region Getters
     def get_affected_lane_waypoints(self) -> list[Waypoint]:
         """Returns a list of waypoints indicating the positions and lanes where the traffic light is having an effect."""
@@ -3278,7 +3257,6 @@ class TrafficLight(TrafficSign):
         Setter: `carla.TrafficLight.set_yellow_time`
         """
     # endregion
-
     # region Setters
     def set_green_time(self, green_time: float):
         """Sets a given time for the green light to be active.
@@ -3316,7 +3294,6 @@ class TrafficLight(TrafficSign):
             yellow_time (float): (seconds)
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -3469,7 +3446,6 @@ class TrafficManager:
             percentage (float): Percentage difference between intended speed and the current limit.
         """
     # endregion
-
     # region Getters
     def get_all_actions(self, actor: Actor) -> list[Waypoint]:
         """Returns all known actions (i.e. road options and waypoints) that an actor controlled by the Traffic Manager will perform in its next steps.
@@ -3497,9 +3473,12 @@ class TrafficManager:
         https://carla.readthedocs.io/en/latest/python_api/#adv_traffic_manager.md#multiclient-and-multitm-management
         """
     # endregion
-
     # region Setters
-    def set_boundaries_respawn_dormant_vehicles(self, lower_bound: Annotated[float, ">=25.0"], upper_bound: Annotated[float, "<= WorldSettings.actor_active_distance"]) -> None:
+    def set_boundaries_respawn_dormant_vehicles(
+        self,
+        lower_bound: Annotated[float, ">=25.0"],
+        upper_bound: Annotated[float, "<= WorldSettings.actor_active_distance"],
+    ) -> None:
         """Sets the upper and lower boundaries for dormant actors to be respawned near the hero vehicle.
 
         + Warning: The `upper_bound` cannot be higher than the `actor_active_distance`. The `lower_bound` cannot be less than `25`.
@@ -3606,20 +3585,15 @@ class Transform:
     def location(self) -> Location:
         """Describes a point in the coordinate system."""
     @location.setter
-    def location(self, value: Location | Vector3D) -> None:
-        ...
-
+    def location(self, value: Location | Vector3D) -> None: ...
     @property
     def rotation(self) -> Rotation:
         """Describes a rotation for an object according to Unreal Engine's axis system (degrees (pitch, yaw, roll))."""
     @rotation.setter
-    def rotation(self, value: Rotation | Vector3D) -> None:
-        ...
+    def rotation(self, value: Rotation | Vector3D) -> None: ...
     # endregion
-
     # region Methods
     def __init__(self, location: Location = Location(0, 0, 0), rotation: Rotation = Rotation(0, 0, 0)) -> None: ...
-
     def transform(self, in_point: Vector3D) -> Vector3D:
         """
         Translates a 3D point from local to global coordinates using the current
@@ -3656,7 +3630,6 @@ class Transform:
             This operation transforms `in_point` in place.
         """
     # endregion
-
     # region Getters
     def get_forward_vector(self) -> Vector3D:
         """Computes a forward vector using the rotation of the object."""
@@ -3673,7 +3646,6 @@ class Transform:
     def get_up_vector(self) -> Vector3D:
         """Computes an up vector using the rotation of the object."""
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: Transform, /) -> bool:
         """Returns `True` if both `location` and `rotation` are equal for this and `other`."""
@@ -3696,10 +3668,8 @@ class Vector2D:
     def y(self) -> float:
         """Y-axis value."""
     # endregion
-
     # region Methods
     def __init__(self, x=0.0, y=0.0) -> None: ...
-
     def length(self) -> float:
         """Computes the length of the vector."""
 
@@ -3709,15 +3679,12 @@ class Vector2D:
     def squared_length(self) -> float:
         """Computes the squared length of the vector."""
     # endregion
-
     # region Dunder Methods
     def __add__(self, other: Vector2D) -> Vector2D: ...
-
     def __eq__(self, other: Vector2D) -> bool:
         """Returns `True` if values for every axis are equal."""
 
     def __mul__(self, other: float) -> float: ...
-
     def __ne__(self, other: Vector2D) -> bool:
         """Returns `True` if the value for any axis is different."""
 
@@ -3738,27 +3705,20 @@ class Vector3D:
     def x(self) -> float:
         """X-axis value."""
     @x.setter
-    def x(self, value: float) -> None:
-        ...
-
+    def x(self, value: float) -> None: ...
     @property
     def y(self) -> float:
         """Y-axis value."""
     @y.setter
-    def y(self, value: float) -> None:
-        ...
-
+    def y(self, value: float) -> None: ...
     @property
     def z(self) -> float:
         """Z-axis value."""
     @z.setter
-    def z(self, value: float) -> None:
-        ...
+    def z(self, value: float) -> None: ...
     # endregion
-
     # region Methods
     def __init__(self, x=0.0, y=0.0, z=0.0) -> None: ...
-
     def cross(self, vector: Vector3D) -> Vector3D:
         """Computes the cross product between two vectors."""
 
@@ -3789,12 +3749,10 @@ class Vector3D:
     def squared_length(self) -> float:
         """Computes the squared length of the vector."""
     # endregion
-
     # region Getters
     def get_vector_angle(self, vector: Vector3D) -> float:
         """Computes the angle between a pair of 3D vectors in radians."""
     # endregion
-
     # region Dunder Methods
     def __abs__(self) -> Vector3D:
         """Returns a Vector3D with the absolute value of the components x, y and z."""
@@ -3816,7 +3774,6 @@ class Vehicle(Actor):
     def bounding_box(self) -> BoundingBox:
         """Bounding box containing the geometry of the vehicle. Its location and rotation are relative to the vehicle it is attached to."""
     # endregion
-
     # region Methods
     def apply_ackermann_control(self, control: VehicleAckermannControl):
         """Applies an Ackermann control object on the next tick.
@@ -3847,7 +3804,15 @@ class Vehicle(Actor):
             `simfile_path (str)`: Path to the `.simfile` file with the parameters of the simulation.
         """
 
-    def enable_chrono_physics(self, max_substeps: int, max_substep_delta_time: int, vehicle_json: str, powertrain_json: str, tire_json: str, base_json_path: str):
+    def enable_chrono_physics(
+        self,
+        max_substeps: int,
+        max_substep_delta_time: int,
+        vehicle_json: str,
+        powertrain_json: str,
+        tire_json: str,
+        base_json_path: str,
+    ):
         """Enables Chrono physics on a spawned vehicle.
 
         + Note: Ensure that you have started the CARLA server with the ARGS="--chrono" flag. You will not be able to use Chrono physics without this flag set.
@@ -3878,7 +3843,6 @@ class Vehicle(Actor):
     def use_carsim_road(self, enabled: bool):
         """Enables or disables the usage of CarSim vs terrain file specified in the `.simfile`. By default this option is disabled and CarSim uses unreal engine methods to process the geometry of the scene."""
     # endregion
-
     # region Getters
     def get_ackermann_controller_settings(self) -> AckermannControllerSettings:
         """Returns the last Ackermann control settings applied to this vehicle.
@@ -3924,7 +3888,6 @@ class Vehicle(Actor):
         + Note: Returns the angle based on the physics of the wheel, not the visual angle.
         """
     # endregion
-
     # region Setters
     def set_autopilot(self, enabled=True, port=8000) -> None:
         """Registers or deletes the vehicle from a Traffic Manager's list. When `True`, the Traffic Manager passed as parameter will move the vehicle around. The autopilot takes place client-side.
@@ -3946,7 +3909,6 @@ class Vehicle(Actor):
         + Warning: Does not affect the physics of the vehicle.
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -3974,11 +3936,9 @@ class VehicleAckermannControl:
     def jerk(self) -> float:
         """Desired jerk (m/s3). Default is 0.0."""
     # endregion
-
     # region Methods
     def __init__(self, steer=0.0, steer_speed=0.0, speed=0.0, acceleration=0.0, jerk=0.0) -> None: ...
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: VehicleAckermannControl) -> bool: ...
     def __ne__(self, other: VehicleAckermannControl) -> bool: ...
@@ -3996,46 +3956,41 @@ class VehicleControl:
         """A scalar value to control the vehicle throttle [0.0, 1.0]. Default is 0.0."""
     @throttle.setter
     def throttle(self, value: float) -> None: ...
-
     @property
     def steer(self) -> float:
         """A scalar value to control the vehicle steering [-1.0, 1.0]. Default is 0.0."""
     @steer.setter
     def steer(self, value: float) -> None: ...
-
     @property
     def brake(self) -> float:
         """A scalar value to control the vehicle brake [0.0, 1.0]. Default is 0.0."""
     @brake.setter
     def brake(self, value: float) -> None: ...
-
     @property
     def hand_brake(self) -> bool:
         """Determines whether hand brake will be used. Default is `False`."""
     @hand_brake.setter
     def hand_brake(self, value: bool) -> None: ...
-
     @property
     def reverse(self) -> bool:
         """Determines whether the vehicle will move backwards. Default is `False`."""
     @reverse.setter
     def reverse(self, value: bool) -> None: ...
-
     @property
     def manual_gear_shift(self) -> bool:
         """Determines whether the vehicle will be controlled by changing gears manually. Default is `False`."""
     @manual_gear_shift.setter
     def manual_gear_shift(self, value: bool) -> None: ...
-
     @property
     def gear(self) -> int:
         """States which gear is the vehicle running on."""
     @gear.setter
-    def gear(self, value: int) -> None:  ...
+    def gear(self, value: int) -> None: ...
     # endregion
-
     # region Methods
-    def __init__(self, throttle=0.0, steer=0.0, brake=0.0, hand_brake=False, reverse=False, manual_gear_shift=False, gear=0) -> None:
+    def __init__(
+        self, throttle=0.0, steer=0.0, brake=0.0, hand_brake=False, reverse=False, manual_gear_shift=False, gear=0
+    ) -> None:
         """
         Args:
             `throttle (float, optional)`: Scalar value between [0.0,1.0]. Defaults to 0.0.\n
@@ -4047,7 +4002,6 @@ class VehicleControl:
             `gear (int, optional)` Defaults to 0.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: VehicleControl, /) -> bool: ...
     def __ne__(self, other: VehicleControl, /) -> bool: ...
@@ -4174,31 +4128,31 @@ class VehiclePhysicsControl:
         """Enable the use of sweep for wheel collision. By default, it is disabled and it uses a simple raycast from the axis to the floor for each wheel. This option provides a better collision model in which the full volume of the wheel is checked against collisions."""
     @use_sweep_wheel_collision.setter
     def use_sweep_wheel_collision(self, value: bool) -> None: ...
-
     @property
     def wheels(self) -> list[WheelPhysicsControl]:
         """List of wheel physics objects. This list should have 4 elements, where index 0 corresponds to the front left wheel, index 1 corresponds to the front right wheel, index 2 corresponds to the back left wheel and index 3 corresponds to the back right wheel. For 2 wheeled vehicles, set the same values for both front and back wheels."""
     # endregion
-
     # region Methods
-    def __init__(self,
-                 torque_curve: list[Vector2D | Annotated[Sequence[float], "length 2"]] = [[0.0, 500.0], [5000.0, 500.0]],
-                 max_rpm: float = 5000.0,
-                 moi: float = 1.0,
-                 damping_rate_full_throttle: float = 0.15,
-                 damping_rate_zero_throttle_clutch_engaged: float = 2.0,
-                 damping_rate_zero_throttle_clutch_disengaged: float = 0.35,
-                 use_gear_autobox: bool = True,
-                 gear_switch_time: float = 0.5,
-                 clutch_strength: float = 10.0,
-                 final_ratio: float = 4.0,
-                 forward_gears: list[GearPhysicsControl] = [],
-                 drag_coefficient: float = 0.3,
-                 center_of_mass: Location = Location(0.0, 0.0, 0.0),
-                 steering_curve: list[Vector2D | Annotated[Sequence[float], "length 2"]] = [[0.0, 1.0], [10.0, 0.5]],
-                 wheels=[],
-                 use_sweep_wheel_collision: bool = False,
-                 mass: float = 1000.0) -> None:
+    def __init__(
+        self,
+        torque_curve: list[Vector2D | Annotated[Sequence[float], "length 2"]] = [[0.0, 500.0], [5000.0, 500.0]],
+        max_rpm: float = 5000.0,
+        moi: float = 1.0,
+        damping_rate_full_throttle: float = 0.15,
+        damping_rate_zero_throttle_clutch_engaged: float = 2.0,
+        damping_rate_zero_throttle_clutch_disengaged: float = 0.35,
+        use_gear_autobox: bool = True,
+        gear_switch_time: float = 0.5,
+        clutch_strength: float = 10.0,
+        final_ratio: float = 4.0,
+        forward_gears: list[GearPhysicsControl] = [],
+        drag_coefficient: float = 0.3,
+        center_of_mass: Location = Location(0.0, 0.0, 0.0),
+        steering_curve: list[Vector2D | Annotated[Sequence[float], "length 2"]] = [[0.0, 1.0], [10.0, 0.5]],
+        wheels=[],
+        use_sweep_wheel_collision: bool = False,
+        mass: float = 1000.0,
+    ) -> None:
         """VehiclePhysicsControl constructor.
 
         Args:
@@ -4221,7 +4175,6 @@ class VehiclePhysicsControl:
             `mass (float, optional)`: (kilograms). Defaults to 1000.0.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: VehiclePhysicsControl) -> bool: ...
     def __ne__(self, other: VehiclePhysicsControl) -> bool: ...
@@ -4268,7 +4221,6 @@ class Walker(Actor):
     def show_pose(self):
         """Show the custom pose and hide the animation (same as calling `blend_pose(1)`)."""
     # endregion
-
     # region Getters
     def get_bones(self) -> WalkerBoneControlOut:
         """Return the structure with all the bone transformations from the actor. For each bone, we get the name and its transform in three different spaces:
@@ -4306,7 +4258,6 @@ class Walker(Actor):
             `bones (WalkerBoneControlIn)`: list of pairs (bone_name, transform) for the bones that we want to set)
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -4328,7 +4279,6 @@ class WalkerAIController(Actor):
     def stop(self):
         """Disables AI control for its parent walker."""
     # endregion
-
     # region Setters
     def set_max_speed(self, speed=1.4):
         """Sets a speed for the walker in meters per second.
@@ -4337,7 +4287,6 @@ class WalkerAIController(Actor):
             `speed (float, optional)`: An easy walking speed is set by default (m/s). Defaults to 1.4.
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -4357,7 +4306,6 @@ class WalkerBoneControlIn:
         + relative: transform based on the bone parent.
         """
     # endregion
-
     # region Methods
     def __init__(self, bone_transforms: list[tuple[str, Transform]]) -> None:
         """Initializes an object containing moves to be applied on tick. These are listed with the name of the bone and the transform that will be applied to it.
@@ -4366,7 +4314,6 @@ class WalkerBoneControlIn:
             `bone_transforms (list[tuple[str,Transform]])`
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -4386,7 +4333,6 @@ class WalkerBoneControlOut:
         + relative: transform based on the bone parent.
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -4408,7 +4354,6 @@ class WalkerControl:
     def jump(self) -> bool:
         """If `True`, the walker will perform a jump."""
     # endregion
-
     # region Methods
     def __init__(self, direction=Vector3D(1.0, 0.0, 0.0), speed: float = 0.0, jump: bool = False) -> None:
         """This class defines specific directions that can be commanded to a `carla.Walker` to control it via script.
@@ -4419,7 +4364,6 @@ class WalkerControl:
             `jump (bool, optional)`: If `True`, the walker will perform a jump. Defaults to False.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: WalkerControl, /) -> bool: ...
     def __ne__(self, other: WalkerControl, /) -> bool: ...
@@ -4488,7 +4432,6 @@ class Waypoint:
     def left_lane_marking(self) -> LaneMarking:
         """The left lane marking information based on the direction of the Waypoint."""
     # endregion
-
     # region Methods
     def next(self, distance: float) -> list[Waypoint]:
         """Returns a list of waypoints at a certain approximate `distance` from the current one. It takes into account the road and its possible deviations without performing any lane change and returns one waypoint per option. The list may be empty if the lane is not connected to any other at the specified distance.
@@ -4531,7 +4474,6 @@ class Waypoint:
         """
     # endregion
     # region Getters
-
     def get_junction(self) -> Junction:
         """If the waypoint belongs to a junction this method returns the associated junction object. Otherwise returns `null`."""
 
@@ -4566,7 +4508,6 @@ class Waypoint:
         Will return `None` if the lane does not exist.
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -4629,22 +4570,23 @@ class WeatherParameters:
     def dust_storm(self) -> float:
         """Determines the strength of the dust storm weather. Values range from 0 to 100."""
     # endregion
-
     # region Methods
-    def __init__(self,
-                 cloudiness=0.0,
-                 precipitation=0.0,
-                 precipitation_deposits=0.0,
-                 wind_intensity=0.0,
-                 sun_azimuth_angle=0.0,
-                 sun_altitude_angle=0.0,
-                 fog_density=0.0,
-                 fog_distance=0.0,
-                 wetness=0.0,
-                 fog_falloff=0.0,
-                 scattering_intensity=0.0,
-                 mie_scattering_scale=0.0,
-                 rayleigh_scattering_scale=0.0331) -> None:
+    def __init__(
+        self,
+        cloudiness=0.0,
+        precipitation=0.0,
+        precipitation_deposits=0.0,
+        wind_intensity=0.0,
+        sun_azimuth_angle=0.0,
+        sun_altitude_angle=0.0,
+        fog_density=0.0,
+        fog_distance=0.0,
+        wetness=0.0,
+        fog_falloff=0.0,
+        scattering_intensity=0.0,
+        mie_scattering_scale=0.0,
+        rayleigh_scattering_scale=0.0331,
+    ) -> None:
         """Method to initialize an object defining weather conditions. This class has some presets for different noon and sunset conditions listed in a note below.
 
         + Note: ClearNoon, CloudyNoon, WetNoon, WetCloudyNoon, SoftRainNoon, MidRainyNoon, HardRainNoon, ClearSunset, CloudySunset, WetSunset, WetCloudySunset, SoftRainSunset, MidRainSunset, HardRainSunset.
@@ -4665,7 +4607,6 @@ class WeatherParameters:
             `rayleigh_scattering_scale (float, optional)`: Controls interaction of light with small particles like air molecules. Dependent on light wavelength, resulting in a blue sky in the day or red sky in the evening. Defaults to 0.0331.
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: WeatherParameters, /) -> bool: ...
     def __ne__(self, other: WeatherParameters, /) -> bool: ...
@@ -4707,18 +4648,18 @@ class WheelPhysicsControl:
     def lat_stiff_value(self) -> float:
         """Maximum stiffness per unit of lateral slip. Each vehicle has a custom value."""
     # endregion
-
     # region Methods
-    def __init__(self,
-                 tire_friction=2.0,
-                 damping_rate=0.25,
-                 max_steer_angle=70.0,
-                 radius=30.0,
-                 max_brake_torque=1500.0,
-                 max_handbrake_torque=3000.0,
-                 position: Vector3D = Vector3D(0.0, 0.0, 0.0)) -> None: ...
+    def __init__(
+        self,
+        tire_friction=2.0,
+        damping_rate=0.25,
+        max_steer_angle=70.0,
+        radius=30.0,
+        max_brake_torque=1500.0,
+        max_handbrake_torque=3000.0,
+        position: Vector3D = Vector3D(0.0, 0.0, 0.0),
+    ) -> None: ...
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: WheelPhysicsControl, /) -> bool: ...
     def __ne__(self, other: WheelPhysicsControl, /) -> bool: ...
@@ -4736,18 +4677,25 @@ class World:
     def debug(self) -> DebugHelper:
         """Responsible for creating different shapes for debugging. Take a look at its class to learn more about it."""
     # endregion
-
     # region Methods
-    def apply_color_texture_to_object(self, object_name: str, material_parameter: MaterialParameter, texture: TextureColor):
+    def apply_color_texture_to_object(
+        self, object_name: str, material_parameter: MaterialParameter, texture: TextureColor
+    ):
         """Applies a `texture` object in the field corresponding to `material_parameter` (normal, diffuse, etc) to the object in the scene corresponding to `object_name`."""
 
-    def apply_color_texture_to_objects(self, objects_name_list: list[str], material_parameter: MaterialParameter, texture: TextureColor):
+    def apply_color_texture_to_objects(
+        self, objects_name_list: list[str], material_parameter: MaterialParameter, texture: TextureColor
+    ):
         """Applies a `texture` object in the field corresponding to `material_parameter` (normal, diffuse, etc) to the object in the scene corresponding to all objects in `objects_name_list`."""
 
-    def apply_float_color_texture_to_object(self, object_name: str, material_parameter: MaterialParameter, texture: TextureFloatColor):
+    def apply_float_color_texture_to_object(
+        self, object_name: str, material_parameter: MaterialParameter, texture: TextureFloatColor
+    ):
         """Applies a `texture` object in the field corresponding to `material_parameter` (normal, diffuse, etc) to the object in the scene corresponding to all objects in `objects_name_list`."""
 
-    def apply_float_color_texture_to_objects(self, objects_name_list: list[str], material_parameter: MaterialParameter, texture: TextureFloatColor):
+    def apply_float_color_texture_to_objects(
+        self, objects_name_list: list[str], material_parameter: MaterialParameter, texture: TextureFloatColor
+    ):
         """Applies a `texture` object in the field corresponding to `material_parameter` (normal, diffuse, etc) to the object in the scene corresponding to all objects in `objects_name_list`."""
 
     def apply_settings(self, world_settings: WorldSettings) -> int:
@@ -4757,10 +4705,24 @@ class World:
         https://carla.readthedocs.io/en/latest/adv_traffic_manager/#synchronous-mode
         """
 
-    def apply_textures_to_object(self, object_name: str, diffuse_texture: TextureColor, emissive_texture: TextureFloatColor, normal_texture: TextureFloatColor, ao_roughness_metallic_emissive_texture: TextureFloatColor):
+    def apply_textures_to_object(
+        self,
+        object_name: str,
+        diffuse_texture: TextureColor,
+        emissive_texture: TextureFloatColor,
+        normal_texture: TextureFloatColor,
+        ao_roughness_metallic_emissive_texture: TextureFloatColor,
+    ):
         """Applies all texture fields in `carla.MaterialParameter` to the object `object_name`. Empty textures here will not be applied."""
 
-    def apply_textures_to_objects(self, objects_name_list: list[str], diffuse_texture: TextureColor, emissive_texture: TextureFloatColor, normal_texture: TextureFloatColor, ao_roughness_metallic_emissive_texture: TextureFloatColor):
+    def apply_textures_to_objects(
+        self,
+        objects_name_list: list[str],
+        diffuse_texture: TextureColor,
+        emissive_texture: TextureFloatColor,
+        normal_texture: TextureFloatColor,
+        ao_roughness_metallic_emissive_texture: TextureFloatColor,
+    ):
         """Applies all texture fields in `carla.MaterialParameter` to all objects in `objects_name_list`. Empty textures here will not be applied."""
 
     def cast_ray(self, initial_location: Location, final_location: Location) -> list[LabelledPoint]:
@@ -4830,7 +4792,13 @@ class World:
     def reset_all_traffic_lights(self):
         """Resets the cycle of all traffic lights in the map to the initial state."""
 
-    def spawn_actor(self, blueprint: ActorBlueprint, transform: Transform, attach_to: Optional[Actor] = None, attachment_type=AttachmentType.Rigid) -> Actor:
+    def spawn_actor(
+        self,
+        blueprint: ActorBlueprint,
+        transform: Transform,
+        attach_to: Optional[Actor] = None,
+        attachment_type=AttachmentType.Rigid,
+    ) -> Actor:
         """The method will create, return and spawn an actor into the world. The actor will need an available blueprint to be created and a transform (location and rotation). It can also be attached to a parent with a certain attachment type.
 
         Args:
@@ -4855,7 +4823,13 @@ class World:
             `int`
         """
 
-    def try_spawn_actor(self, blueprint: ActorBlueprint, transform: Transform, attach_to: Optional[Actor] = None, attachment_type: AttachmentType = AttachmentType.Rigid) -> Actor:
+    def try_spawn_actor(
+        self,
+        blueprint: ActorBlueprint,
+        transform: Transform,
+        attach_to: Optional[Actor] = None,
+        attachment_type: AttachmentType = AttachmentType.Rigid,
+    ) -> Actor:
         """Same as `spawn_actor()` but returns `None` on failure instead of throwing an exception.
 
         Args:
@@ -4887,7 +4861,6 @@ class World:
             `WorldSnapshot`
         """
     # endregion
-
     # region Getters
     def get_actor(self, actor_id: int) -> Actor:
         """Looks up for an actor by ID and returns `None` if not found."""
@@ -4996,7 +4969,6 @@ class World:
         + Setter: `carla.World.set_weather`
         """
     # endregion
-
     # region Setters
     def set_pedestrians_cross_factor(self, percentage: float):
         """Sets the percentage of pedestrians that can walk on the road or cross at any point on the road.
@@ -5022,7 +4994,6 @@ class World:
             `weather (WeatherParameters)`: New conditions to be applied.
         """
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str:
         """The content of the world is parsed and printed as a brief report of its current state."""
@@ -5039,89 +5010,70 @@ class WorldSettings:
     def synchronous_mode(self) -> bool:
         """States the synchrony between client and server. When set to true, the server will wait for a client tick in order to move forward. It is `False` by default."""
     @synchronous_mode.setter
-    def synchronous_mode(self, value: bool) -> None:
-        ...
-
+    def synchronous_mode(self, value: bool) -> None: ...
     @property
     def no_rendering_mode(self) -> bool:
         """When enabled, the simulation will run no rendering at all. This is mainly used to avoid overhead during heavy traffic simulations. It is `False` by default."""
     @no_rendering_mode.setter
-    def no_rendering_mode(self, value: bool) -> None:
-        ...
-
+    def no_rendering_mode(self, value: bool) -> None: ...
     @property
     def fixed_delta_seconds(self) -> float | None:
         """Ensures that the time elapsed between two steps of the simulation is fixed. Set this to `0.0` to work with a variable time-step, as happens by default."""
     @fixed_delta_seconds.setter
-    def fixed_delta_seconds(self, value: float | None) -> None:
-        ...
-
+    def fixed_delta_seconds(self, value: float | None) -> None: ...
     @property
     def substepping(self) -> bool:
         """Enable the physics substepping. This option allows computing some physics substeps between two render frames. If synchronous mode is set, the number of substeps and its time interval are fixed and computed are so they fulfilled the requirements of `carla.WorldSettings.max_substep` and `carla.WorldSettings.max_substep_delta_time`. These last two parameters need to be compatible with c`arla.WorldSettings.fixed_delta_seconds`. Enabled by default."""
     @substepping.setter
-    def substepping(self, value: bool) -> None:
-        ...
-
+    def substepping(self, value: bool) -> None: ...
     @property
     def max_substep_delta_time(self) -> float:
         """Maximum delta time of the substeps. If the carla.`WorldSettings.max_substep` is high enough, the substep delta time would be always below or equal to this value. By default, the value is set to 0.01."""
     @max_substep_delta_time.setter
-    def max_substep_delta_time(self, value: float) -> None:
-        ...
-
+    def max_substep_delta_time(self, value: float) -> None: ...
     @property
     def max_substeps(self) -> int:
         """The maximum number of physics substepping that are allowed. By default, the value is set to 10."""
     @max_substeps.setter
-    def max_substeps(self, value: int) -> None:
-        ...
-
+    def max_substeps(self, value: int) -> None: ...
     @property
     def max_culling_distance(self) -> float:
         """Configure the max draw distance for each mesh of the level."""
     @max_culling_distance.setter
-    def max_culling_distance(self, value: float) -> None:
-        ...
-
+    def max_culling_distance(self, value: float) -> None: ...
     @property
     def deterministic_ragdolls(self) -> bool:
         """Defines wether to use deterministic physics for pedestrian death animations or physical ragdoll simulation. When enabled, pedestrians have less realistic death animation but ensures determinism. When disabled, pedestrians are simulated as ragdolls with more realistic simulation and collision but no determinsm can be ensured."""
     @deterministic_ragdolls.setter
-    def deterministic_ragdolls(self, value: bool) -> None:
-        ...
-
+    def deterministic_ragdolls(self, value: bool) -> None: ...
     @property
     def tile_stream_distance(self) -> bool:
         """Used for large maps only. Configures the maximum distance from the hero vehicle to stream tiled maps. Regions of the map within this range will be visible (and capable of simulating physics). Regions outside this region will not be loaded."""
     @tile_stream_distance.setter
-    def tile_stream_distance(self, value: bool) -> None:
-        ...
-
+    def tile_stream_distance(self, value: bool) -> None: ...
     @property
     def actor_active_distance(self) -> float:
         """Used for large maps only. Configures the distance from the hero vehicle to convert actors to dormant. Actors within this range will be active, and actors outside will become dormant."""
     @actor_active_distance.setter
-    def actor_active_distance(self, value: float) -> None:
-        ...
-
+    def actor_active_distance(self, value: float) -> None: ...
     @property
     def spectator_as_ego(self) -> float:
         """Used for large maps only. Defines the influence of the spectator on tile loading in Large Maps. By default, the spectator will provoke loading of neighboring tiles in the absence of an ego actor. This might be inconvenient for applications that immediately spawn an ego actor."""
     @spectator_as_ego.setter
-    def spectator_as_ego(self, value: float) -> None:
-        ...
+    def spectator_as_ego(self, value: float) -> None: ...
 
     # region Methods
-    def __init__(self,
-                 synchronous_mode: bool = False,
-                 no_rendering_mode: bool = False,
-                 fixed_delta_seconds: float = 0.0,
-                 max_culling_distance: float = 0.0,
-                 deterministic_ragdolls: bool = False,
-                 tile_stream_distance: int = 3000,
-                 actor_active_distance: int = 2000,
-                 spectator_as_ego: bool = True) -> None:
+    def __init__(
+        self,
+        synchronous_mode: bool = False,
+        no_rendering_mode: bool = False,
+        fixed_delta_seconds: float = 0.0,
+        max_culling_distance: float = 0.0,
+        deterministic_ragdolls: bool = False,
+        tile_stream_distance: int = 3000,
+        actor_active_distance: int = 2000,
+        spectator_as_ego: bool = True,
+    ) -> None:
         """Creates an object containing desired settings that could later be applied through `carla.World` and its method `apply_settings()`.
 
         Args:
@@ -5138,7 +5090,6 @@ class WorldSettings:
             `WorldSettings`: _description_
         """
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: WorldSettings, /) -> bool: ...
     def __ne__(self, other: WorldSettings, /) -> bool: ...
@@ -5163,7 +5114,6 @@ class WorldSnapshot:
     def timestamp(self) -> Timestamp:
         """Precise moment in time when snapshot was taken. This class works in seconds as given by the operative system (seconds)."""
     # endregion
-
     # region Methods
     def find(self, actor_id: int) -> ActorSnapshot:
         """Given a certain actor ID, returns its corresponding snapshot or `None` if it is not found."""
@@ -5171,7 +5121,6 @@ class WorldSnapshot:
     def has_actor(self, actor_id: int) -> bool:
         """Given a certain actor ID, checks if there is a snapshot corresponding it and so, if the actor was present at that moment."""
     # endregion
-
     # region Dunder Methods
     def __eq__(self, other: WorldSnapshot, /) -> bool:
         """Returns True if both `timestamp` are the same."""

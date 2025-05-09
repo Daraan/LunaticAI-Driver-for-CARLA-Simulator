@@ -13,10 +13,14 @@ from launch_tools import CarlaDataProvider
 class TrafficManager:
     tm: ClassVar[carla.TrafficManager] = None  # type: ignore[assignment]
 
-    def __init__(self, actor: carla.Vehicle, *,
-                 speed_limit_scale=AutopilotBehavior.vehicle_percentage_speed_difference,
-                 min_front_distance=AutopilotBehavior.distance_to_leading_vehicle,
-                 seed=1):
+    def __init__(
+        self,
+        actor: carla.Vehicle,
+        *,
+        speed_limit_scale=AutopilotBehavior.vehicle_percentage_speed_difference,
+        min_front_distance=AutopilotBehavior.distance_to_leading_vehicle,
+        seed=1,
+    ):
         client = CarlaDataProvider.get_client()
         if client is None:
             raise ValueError("Carla client is not initialized")
@@ -25,8 +29,9 @@ class TrafficManager:
             raise TypeError("`actor` must be a carla.Actor, not " + str(type(actor)))
         if TrafficManager.tm is None:
             # TrafficManager.tm : carla.TrafficManager =\
-            TrafficManager.tm = cast(carla.TrafficManager,
-        client.get_trafficmanager(CarlaDataProvider.get_traffic_manager_port()))
+            TrafficManager.tm = cast(
+                "carla.TrafficManager", client.get_trafficmanager(CarlaDataProvider.get_traffic_manager_port())
+            )
             # TrafficManager.tm.set_random_device_seed(seed)
             TrafficManager.tm.set_random_device_seed(seed)
         self.min_front_distance = min_front_distance

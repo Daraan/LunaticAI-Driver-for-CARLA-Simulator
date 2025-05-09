@@ -2,9 +2,10 @@
 """
 This submodule provides necessary imports that are not available in all python versions.
 """
+
 import sys
 
-__all__ = ['Literal', 'ast_parse', 'singledispatchmethod']
+__all__ = ["Literal", "ast_parse", "singledispatchmethod"]
 
 
 # singledispatchmethod
@@ -16,9 +17,11 @@ else:
     from typing import Any, Callable, TypeVar
 
     from typing_extensions import ParamSpec
-    _T = TypeVar('_T')
-    _P = ParamSpec('_P')
+
+    _T = TypeVar("_T")
+    _P = ParamSpec("_P")
     _C = TypeVar("_C", bound=Callable[..., Any])
+
     def singledispatchmethod(func: _C) -> _C:
         """
         Works like :py:class:`functools.singledispatch`, but for methods.
@@ -29,9 +32,11 @@ else:
 
         def wrapper(*args: _P.args, **kw: _P.kwargs) -> _T:
             return dispatcher.dispatch(args[1].__class__)(*args, **kw)
+
         wrapper.register = dispatcher.register  # type: ignore[attr-defined]
         update_wrapper(wrapper, func)
         return wrapper
+
 
 # Literal
 try:
@@ -44,16 +49,18 @@ except ImportError:
         from typing import Literal
     else:
         print("Warning: Literal not found. Literal requires python3.8+ or typing_extensions.")
+
         class __LiteralMeta(type):
             def __getitem__(cls, _):
                 return cls.__repr__()
-            
+
             def __repr__(cls) -> str:
                 return "'Warning: Literal requires python3.8+ or typing_extensions. This is a dummy substitution.'"
 
         class Literal(metaclass=__LiteralMeta):
             pass
-       
+
+
 # ast_parse; to export comments in YAML
 import sys
 from ast import parse

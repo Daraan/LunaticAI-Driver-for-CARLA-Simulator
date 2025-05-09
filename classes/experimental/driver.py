@@ -5,6 +5,7 @@ from typing import Optional, Union, TYPE_CHECKING
 import carla
 
 from launch_tools import CarlaDataProvider
+
 if TYPE_CHECKING:
     from classes.experimental.vehicle import Vehicle
 
@@ -12,9 +13,12 @@ TRAFFIC_MANAGER_CONFIG_SUBDIR = ""
 
 
 class Driver:
-    def __init__(self, path,
-                 traffic_manager: Optional[Union[carla.Client, carla.TrafficManager]] = None,
-                 config_update: Optional[dict] = None):
+    def __init__(
+        self,
+        path,
+        traffic_manager: Optional[Union[carla.Client, carla.TrafficManager]] = None,
+        config_update: Optional[dict] = None,
+    ):
         """
         Args:
             path:
@@ -32,11 +36,13 @@ class Driver:
         if isinstance(traffic_manager, carla.TrafficManager):
             self.tm = traffic_manager  # Traffic manager short alias
         elif isinstance(traffic_manager, carla.Client):
-            self.tm: carla.TrafficManager = traffic_manager.get_trafficmanager(CarlaDataProvider.get_traffic_manager_port())
+            self.tm: carla.TrafficManager = traffic_manager.get_trafficmanager(
+                CarlaDataProvider.get_traffic_manager_port()
+            )
         elif traffic_manager is not None:
             raise TypeError("manager wrong type", type(traffic_manager))
         if path is not None:
-            with open(path, 'r') as file:
+            with open(path, "r") as file:
                 data = json.load(file)
             self.config: dict = data
             driver_data = data.get("driver", {})
@@ -67,8 +73,12 @@ class Driver:
         assert self.config
         if self.config["use_traffic_manager"]:
             dir_path = os.path.split(path)[0]
-            path_tm = os.path.join(dir_path, TRAFFIC_MANAGER_CONFIG_SUBDIR, self.config["use_traffic_manager"] + ".json", )
-            with open(path_tm, 'r') as file:
+            path_tm = os.path.join(
+                dir_path,
+                TRAFFIC_MANAGER_CONFIG_SUBDIR,
+                self.config["use_traffic_manager"] + ".json",
+            )
+            with open(path_tm, "r") as file:
                 self.tm_config = json.load(file)
 
     def spawn(self, transform):
@@ -94,7 +104,7 @@ class Driver:
     def configure_autopilot(self):
         """
         Configures the autopilot of the vehicle, e.g. by calling these but based on the config file
-        
+
         self.tm.auto_lane_change(self.actor, tmc["auto_lane_change"])
         self.tm.distance_to_leading_vehicle(self.actor, tmc["distance_to_leading_vehicle"])
         self.tm.vehicle_percentage_speed_difference(self.actor, tmc["vehicle_percentage_speed_difference"])
@@ -105,7 +115,8 @@ class Driver:
         """
         if self.tm is None:
             raise ValueError(
-                "To use the Traffic Manager the driver needs to be initialized with the client. Or set Driver.tm manually to a manager")
+                "To use the Traffic Manager the driver needs to be initialized with the client. Or set Driver.tm manually to a manager"
+            )
         # TODO Test lazy notation
         tm_config = self.tm_config["traffic_manager"]
         for k, v in tm_config.items():

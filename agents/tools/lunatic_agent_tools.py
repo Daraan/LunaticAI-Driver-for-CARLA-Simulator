@@ -1,4 +1,3 @@
-
 """
 Helper functions and methods for the :py:class:`.LunaticAgent`, some methods are variants
 from the original CARLA agents that have been simplified and outsourced to this
@@ -16,7 +15,7 @@ from functools import partial, wraps
 from inspect import isclass
 from operator import attrgetter
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Sequence, Tuple, Union
-from typing import cast as assure_type
+import typing
 
 import carla
 from omegaconf import DictConfig
@@ -45,7 +44,7 @@ if TYPE_CHECKING:
     from classes.worldmodel import WorldModel
 
 _T = TypeVar("_T")
-_P = ParamSpec('_P')
+_P = ParamSpec("_P")
 if sys.version_info >= (3, 8):
     _AgentFunction = Callable[Concatenate["LunaticAgent", _P], _T]
 else:
@@ -54,21 +53,23 @@ else:
 # ------------------------------
 # Decorators
 # ------------------------------
-    
-    
+
+
 def result_to_context(key: str) -> Callable[[CallableT], CallableT]:
     """
     Decorator to use for the agent. Sets the **key** attribute of the
     :py:class:`.Context`.
     """
+
     def decorator(func: CallableT) -> CallableT:
         @wraps(func)
         def wrapper(self: "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
             result = func(self, *args, **kwargs)
             setattr(self.ctx, key, result)
             return result
+
         return wrapper  # type: ignore[return-value]
-        
+
     return decorator
 
 
@@ -76,23 +77,28 @@ def must_clear_hazard(func: CallableT) -> CallableT:
     """
     Decorator which raises an EmergencyStopException if self.detected_hazards
     is not empty after the function call.
-    
+
     Raises:
         EmergencyStopException: If self.detected_hazards is not empty after the function call.
     """
+
     @wraps(func)
     def wrapper(self: "LunaticAgent", *args: _P.args, **kwargs: _P.kwargs):
         result = func(self, *args, **kwargs)
         if self.detected_hazards:
             raise EmergencyStopException(self.detected_hazards)
         return result
+
     return wrapper  # type: ignore[return-value]
 
 
-def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], None] = None,
-                      on_exit: Union[Phase, Callable[['LunaticAgent'], Any], None] = None,
-                      on_exit_exceptions: Union[Sequence["type[BaseException]"], bool, None] = (),
-                      prior_result_getter: Optional[Union[Callable[['LunaticAgent'], Any], str]] = None):
+def phase_callback(
+    *,
+    on_enter: Union[Phase, Callable[["LunaticAgent"], Any], None] = None,
+    on_exit: Union[Phase, Callable[["LunaticAgent"], Any], None] = None,
+    on_exit_exceptions: Union[Sequence["type[BaseException]"], bool, None] = (),
+    prior_result_getter: Optional[Union[Callable[["LunaticAgent"], Any], str]] = None,
+):
     """
     Decorator function for defining phase callbacks that are executed at the start and end of a function.
 
@@ -106,21 +112,21 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
         on_exit_exceptions (Tuple[BaseException] | bool)):
             If a non-empty sequence of exceptions is provided, the **on_exit** phase will
             **only be executed if one of the exceptions is raised.**
-            
+
             If :python:`True`, the **on_exit** phase will be executed if any
             :py:exc:`LunaticAgentException` are raised.
             Defaults to :code:`False`.
-            
+
             Attention:
                 - The **on_exit** phase will *only* be executed if and only if one of the exceptions
                   is raised.
                 - The **exception will be re-raised** after executing **on_exit**.
-            
+
         prior_result_getter: Can be the name of an attribute of the agent. If the
             attribute is a callable, it will be called without arguments. Alternatively
             a callable can be passed. The result will be used as the **prior_results**
             argument for the :py:meth:`.LunaticAgent.execute_phase` method.
-    
+
     Warns:
         If **on_enter** and **on_exit** are not set, the decorator will print a
         warning and ignore the decorator.
@@ -131,12 +137,13 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
         _on_exit_exceptions_ = (LunaticAgentException,)
     elif isclass(on_exit_exceptions) and issubclass(on_exit_exceptions, BaseException):
         # This allows to pass a single exception, and is actually Never
-        _on_exit_exceptions_ = assure_type(Tuple["type[BaseException]", ...], (on_exit_exceptions,))
+        exceptions_as_tuple = (on_exit_exceptions,)
+        _on_exit_exceptions_ = typing.cast("Tuple[type[BaseException], ...]", exceptions_as_tuple)
     elif not on_exit_exceptions:
         _on_exit_exceptions_ = ()
     else:
         _on_exit_exceptions_ = tuple(on_exit_exceptions)
-    
+
     # Validate prior_result -> Callable
     if prior_result_getter and not callable(prior_result_getter):
         prior_result_getter = attrgetter(prior_result_getter)  # raises Type Error if not string
@@ -144,8 +151,10 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
     # Pay attention to prior_result which should not be prior_result
     def decorator(func: _AgentFunction[_P, _T]):
         if on_enter is None and on_exit is None:
-            print("WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
-                    f"decorator for function {func.__name__}. Ignoring decorator.")
+            print(
+                "WARNING: No `on_enter`, `on_exit` phase set for `phase_callback` "
+                f"decorator for function {func.__name__}. Ignoring decorator."
+            )
             if TYPE_CHECKING:
                 assert_never(func)  # we ignore this # pyright: ignore
             return func
@@ -163,7 +172,7 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
                     self.execute_phase(on_enter, prior_results=prior_result)
                 else:
                     on_enter(self)
-            
+
             # Call with exception handling
             if _on_exit_exceptions_:
                 try:
@@ -177,52 +186,58 @@ def phase_callback(*, on_enter: Union[Phase, Callable[['LunaticAgent'], Any], No
                     raise
             else:
                 result = func(self, *args, **kwargs)
-            
+
             if on_exit:
                 if callable(on_exit):
                     on_exit(self)
                 else:
                     self.execute_phase(on_exit, prior_results=result)
-            
+
             return result
 
         return wrapper
 
     return decorator
 
+
 # ------------------------------
 # Obstacle Detection
 # ------------------------------
 
 
-def max_detection_distance(self: HasConfig["BehaviorAgentSettings | LunaticAgentSettings"],
-                           lane: Literal["same_lane", "other_lane", "overtaking", "tailgating"]) -> float:
+def max_detection_distance(
+    self: HasConfig["BehaviorAgentSettings | LunaticAgentSettings"],
+    lane: Literal["same_lane", "other_lane", "overtaking", "tailgating"],
+) -> float:
     """
     Convenience function to be used with :py:func:`lunatic_agent_tools.detect_vehicles` and :any:`LunaticAgent.detect_obstacles_in_path`.
-    
+
     The max distance to consider an obstacle is calculated as:
-    
+
     .. code-block:: python
 
         max(obstacles.min_proximity_threshold,
             live_info.current_speed_limit / obstacles.speed_detection_downscale.[same|other]_lane)
-    
+
     Args:
         self : An object that implements the `config` and `live_info` attributes
         lane : The lane to consider.
-    
+
     Note:
         **lane** must be a key in :code:`BehaviorAgentObstacleSettings.SpeedLimitDetectionDownscale`.
 
     """
-    
-    return max(self.config.obstacles.min_proximity_threshold,
-               self.config.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane])
+
+    return max(
+        self.config.obstacles.min_proximity_threshold,
+        self.config.live_info.current_speed_limit / self.config.obstacles.speed_detection_downscale[lane],
+    )
 
 
-def detect_obstacles_in_path(self: "CanDetectNearbyObstacles",
-                             obstacle_list: Optional[Union[Sequence[carla.Actor], carla.ActorList,
-                                                           Literal['all']]]) -> ObstacleDetectionResult:
+def detect_obstacles_in_path(
+    self: "CanDetectNearbyObstacles",
+    obstacle_list: Optional[Union[Sequence[carla.Actor], carla.ActorList, Literal["all"]]],
+) -> ObstacleDetectionResult:
     """
     This module is in charge of warning in case of a collision
     and managing possible tailgating chances.
@@ -236,40 +251,51 @@ def detect_obstacles_in_path(self: "CanDetectNearbyObstacles",
           :py:func:`max_detection_distance` function.
         - Former :code:`BehaviorAgent.collision_and_car_avoid_manager`, which evaded cars via the
           tailgating function; this is now rule based.
-        
+
     Tip:
         As the first argument is the agent, this function can be used as a method, i.e
         it can be added / imported directly into the agent class' body.
     """
 
-    if obstacle_list in (None, 'all'):
+    if obstacle_list in (None, "all"):
         obstacle_list = self.all_obstacles_nearby
 
     # Triple (<is there an obstacle> , <the actor> , <distance to the actor>)
     if self.config.live_info.incoming_direction == RoadOption.CHANGELANELEFT:
-        detection_result: ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
-                                                        self.max_detection_distance("other_lane"),
-                                                        up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
-                                                        lane_offset=-1)
+        detection_result: ObstacleDetectionResult = detect_obstacles(
+            self,
+            obstacle_list,
+            self.max_detection_distance("other_lane"),
+            up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
+            lane_offset=-1,
+        )
     elif self.config.live_info.incoming_direction == RoadOption.CHANGELANERIGHT:
-        detection_result: ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
-                                                        self.max_detection_distance("other_lane"),
-                                                        up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
-                                                        lane_offset=1)
+        detection_result: ObstacleDetectionResult = detect_obstacles(
+            self,
+            obstacle_list,
+            self.max_detection_distance("other_lane"),
+            up_angle_th=self.config.obstacles.detection_angles.cars_lane_change[1],
+            lane_offset=1,
+        )
     else:
-        detection_result: ObstacleDetectionResult = detect_obstacles(self, obstacle_list,
-                                                        self.max_detection_distance("same_lane"),
-                                                        up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],)
+        detection_result: ObstacleDetectionResult = detect_obstacles(
+            self,
+            obstacle_list,
+            self.max_detection_distance("same_lane"),
+            up_angle_th=self.config.obstacles.detection_angles.cars_same_lane[1],
+        )
     return detection_result
 
 
-def detect_obstacles(self: "CanDetectObstacles",
-                    actor_list: Optional[Sequence[carla.Actor] | carla.ActorList] = None,
-                    max_distance: Optional[float] = None,
-                    up_angle_th: float = 90,
-                    low_angle_th: float = 0,
-                    *,
-                    lane_offset: int = 0) -> ObstacleDetectionResult:
+def detect_obstacles(
+    self: "CanDetectObstacles",
+    actor_list: Optional[Sequence[carla.Actor] | carla.ActorList] = None,
+    max_distance: Optional[float] = None,
+    up_angle_th: float = 90,
+    low_angle_th: float = 0,
+    *,
+    lane_offset: int = 0,
+) -> ObstacleDetectionResult:
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
 
@@ -286,17 +312,17 @@ def detect_obstacles(self: "CanDetectObstacles",
     The angle between the location and reference transform will also be taken into account.
     Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy:
     **low_angle_th** < angle < **up_angle_th**.
-    
+
     Tip:
         As the first argument is the agent, this function can be used as a method, i.e
         it can be added / imported directly into the agent class' body.
     """
-    
+
     # See also scenario_runner scenario_helper.detect_lane_obstacle
 
     if self.config.obstacles.ignore_vehicles:
         return ObstacleDetectionResult(False, None, -1)
-    
+
     if actor_list is None:
         # NOTE: If empty list is passed e.g. for walkers this pulls all vehicles
         # TODO: Propose update to original carla
@@ -305,9 +331,11 @@ def detect_obstacles(self: "CanDetectObstacles",
         return ObstacleDetectionResult(False, None, -1)
 
     if not max_distance:
-        max_distance = self.config.obstacles.base_vehicle_threshold  # TODO: This is not modified with the dynamic threshold
-    
-    def get_route_polygon() -> None | Polygon:
+        max_distance = (
+            self.config.obstacles.base_vehicle_threshold
+        )  # TODO: This is not modified with the dynamic threshold
+
+    def get_route_polygon() -> Polygon | None:
         # Note nested functions can access variables from the outer scope
         route_bb = []  # type: list[list[float]]
         extent_y = self._vehicle.bounding_box.extent.y
@@ -335,7 +363,9 @@ def detect_obstacles(self: "CanDetectObstacles",
 
     # TODO: can get this from CDP
     ego_transform = self._vehicle.get_transform()
-    ego_location = ego_transform.location  # NOTE: property access creates a new location object, i.e. ego_location != ego_front_transform
+    ego_location = (
+        ego_transform.location
+    )  # NOTE: property access creates a new location object, i.e. ego_location != ego_front_transform
     ego_wpt = CarlaDataProvider.get_map().get_waypoint(ego_location)
 
     # Get the right offset
@@ -345,7 +375,8 @@ def detect_obstacles(self: "CanDetectObstacles",
     # Get the transform of the front of the ego
     ego_front_transform = ego_transform
     ego_front_transform.location += carla.Location(
-        ego_transform.get_forward_vector() * self._vehicle.bounding_box.extent.x)
+        ego_transform.get_forward_vector() * self._vehicle.bounding_box.extent.x
+    )
 
     opposite_invasion = abs(self.config.planner.offset) + self._vehicle.bounding_box.extent.y > ego_wpt.lane_width / 2
     use_bbs = self.config.obstacles.use_bbs_detection or opposite_invasion or ego_wpt.is_junction
@@ -363,26 +394,25 @@ def detect_obstacles(self: "CanDetectObstacles",
 
         target_wpt = CarlaDataProvider.get_map().get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
         if not target_wpt:
-            logger.warning("No waypoint found for the checked obstacle."
-                           "This might be a bug in the map but ok for static obstacles.")
+            logger.warning(
+                "No waypoint found for the checked obstacle.This might be a bug in the map but ok for static obstacles."
+            )
             continue
 
         # General approach for junctions and vehicles invading other lanes due to the offset
         if (use_bbs or target_wpt.is_junction) and route_polygon:
-
             target_bb = target_vehicle.bounding_box
             target_vertices = target_bb.get_world_vertices(target_vehicle.get_transform())
             target_list = [[v.x, v.y, v.z] for v in target_vertices]
             target_polygon = Polygon(target_list)
 
             if route_polygon.intersects(target_polygon):
-                return ObstacleDetectionResult(True,
-                                               target_vehicle,
-                                               target_vehicle.get_location().distance(ego_location))
+                return ObstacleDetectionResult(
+                    True, target_vehicle, target_vehicle.get_location().distance(ego_location)
+                )
 
         # Simplified approach, using only the plan waypoints (similar to TM)
         else:
-
             if target_wpt.road_id != ego_wpt.road_id or target_wpt.lane_id != ego_wpt.lane_id + lane_offset:
                 next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
                 if not next_wpt:
@@ -393,28 +423,30 @@ def detect_obstacles(self: "CanDetectObstacles",
             target_forward_vector = target_transform.get_forward_vector()
             target_extent = target_vehicle.bounding_box.extent.x
             target_rear_transform = target_transform
-            
+
             target_rear_transform.location -= carla.Location(
                 x=target_extent * target_forward_vector.x,
                 y=target_extent * target_forward_vector.y,
             )
-            
-            if is_within_distance(target_rear_transform, ego_front_transform, max_distance,
-                                    [low_angle_th, up_angle_th]):
-                return ObstacleDetectionResult(True,
-                                               target_vehicle,
-                                               target_rear_transform.location.distance(
-                                                                ego_front_transform.location))
+
+            if is_within_distance(
+                target_rear_transform, ego_front_transform, max_distance, [low_angle_th, up_angle_th]
+            ):
+                return ObstacleDetectionResult(
+                    True, target_vehicle, target_rear_transform.location.distance(ego_front_transform.location)
+                )
 
     return ObstacleDetectionResult(False, None, -1)
 
 
-def detect_vehicles(self: "CanDetectObstacles",
-                    vehicle_list: Optional[Sequence[carla.Actor] | carla.ActorList] = None,
-                    max_distance: Optional[float] = None,
-                    up_angle_th: float = 90,
-                    low_angle_th: float = 0,
-                    lane_offset: int = 0) -> ObstacleDetectionResult:
+def detect_vehicles(
+    self: "CanDetectObstacles",
+    vehicle_list: Optional[Sequence[carla.Actor] | carla.ActorList] = None,
+    max_distance: Optional[float] = None,
+    up_angle_th: float = 90,
+    low_angle_th: float = 0,
+    lane_offset: int = 0,
+) -> ObstacleDetectionResult:
     """
     Method to check if there is a vehicle in front or around the agent blocking its path.
 
@@ -431,17 +463,15 @@ def detect_vehicles(self: "CanDetectObstacles",
     The angle between the location and reference transform will also be taken into account.
     Being 0 a location in front and 180, one behind, i.e, the vector between has to satisfy:
     **low_angle_th** < angle < **up_angle_th**.
-    
+
     Tip:
         As the first argument is the agent, this function can be used as a method, i.e
         it can be added / imported directly into the agent class' body.
-        
+
     .. deprecated::
         Use :py:func:`.detect_obstacles` instead.
     """
-    return detect_obstacles(self, vehicle_list, max_distance,
-                            up_angle_th, low_angle_th,
-                            lane_offset=lane_offset)
+    return detect_obstacles(self, vehicle_list, max_distance, up_angle_th, low_angle_th, lane_offset=lane_offset)
 
 
 # Untested
@@ -460,24 +490,27 @@ detect_obstacles_behind = partial(detect_vehicles, up_angle_th=180, low_angle_th
 # Path Planning
 # ------------------------------
 
-def generate_lane_change_path(waypoint: carla.Waypoint,
-                              direction: Literal['left', 'right'] = 'left',
-                              distance_same_lane: float = 10,
-                              distance_other_lane: float = 25,
-                              lane_change_distance: float = 25,
-                              check: bool = True,
-                              lane_changes: int = 1,
-                              step_distance: float = 2) -> "list[tuple[carla.Waypoint, RoadOption]]":
+
+def generate_lane_change_path(
+    waypoint: carla.Waypoint,
+    direction: Literal["left", "right"] = "left",
+    distance_same_lane: float = 10,
+    distance_other_lane: float = 25,
+    lane_change_distance: float = 25,
+    check: bool = True,
+    lane_changes: int = 1,
+    step_distance: float = 2,
+) -> "list[tuple[carla.Waypoint, RoadOption]]":
     """
     This method generates a path that results in a lane change.
     Use the different distances to fine-tune the maneuver.
     If the lane change is impossible, the returned path will be empty.
-    
+
     Distance traveled:
         1. **distance_same_lane** in the same lane.
         2. **lane_change_distance** while reaching the other lane.
         3. **distance_other_lane** in the other lane.
-    
+
     Parameters:
         waypoint: The starting waypoint.
         direction: The direction of the lane change, either 'left' or 'right'.
@@ -508,11 +541,11 @@ def generate_lane_change_path(waypoint: carla.Waypoint,
         plan.append((next_wp, RoadOption.LANEFOLLOW))  # next waypoint to the path
 
     # TEMP
-    assert direction in ('left', 'right')  # TODO: # END: remove at end of project
-    
-    if direction == 'left':
+    assert direction in ("left", "right")  # TODO: # END: remove at end of project
+
+    if direction == "left":
         option = RoadOption.CHANGELANELEFT
-    elif direction == 'right':
+    elif direction == "right":
         option = RoadOption.CHANGELANERIGHT
     else:
         # ERROR, input value for change must be 'left' or 'right'
@@ -523,7 +556,6 @@ def generate_lane_change_path(waypoint: carla.Waypoint,
 
     # Lane change
     while lane_changes_done < lane_changes:
-
         # Move forward
         next_wps = plan[-1][0].next(lane_change_distance)
         if not next_wps:
@@ -531,12 +563,12 @@ def generate_lane_change_path(waypoint: carla.Waypoint,
         next_wp = next_wps[0]
 
         # Get the side lane
-        if direction == 'left':
-            if check and str(next_wp.lane_change) not in ['Left', 'Both']:
+        if direction == "left":
+            if check and str(next_wp.lane_change) not in ["Left", "Both"]:
                 return []
             side_wp = next_wp.get_left_lane()  # get waypoint on other lane
         else:
-            if check and str(next_wp.lane_change) not in ['Right', 'Both']:
+            if check and str(next_wp.lane_change) not in ["Right", "Both"]:
                 return []
             side_wp = next_wp.get_right_lane()
 
@@ -559,15 +591,17 @@ def generate_lane_change_path(waypoint: carla.Waypoint,
         plan.append((next_wp, RoadOption.LANEFOLLOW))
 
     return plan
-    
 
-def create_agent_config(self: HasBaseSettings[AgentConfigT],
-                        source: Union["type[AgentConfigT]", AgentConfigT, DictConfig, str, None] = None,
-                        world_model: Optional["WorldModel"] = None,
-                        overwrite_options: Optional[Dict[str, Any]] = None) -> AgentConfigT:
+
+def create_agent_config(
+    self: HasBaseSettings[AgentConfigT],
+    source: Union["type[AgentConfigT]", AgentConfigT, DictConfig, str, None] = None,
+    world_model: Optional["WorldModel"] = None,
+    overwrite_options: Optional[Dict[str, Any]] = None,
+) -> AgentConfigT:
     """
     Method to create the :py:class:`.AgentConfig` from different input types.
-    
+
     Parameters:
         self (LunaticAgent): The agent
         source:
@@ -575,7 +609,7 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
             - :py:class:`.AgentConfig` (class or instance) to be used.
             - :py:class:`omegaconf.DictConfig`, a dictionary with the configuration,
               i.e. duck-typed as :py:class:`.AgentConfig`.
-              
+
     Returns:
         :py:attr:`self.BASE_SETTINGS <.LunaticAgent.BASE_SETTINGS>` (duck-typed):
             The configuration object. The actual type depends on **source**.
@@ -594,23 +628,24 @@ def create_agent_config(self: HasBaseSettings[AgentConfigT],
         opt_dict = self.BASE_SETTINGS.from_yaml(source)
     elif isinstance(source, AgentConfig) or (isclass(source) and issubclass(source, AgentConfig)):  # pyright: ignore[reportUnnecessaryIsInstance]
         logger.debug("Config is a dataclass / AgentConfig")
-        _cfg = source.to_dict_config()
-        _cfg.merge_with(overwrite_options)  # Note uses DictConfig.update
-        opt_dict = assure_type(source.__class__, _cfg)
+        cfg = source.to_dict_config()
+        cfg.merge_with(overwrite_options)  # Note uses DictConfig.update
+        opt_dict = cfg  # has type source.__class__
     elif isinstance(source, DictConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
         logger.debug("Config is a DictConfig")
         source.merge_with(overwrite_options)
         opt_dict = self.BASE_SETTINGS.cast(source)
     elif isclass(source):
-        logger.warning("Config is a class of type %s but not an AgentConfig, this is unexpected.",
-                       type(source))
-        opt_dict = assure_type(source, source(**overwrite_options))
+        logger.warning("Config is a class of type %s but not an AgentConfig, this is unexpected.", type(source))
+        opt_dict = typing.cast("source", source(**overwrite_options))
     elif not overwrite_options:
         logger.warning("Settings of type %s are not a supported Config class", type(source))
         opt_dict = source  # assume the user passed something appropriate
     else:
-        logger.warning("Warning: Settings of type %s are not an instance of a supported class. "
-                       "Trying to apply overwrite options.", type(source))
+        logger.warning(
+            "Warning: Settings of type %s are not an instance of a supported class. Trying to apply overwrite options.",
+            type(source),
+        )
         source.update(overwrite_options)
         opt_dict = source  # assume the user passed something appropriate
     if isinstance(opt_dict, DictConfig):

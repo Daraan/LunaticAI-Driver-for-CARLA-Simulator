@@ -11,17 +11,13 @@ __all__ = [  # noqa: RUF022
     "class_or_instance_method",
     "CarlaDataProvider",
     "GameTime",
-
     "prepare_blueprints",
     "blueprint_helpers",
-
-    #"argument_parsing",
-
+    # "argument_parsing",
     # csv_tools
     "transform_to_pandas",
     "vehicle_location_to_dataframe",
     "csv_to_transformations",
-
     # version_handling
     "singledispatchmethod",
     "Literal",
@@ -37,6 +33,7 @@ try:
 except ImportError:
     logging.debug("module carla not found in PYTHONPATH, trying to import from .egg file")
     from launch_tools._egg_import import import_carla
+
     carla = import_carla()
 
 # Import scenario runner from submodule or SCENARIO_RUNNER_ROOT
@@ -67,39 +64,36 @@ class signature : Concatenate[type[_T], _P]
 
 
 # pylint: disable=too-few-public-methods, invalid-name
-class class_or_instance_method(classmethod[_T, _Parameters, _R_co]
-                               if TYPE_CHECKING else
-                               classmethod):
+class class_or_instance_method(classmethod[_T, _Parameters, _R_co] if TYPE_CHECKING else classmethod):
     """
     Decorator to transform a method into both a regular and class method
-    
+
     The first argument of the decorated function should be decorated with:
     :python:`type[Self] | Self` or :python:`Union[Type[Self], Self]`
-    
+
     :meta private:
     """
 
-    def __get__(
-        self, instance: Optional[_T], type_: "type[_T] | None" = None
-    ) -> Callable[_Parameters, _R_co]:
+    def __get__(self, instance: Optional[_T], type_: "type[_T] | None" = None) -> Callable[_Parameters, _R_co]:
         if instance is None:
-            return super().__get__(instance, type_)      # type: ignore # type_ is not None
+            return super().__get__(instance, type_)  # type: ignore # type_ is not None
         return self.__func__.__get__(instance, type_)
+
 
 # --- Exclude from docs ---
 
-    
+
 if "READTHEDOCS" in os.environ:
     if ast_parse.__doc__:
         ast_parse.__doc__ += "\n\n    :meta private:"
     else:
         ast_parse.__doc__ = ":meta private:"
-    
+
     if singledispatchmethod.__doc__:
         singledispatchmethod.__doc__ += "\n\n    :meta private:"
     else:
         singledispatchmethod.__doc__ = ":meta private:"
-    
+
     for __var in ("transform_to_pandas", "vehicle_location_to_dataframe", "csv_to_transformations"):
         if not TYPE_CHECKING:
             __all__.remove(__var)  # type: ignore  # noqa: PYI056

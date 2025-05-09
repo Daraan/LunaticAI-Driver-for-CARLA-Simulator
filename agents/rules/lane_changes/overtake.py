@@ -3,7 +3,6 @@
 # Credits to https://github.com/carla-simulator/carla/commits?author=jackbart94
 # https://github.com/carla-simulator/carla/commit/4bc53a7f6c71551b466b8abdb48f24c48b295efc
 
-
 from typing import TYPE_CHECKING
 
 from agents.rules.lane_changes.other_rules import rule_lane_change
@@ -15,7 +14,7 @@ from classes.rule import Rule
 
 if TYPE_CHECKING:
     from classes.rule import Context
-    
+
 
 @ConditionFunction(truthy=True)
 def overtake_check(self: "SimpleOvertakeRule", ctx: "Context"):
@@ -27,27 +26,32 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context"):
 
     Check if a lane change can happen is done in the action, combine two rules!
     """
-    
+
     #    TODO?: add option in condition to receive the result of the DETECT_CARS phase
     #    - Is this not in the Context already?
-    
+
     waypoint = ctx.agent._current_waypoint
 
     # Cheap to get, do we plan to continue in the same lane? We are not at a junction and have some minimum speed
-    pre_conditions = (ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW
-            and not waypoint.is_junction and ctx.live_info.current_speed > 10  # TODO Hardcoded
-            )
+    pre_conditions = (
+        ctx.live_info.incoming_direction == RoadOption.LANEFOLLOW
+        and not waypoint.is_junction
+        and ctx.live_info.current_speed > 10  # TODO Hardcoded
+    )
     if not pre_conditions:
         return False
     # Detect if there is a car in front
     vehicle_list = ctx.agent.vehicles_nearby
-    
+
     # TODO: Check if detection matrix is True and use it directly
     # Compared to tailgating we check not so far in front (speed limit / 3)
-    check_front = detect_vehicles(ctx.agent, vehicle_list,
-                                   ctx.max_detection_distance("overtaking"),  # Trigger further ahead
-                                   up_angle_th=30,
-                                   lane_offset=0)
+    check_front = detect_vehicles(
+        ctx.agent,
+        vehicle_list,
+        ctx.max_detection_distance("overtaking"),  # Trigger further ahead
+        up_angle_th=30,
+        lane_offset=0,
+    )
 
     # TODO: Check lane marking
     # TODO: Check speed limit
@@ -61,9 +65,9 @@ def overtake_check(self: "SimpleOvertakeRule", ctx: "Context"):
 class SimpleOvertakeRule(Rule):
     group = "lane_change"
     phase = Phase.DETECT_CARS | Phase.BEGIN
-    
+
     priority = RulePriority.LOW
-    
+
     condition = overtake_check.copy()
     condition.register_action(rule_lane_change, True, order=("left", "right"))  # less strict
     cooldown_reset_value = 200

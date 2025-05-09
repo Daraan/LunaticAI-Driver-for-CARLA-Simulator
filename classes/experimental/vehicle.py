@@ -11,9 +11,7 @@ from launch_tools import CarlaDataProvider
 
 def calculateDistance(location1, location2):
     return sqrt(
-        (location1.x ** 2 - location2.x ** 2) +
-        (location1.y ** 2 - location2.y ** 2) +
-        (location1.z ** 2 - location2.z ** 2)
+        (location1.x**2 - location2.x**2) + (location1.y**2 - location2.y**2) + (location1.z**2 - location2.z**2)
     ).real
 
 
@@ -30,7 +28,7 @@ class VehicleBase:
             self.actorBlueprint: carla.ActorBlueprint = make
         else:
             self.actorBlueprint: carla.ActorBlueprint = blueprint_library.filter(make)[0]
-        #Vehicle.instances.append(self)  # access all instances over the class
+        # Vehicle.instances.append(self)  # access all instances over the class
 
     @classmethod
     def destroy_all(cls, client: carla.Client) -> None:
@@ -45,8 +43,7 @@ class VehicleBase:
         return False
 
     def spawn(self, transform):
-        self.actor = cast(carla.Vehicle,
-                          self.world.spawn_actor(self.actorBlueprint, transform))
+        self.actor = cast("carla.Vehicle", self.world.spawn_actor(self.actorBlueprint, transform))
         CarlaDataProvider.register_actor(self.actor, transform)
         self.actor.apply_control(self.control)
 
@@ -91,27 +88,25 @@ class VehicleBase:
         relative_y = other_car_location.y - currentLocation.y
 
         # Convert relative position to ego car's coordinate system based on its rotation
-        relative_x_rotated = (
-                relative_x * math.cos(math.radians(-currentRotation.yaw)) -
-                relative_y * math.sin(math.radians(-currentRotation.yaw))
+        relative_x_rotated = relative_x * math.cos(math.radians(-currentRotation.yaw)) - relative_y * math.sin(
+            math.radians(-currentRotation.yaw)
         )
-        relative_y_rotated = (
-                relative_x * math.sin(math.radians(-currentRotation.yaw)) +
-                relative_y * math.cos(math.radians(-currentRotation.yaw))
+        relative_y_rotated = relative_x * math.sin(math.radians(-currentRotation.yaw)) + relative_y * math.cos(
+            math.radians(-currentRotation.yaw)
         )
 
         return relative_x_rotated, relative_y_rotated
 
     def distanceToCarAhead(self, vehicle_list: List["VehicleBase"]):
         closestCar = None
-        closestDistance = float('inf')  # Initialize with a very large value
+        closestDistance = float("inf")  # Initialize with a very large value
 
         for car in vehicle_list:
             if car != self:
                 car_location = car.getLocation()
 
                 # Calculate relative coordinates using the separate function
-                relative_x_rotated, relative_y_rotated = self.calculateRelativeCoordinates(car_location)
+                _relative_x_rotated, relative_y_rotated = self.calculateRelativeCoordinates(car_location)
 
                 # Check if the car is ahead based on relative y-coordinate
                 if relative_y_rotated > 0:
@@ -128,14 +123,14 @@ class VehicleBase:
 
     def distanceToCarBehind(self, vehicle_list: List["VehicleBase"]):
         closestCar = None
-        closestDistance = float('inf')  # Initialize with a very large value
+        closestDistance = float("inf")  # Initialize with a very large value
 
         for car in vehicle_list:
             if car != self:
                 car_location = car.getLocation()
 
                 # Calculate relative coordinates using the separate function
-                relative_x_rotated, relative_y_rotated = self.calculateRelativeCoordinates(car_location)
+                _relative_x_rotated, relative_y_rotated = self.calculateRelativeCoordinates(car_location)
 
                 # Check if the car is behind based on relative y-coordinate
                 if relative_y_rotated < 0:
@@ -163,7 +158,6 @@ class VehicleBase:
             # vehicles_in_world = self.world.get_actors().filter('vehicle.*')
             distance_to_car_ahead = self.distanceToCarAhead(carList)
             if distance_to_car_ahead is not None:
-
                 if distance_to_car_ahead < 54:
                     self.setBrake(1)
                 else:
@@ -172,7 +166,7 @@ class VehicleBase:
                     print(distance_to_car_ahead)
 
                     # Calculate the desired speed to maintain the safe distance
-                    desired_speed = -(1 / (math.e ** distance_to_car_ahead)) + 1
+                    desired_speed = -(1 / (math.e**distance_to_car_ahead)) + 1
                     # print("Desired speed:", desired_speed)
 
                     # Calculate the desired acceleration

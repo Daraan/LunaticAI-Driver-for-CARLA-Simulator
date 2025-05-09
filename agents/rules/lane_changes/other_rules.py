@@ -3,15 +3,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from classes.rule import Context, Rule
 
-__all__ = [
-    'rule_lane_change'
-]
+__all__ = ["rule_lane_change"]
 
 
 def rule_lane_change(self: "Rule", ctx: "Context", order=("left", "right"), **kwargs):
     """
     Helper function to execute lane changes
-    
+
     Assumes:
         - For tailgator check:
             - `(self.config.live_info.incoming_direction == RoadOption.LANEFOLLOW \

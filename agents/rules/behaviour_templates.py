@@ -11,7 +11,7 @@ from classes.rule import ConditionFunction, Context, Rule, always_execute
 _use_debug_rules = True  # TODO: Turn off again #XXX
 DEBUG_RULES: bool = not READTHEDOCS and _use_debug_rules
 
-#TODO: maybe create some omega conf dict creator that allows to create settings more easily
+# TODO: maybe create some omega conf dict creator that allows to create settings more easily
 # e.g. CreateOverwriteDict.speed.max_speed = 60, yields such a subdict.
 # QUESTION: How to merge more than one entry?
 
@@ -31,26 +31,29 @@ def if_config(config_path, value):
     """
     func = partial(_if_config_checker, config_path=config_path, value=value)
     func = update_wrapper(func, _if_config_checker)
-    return ConditionFunction(func,
-                              name=f"Checks if {config_path} is {value}",
-                              use_self=False  # NOTE: Has to be used as _if_config_checker has > 1 argument and no self usage.
-                              )
+    return ConditionFunction(
+        func,
+        name=f"Checks if {config_path} is {value}",
+        use_self=False,  # NOTE: Has to be used as _if_config_checker has > 1 argument and no self usage.
+    )
+
 
 # ---
 
 # Make random based on probabilistic config
- 
+
 
 # ------ Speed Rules ------
+
 
 def set_default_intersection_speed(ctx: "Context"):
     """
     Slow down the car when turning at a junction.
     """
     target_speed = min([
-            ctx.config.speed.max_speed,
-            ctx.config.live_info.current_speed_limit - ctx.config.speed.intersection_speed_decrease]
-            )
+        ctx.config.speed.max_speed,
+        ctx.config.live_info.current_speed_limit - ctx.config.speed.intersection_speed_decrease,
+    ])
     # NOTE: could interpolate this in omega conf
     ctx.agent.config.speed.target_speed = target_speed
 
@@ -59,6 +62,7 @@ class SlowDownAtIntersectionRule(Rule):
     """
     Slow down the car when turning at a junction.
     """
+
     phase = Phase.TURNING_AT_JUNCTION | Phase.BEGIN
     condition = always_execute
     action = set_default_intersection_speed
@@ -68,6 +72,7 @@ class SlowDownAtIntersectionRule(Rule):
 
 # -----
 
+
 def set_default_speed(ctx: "Context"):
     """
     Speed to apply when the car drives under normal circumstances,
@@ -75,8 +80,9 @@ def set_default_speed(ctx: "Context"):
     """
     # Read from config
     target_speed = min([
-            ctx.config.speed.max_speed,
-            ctx.config.live_info.current_speed_limit - ctx.config.speed.speed_lim_dist])
+        ctx.config.speed.max_speed,
+        ctx.config.live_info.current_speed_limit - ctx.config.speed.speed_lim_dist,
+    ])
     # Set on Agent
     ctx.agent.config.speed.target_speed = target_speed
 
@@ -86,10 +92,12 @@ class NormalSpeedRule(Rule):
     Speed to apply when the car drives under normal circumstances,
     i.e. no junctions, no obstacles, etc. detected.
     """
+
     phases = Phase.TAKE_NORMAL_STEP | Phase.BEGIN  # type: ignore[assignment]
     condition = always_execute
     action = set_default_speed
     description = "Set speed to normal speed"
+
 
 # ----------- Plan next waypoint -----------
 
@@ -106,7 +114,7 @@ def random_spawnpoint_destination(ctx: "Context", waypoints: Optional[List[carla
     else:
         loc = random.choice(waypoints).transform.location
     ctx.agent.set_destination(loc)
-    
+
 
 @ConditionFunction
 def is_agent_done(ctx: Context) -> bool:
@@ -120,10 +128,12 @@ class TargetRandomSpawnpointWhenDone(Rule):
     """
     Sets random waypoint when done
     """
+
     phases = Phase.DONE | Phase.BEGIN  # type: ignore[assignment]
     condition = is_agent_done
     action = random_spawnpoint_destination
     description = "Sets random waypoint when done"
+
 
 # ---
 
@@ -134,16 +144,18 @@ def set_next_waypoint_nearby(ctx: "Context"):
     next_wp = random.choice((wp, wp.get_left_lane(), wp.get_right_lane()))
     if next_wp is None:
         next_wp = wp
-    #destination = random.choice(spawn_points).location
+    # destination = random.choice(spawn_points).location
     destination = next_wp.transform.location
     ctx.agent.set_destination(destination)
-    
+
 
 class SetNextWaypointNearby(Rule):
     "Sets random waypoint when done to a nearby point ahead"
+
     phases = Phase.DONE | Phase.BEGIN  # type: ignore[assignment]
     condition = is_agent_done
     action = set_next_waypoint_nearby
+
 
 # ----------- RSS Rules -----------
 
@@ -156,7 +168,7 @@ def accept_rss_updates(ctx: Context):
         return None
     assert isinstance(ctx.prior_result, carla.VehicleControl)
     ctx.control = ctx.prior_result
-    
+
 
 assert isinstance(if_config("rss.enabled", True), ConditionFunction)
 
@@ -164,8 +176,9 @@ assert isinstance(if_config("rss.enabled", True), ConditionFunction)
 class AlwaysAcceptRSSUpdates(Rule):
     """
     Always accept RSS updates if rss is enabled in the config.
-    
+
     """
+
     phases = Phase.RSS_EVALUATION | Phase.END  # type: ignore[assignment]
     condition = if_config("rss.enabled", True)
     action = accept_rss_updates
@@ -174,10 +187,11 @@ class AlwaysAcceptRSSUpdates(Rule):
 
 class ConfigBasedRSSUpdates(Rule):
     """Always accept RSS updates if :any:`rss.always_accept_update <LunaticAgentSettings.rss>` is set to True in the config."""
+
     phases = Phase.RSS_EVALUATION | Phase.END  # type: ignore[assignment]
     condition = if_config("rss.always_accept_update", True)
     action = accept_rss_updates
-    #description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
+    # description = "Accepts RSS updates depending on the value of `config.rss.always_accept_update`"
 
 
 # ----------- Tests -----------

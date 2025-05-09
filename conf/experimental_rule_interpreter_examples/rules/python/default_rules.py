@@ -17,8 +17,7 @@ def go_crazy(driver, matrix, i_car, j_car, tm, chances=1000):
 
 def brake_check(driver, matrix, i_car, j_car, tm, chances=100):
     brake_check_choice = random.randint(1, chances)
-    if (brake_check_choice <= driver.brake_check_chance
-            and (matrix[i_car][j_car - 1] == 2)):
+    if brake_check_choice <= driver.brake_check_chance and (matrix[i_car][j_car - 1] == 2):
         driver.vehicle.actor.set_autopilot(False)
         driver.vehicle.setThrottle(0)
         driver.vehicle.setBrake(10)

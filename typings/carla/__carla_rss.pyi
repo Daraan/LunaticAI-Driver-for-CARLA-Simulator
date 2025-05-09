@@ -1,4 +1,5 @@
 """This is an artificial module that holds the classes that are added to libcarla if the RSS library is enabled."""
+
 from typing import Callable
 
 import ad
@@ -13,14 +14,14 @@ from .libcarla import (
 )
 
 __all__ = [
-    'RssActorConstellationData',
-    'RssActorConstellationResult',
-    'RssEgoDynamicsOnRoute',
-    'RssLogLevel',
-    'RssResponse',
-    'RssRestrictor',
-    'RssRoadBoundariesMode',
-    'RssSensor',
+    "RssActorConstellationData",
+    "RssActorConstellationResult",
+    "RssEgoDynamicsOnRoute",
+    "RssLogLevel",
+    "RssResponse",
+    "RssRestrictor",
+    "RssRoadBoundariesMode",
+    "RssSensor",
 ]
 
 class RssActorConstellationData:
@@ -107,7 +108,6 @@ class RssActorConstellationResult:
         """Setter for actor_dynamics property."""
         ...
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -179,7 +179,6 @@ class RssEgoDynamicsOnRoute:
     def avg_route_accel_lon(self) -> ad.physics.Acceleration:
         """The ego acceleration component lon regarding the route smoothened by an average filter."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -231,7 +230,6 @@ class RssResponse(SensorData):
     def situation_snapshot(self) -> ad.rss.situation.SituationSnapshot:
         """Detailed RSS situations extracted from the world model."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion
@@ -244,12 +242,13 @@ class RssRestrictor:
     """
 
     # region Methods
-    def restrict_vehicle_control(self,
-                                 vehicle_control: VehicleControl,
-                                 proper_response: ad.rss.state.ProperResponse,
-                                 ego_dynamics_on_route: RssEgoDynamicsOnRoute,
-                                 vehicle_physics: VehiclePhysicsControl,
-                                 ) -> VehicleControl:
+    def restrict_vehicle_control(
+        self,
+        vehicle_control: VehicleControl,
+        proper_response: ad.rss.state.ProperResponse,
+        ego_dynamics_on_route: RssEgoDynamicsOnRoute,
+        vehicle_physics: VehiclePhysicsControl,
+    ) -> VehicleControl:
         """
         Applies the safety restrictions given by a carla.RssSensor to a carla.VehicleCon
 
@@ -268,7 +267,6 @@ class RssRestrictor:
 
         """
     # endregion
-
     # region Setters
     def set_log_level(self, log_level: RssLogLevel):
         """Sets the log level."""
@@ -324,9 +322,7 @@ class RssSensor(Sensor):
         """Switches the stay on road feature. By default is Off."""
 
     @road_boundaries_mode.setter
-    def road_boundaries_mode(self, value: RssRoadBoundariesMode) -> None:
-        ...
-
+    def road_boundaries_mode(self, value: RssRoadBoundariesMode) -> None: ...
     @property
     def routing_targets(self) -> list[Transform]:  # declared as vector<carla.Transform>
         """The current list of targets considered to route the vehicle. If no routing targets are defined, a route is generated at random."""
@@ -348,7 +344,9 @@ class RssSensor(Sensor):
         Otherwise, a new route is created at random.
         """
 
-    def register_actor_constellation_callback(self, callback: Callable[[RssActorConstellationData], RssActorConstellationResult]):
+    def register_actor_constellation_callback(
+        self, callback: Callable[[RssActorConstellationData], RssActorConstellationResult]
+    ):
         """
         Register a callback to customize a `carla.RssActorConstellationResult`.
         By this callback the settings of RSS parameters are done per actor constellation
@@ -366,7 +364,6 @@ class RssSensor(Sensor):
     def set_map_log_level(self, log_level: RssLogLevel | int):
         """Sets the map log level."""
     # endregion
-
     # region Dunder Methods
     def __str__(self) -> str: ...
     # endregion

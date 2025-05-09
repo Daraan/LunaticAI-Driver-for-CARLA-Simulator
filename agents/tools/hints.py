@@ -39,7 +39,7 @@ else:
         ObstacleDetectionResult = NamedTuple('ObstacleDetectionResult', [('obstacle_was_found', bool), ('obstacle', Union[Actor, None]), ('distance', Union[float, Literal[-1]])])
     else:
         ObstacleDetectionResult = NamedTuple('ObstacleDetectionResult', [('obstacle_was_found', bool), ('obstacle', Union[Actor, None]), ('distance', float)])
-    
+
     TrafficLightDetectionResult = NamedTuple('TrafficLightDetectionResult', [('traffic_light_was_found', bool), ('traffic_light', Union[TrafficLight, None])])
 '''
 
@@ -49,7 +49,7 @@ class TrafficLightDetectionResult(NamedTuple):
     """"""
     traffic_light: Optional[carla.TrafficLight]
     """The found traffic light. If no traffic light was found, the value is None."""
-    
+
     def __bool__(self):
         """
         Returns:
@@ -66,7 +66,7 @@ class ObstacleDetectionResult(NamedTuple):
     """The found actor that represents the obstacle."""
     distance: Union[float, Literal[-1]]
     """The distance to the obstacle. If no obstacle was found, the distance is -1."""
-    
+
     def __bool__(self) -> bool:
         """
         Returns:
@@ -80,6 +80,7 @@ class CameraBlueprint(NamedTuple):
     Represents a camera blueprint to spawn a camera sensor
     to be used with the :py:class:`CameraManager`.
     """
+
     # TODO: Should be turned into a TypedDict instead of a NamedTuple to handle the setting of actual_blueprint better
 
     blueprint_path: str

@@ -26,15 +26,16 @@ from launch_tools import CarlaDataProvider
 
 if AD_RSS_AVAILABLE:
     from carla import ad
+
     RssStateEvaluator = ad.rss.state.RssStateEvaluator
     EVALUATOR_NONE_STATE = RssStateEvaluator.names["None"]
     _RSS_EVALUATOR_SAME_DIRECTION = {
-            RssStateEvaluator.LongitudinalDistanceSameDirectionOtherInFront,
-            RssStateEvaluator.LongitudinalDistanceSameDirectionEgoFront
-        }
+        RssStateEvaluator.LongitudinalDistanceSameDirectionOtherInFront,
+        RssStateEvaluator.LongitudinalDistanceSameDirectionEgoFront,
+    }
     _RSS_EVALUATOR_OPPOSITE_DIRECTION = {
-            RssStateEvaluator.LongitudinalDistanceOppositeDirectionEgoCorrectLane,
-            RssStateEvaluator.LongitudinalDistanceOppositeDirection
+        RssStateEvaluator.LongitudinalDistanceOppositeDirectionEgoCorrectLane,
+        RssStateEvaluator.LongitudinalDistanceOppositeDirection,
     }
 
 if TYPE_CHECKING:
@@ -49,7 +50,7 @@ class Color:
     red = (255, 0, 0)
     green = (0, 255, 0)
     blue = (0, 0, 255)
-    
+
     carla_gray = carla.Color(150, 150, 150)
     carla_red = carla.Color(255, 0, 0)
     carla_green = carla.Color(0, 255, 0)
@@ -57,7 +58,6 @@ class Color:
 
 
 class RssStateVisualizer(CanBeDummy):
-
     def __init__(self, display_dimensions: tuple[int, int], font: pygame.font.Font, world: carla.World):  # noqa: ARG002
         self._surface = None
         self._display_dimensions = display_dimensions
@@ -66,11 +66,11 @@ class RssStateVisualizer(CanBeDummy):
 
     def tick(self, individual_rss_states: Iterable["RssStateInfo"]) -> None:
         state_surface = pygame.Surface((220, self._display_dimensions[1]))
-        state_surface.set_colorkey(pygame.Color('black'))
+        state_surface.set_colorkey(pygame.Color("black"))
         v_offset = 0
 
         if individual_rss_states:
-            surface = self._font.render('RSS States:', True, (255, 255, 255))
+            surface = self._font.render("RSS States:", True, (255, 255, 255))
             state_surface.blit(surface, (8, v_offset))
             v_offset += 26
         for state in individual_rss_states:
@@ -96,7 +96,7 @@ class RssStateVisualizer(CanBeDummy):
                 mode = "U"
             elif state.actor_calculation_mode == ad.rss.map.RssMode.NotRelevant:
                 mode = "-"
-            item = f'{mode:>4} {state.distance:>2.0f}m {object_name:>8}'
+            item = f"{mode:>4} {state.distance:>2.0f}m {object_name:>8}"
 
             surface = self._font.render(item, True, Color.white)
             state_surface.blit(surface, (5, v_offset))
@@ -108,41 +108,87 @@ class RssStateVisualizer(CanBeDummy):
             if state.actor_calculation_mode == ad.rss.map.RssMode.Structured:
                 # Unsafe longitudinalState
                 if not state.rss_state.longitudinalState.isSafe:
-                    if (state.rss_state.longitudinalState.rssStateInformation.evaluator in _RSS_EVALUATOR_SAME_DIRECTION
+                    if state.rss_state.longitudinalState.rssStateInformation.evaluator in _RSS_EVALUATOR_SAME_DIRECTION:
+                        pygame.draw.polygon(
+                            state_surface,
+                            (255, 255, 255),
+                            (
+                                (xpos + 1, v_offset + 1 + 4),
+                                (xpos + 6, v_offset + 1 + 0),
+                                (xpos + 11, v_offset + 1 + 4),
+                                (xpos + 7, v_offset + 1 + 4),
+                                (xpos + 7, v_offset + 1 + 12),
+                                (xpos + 5, v_offset + 1 + 12),
+                                (xpos + 5, v_offset + 1 + 4),
+                            ),
+                        )
+                        xpos += 14
+                    elif (
+                        state.rss_state.longitudinalState.rssStateInformation.evaluator
+                        in _RSS_EVALUATOR_OPPOSITE_DIRECTION
                     ):
                         pygame.draw.polygon(
-                            state_surface, (
-                                255, 255, 255), ((xpos + 1, v_offset + 1 + 4), (xpos + 6, v_offset + 1 + 0), (xpos + 11, v_offset + 1 + 4),
-                                                (xpos + 7, v_offset + 1 + 4), (xpos + 7, v_offset + 1 + 12), (xpos + 5, v_offset + 1 + 12), (xpos + 5, v_offset + 1 + 4)))
+                            state_surface,
+                            (255, 255, 255),
+                            (
+                                (xpos + 2, v_offset + 1 + 8),
+                                (xpos + 6, v_offset + 1 + 12),
+                                (xpos + 10, v_offset + 1 + 8),
+                                (xpos + 7, v_offset + 1 + 8),
+                                (xpos + 7, v_offset + 1 + 0),
+                                (xpos + 5, v_offset + 1 + 0),
+                                (xpos + 5, v_offset + 1 + 8),
+                            ),
+                        )
                         xpos += 14
-                    elif (state.rss_state.longitudinalState.rssStateInformation.evaluator in _RSS_EVALUATOR_OPPOSITE_DIRECTION
-                    ):
-                        pygame.draw.polygon(
-                            state_surface, (
-                                255, 255, 255), ((xpos + 2, v_offset + 1 + 8), (xpos + 6, v_offset + 1 + 12), (xpos + 10, v_offset + 1 + 8),
-                                                (xpos + 7, v_offset + 1 + 8), (xpos + 7, v_offset + 1 + 0), (xpos + 5, v_offset + 1 + 0), (xpos + 5, v_offset + 1 + 8)))
-                        xpos += 14
-                        
+
                 # Unsafe Laterals: Draw Left/Right arrows
                 # Right
-                if not state.rss_state.lateralStateRight.isSafe and state.rss_state.lateralStateRight.rssStateInformation.evaluator != EVALUATOR_NONE_STATE:
+                if (
+                    not state.rss_state.lateralStateRight.isSafe
+                    and state.rss_state.lateralStateRight.rssStateInformation.evaluator != EVALUATOR_NONE_STATE
+                ):
                     pygame.draw.polygon(
-                        state_surface, (
-                            255, 255, 255), ((xpos + 0, v_offset + 1 + 4), (xpos + 8, v_offset + 1 + 4), (xpos + 8, v_offset + 1 + 1),
-                                             (xpos + 12, v_offset + 1 + 6), (xpos + 8, v_offset + 1 + 10), (xpos + 8, v_offset + 1 + 8), (xpos + 0, v_offset + 1 + 8)))
+                        state_surface,
+                        (255, 255, 255),
+                        (
+                            (xpos + 0, v_offset + 1 + 4),
+                            (xpos + 8, v_offset + 1 + 4),
+                            (xpos + 8, v_offset + 1 + 1),
+                            (xpos + 12, v_offset + 1 + 6),
+                            (xpos + 8, v_offset + 1 + 10),
+                            (xpos + 8, v_offset + 1 + 8),
+                            (xpos + 0, v_offset + 1 + 8),
+                        ),
+                    )
                     xpos += 14
                 # Left
-                if not state.rss_state.lateralStateLeft.isSafe and state.rss_state.lateralStateLeft.rssStateInformation.evaluator != EVALUATOR_NONE_STATE:
+                if (
+                    not state.rss_state.lateralStateLeft.isSafe
+                    and state.rss_state.lateralStateLeft.rssStateInformation.evaluator != EVALUATOR_NONE_STATE
+                ):
                     pygame.draw.polygon(
-                        state_surface, (
-                            255, 255, 255), ((xpos + 0, v_offset + 1 + 6), (xpos + 4, v_offset + 1 + 1), (xpos + 4, v_offset + 1 + 4),
-                                             (xpos + 12, v_offset + 1 + 4), (xpos + 12, v_offset + 1 + 8), (xpos + 4, v_offset + 1 + 8), (xpos + 4, v_offset + 1 + 10)))
+                        state_surface,
+                        (255, 255, 255),
+                        (
+                            (xpos + 0, v_offset + 1 + 6),
+                            (xpos + 4, v_offset + 1 + 1),
+                            (xpos + 4, v_offset + 1 + 4),
+                            (xpos + 12, v_offset + 1 + 4),
+                            (xpos + 12, v_offset + 1 + 8),
+                            (xpos + 4, v_offset + 1 + 8),
+                            (xpos + 4, v_offset + 1 + 10),
+                        ),
+                    )
                     xpos += 14
             elif state.actor_calculation_mode == ad.rss.map.RssMode.Unstructured:
                 text = ""
                 if state.rss_state.unstructuredSceneState.response == ad.rss.state.UnstructuredSceneResponse.DriveAway:
                     text = "  D"
-                elif state.rss_state.unstructuredSceneState.response == ad.rss.state.UnstructuredSceneResponse.ContinueForward:
+                elif (
+                    state.rss_state.unstructuredSceneState.response
+                    == ad.rss.state.UnstructuredSceneResponse.ContinueForward
+                ):
                     text = "  C"
                 elif state.rss_state.unstructuredSceneState.response == ad.rss.state.UnstructuredSceneResponse.Brake:
                     text = "  B"
@@ -155,6 +201,7 @@ class RssStateVisualizer(CanBeDummy):
     def render(self, display: pygame.Surface, v_offset: int):
         if self._surface:
             display.blit(self._surface, (0, v_offset))
+
 
 # ==============================================================================
 # -- RssUnstructuredSceneVisualizer ------------------------------------------------
@@ -170,7 +217,9 @@ class RssUnstructuredSceneVisualizerMode(Enum):
 class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
     """Provides a top-view over the setting?"""
 
-    def __init__(self, parent_actor: carla.Actor, world, display_dimensions: tuple[int, int], gamma_correction: float = 2.2):  # noqa: ARG002
+    def __init__(
+        self, parent_actor: carla.Actor, world, display_dimensions: tuple[int, int], gamma_correction: float = 2.2
+    ):  # noqa: ARG002
         self._last_rendered_frame = -1
         self._surface = None
         self._current_rss_surface: Optional[Tuple[int, pygame.Surface]] = None
@@ -183,11 +232,11 @@ class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
         self._gamma = gamma_correction
 
         self.restart(RssUnstructuredSceneVisualizerMode.window)
-        
+
     @property
     def sensor(self) -> carla.Sensor:
         return self._camera
-    
+
     @sensor.setter
     def sensor(self, value):
         # Needed for SensorInterface.destroy
@@ -219,26 +268,31 @@ class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
             self._calibration = np.identity(3)
             self._calibration[0, 2] = self._dim[0] / 2.0
             self._calibration[1, 2] = self._dim[1] / 2.0
-            self._calibration[0, 0] = self._calibration[1, 1] = self._dim[0] / \
-            (2.0 * np.tan(90.0 * np.pi / 360.0))  # fov default: 90.0
+            self._calibration[0, 0] = self._calibration[1, 1] = self._dim[0] / (
+                2.0 * np.tan(90.0 * np.pi / 360.0)
+            )  # fov default: 90.0
 
             bp_library = CarlaDataProvider._blueprint_library
-            bp: carla.ActorBlueprint = bp_library.find('sensor.camera.rgb')
-            bp.set_attribute('image_size_x', str(self._dim[0]))
-            bp.set_attribute('image_size_y', str(self._dim[1]))
-            if bp.has_attribute('gamma'):
-                bp.set_attribute('gamma', str(self._gamma))
+            bp: carla.ActorBlueprint = bp_library.find("sensor.camera.rgb")
+            bp.set_attribute("image_size_x", str(self._dim[0]))
+            bp.set_attribute("image_size_y", str(self._dim[1]))
+            if bp.has_attribute("gamma"):
+                bp.set_attribute("gamma", str(self._gamma))
 
-            self._camera: carla.Sensor = assure_type(carla.Sensor, self._world.spawn_actor(
-                                                        bp,
-                                                        carla.Transform(carla.Location(x=7.5, z=10), carla.Rotation(pitch=-90)),
-                                                        attach_to=self._parent_actor))
+            self._camera: carla.Sensor = assure_type(
+                "carla.Sensor",
+                self._world.spawn_actor(
+                    bp,
+                    carla.Transform(carla.Location(x=7.5, z=10), carla.Rotation(pitch=-90)),
+                    attach_to=self._parent_actor,
+                ),
+            )
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
             weak_self = weakref.ref(self)
             self._camera.listen(
                 lambda image: self._parse_image(weak_self, image)  # type: ignore[arg-type]
-                )
+            )
 
     def update_surface(self, cam_frame: Union[int, None], rss_frame: Union[int, None]):
         if self._mode == RssUnstructuredSceneVisualizerMode.disabled:
@@ -289,12 +343,11 @@ class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
 
     @staticmethod
     def rotate_around_point(xy, radians, origin):
-        """Rotate a point around a given point.
-        """
+        """Rotate a point around a given point."""
         x, y = xy
         offset_x, offset_y = origin
-        adjusted_x = (x - offset_x)
-        adjusted_y = (y - offset_y)
+        adjusted_x = x - offset_x
+        adjusted_y = y - offset_y
         cos_rad = math.cos(radians)
         sin_rad = math.sin(radians)
         qx = offset_x + cos_rad * adjusted_x - sin_rad * adjusted_y
@@ -306,22 +359,28 @@ class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
         if not self._camera:
             return
         surface = pygame.Surface(self._dim)
-        surface.set_colorkey(pygame.Color('black'))
+        surface.set_colorkey(pygame.Color("black"))
         surface.set_alpha(180)
         try:
             lines = RssUnstructuredSceneVisualizer.get_trajectory_sets(
-                rss_response.rss_state_snapshot, self._camera.get_transform(), self._calibration)
+                rss_response.rss_state_snapshot, self._camera.get_transform(), self._calibration
+            )
 
             polygons = [
-                (RssUnstructuredSceneVisualizer.transform_points(
-                    RssUnstructuredSceneVisualizer._get_points_from_pairs(
-                        RssUnstructuredSceneVisualizer.draw_heading_range(
-                        heading_range,
-                        rss_response.ego_dynamics_on_route)),
-                    self._camera.get_transform(),
-                    self._calibration),
-                Color.blue)
-                for heading_range in allowed_heading_ranges]
+                (
+                    RssUnstructuredSceneVisualizer.transform_points(
+                        RssUnstructuredSceneVisualizer._get_points_from_pairs(
+                            RssUnstructuredSceneVisualizer.draw_heading_range(
+                                heading_range, rss_response.ego_dynamics_on_route
+                            )
+                        ),
+                        self._camera.get_transform(),
+                        self._calibration,
+                    ),
+                    Color.blue,
+                )
+                for heading_range in allowed_heading_ranges
+            ]
 
             RssUnstructuredSceneVisualizer.draw_lines(surface, lines)
             RssUnstructuredSceneVisualizer.draw_polygons(surface, polygons)
@@ -344,13 +403,17 @@ class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
             max_angle += 2.0 * np.pi
 
         while current_angle < max_angle:
-            line.append((float(ego_dynamics_on_route.ego_center.x) + length * np.cos(current_angle),
-                         float(ego_dynamics_on_route.ego_center.y) + length * np.sin(current_angle)))
+            line.append((
+                float(ego_dynamics_on_route.ego_center.x) + length * np.cos(current_angle),
+                float(ego_dynamics_on_route.ego_center.y) + length * np.sin(current_angle),
+            ))
             current_angle += 0.2
 
         if current_angle != max_angle:
-            line.append((float(ego_dynamics_on_route.ego_center.x) + length * np.cos(max_angle),
-                         float(ego_dynamics_on_route.ego_center.y) + length * np.sin(max_angle)))
+            line.append((
+                float(ego_dynamics_on_route.ego_center.x) + length * np.cos(max_angle),
+                float(ego_dynamics_on_route.ego_center.y) + length * np.sin(max_angle),
+            ))
 
         line.append((float(ego_dynamics_on_route.ego_center.x), float(ego_dynamics_on_route.ego_center.y)))
         return line
@@ -362,24 +425,52 @@ class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
         """
         trajectory_sets = [
             # ego
-            (RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
-                rss_state_snapshot.unstructuredSceneEgoInformation.brakeTrajectorySet), camera_transform, calibration),
-             Color.red),
-            (RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
-                rss_state_snapshot.unstructuredSceneEgoInformation.continueForwardTrajectorySet), camera_transform, calibration),
-             Color.green)
-            ]
+            (
+                RssUnstructuredSceneVisualizer.transform_points(
+                    RssUnstructuredSceneVisualizer._get_trajectory_set_points(
+                        rss_state_snapshot.unstructuredSceneEgoInformation.brakeTrajectorySet
+                    ),
+                    camera_transform,
+                    calibration,
+                ),
+                Color.red,
+            ),
+            (
+                RssUnstructuredSceneVisualizer.transform_points(
+                    RssUnstructuredSceneVisualizer._get_trajectory_set_points(
+                        rss_state_snapshot.unstructuredSceneEgoInformation.continueForwardTrajectorySet
+                    ),
+                    camera_transform,
+                    calibration,
+                ),
+                Color.green,
+            ),
+        ]
 
         # others
         for state in rss_state_snapshot.individualResponses:
             if state.unstructuredSceneState.rssStateInformation.brakeTrajectorySet:
-                trajectory_sets.append((RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
-                    state.unstructuredSceneState.rssStateInformation.brakeTrajectorySet), camera_transform, calibration),
-                                        Color.red))
+                trajectory_sets.append((
+                    RssUnstructuredSceneVisualizer.transform_points(
+                        RssUnstructuredSceneVisualizer._get_trajectory_set_points(
+                            state.unstructuredSceneState.rssStateInformation.brakeTrajectorySet
+                        ),
+                        camera_transform,
+                        calibration,
+                    ),
+                    Color.red,
+                ))
             if state.unstructuredSceneState.rssStateInformation.continueForwardTrajectorySet:
-                trajectory_sets.append((RssUnstructuredSceneVisualizer.transform_points(RssUnstructuredSceneVisualizer._get_trajectory_set_points(
-                    state.unstructuredSceneState.rssStateInformation.continueForwardTrajectorySet), camera_transform, calibration),
-                                        Color.green))
+                trajectory_sets.append((
+                    RssUnstructuredSceneVisualizer.transform_points(
+                        RssUnstructuredSceneVisualizer._get_trajectory_set_points(
+                            state.unstructuredSceneState.rssStateInformation.continueForwardTrajectorySet
+                        ),
+                        camera_transform,
+                        calibration,
+                    ),
+                    Color.green,
+                ))
 
         return trajectory_sets
 
@@ -417,8 +508,7 @@ class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
 
     @staticmethod
     def _get_trajectory_set_points(trajectory_set):
-        """
-        """
+        """ """
         cords = np.zeros((len(trajectory_set), 4))
         for i, pt in enumerate(trajectory_set):
             cords[i, :] = [pt.x, -pt.y, 0, 1]
@@ -426,8 +516,7 @@ class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
 
     @staticmethod
     def _get_points_from_pairs(trajectory_set):
-        """
-        """
+        """ """
         cords = np.zeros((len(trajectory_set), 4))
         for i, pt in enumerate(trajectory_set):
             cords[i, :] = [pt[0], -pt[1], 0, 1]
@@ -442,13 +531,13 @@ class RssUnstructuredSceneVisualizer(CanBeDummy, CustomSensorInterface):
         sensor_cords = np.dot(world_sensor_matrix, cords)
         return sensor_cords
 
+
 # ==============================================================================
 # -- RssBoundingBoxVisualizer ------------------------------------------------------
 # ==============================================================================
 
 
 class RssBoundingBoxVisualizer(CanBeDummy):
-
     def __init__(self, display_dimensions, world, camera: carla.Sensor):
         self._last_camera_frame = 0
         self._surface_for_frame = []
@@ -457,8 +546,9 @@ class RssBoundingBoxVisualizer(CanBeDummy):
         self._calibration = np.identity(3)
         self._calibration[0, 2] = self._dim[0] / 2.0
         self._calibration[1, 2] = self._dim[1] / 2.0
-        self._calibration[0, 0] = self._calibration[1, 1] = self._dim[0] / \
-            (2.0 * np.tan(90.0 * np.pi / 360.0))  # fov default: 90.0
+        self._calibration[0, 0] = self._calibration[1, 1] = self._dim[0] / (
+            2.0 * np.tan(90.0 * np.pi / 360.0)
+        )  # fov default: 90.0
         self._camera = camera
 
     def tick(self, frame, individual_rss_states):
@@ -474,11 +564,12 @@ class RssBoundingBoxVisualizer(CanBeDummy):
             return
 
         surface = pygame.Surface(self._dim)
-        surface.set_colorkey(pygame.Color('black'))
+        surface.set_colorkey(pygame.Color("black"))
         surface.set_alpha(80)
         try:
             bounding_boxes = RssBoundingBoxVisualizer.get_bounding_boxes(
-                individual_rss_states, self._camera.get_transform(), self._calibration, self._world)
+                individual_rss_states, self._camera.get_transform(), self._calibration, self._world
+            )
             RssBoundingBoxVisualizer.draw_bounding_boxes(surface, bounding_boxes)
             self._surface_for_frame.append((frame, surface, len(bounding_boxes)))
         except RuntimeError:
@@ -507,16 +598,17 @@ class RssBoundingBoxVisualizer(CanBeDummy):
             if state.actor_calculation_mode != ad.rss.map.RssMode.NotRelevant and state.is_dangerous:
                 other_actor = state.get_actor(world)
                 if other_actor:
-                    bounding_boxes.append(RssBoundingBoxVisualizer.get_bounding_box(
-                        other_actor, camera_transform, calibration))
+                    bounding_boxes.append(
+                        RssBoundingBoxVisualizer.get_bounding_box(other_actor, camera_transform, calibration)
+                    )
         # filter objects behind camera
         bounding_boxes = [bb for bb in bounding_boxes if all(bb[:, 2] > 0)]
         return bounding_boxes
 
     @staticmethod
-    def draw_bounding_boxes(surface: pygame.Surface,
-                            bounding_boxes: list[np.ndarray],
-                            color: pygame.Color = pygame.Color('red')) -> None:  # noqa: B008
+    def draw_bounding_boxes(
+        surface: pygame.Surface, bounding_boxes: list[np.ndarray], color: pygame.Color = pygame.Color("red")  # noqa: B008
+    ) -> None:  # noqa: B008
         """
         Draws bounding boxes on pygame display.
         """
@@ -563,14 +655,14 @@ class RssBoundingBoxVisualizer(CanBeDummy):
         x = extent.x
         y = extent.y
         z = extent.z
-        cords[0] = [x, y, -z, 1.]
-        cords[1] = [-x, y, -z, 1.]
-        cords[2] = [-x, -y, -z, 1.]
-        cords[3] = [x, -y, -z, 1.]
-        cords[4] = [x, y, z, 1.]
-        cords[5] = [-x, y, z, 1.]
-        cords[6] = [-x, -y, z, 1.]
-        cords[7] = [x, -y, z, 1.]
+        cords[0] = [x, y, -z, 1.0]
+        cords[1] = [-x, y, -z, 1.0]
+        cords[2] = [-x, -y, -z, 1.0]
+        cords[3] = [x, -y, -z, 1.0]
+        cords[4] = [x, y, z, 1.0]
+        cords[5] = [-x, y, z, 1.0]
+        cords[6] = [-x, -y, z, 1.0]
+        cords[7] = [x, -y, z, 1.0]
         return cords
 
     @staticmethod
@@ -605,6 +697,7 @@ class RssBoundingBoxVisualizer(CanBeDummy):
         # Sensor coordinates
         return np.dot(world_sensor_matrix, cords)
 
+
 # ==============================================================================
 # -- RssDebugVisualizer ------------------------------------------------------------
 # ==============================================================================
@@ -619,8 +712,12 @@ class RssDebugVisualizationMode(Enum):
 
 
 class RssDebugVisualizer:
-
-    def __init__(self, player: carla.Vehicle, world: carla.World, visualization_mode: Union[RssDebugVisualizationMode, str, int] = RssDebugVisualizationMode.Off):
+    def __init__(
+        self,
+        player: carla.Vehicle,
+        world: carla.World,
+        visualization_mode: Union[RssDebugVisualizationMode, str, int] = RssDebugVisualizationMode.Off,
+    ):
         self._world = world
         self._player = player
         if isinstance(visualization_mode, str):
@@ -643,14 +740,18 @@ class RssDebugVisualizer:
         print(f"New Debug Visualizer Mode {self._visualization_mode}")
 
     def tick(self, route, dangerous, individual_rss_states, ego_dynamics_on_route):
-        if self._visualization_mode in {RssDebugVisualizationMode.RouteOnly,
-                                RssDebugVisualizationMode.VehicleStateAndRoute,
-                                RssDebugVisualizationMode.All}:
+        if self._visualization_mode in {
+            RssDebugVisualizationMode.RouteOnly,
+            RssDebugVisualizationMode.VehicleStateAndRoute,
+            RssDebugVisualizationMode.All,
+        }:
             self.visualize_route(dangerous, route)
 
-        if self._visualization_mode in {RssDebugVisualizationMode.VehicleStateOnly,
-                                        RssDebugVisualizationMode.VehicleStateAndRoute,
-                                        RssDebugVisualizationMode.All}:
+        if self._visualization_mode in {
+            RssDebugVisualizationMode.VehicleStateOnly,
+            RssDebugVisualizationMode.VehicleStateAndRoute,
+            RssDebugVisualizationMode.All,
+        }:
             self.visualize_rss_results(individual_rss_states)
 
         if self._visualization_mode == RssDebugVisualizationMode.All:
@@ -667,7 +768,9 @@ class RssDebugVisualizer:
             if right_most_lane.laneInterval.laneId not in right_lane_edges:
                 edge = ad.map.route.getRightProjectedENUEdge(right_most_lane.laneInterval)
                 right_lane_edges[right_most_lane.laneInterval.laneId] = edge
-                intersection_lane = ad.map.intersection.Intersection.isLanePartOfAnIntersection(right_most_lane.laneInterval.laneId)
+                intersection_lane = ad.map.intersection.Intersection.isLanePartOfAnIntersection(
+                    right_most_lane.laneInterval.laneId
+                )
 
                 color = carla.Color(r=(128 if dangerous else 255))
                 if intersection_lane:
@@ -679,7 +782,9 @@ class RssDebugVisualizer:
             if left_most_lane.laneInterval.laneId not in left_lane_edges:
                 edge = ad.map.route.getLeftProjectedENUEdge(left_most_lane.laneInterval)
                 left_lane_edges[left_most_lane.laneInterval.laneId] = edge
-                intersection_lane = ad.map.intersection.Intersection.isLanePartOfAnIntersection(left_most_lane.laneInterval.laneId)
+                intersection_lane = ad.map.intersection.Intersection.isLanePartOfAnIntersection(
+                    left_most_lane.laneInterval.laneId
+                )
                 color = carla.Color(g=(128 if dangerous else 255))
                 if intersection_lane:
                     color.b = 128 if dangerous else 255
@@ -688,7 +793,7 @@ class RssDebugVisualizer:
 
     def visualize_enu_edge(self, edge, color, z_offset):
         for point in edge:
-            carla_point = carla.Location(x=float(point.x), y=-1. * float(point.y), z=float(point.z) + z_offset)
+            carla_point = carla.Location(x=float(point.x), y=-1.0 * float(point.y), z=float(point.z) + z_offset)
             self._world.debug.draw_point(carla_point, 0.1, color, 0.1, False)
 
     def visualize_rss_results(self, state_snapshot: Iterable[RssStateInfo]):
@@ -728,38 +833,41 @@ class RssDebugVisualizer:
                     lat_r_color.r = 255
                     lat_r_color.g = 0 if dangerous else 255
                 self._world.debug.draw_line(ego_point, point, 0.1, lon_color, 0.066, False)
-                self._world.debug.draw_line(ego_point - line_offset, point -
-                                            line_offset, 0.1, lat_l_color, 0.066, False)
-                self._world.debug.draw_line(ego_point + line_offset, point +
-                                            line_offset, 0.1, lat_r_color, 0.066, False)
-            point.z += 3.
+                self._world.debug.draw_line(
+                    ego_point - line_offset, point - line_offset, 0.1, lat_l_color, 0.066, False
+                )
+                self._world.debug.draw_line(
+                    ego_point + line_offset, point + line_offset, 0.1, lat_r_color, 0.066, False
+                )
+            point.z += 3.0
             self._world.debug.draw_point(point, 0.2, indicator_color, 0.066, False)
 
     def visualize_ego_dynamics(self, ego_dynamics_on_route):
-
         sin_heading = math.sin(float(ego_dynamics_on_route.route_heading))
         cos_heading = math.cos(float(ego_dynamics_on_route.route_heading))
 
         heading_location_start = self._player.get_location()
-        heading_location_start.x -= cos_heading * 10.
-        heading_location_start.y += sin_heading * 10.
+        heading_location_start.x -= cos_heading * 10.0
+        heading_location_start.y += sin_heading * 10.0
         heading_location_start.z += 0.5
         heading_location_end = self._player.get_location()
-        heading_location_end.x += cos_heading * 10.
-        heading_location_end.y -= sin_heading * 10.
+        heading_location_end.x += cos_heading * 10.0
+        heading_location_end.y -= sin_heading * 10.0
         heading_location_end.z += 0.5
 
-        self._world.debug.draw_arrow(heading_location_start, heading_location_end, 0.1, 0.1, Color.carla_blue, 0.066, False)
+        self._world.debug.draw_arrow(
+            heading_location_start, heading_location_end, 0.1, 0.1, Color.carla_blue, 0.066, False
+        )
 
-        sin_center = math.sin(float(ego_dynamics_on_route.route_heading) + math.pi / 2.)
-        cos_center = math.cos(float(ego_dynamics_on_route.route_heading) + math.pi / 2.)
+        sin_center = math.sin(float(ego_dynamics_on_route.route_heading) + math.pi / 2.0)
+        cos_center = math.cos(float(ego_dynamics_on_route.route_heading) + math.pi / 2.0)
         center_location_start = self._player.get_location()
-        center_location_start.x -= cos_center * 2.
-        center_location_start.y += sin_center * 2.
+        center_location_start.x -= cos_center * 2.0
+        center_location_start.y += sin_center * 2.0
         center_location_start.z += 0.5
         center_location_end = self._player.get_location()
-        center_location_end.x += cos_center * 2.
-        center_location_end.y -= sin_center * 2.
+        center_location_end.x += cos_center * 2.0
+        center_location_end.y -= sin_center * 2.0
         center_location_end.z += 0.5
 
         self._world.debug.draw_line(center_location_start, center_location_end, 0.1, Color.carla_blue, 0.066, False)

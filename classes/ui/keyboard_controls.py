@@ -61,13 +61,13 @@ if TYPE_CHECKING:
 class KeyboardControl:
     """
     Primitive base for keyboard control classes.
-    
+
         H/?          : toggle help
     """
-    
+
     _world_model: "WorldModel"
     """Reference to the world model that controls the interface."""
-    
+
     # COMMENT I think this only allows to end the script
     def __init__(self, world_model: "WorldModel", *, show_help_notice=True, clock: Optional[pygame.time.Clock] = None):
         """
@@ -89,11 +89,11 @@ class KeyboardControl:
 
     def enable(self, value: bool = True):
         self.enabled = value
-    
+
     @classmethod
     def get_docstring(cls):
         """Return the docstring of the class"""
-        
+
         doc = cls.__doc__
         # Get doc from parent
         if doc is None:
@@ -117,7 +117,7 @@ class KeyboardControl:
         for event in events:  # pylint: disable=unused-variable
             self._check_help_event(event)
         return None
-    
+
     @staticmethod
     def _is_quit_shortcut(key: int):
         """Shortcut for quitting"""
@@ -125,9 +125,9 @@ class KeyboardControl:
 
     def _check_help_event(self, event: pygame.event.Event):
         """Check if the event is a help event and displays it."""
-        if not hasattr(event, 'unicode'):  # No KEYUP/DOWN event
+        if not hasattr(event, "unicode"):  # No KEYUP/DOWN event
             return None
-        if event.unicode.lower() in ('h', '?'):  # type: ignore[attr-defined]
+        if event.unicode.lower() in ("h", "?"):  # type: ignore[attr-defined]
             self._world_model.hud.help.toggle()
             return True
         return False
@@ -142,7 +142,7 @@ class PassiveKeyboardControl(KeyboardControl):
        | H/?          : toggle help
     """
 
-    def parse_events(self) -> "None | Literal[True]":
+    def parse_events(self) -> "Literal[True] | None":
         if not self.enabled:
             return None
         for event in pygame.event.get():
@@ -200,40 +200,42 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
     """
     Controls the size of steering area when using the mouse.
     """
-    
+
     # TODO: should move this to GameFramework; remnant of original carla code
     signal_received: "bool | int" = False
     """
     Got a signal to stop the simulation. No more events will be parsed if True.
-    
+
     :meta private:
     """
 
-    def __init__(self,
-                 world_model: "WorldModel",
-                 *,
-                 clock: pygame.time.Clock,
-                 start_in_autopilot: bool = False,
-                 agent_controlled: bool = True,
-                 config=None):
+    def __init__(
+        self,
+        world_model: "WorldModel",
+        *,
+        clock: pygame.time.Clock,
+        start_in_autopilot: bool = False,
+        agent_controlled: bool = True,
+        config=None,
+    ):
         """
-        Parameters:
-            world_model : WorldModel
-                The world model that controls the interface.
-            clock : pygame.time.Clock
-                The clock to get the time from.
-            start_in_autopilot : bool
-                If CARLA's autopilot is used; or some other system.
-                May not be True if agent_controlled is True.
-                Defaults to :code:`False`.
-            agent_controlled : bool
-                May not be True if start_in_autopilot is True.
-                Defaults to :python:`True`.
-            config : Any
-                Configuration data. Currently unused.
-        
-       Note:
-            Creating a controller registers :py:attr:`.WorldModel.controller` to this instance.
+         Parameters:
+             world_model : WorldModel
+                 The world model that controls the interface.
+             clock : pygame.time.Clock
+                 The clock to get the time from.
+             start_in_autopilot : bool
+                 If CARLA's autopilot is used; or some other system.
+                 May not be True if agent_controlled is True.
+                 Defaults to :code:`False`.
+             agent_controlled : bool
+                 May not be True if start_in_autopilot is True.
+                 Defaults to :python:`True`.
+             config : Any
+                 Configuration data. Currently unused.
+
+        Note:
+             Creating a controller registers :py:attr:`.WorldModel.controller` to this instance.
         """
         if start_in_autopilot and agent_controlled:
             raise ValueError("Agent controlled and autopilot cannot be active at the same time.")
@@ -248,7 +250,7 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
         self._autopilot_enabled = start_in_autopilot
         self._agent_controlled = agent_controlled
         self._control: carla.VehicleControl = None  # type: ignore[assignment]
-        #self._control = carla.VehicleControl()
+        # self._control = carla.VehicleControl()
         self._vehicle_physics = world_model.player.get_physics_control()
         self._lights = carla.VehicleLightState.NONE
         world_model.player.set_light_state(self._lights)
@@ -256,74 +258,83 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
         self._mouse_steering_center = None
 
         self._surface = pygame.Surface((self.MOUSE_STEERING_RANGE * 2, self.MOUSE_STEERING_RANGE * 2))
-        self._surface.set_colorkey(pygame.Color('black'))
+        self._surface.set_colorkey(pygame.Color("black"))
         self._surface.set_alpha(60)
 
         line_width = 2
-        pygame.draw.polygon(self._surface,
-                            (0, 0, 255),
-                            [
-                                (0, 0),
-                                (0, self.MOUSE_STEERING_RANGE * 2 - line_width),
-                                (self.MOUSE_STEERING_RANGE * 2 - line_width,
-                                 self.MOUSE_STEERING_RANGE * 2 - line_width),
-                                (self.MOUSE_STEERING_RANGE * 2 - line_width, 0),
-                                (0, 0)
-                            ], line_width)
-        pygame.draw.polygon(self._surface,
-                            (0, 0, 255),
-                            [
-                                (0, self.MOUSE_STEERING_RANGE),
-                                (self.MOUSE_STEERING_RANGE * 2, self.MOUSE_STEERING_RANGE)
-                            ], line_width)
-        pygame.draw.polygon(self._surface,
-                            (0, 0, 255),
-                            [
-                                (self.MOUSE_STEERING_RANGE, 0),
-                                (self.MOUSE_STEERING_RANGE, self.MOUSE_STEERING_RANGE * 2)
-                            ], line_width)
+        pygame.draw.polygon(
+            self._surface,
+            (0, 0, 255),
+            [
+                (0, 0),
+                (0, self.MOUSE_STEERING_RANGE * 2 - line_width),
+                (self.MOUSE_STEERING_RANGE * 2 - line_width, self.MOUSE_STEERING_RANGE * 2 - line_width),
+                (self.MOUSE_STEERING_RANGE * 2 - line_width, 0),
+                (0, 0),
+            ],
+            line_width,
+        )
+        pygame.draw.polygon(
+            self._surface,
+            (0, 0, 255),
+            [(0, self.MOUSE_STEERING_RANGE), (self.MOUSE_STEERING_RANGE * 2, self.MOUSE_STEERING_RANGE)],
+            line_width,
+        )
+        pygame.draw.polygon(
+            self._surface,
+            (0, 0, 255),
+            [(self.MOUSE_STEERING_RANGE, 0), (self.MOUSE_STEERING_RANGE, self.MOUSE_STEERING_RANGE * 2)],
+            line_width,
+        )
 
     @property
     def controlled_externally(self) -> bool:
         """
         Returns True if the vehicle is controlled by some system, i.e not manually by the user.
-        
+
         """
         return self._autopilot_enabled or self._agent_controlled
 
     def render(self, display: pygame.Surface) -> None:
         if self._mouse_steering_center:
             display.blit(
-                self._surface, (self._mouse_steering_center[0] - self.MOUSE_STEERING_RANGE, self._mouse_steering_center[1] - self.MOUSE_STEERING_RANGE))
+                self._surface,
+                (
+                    self._mouse_steering_center[0] - self.MOUSE_STEERING_RANGE,
+                    self._mouse_steering_center[1] - self.MOUSE_STEERING_RANGE,
+                ),
+            )
 
     @staticmethod
     def _signal_handler(signum, _):
         """
         Signal handler for stopping the simulation, e.g. when pressing Ctrl+C
         in the terminal.
-        
+
         Note:
             If DetectionMatrix is used this signal handler will be overwritten,
             but still executed.
-        
+
         :meta private:
         """
         if not RSSKeyboardControl.signal_received:
-            print(f'\nReceived signal {signum}. Trigger stopping... In case the program freezes trigger twice more.')
+            print(f"\nReceived signal {signum}. Trigger stopping... In case the program freezes trigger twice more.")
             RSSKeyboardControl.signal_received = True
             return
         # Did not yet terminate
         if RSSKeyboardControl.signal_received is True:
-            print(f'\nReceived signal {signum}. Abort a 3rd time to terminate the program immediately')
+            print(f"\nReceived signal {signum}. Abort a 3rd time to terminate the program immediately")
             RSSKeyboardControl.signal_received = 2
             return
         sys.exit(1)
 
-    def parse_events(self, control: "Optional[carla.VehicleControl]" = None) -> "None | Literal[True]":
+    def parse_events(
+        self, control: "Optional[carla.VehicleControl]" = None
+    ) -> "Literal[True] | None":
         if control:
             self._control = control  # Note this might be the rss updated controls
         if RSSKeyboardControl.signal_received:
-            print('\nAccepted signal. Stopping loop...')
+            print("\nAccepted signal. Stopping loop...")
             return True
         if not self.enabled:
             return None
@@ -338,7 +349,7 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
             if event.type == pygame.KEYUP:
                 if self._is_quit_shortcut(event.key):
                     return True
-                
+
                 if event.key == K_BACKSPACE:
                     self._world_model.external_actor = False  # delete and respawn
                     if self._autopilot_enabled:
@@ -360,8 +371,8 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
                 elif event.key == K_F2:
                     if self._world_model and self._world_model.rss_sensor:
                         self._world_model.rss_sensor.toggle_debug_visualization_mode()
-                        _newmode = self._world_model.rss_sensor.debug_visualizer._visualization_mode
-                        self._world_model.hud.notification(f"RSS Debug Visualization Mode: {_newmode}")
+                        newmode = self._world_model.rss_sensor.debug_visualizer._visualization_mode
+                        self._world_model.hud.notification(f"RSS Debug Visualization Mode: {newmode}")
                 elif event.key == K_F3:
                     if self._world_model and self._world_model.rss_sensor:
                         if not self._world_model._restrictor:
@@ -425,7 +436,7 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
                         logging.warning("Could not open/close doors")
                 # --- Experimental, recording ----
                 elif event.key == K_r and (pygame.key.get_mods() & KMOD_CTRL):
-                    if (self._world_model.recording_enabled):
+                    if self._world_model.recording_enabled:
                         self._world_model.get_client().stop_recorder()
                         self._world_model.recording_enabled = False
                         self._world_model.hud.notification("Recorder is OFF")
@@ -446,7 +457,9 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
                     self._world_model.hud.notification("Replaying file 'manual_recording.rec'")
                     # replayer
                     # TODO: This likely needs more cleanup!
-                    replay_logs = self._world_model.get_client().replay_file("manual_recording.rec", self._world_model.recording_start, 0, 0)
+                    replay_logs = self._world_model.get_client().replay_file(
+                        "manual_recording.rec", self._world_model.recording_start, 0, 0
+                    )
                     print("------ Replay logs -------\n", replay_logs)
                     self._world_model.camera_manager.set_sensor(current_index)
                 elif event.key == K_MINUS and (pygame.key.get_mods() & KMOD_CTRL):
@@ -461,7 +474,7 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
                     else:
                         self._world_model.recording_start += 1
                     self._world_model.hud.notification(f"Recording start time is {self._world_model.recording_start}")
-                
+
                 # Modify controls
                 if can_modify_controls:
                     if event.key == K_q:
@@ -471,7 +484,8 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
                         self._autopilot_enabled = not self._autopilot_enabled
                         self._world_model.player.set_autopilot(self._autopilot_enabled)
                         self._world_model.hud.notification(
-                            'Autopilot %s' % ('On' if self._autopilot_enabled else 'Off'))
+                            "Autopilot %s" % ("On" if self._autopilot_enabled else "Off")
+                        )
                     elif event.key == K_l and pygame.key.get_mods() & KMOD_CTRL:
                         current_lights ^= carla.VehicleLightState.Special1
                     elif event.key == K_l and pygame.key.get_mods() & KMOD_SHIFT:
@@ -506,32 +520,32 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
             elif event.type == MOUSEBUTTONUP:
                 if event.button == 1:
                     self._mouse_steering_center = None
-        
+
         if not self._autopilot_enabled:
             # Prase mouse events
             if pygame.mouse.get_pressed()[0]:
                 self._parse_mouse(pygame.mouse.get_pos())
             if not self._control:
                 self._control = carla.VehicleControl()
-            #prev_steer_cache = self._steer_cache  # NOTE: Not used anymore
+            # prev_steer_cache = self._steer_cache  # NOTE: Not used anymore
             self._parse_vehicle_keys(pygame.key.get_pressed(), self._clock.get_time())
             self._control.reverse = self._control.gear < 0
             return None
             # Moved Code from Carla example to WorldModel
         return None
- 
+
     def _parse_vehicle_keys(self, keys, milliseconds):
         """Handles manual vehicle controls via keyboard."""
         if keys[K_UP] or keys[K_w]:
             self._control.throttle = min(self._control.throttle + 0.2, 1)
             self._control.brake = 0
-        #else:
+        # else:
         #    self._control.throttle = max(self._control.throttle - 0.2, 0)
 
         if keys[K_DOWN] or keys[K_s]:
             self._control.brake = min(self._control.brake + 0.2, 1)
             self._control.throttle = 0
-        #else:
+        # else:
         #    self._control.brake = max(self._control.brake - 0.2, 0)
 
         self._steer_cache = self._control.steer
@@ -575,6 +589,6 @@ class RSSKeyboardControl(CanBeDummy, KeyboardControl):
             self._control.throttle = 0.0
             self._control.brake = longitudinal / max_val
 
-    
+
 # Stops RSS and allows hard kills if the script is stuck
 signal.signal(signal.SIGINT, RSSKeyboardControl._signal_handler)

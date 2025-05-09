@@ -4,9 +4,9 @@
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
 
-""" This module implements an agent that roams around a track following random
+"""This module implements an agent that roams around a track following random
 waypoints and avoiding other vehicles. The agent also responds to traffic lights,
-traffic signs, and has different possible configurations. """
+traffic signs, and has different possible configurations."""
 
 import carla
 import numpy as np
@@ -33,7 +33,7 @@ class BehaviorAgent(BasicAgent):
     are encoded in the agent, from cautious to a more aggressive ones.
     """
 
-    def __init__(self, vehicle, behavior='normal', opt_dict={}, map_inst=None, grp_inst=None):
+    def __init__(self, vehicle, behavior="normal", opt_dict={}, map_inst=None, grp_inst=None):
         # type: (carla.Actor, str | CarlaOriginalBehavior, dict, carla.Map | None, GlobalRoutePlanner) -> None
         """
         Constructor method.
@@ -57,20 +57,20 @@ class BehaviorAgent(BasicAgent):
         if isinstance(behavior, CarlaOriginalBehavior):
             self._behavior = behavior
         # Parameters for agent behavior
-        elif behavior == 'cautious':
+        elif behavior == "cautious":
             self._behavior = Cautious()
 
-        elif behavior == 'normal':
+        elif behavior == "normal":
             self._behavior = Normal()
 
-        elif behavior == 'aggressive':
+        elif behavior == "aggressive":
             self._behavior = Aggressive()
         else:
             self._behavior = behavior_types[behavior]
         print("Behavior is", self._behavior, type(self._behavior))
 
-        #opts = self._behavior.get_options().copy()  # base options from templates
-        #opts.update(opt_dict)  # update by custom options
+        # opts = self._behavior.get_options().copy()  # base options from templates
+        # opts.update(opt_dict)  # update by custom options
         super().__init__(vehicle, opt_dict=opt_dict, map_inst=map_inst, grp_inst=grp_inst)
 
     def _update_information(self):
@@ -88,7 +88,8 @@ class BehaviorAgent(BasicAgent):
         self._look_ahead_steps = int((self._speed_limit) / 10)
 
         self._incoming_waypoint, self._incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
-            steps=self._look_ahead_steps)
+            steps=self._look_ahead_steps
+        )
         if self._incoming_direction is None:
             self._incoming_direction = RoadOption.LANEFOLLOW
 
@@ -117,28 +118,45 @@ class BehaviorAgent(BasicAgent):
         left_wpt = waypoint.get_left_lane()
         right_wpt = waypoint.get_right_lane()
 
-        behind_vehicle_state, behind_vehicle, _ = self._vehicle_obstacle_detected(vehicle_list, max(
-            self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, low_angle_th=160)
+        behind_vehicle_state, behind_vehicle, _ = self._vehicle_obstacle_detected(
+            vehicle_list,
+            max(self._behavior.min_proximity_threshold, self._speed_limit / 2),
+            up_angle_th=180,
+            low_angle_th=160,
+        )
         if behind_vehicle_state and self._speed < get_speed(behind_vehicle):
-            if (right_turn in {carla.LaneChange.Right, carla.LaneChange.Both}
-                 and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving):
-                new_vehicle_state, _, _ = self._vehicle_obstacle_detected(vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=1)
+            if (
+                right_turn in {carla.LaneChange.Right, carla.LaneChange.Both}
+                and waypoint.lane_id * right_wpt.lane_id > 0
+                and right_wpt.lane_type == carla.LaneType.Driving
+            ):
+                new_vehicle_state, _, _ = self._vehicle_obstacle_detected(
+                    vehicle_list,
+                    max(self._behavior.min_proximity_threshold, self._speed_limit / 2),
+                    up_angle_th=180,
+                    lane_offset=1,
+                )
                 if not new_vehicle_state:
                     print("Tailgating, moving to the right!")
                     end_waypoint = self._local_planner.target_waypoint
                     self._behavior.tailgate_counter = 200
-                    self.set_destination(end_waypoint.transform.location,
-                                         right_wpt.transform.location)
-            elif left_turn == carla.LaneChange.Left and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
-                new_vehicle_state, _, _ = self._vehicle_obstacle_detected(vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=-1)
+                    self.set_destination(end_waypoint.transform.location, right_wpt.transform.location)
+            elif (
+                left_turn == carla.LaneChange.Left
+                and waypoint.lane_id * left_wpt.lane_id > 0
+                and left_wpt.lane_type == carla.LaneType.Driving
+            ):
+                new_vehicle_state, _, _ = self._vehicle_obstacle_detected(
+                    vehicle_list,
+                    max(self._behavior.min_proximity_threshold, self._speed_limit / 2),
+                    up_angle_th=180,
+                    lane_offset=-1,
+                )
                 if not new_vehicle_state:
                     print("Tailgating, moving to the left!")
                     end_waypoint = self._local_planner.target_waypoint
                     self._behavior.tailgate_counter = 200
-                    self.set_destination(end_waypoint.transform.location,
-                                         left_wpt.transform.location)
+                    self.set_destination(end_waypoint.transform.location, left_wpt.transform.location)
 
     def collision_and_car_avoid_manager(self, waypoint):
         """
@@ -162,21 +180,31 @@ class BehaviorAgent(BasicAgent):
         # Triple (<is there an obstacle> , )
         if self._direction == RoadOption.CHANGELANELEFT:
             vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
-                vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=-1)
+                vehicle_list,
+                max(self._behavior.min_proximity_threshold, self._speed_limit / 2),
+                up_angle_th=180,
+                lane_offset=-1,
+            )
         elif self._direction == RoadOption.CHANGELANERIGHT:
             vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
-                vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=1)
+                vehicle_list,
+                max(self._behavior.min_proximity_threshold, self._speed_limit / 2),
+                up_angle_th=180,
+                lane_offset=1,
+            )
         else:
             vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
-                vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=30)
+                vehicle_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=30
+            )
 
             # Check for tailgating
-            if not vehicle_state and self._direction == RoadOption.LANEFOLLOW \
-                    and not waypoint.is_junction and self._speed > 10 \
-                    and self._behavior.tailgate_counter == 0:
+            if (
+                not vehicle_state
+                and self._direction == RoadOption.LANEFOLLOW
+                and not waypoint.is_junction
+                and self._speed > 10
+                and self._behavior.tailgate_counter == 0
+            ):
                 self._tailgating(waypoint, vehicle_list)
 
         return vehicle_state, vehicle, distance
@@ -201,14 +229,23 @@ class BehaviorAgent(BasicAgent):
         walker_list = [w for w in walker_list if dist(w) < 10]
 
         if self._direction == RoadOption.CHANGELANELEFT:
-            walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
-                self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
+            walker_state, walker, distance = self._vehicle_obstacle_detected(
+                walker_list,
+                max(self._behavior.min_proximity_threshold, self._speed_limit / 2),
+                up_angle_th=90,
+                lane_offset=-1,
+            )
         elif self._direction == RoadOption.CHANGELANERIGHT:
-            walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
-                self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
+            walker_state, walker, distance = self._vehicle_obstacle_detected(
+                walker_list,
+                max(self._behavior.min_proximity_threshold, self._speed_limit / 2),
+                up_angle_th=90,
+                lane_offset=1,
+            )
         else:
-            walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
-                self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+            walker_state, walker, distance = self._vehicle_obstacle_detected(
+                walker_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60
+            )
 
         return walker_state, walker, distance
 
@@ -226,16 +263,19 @@ class BehaviorAgent(BasicAgent):
 
         vehicle_speed = get_speed(vehicle)
         delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
-        ttc = (distance / delta_v if delta_v != 0  # TimeTillCollision
-               else distance / np.nextafter(0., 1.)  # do not divide by 0,
-               )
+        ttc = (
+            distance / delta_v
+            if delta_v != 0  # TimeTillCollision
+            else distance / np.nextafter(0.0, 1.0)  # do not divide by 0,
+        )
 
         # Under safety time distance, slow down.
         if self._behavior.safety_time > ttc > 0.0:
             target_speed = min([
                 positive(vehicle_speed - self._behavior.speed_decrease),
                 self._behavior.max_speed,
-                self._speed_limit - self._behavior.speed_lim_dist])
+                self._speed_limit - self._behavior.speed_lim_dist,
+            ])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
@@ -244,15 +284,14 @@ class BehaviorAgent(BasicAgent):
             target_speed = min([
                 max(self._min_speed, vehicle_speed),
                 self._behavior.max_speed,
-                self._speed_limit - self._behavior.speed_lim_dist])
+                self._speed_limit - self._behavior.speed_lim_dist,
+            ])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
         # Normal behavior.
         else:
-            target_speed = min([
-                self._behavior.max_speed,
-                self._speed_limit - self._behavior.speed_lim_dist])
+            target_speed = min([self._behavior.max_speed, self._speed_limit - self._behavior.speed_lim_dist])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
@@ -284,9 +323,11 @@ class BehaviorAgent(BasicAgent):
         if walker_state:
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
-            distance = w_distance - max(
-                walker.bounding_box.extent.y, walker.bounding_box.extent.x) - max(
-                self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
+            distance = (
+                w_distance
+                - max(walker.bounding_box.extent.y, walker.bounding_box.extent.x)
+                - max(self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
+            )
 
             # Emergency brake if the car is very close.
             if distance < self._behavior.braking_distance:
@@ -298,9 +339,11 @@ class BehaviorAgent(BasicAgent):
         if vehicle_state:
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
-            distance = distance - max(
-                vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
-                self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
+            distance = (
+                distance
+                - max(vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x)
+                - max(self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
+            )
 
             # Emergency brake if the car is very close.
             if distance < self._behavior.braking_distance:
@@ -310,17 +353,13 @@ class BehaviorAgent(BasicAgent):
 
         # 3: Intersection behavior
         elif self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
-            target_speed = min([
-                self._behavior.max_speed,
-                self._speed_limit - 5])
+            target_speed = min([self._behavior.max_speed, self._speed_limit - 5])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
         # 4: Normal behavior
         else:
-            target_speed = min([
-                self._behavior.max_speed,
-                self._speed_limit - self._behavior.speed_lim_dist])
+            target_speed = min([self._behavior.max_speed, self._speed_limit - self._behavior.speed_lim_dist])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 

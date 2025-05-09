@@ -27,8 +27,9 @@ FONT_SIZE = 20
 
 def get_actor_display_name(actor: carla.Actor, truncate: int = 250):
     """Method to get actor display name"""
-    name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
-    return (name[:truncate - 1] + '\u2026') if len(name) > truncate else name
+    name = " ".join(actor.type_id.replace("_", ".").title().split(".")[1:])
+    return (name[: truncate - 1] + "\u2026") if len(name) > truncate else name
+
 
 # ==============================================================================
 # -- HUD -----------------------------------------------------------------------
@@ -38,26 +39,29 @@ def get_actor_display_name(actor: carla.Actor, truncate: int = 250):
 class HUD(CanBeDummy):
     """
     Class to display text and other information on the :py:mod:`pygame` screen.
-    
+
     If :py:attr:`.LaunchConfig.pygame` is set to False the HUD is not available.
     """
-    
-    default_font: ClassVar[str] = 'ubuntumono'
 
-    def __init__(self, width: int, height: int, world: carla.World, help_text: Optional[str] = RSSKeyboardControl.__doc__):
+    default_font: ClassVar[str] = "ubuntumono"
+
+    def __init__(
+        self, width: int, height: int, world: carla.World, help_text: Optional[str] = RSSKeyboardControl.__doc__
+    ):
         """Constructor method"""
         self.dim = (width, height)
         self._world = world
         self.map_name = world.get_map().name
         font = pygame.font.Font(pygame.font.get_default_font(), 20)
-        font_name = 'courier' if os.name == 'nt' else 'mono'
+        font_name = "courier" if os.name == "nt" else "mono"
         fonts = [x for x in pygame.font.get_fonts() if font_name in x]
         mono = self.default_font if self.default_font in fonts else fonts[0]
         mono = pygame.font.match_font(mono)
-        self._font_mono = pygame.font.Font(mono, 12 if os.name == 'nt' else 14)
+        self._font_mono = pygame.font.Font(mono, 12 if os.name == "nt" else 14)
         self._notifications = FadingText(font, (width, 40), (0, height - 40))
-        self.help = HelpText(pygame.font.Font(mono, FONT_SIZE), width, height,
-                             doc=help_text if help_text is not None else False)
+        self.help = HelpText(
+            pygame.font.Font(mono, FONT_SIZE), width, height, doc=help_text if help_text is not None else False
+        )
         self.server_fps = 0
         self.frame = 0
         self.simulation_time = 0
@@ -83,8 +87,8 @@ class HUD(CanBeDummy):
     def tick(self, world: "WorldModel", clock: pygame.time.Clock, obstacles: Optional[Iterable[carla.Actor]] = None):
         """
         HUD method for every tick
-        
-        
+
+
         Parameters:
             obstacles: If **obstacles** is passed these actors will be displayed on the HUD,
             if not the closest vehicles will be displayed.
@@ -93,92 +97,97 @@ class HUD(CanBeDummy):
         if not self._show_info:
             return
         player = cast("carla.Walker | carla.Vehicle", world.player)
-        
+
         transform = player.get_transform()
         location = transform.location
         vel = player.get_velocity()
         control = player.get_control()
-        heading = 'N' if abs(transform.rotation.yaw) < 89.5 else ''
-        heading += 'S' if abs(transform.rotation.yaw) > 90.5 else ''
-        heading += 'E' if 179.5 > transform.rotation.yaw > 0.5 else ''
-        heading += 'W' if -0.5 > transform.rotation.yaw > -179.5 else ''
+        heading = "N" if abs(transform.rotation.yaw) < 89.5 else ""
+        heading += "S" if abs(transform.rotation.yaw) > 90.5 else ""
+        heading += "E" if 179.5 > transform.rotation.yaw > 0.5 else ""
+        heading += "W" if -0.5 > transform.rotation.yaw > -179.5 else ""
         colhist = world.collision_sensor.get_collision_history()
         collision = [colhist[x + self.frame - 200] for x in range(200)]
         max_col = max(1.0, max(collision))  # noqa: PLW3301
         collision = [x / max_col for x in collision]
-        obstacles = obstacles or world.world.get_actors().filter('*vehicle*')
-        
+        obstacles = obstacles or world.world.get_actors().filter("*vehicle*")
+
         # TODO: could also get ready distances from InformationManager, needs access to agent instance
         # cached info would also prevent x from being destroyed in a different thread
-        obstacles_distances: "list[tuple[float, carla.Actor]]" = [(x.get_location().distance(location), x) for x in obstacles if x.id != world.player.id and x.is_alive]
+        obstacles_distances: "list[tuple[float, carla.Actor]]" = [
+            (x.get_location().distance(location), x) for x in obstacles if x.id != world.player.id and x.is_alive
+        ]
 
-        self._info_text: list[Union[
-            str,
-            tuple[str, bool],
-            #Sequence[Union[str, float]],
-            tuple[str, float, float, float],  # min value max
-            tuple[str, float, float, float, float],
-            #tuple[str, float, float, float, float, list[list[float]]], #
-            tuple[str, float, float, float, float, list[tuple[float, float]]],  # steering
-            list[float]]]
+        self._info_text: list[
+            Union[
+                str,
+                tuple[str, bool],
+                # Sequence[Union[str, float]],
+                tuple[str, float, float, float],  # min value max
+                tuple[str, float, float, float, float],
+                # tuple[str, float, float, float, float, list[list[float]]], #
+                tuple[str, float, float, float, float, list[tuple[float, float]]],  # steering
+                list[float],
+            ]
+        ]
 
         self._info_text = [
-            'Server:  {: 16.0f} FPS'.format(self.server_fps),
-            'Client:  {: 16.0f} FPS'.format(clock.get_fps()),
-            'Map:     {:>20s}'.format(self.map_name),  # from rss
-            '',
-            'Vehicle: {:>20s}'.format(get_actor_display_name(player, truncate=20)),
-            'Map:     {:>20s}'.format(world.map.name.split('/')[-1]),
-            'Simulation time: {!s:>12s}'.format(timedelta(seconds=int(self.simulation_time))),
-            '',
-            'Speed:   {: 15.0f} km/h'.format(3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)),
-            'Heading:{: 16.0f}\N{DEGREE SIGN} {:>2s}'.format(transform.rotation.yaw, heading),
+            "Server:  {: 16.0f} FPS".format(self.server_fps),
+            "Client:  {: 16.0f} FPS".format(clock.get_fps()),
+            "Map:     {:>20s}".format(self.map_name),  # from rss
+            "",
+            "Vehicle: {:>20s}".format(get_actor_display_name(player, truncate=20)),
+            "Map:     {:>20s}".format(world.map.name.split("/")[-1]),
+            "Simulation time: {!s:>12s}".format(timedelta(seconds=int(self.simulation_time))),
+            "",
+            "Speed:   {: 15.0f} km/h".format(3.6 * math.sqrt(vel.x**2 + vel.y**2 + vel.z**2)),
+            "Heading:{: 16.0f}\N{DEGREE SIGN} {:>2s}".format(transform.rotation.yaw, heading),
             #  TODO maybe 'Heading: {: 20.2f}'.format(math.radians(transform.rotation.yaw)),
-            'Location:{:>20s}'.format(f'({transform.location.x: 5.1f}, {transform.location.y: 5.1f})'),
-            'Height:  {: 18.0f} m'.format(transform.location.z)]
+            "Location:{:>20s}".format(f"({transform.location.x: 5.1f}, {transform.location.y: 5.1f})"),
+            "Height:  {: 18.0f} m".format(transform.location.z),
+        ]
         if world.gnss_sensor:
             self._info_text.append(
-                'GNSS:{:>24s}'.format(f'({world.gnss_sensor.lat: 2.6f}, {world.gnss_sensor.lon: 3.6f})'))
-        self._info_text.append('')  # empty line
+                "GNSS:{:>24s}".format(f"({world.gnss_sensor.lat: 2.6f}, {world.gnss_sensor.lon: 3.6f})")
+            )
+        self._info_text.append("")  # empty line
         if isinstance(control, carla.VehicleControl):
             if self.original_vehicle_control:
                 orig_control = self.original_vehicle_control
                 restricted_control = self.restricted_vehicle_control
                 allowed_steering_ranges = self.allowed_steering_ranges
                 self._info_text += [
-                    ('Throttle:', orig_control.throttle, 0.0, 1.0, restricted_control.throttle),
-                    ('Steer:', orig_control.steer, -1.0, 1.0, restricted_control.steer, allowed_steering_ranges),
-                    ('Brake:', orig_control.brake, 0.0, 1.0, restricted_control.brake)]
+                    ("Throttle:", orig_control.throttle, 0.0, 1.0, restricted_control.throttle),
+                    ("Steer:", orig_control.steer, -1.0, 1.0, restricted_control.steer, allowed_steering_ranges),
+                    ("Brake:", orig_control.brake, 0.0, 1.0, restricted_control.brake),
+                ]
             else:
                 self._info_text += [
-                    ('Throttle:', control.throttle, 0.0, 1.0),
-                    ('Steer:', control.steer, -1.0, 1.0),
-                    ('Brake:', control.brake, 0.0, 1.0),]
+                    ("Throttle:", control.throttle, 0.0, 1.0),
+                    ("Steer:", control.steer, -1.0, 1.0),
+                    ("Brake:", control.brake, 0.0, 1.0),
+                ]
             self._info_text += [
-                ('Reverse:', control.reverse),
-                ('Hand brake:', control.hand_brake),
-                ('Manual:', control.manual_gear_shift),
-                'Gear:        {}'.format({-1: 'R', 0: 'N'}.get(control.gear, control.gear))]
+                ("Reverse:", control.reverse),
+                ("Hand brake:", control.hand_brake),
+                ("Manual:", control.manual_gear_shift),
+                "Gear:        {}".format({-1: "R", 0: "N"}.get(control.gear, control.gear)),
+            ]
         elif isinstance(control, carla.WalkerControl):  # pyright: ignore[reportUnnecessaryIsInstance]
-            self._info_text += [
-                ('Speed:', control.speed, 0.0, 5.556),
-                ('Jump:', control.jump)]
+            self._info_text += [("Speed:", control.speed, 0.0, 5.556), ("Jump:", control.jump)]
         # else unknown control type
-        self._info_text += [
-            '',
-            'Collision:',
-            collision,
-            '',
-            f'Number of vehicles: {len(obstacles_distances): 8d}']
+        self._info_text += ["", "Collision:", collision, "", f"Number of vehicles: {len(obstacles_distances): 8d}"]
 
         if len(obstacles_distances) > 1:
-            self._info_text += ['Nearby obstacles:']
+            self._info_text += ["Nearby obstacles:"]
 
-        for distance, vehicle in sorted(obstacles_distances, key=operator.itemgetter(0))[:20]:  # display at most 20 actors
+        for distance, vehicle in sorted(obstacles_distances, key=operator.itemgetter(0))[
+            :20
+        ]:  # display at most 20 actors
             if distance > 200.0:
                 break
             vehicle_type = get_actor_display_name(vehicle, truncate=22)
-            self._info_text.append(f'{distance:>4.0f}m {vehicle_type}')
+            self._info_text.append(f"{distance:>4.0f}m {vehicle_type}")
 
     def toggle_info(self):
         """Toggle info on or off"""
@@ -190,7 +199,7 @@ class HUD(CanBeDummy):
 
     def error(self, text: str):
         """Display an error notification"""
-        self._notifications.set_text(f'Error: {text}', (255, 0, 0))
+        self._notifications.set_text(f"Error: {text}", (255, 0, 0))
 
     def render(self, display: pygame.Surface):
         """Render for HUD class"""
@@ -222,10 +231,14 @@ class HUD(CanBeDummy):
                         if len(item) == 6 and item[2] < 0.0:
                             for steering_range in item[5]:
                                 starting_value = min(steering_range[0], steering_range[1])
-                                length = (max(steering_range[0], steering_range[1]) -
-                                          min(steering_range[0], steering_range[1])) / 2
+                                length = (
+                                    max(steering_range[0], steering_range[1])
+                                    - min(steering_range[0], steering_range[1])
+                                ) / 2
                                 rect = pygame.Rect(
-                                    (bar_h_offset + (starting_value + 1) * (bar_width / 2), v_offset + 2), (length * bar_width, 14))
+                                    (bar_h_offset + (starting_value + 1) * (bar_width / 2), v_offset + 2),
+                                    (length * bar_width, 14),
+                                )
                                 pygame.draw.rect(display, (0, 255, 0), rect)
 
                         # draw border
@@ -240,22 +253,21 @@ class HUD(CanBeDummy):
                                 input_value_rect_fill = 1
                                 f = (item[4] - item[2]) / (item[3] - item[2])
                                 if item[2] < 0.0:
-                                    rect = pygame.Rect(
-                                        (bar_h_offset + 1 + f * (bar_width - 6), v_offset + 3), (12, 12))
+                                    rect = pygame.Rect((bar_h_offset + 1 + f * (bar_width - 6), v_offset + 3), (12, 12))
                                 else:
                                     rect = pygame.Rect((bar_h_offset + 1, v_offset + 3), (f * bar_width, 12))
                                 pygame.draw.rect(display, (255, 0, 0), rect)
-                                                                                    
+
                         if TYPE_CHECKING:
                             assert len(item) > 2  # narrow some types
                         f = (item[1] - item[2]) / (item[3] - item[2])
                         rect = None
                         if item[2] < 0.0:
-                            #rect = pygame.Rect(
+                            # rect = pygame.Rect(
                             #    (bar_h_offset + fig * (bar_width - 6), v_offset + 8), (6, 6))
                             rect = pygame.Rect((bar_h_offset + 2 + f * (bar_width - 14), v_offset + 4), (10, 10))
                         else:
-                            #rect = pygame.Rect((bar_h_offset, v_offset + 8), (fig * bar_width, 6))
+                            # rect = pygame.Rect((bar_h_offset, v_offset + 8), (fig * bar_width, 6))
                             if item[1] != 0:
                                 rect = pygame.Rect((bar_h_offset + 2, v_offset + 4), (f * (bar_width - 4), 10))
                         if rect:
@@ -282,7 +294,7 @@ class HUD(CanBeDummy):
 class FadingText:
     """
     Class for fading text
-    
+
     :meta private:
     """
 
@@ -321,7 +333,7 @@ class FadingText:
 class HelpText:
     """
     Helper class to handle text output using pygame
-    
+
     :meta private:
     """
 
@@ -339,12 +351,12 @@ class HelpText:
         else:
             self.surface = None
         self._render = False
-        
+
     def create_surface(self, doc: str):
         """Create surface method"""
-        lines = doc.split('\n')
+        lines = doc.split("\n")
         self.dim = (780, len(lines) * self.line_space + 12)
-        #self.dim = (680, len(lines) * 22 + 12)
+        # self.dim = (680, len(lines) * 22 + 12)
         self.pos = (0.5 * self._width - 0.5 * self.dim[0], 0.5 * self._height - 0.5 * self.dim[1])
         self.surface = pygame.Surface(self.dim)
         self.surface.fill((0, 0, 0, 0))
@@ -356,8 +368,10 @@ class HelpText:
     def toggle(self):
         """Toggle on or off the render help"""
         if self.surface is None:
-            print("Warning: No help text available - Initialized with doc=False. "
-                  "Cannot display help. Call create_surface first.")
+            print(
+                "Warning: No help text available - Initialized with doc=False. "
+                "Cannot display help. Call create_surface first."
+            )
             return
         self._render = not self._render
 

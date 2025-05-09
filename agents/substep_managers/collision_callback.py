@@ -11,9 +11,9 @@ PRINTED_WARNING = False
 def collision_manager(self: "LunaticAgent", event: carla.CollisionEvent) -> None:
     """
     What to do in case of a collision
-    
+
     Callback function for the collision event.
-    
+
     Attention:
         This function currently is not yet implemented.
     """

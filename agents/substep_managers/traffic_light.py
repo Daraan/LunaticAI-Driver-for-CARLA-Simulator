@@ -29,9 +29,11 @@ def _is_red_or_yellow(traffic_light: "carla.TrafficLight") -> bool:
     return traffic_light.state in (TrafficLightState.Red, TrafficLightState.Yellow)
 
 
-def affected_by_traffic_light(self: "CanDetectNearbyTrafficLights",
-                              lights_list: Optional[ActorList[carla.TrafficLight]] = None,
-                              max_distance: Optional[float] = None) -> TrafficLightDetectionResult:
+def affected_by_traffic_light(
+    self: "CanDetectNearbyTrafficLights",
+    lights_list: Optional[ActorList[carla.TrafficLight]] = None,
+    max_distance: Optional[float] = None,
+) -> TrafficLightDetectionResult:
     """
     Method to check if there is a red light affecting the vehicle.
 
@@ -48,17 +50,22 @@ def affected_by_traffic_light(self: "CanDetectNearbyTrafficLights",
 
     # Currently affected by a traffic light
     if self._last_traffic_light:
-        if self._last_traffic_light.state != TrafficLightState.Red and (not detect_yellow_tlighs or self._last_traffic_light.state != TrafficLightState.Yellow):
+        if self._last_traffic_light.state != TrafficLightState.Red and (
+            not detect_yellow_tlighs or self._last_traffic_light.state != TrafficLightState.Yellow
+        ):
             self._last_traffic_light = None
         else:  # Still Red
             return TrafficLightDetectionResult(True, self._last_traffic_light)
-    
+
     if lights_list is None:
         if self._world_model._args.debug:
-            logger.warning("No traffic lights list provided, using all traffic lights in the scene. This should not happen."
-                            "You possibly want to pass agent.traffic_lights_nearby or agent._lights_list instead.")
-        lights_list = cast("carla.ActorList[carla.TrafficLight]",
-                           CarlaDataProvider.get_all_actors().filter("*traffic_light*"))
+            logger.warning(
+                "No traffic lights list provided, using all traffic lights in the scene. This should not happen."
+                "You possibly want to pass agent.traffic_lights_nearby or agent._lights_list instead."
+            )
+        lights_list = cast(
+            "carla.ActorList[carla.TrafficLight]", CarlaDataProvider.get_all_actors().filter("*traffic_light*")
+        )
     if len(lights_list) == 0:
         return TrafficLightDetectionResult(False, None)
 
@@ -69,13 +76,13 @@ def affected_by_traffic_light(self: "CanDetectNearbyTrafficLights",
     ego_vehicle_waypoint = self._current_waypoint
 
     filtered_lights = filter(_is_red_or_yellow if detect_yellow_tlighs else _is_red_light, lights_list)  # type: ignore
-    
+
     for traffic_light in filtered_lights:
         trigger_wp = InformationManager.get_trafficlight_trigger_waypoint(traffic_light)
 
         if trigger_wp.road_id != ego_vehicle_waypoint.road_id:
             continue
-        
+
         if trigger_wp.transform.location.distance(ego_vehicle_location) > max_distance:
             continue
 
@@ -93,35 +100,39 @@ def affected_by_traffic_light(self: "CanDetectNearbyTrafficLights",
     return TrafficLightDetectionResult(False, None)
 
 
-def detect_traffic_light(self: CanDetectNearbyTrafficLights,
-                         traffic_lights: Optional[ActorList[carla.TrafficLight]] = None) -> TrafficLightDetectionResult:
+def detect_traffic_light(
+    self: CanDetectNearbyTrafficLights, traffic_lights: Optional[ActorList[carla.TrafficLight]] = None
+) -> TrafficLightDetectionResult:
     """
     This method is in charge of behaviors for red lights.
     """
-    
+
     # Introduce a random chance to ignore the traffic light
     if random.random() < self.config.obstacles.ignore_lights_percentage:
         return TrafficLightDetectionResult(False, None)
-    
+
     traffic_lights = traffic_lights or self.traffic_lights_nearby
 
     # Behavior setting:
     max_tlight_distance = self.config.obstacles.base_tlight_threshold
     if self.config.obstacles.dynamic_threshold:
         # Basic agent setting:
-        #logger.info("Increased threshold for traffic light detection from {} to {}".format(max_tlight_distance,
+        # logger.info("Increased threshold for traffic light detection from {} to {}".format(max_tlight_distance,
         #                                                                                  max_tlight_distance + self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed))
         max_tlight_distance += self.config.obstacles.detection_speed_ratio * self.config.live_info.current_speed
-        
+
     # TODO: Time to pass the traffic light; i.e. can we pass it without stopping? -> How risky are we?
 
     # TODO check if lights should be copied.
     # lights = self.lights_list.copy() #could remove certain lights, or the current one for some ticks
-    affected_traffic_light: TrafficLightDetectionResult = affected_by_traffic_light(self, traffic_lights,
-                                    max_distance=max_tlight_distance)
-    
-    if (affected_traffic_light.traffic_light_was_found
-        and affected_traffic_light.traffic_light.state == TrafficLightState.Red):  # type: ignore[attr]
+    affected_traffic_light: TrafficLightDetectionResult = affected_by_traffic_light(
+        self, traffic_lights, max_distance=max_tlight_distance
+    )
+
+    if (
+        affected_traffic_light.traffic_light_was_found
+        and affected_traffic_light.traffic_light.state == TrafficLightState.Red
+    ):  # type: ignore[attr]
         self.current_states[AgentState.BLOCKED_RED_LIGHT] += 1
     else:
         self.current_states[AgentState.BLOCKED_RED_LIGHT] = 0

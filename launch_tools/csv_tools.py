@@ -1,9 +1,11 @@
 """Contains snippets that can can import/export vehicle positions from/to csv files."""
+
 from __future__ import annotations
 
 # pyright: reportUnknownMemberType=none
 # pyright: reportUnknownVariableType=information
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from os import PathLike
 
@@ -28,8 +30,7 @@ def transform_to_pandas(transform: carla.Transform) -> pd.Series[float]:
     """
     loc = transform.location
     rot = transform.rotation
-    return pd.Series({"x": loc.x, "y": loc.y, "z": loc.z,
-                   "pitch": rot.pitch, "yaw": rot.yaw, "roll": rot.roll})
+    return pd.Series({"x": loc.x, "y": loc.y, "z": loc.z, "pitch": rot.pitch, "yaw": rot.yaw, "roll": rot.roll})
 
 
 def vehicle_location_to_dataframe(vehicles: list[carla.Actor]) -> pd.DataFrame:

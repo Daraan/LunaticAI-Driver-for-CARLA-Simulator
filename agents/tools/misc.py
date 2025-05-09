@@ -7,7 +7,7 @@
 # pyright: reportTypeCommentUsage=none
 # pyright: reportUnknownMemberType=information
 
-""" Module with auxiliary functions. """
+"""Module with auxiliary functions."""
 
 import math
 from typing import TYPE_CHECKING, Optional, Sequence
@@ -16,15 +16,15 @@ import carla
 import numpy as np
 
 __all__ = [
-    'compute_distance',
-    'compute_magnitude_angle',
-    'distance_vehicle',
-    'draw_waypoints',
-    'get_speed',
-    'get_trafficlight_trigger_location',
-    'is_within_distance',
-    'positive',
-    'vector'
+    "compute_distance",
+    "compute_magnitude_angle",
+    "distance_vehicle",
+    "draw_waypoints",
+    "get_speed",
+    "get_trafficlight_trigger_location",
+    "is_within_distance",
+    "positive",
+    "vector",
 ]
 
 _EPS = np.finfo(float).eps
@@ -36,6 +36,7 @@ else:
     # modify. When debug_drawing is loaded this function will be replaced by the correct one.
     def draw_waypoints(*args, **kwargs) -> None:
         from agents.tools.debug_drawing import draw_waypoints  # noqa: PLC0415
+
         return draw_waypoints(*args, **kwargs)
 
 
@@ -53,10 +54,10 @@ def get_speed(vehicle, kmh=True, vel=None):
         :return: speed as a float in Km/h
     """
     # Importing CarlaDataProvider is circular import as it uses this module
-    #vel = CarlaDataProvider.get_velocity(vehicle)
+    # vel = CarlaDataProvider.get_velocity(vehicle)
     if not vel:
         v_vector = vehicle.get_velocity()
-        vel = math.sqrt(v_vector.x ** 2 + v_vector.y ** 2 + v_vector.z ** 2)
+        vel = math.sqrt(v_vector.x**2 + v_vector.y**2 + v_vector.z**2)
     if kmh:
         return 3.6 * vel
     return vel
@@ -88,9 +89,12 @@ def get_trafficlight_trigger_location(traffic_light: carla.TrafficLight) -> carl
     return carla.Location(point_location.x, point_location.y, point_location.z)
 
 
-def is_within_distance(target_transform: carla.Transform,
-                       reference_transform: carla.Transform,
-                       max_distance: float, angle_interval: Optional[Sequence[float]] = None) -> bool:
+def is_within_distance(
+    target_transform: carla.Transform,
+    reference_transform: carla.Transform,
+    max_distance: float,
+    angle_interval: Optional[Sequence[float]] = None,
+) -> bool:
     """
     Check if a location is both within a certain distance from a reference object.
     By using 'angle_interval', the angle between the location and reference transform
@@ -104,7 +108,7 @@ def is_within_distance(target_transform: carla.Transform,
     """
     target_vector = np.array([  # type: ignore
         target_transform.location.x - reference_transform.location.x,
-        target_transform.location.y - reference_transform.location.y
+        target_transform.location.y - reference_transform.location.y,
     ])
     norm_target = np.linalg.norm(target_vector)  # type: ignore
 
@@ -125,7 +129,7 @@ def is_within_distance(target_transform: carla.Transform,
 
     fwd = reference_transform.get_forward_vector()
     forward_vector = np.array([fwd.x, fwd.y])  # type: ignore
-    angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.)))  # pyright: ignore
+    angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1.0, 1.0)))  # pyright: ignore
 
     return min_angle < angle < max_angle
 
@@ -144,7 +148,7 @@ def compute_magnitude_angle(target_location, current_location, orientation):
     norm_target = np.linalg.norm(target_vector)
 
     forward_vector = np.array([math.cos(math.radians(orientation)), math.sin(math.radians(orientation))])
-    d_angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.)))
+    d_angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1.0, 1.0)))
 
     return (norm_target, d_angle)  # type: ignore
 
@@ -170,10 +174,10 @@ def vector(location_1, location_2):
     Returns the unit vector from location_1 to location_2
 
         :param location_1, location_2: carla.Location objects
-    
+
     Note:
         Use (location_2 - location_1).make_unit_vector() instead.
-    
+
     :meta private:
     """
     x = location_2.x - location_1.x
@@ -189,10 +193,10 @@ def compute_distance(location_1: carla.Vector3D, location_2: carla.Vector3D) -> 
     Euclidean distance between 3D points
 
         :param location_1, location_2: 3D points
-        
+
     .. deprecated::
         Use :func:`carla.Location.distance` instead.
-        
+
     :meta private:
     """
     x = location_2.x - location_1.x
@@ -217,14 +221,16 @@ def lanes_have_same_direction(wp1: carla.Waypoint, wp2: carla.Waypoint) -> bool:
 
         :param wp1: first waypoint
         :param wp2: second waypoint
-        
+
     Returns:
         True if the lanes have the same direction, False otherwise
     """
     return wp1.lane_id * wp2.lane_id > 0
 
 
-def get_closest_tl_trigger_wp(reference_location: carla.Location, traffic_light: carla.TrafficLight) -> "tuple[carla.Waypoint, float]":
+def get_closest_tl_trigger_wp(
+    reference_location: carla.Location, traffic_light: carla.TrafficLight
+) -> "tuple[carla.Waypoint, float]":
     """
     Finds the closest triggering waypoint of the traffic light group to the reference location.
 

@@ -1,4 +1,4 @@
-import __allow_imports_from_root # noqa # type: ignore
+import __allow_imports_from_root  # noqa # type: ignore
 
 import threading
 import time
@@ -20,9 +20,15 @@ def main():
     global spawner, vehicles
 
     # Initialise the class for vehicle spawning
-    spawner = VehicleSpawner('conf/launch_config.yaml', 'conf/experimental_rule_interpreter_examples/traffic_manager/vehicle_spawn.yaml')
-    client, world, world_map, = spawner.initialize_carla_service()
-    ego_bp, car_bp, driver1, spawn_points, rule_interpreter = spawner.prepare_vehicles(world)
+    spawner = VehicleSpawner(
+        "conf/launch_config.yaml", "conf/experimental_rule_interpreter_examples/traffic_manager/vehicle_spawn.yaml"
+    )
+    (
+        _client,
+        world,
+        _world_map,
+    ) = spawner.initialize_carla_service()
+    ego_bp, car_bp, driver1, spawn_points, _rule_interpreter = spawner.prepare_vehicles(world)
 
     # Spawn vehicles and assign drivers
     ego = spawner.spawn_vehicles(world, ego_bp, spawn_points)
@@ -37,7 +43,7 @@ def main():
 
     # Create a thread for the camera functionality
     try:
-        camera_thread = threading.Thread(target=spectator_follow_actor, args=(ego_vehicle, ))
+        camera_thread = threading.Thread(target=spectator_follow_actor, args=(ego_vehicle,))
         camera_thread.start()
 
         # Initialize matrix thread
@@ -65,9 +71,7 @@ def main():
             # OLD:
             # random brake check
             brake_check_choice = random.randint(1, 100)
-            if (brake_check_choice <= driver1.brake_check_chance
-                    and (matrix[i_car][j_car - 1] == 2)
-            ):
+            if brake_check_choice <= driver1.brake_check_chance and (matrix[i_car][j_car - 1] == 2):
                 driver1.vehicle.actor.set_autopilot(False)
                 driver1.vehicle.setThrottle(0)
                 driver1.vehicle.setBrake(10)
@@ -98,7 +102,7 @@ def main():
         camera_thread.join()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     finally:

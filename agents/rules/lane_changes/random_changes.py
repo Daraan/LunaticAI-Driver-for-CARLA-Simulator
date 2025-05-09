@@ -20,23 +20,23 @@ class RandomLaneChangeRule(Rule):
     group = "lane_change"
     description = "Randomly change lane"
     start_cooldown = 25
-    
+
     # ----------- Lane Change Rules -----------
     # self_config can be defined as a normal dict,
     # to have type-hint, auto-completion use a setup like this:
     # When the rule is initialized, the values are copied to the instance
-    
+
     @dataclass  # <-- NOTE: DO NOT FORGET TO ADD, else the keys will be missing
     class self_config(RuleConfig):
         random_lane_change_interval: int = 200
         """Cooldown value for a lane change in the 'lane_change' group."""
-        
+
         random_right_lanechange_percentage: float = 0.1
         """
         Adjust probability that in each timestep the actor will perform a left/right lane change,
         dependent on lane change availability.
         """
-        
+
         random_left_lanechange_percentage: float = 0.1
         """
         Adjust probability that in each timestep the actor will perform a left/right lane change,
@@ -56,10 +56,12 @@ class RandomLaneChangeRule(Rule):
         if direction == 0:
             self.reset_cooldown(self.self_config.random_lane_change_interval)
             return
-        ctx.agent.lane_change("left" if direction == 1 else "right",
-                            same_lane_time=ctx.config.lane_change.same_lane_time,
-                            other_lane_time=ctx.config.lane_change.other_lane_time,
-                            lane_change_time=ctx.config.lane_change.lane_change_time)
+        ctx.agent.lane_change(
+            "left" if direction == 1 else "right",
+            same_lane_time=ctx.config.lane_change.same_lane_time,
+            other_lane_time=ctx.config.lane_change.other_lane_time,
+            lane_change_time=ctx.config.lane_change.lane_change_time,
+        )
 
         self.reset_cooldown(self.self_config.random_lane_change_interval)
 
