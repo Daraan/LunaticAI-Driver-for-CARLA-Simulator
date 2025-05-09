@@ -69,8 +69,8 @@ select = [
 
     "T10", # breakpoints
 
-    "TCH004",
-    "TCH0", # TypeChecking
+    "TC004",
+    "TC0", # TypeChecking
 
     "UP",
 
@@ -104,9 +104,6 @@ ignore = [
     "RUF031", # Avoid parentheses for tuples in subscripts.
 
     "SIM108", # Use ternary operator, sometimes too long lines
-
-    # deprecated:
-    "ANN101", "ANN102",
 ]
 
 [tool.ruff.lint.per-file-ignores]
