@@ -1,4 +1,4 @@
-# ruff: noqa: ARG001, ARG002
+# ruff: noqa: ARG001, ARG002, FA102
 
 from functools import partial
 import re
@@ -14,7 +14,7 @@ import sphinx.environment
 from sphinx.transforms import post_transforms
 from sphinxnotes.comboroles import CompositeRole
 
-from _autodoc_type_aliases import autodoc_type_aliases
+from ._autodoc_type_aliases import autodoc_type_aliases
 
 if TYPE_CHECKING:
     from inspect import Signature
@@ -313,7 +313,7 @@ def before_type_hint_cleaner(app: sphinx.application.Sphinx, obj: Any, bound_met
         if isinstance(obj, partial):
             obj = obj.func
         signature: str | Signature | None = getattr(obj, "__signature__", None)
-        if not signature and not obj.__annotations__.items():
+        if not signature and (not hasattr(obj, "__annotations__") or not obj.__annotations__.items()):
             return
         for replace_th, new_hint in _convert.items():
             for keyword, typehint in obj.__annotations__.items():
